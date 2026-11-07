@@ -1,0 +1,6 @@
+{
+  "name": "Nova Dark Messenger",
+  "description": "High-fidelity dark luxury messenger design system with interactive chat, channel feed, profile, and component tokens.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
