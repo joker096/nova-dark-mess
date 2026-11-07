@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-06T16:34:43.338Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap heading \"Katie Rogers\"",
+        "target": {
+          "role": "heading",
+          "name": "Katie Rogers"
+        }
+      }
+    ],
+    "executor": {
+      "name": "e2e-default-agent",
+      "version": "2"
+    },
+    "recordedFor": {
+      "testId": "tests/example.e2e.ts::the%20agent%20drives%20a%20flow",
+      "targetId": "web",
+      "instructionDigest": "a90bfc31358771e4b0aa02da2ce136342281d54cb2e605351e78300dca40d7a4",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Opened the chat with Katie Rogers by tapping her conversation row; the chat view now shows her header (\"Katie Rogers\", last seen 2 minutes ago), the full message history, and the message input box.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Back to chats"
+      },
+      {
+        "text": "Katie Rogers"
+      },
+      {
+        "role": "button",
+        "name": "Chat"
+      },
+      {
+        "text": "Gallery"
+      },
+      {
+        "text": "(11)"
+      },
+      {
+        "role": "button",
+        "name": "Video call"
+      },
+      {
+        "role": "button",
+        "name": "Search in this chat"
+      },
+      {
+        "role": "button",
+        "name": "Change chat background"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "image",
+        "name": "Joseph"
+      },
+      {
+        "text": "JS"
+      },
+      {
+        "role": "heading",
+        "name": "Hello, Joseph"
+      },
+      {
+        "text": "5 unread"
+      },
+      {
+        "role": "button",
+        "name": "New Conversation"
+      },
+      {
+        "role": "textbox",
+        "name": "Search by contact name or message preview...",
+        "placeholder": "Search by contact name or message preview..."
+      },
+      {
+        "text": "Quick search:"
+      },
+      {
+        "role": "button",
+        "name": "Katie"
+      }
+    ],
+    "endWaitMs": 15493
+  }
+}

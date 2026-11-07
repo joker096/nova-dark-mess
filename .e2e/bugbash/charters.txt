@@ -1,0 +1,5 @@
+chats|web|default|Starting at the chats list screen, tap several chats and channels, check the search box and the bottom nav; report anything broken, confusing, or inconsistent
+chat|web|default|Starting in the chat with Katie Rogers, send messages, use the reply and compose options; report anything broken, confusing, or inconsistent
+channel|web|default|Starting at the Kyiv channel screen, check the channel posts and interactions; report anything broken, confusing, or inconsistent
+profile|web|default|Starting at the Katie Rogers profile screen, check the profile details and actions; report anything broken, confusing, or inconsistent
+nav|web|default|Explore the bottom navigation and the screen-switcher widget; move between all screens and report anything broken, confusing, or inconsistent
