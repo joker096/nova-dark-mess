@@ -26,6 +26,7 @@ import {
   Sparkles,
   Image as ImageIcon,
   Smile,
+  Heart,
   MapPin,
   FileText,
   Camera,
@@ -819,6 +820,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           }
         } else {
           updatedReactions = [...existing, { emoji, count: 1, fromMe: true }];
+        }
+
+        if (existingReaction && existingReaction.fromMe) {
+          triggerPinnedToast(`Removed reaction ${emoji}`);
+        } else {
+          triggerPinnedToast(`Reacted ${emoji}`);
         }
 
         return { ...msg, reactions: updatedReactions };
@@ -1818,12 +1825,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveReactionMsgId(msg.id);
+                      setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
                     }}
-                    className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-white/20 text-white/80 hover:text-white border border-white/10 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90"
-                    title="Add reaction or options"
+                    className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-rose-500/20 hover:border-rose-500/50 text-white/80 hover:text-rose-400 border border-white/10 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90 group/react"
+                    title="Add reaction (long-press or click for hearts, fire, etc.)"
                   >
-                    <Smile className="w-3.5 h-3.5" />
+                    <Heart className="w-3.5 h-3.5 text-rose-400 group-hover/react:scale-120 group-hover/react:fill-rose-400/50 transition-all duration-150" />
                   </button>
                 </div>
 
