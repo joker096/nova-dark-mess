@@ -64,6 +64,10 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     const pointerStartPosRef = useRef<{ x: number; y: number } | null>(null);
     const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isHeldRef = useRef(false);
+    const isRecordingRef = useRef(false);
+    const isPushToTalkRef = useRef(false);
+    const isCancelingRef = useRef(false);
+    const recordingSecondsRef = useRef(0);
 
     const CANCEL_DRAG_THRESHOLD = 80; // px to the left to cancel
 
@@ -130,6 +134,8 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         setIsCanceling(false);
         setIsPushToTalk(pushToTalkMode);
         setIsRecording(true);
+        isRecordingRef.current = true;
+        isPushToTalkRef.current = pushToTalkMode;
         accumulatedSamplesRef.current = [];
         audioChunksRef.current = [];
         recordedAudioUrlRef.current = null;
@@ -139,7 +145,9 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         }
 
         // Timer counter
+        recordingSecondsRef.current = 0;
         timerIntervalRef.current = setInterval(() => {
+          recordingSecondsRef.current += 1;
           setRecordingSeconds((prev) => prev + 1);
         }, 1000);
 
@@ -275,10 +283,12 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
     // Stop recording and stage voice note for preview
     const stopAndPreview = useCallback(() => {
-      const duration = Math.max(1, recordingSeconds);
+      const duration = Math.max(1, recordingSecondsRef.current);
       cleanupAudio();
       setIsRecording(false);
       setIsPushToTalk(false);
+      isRecordingRef.current = false;
+      isPushToTalkRef.current = false;
 
       const voiceNote = finalizeWaveformData(duration);
       setStagedVoiceNote(voiceNote);
@@ -286,14 +296,16 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(30);
       }
-    }, [cleanupAudio, finalizeWaveformData, recordingSeconds]);
+    }, [cleanupAudio, finalizeWaveformData]);
 
     // Direct send voice note
     const sendRecordingDirectly = useCallback(() => {
-      const duration = Math.max(1, recordingSeconds);
+      const duration = Math.max(1, recordingSecondsRef.current);
       cleanupAudio();
       setIsRecording(false);
       setIsPushToTalk(false);
+      isRecordingRef.current = false;
+      isPushToTalkRef.current = false;
 
       const voiceNote = finalizeWaveformData(duration);
       onSendVoiceMemo(voiceNote);
@@ -301,13 +313,15 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(50);
       }
-    }, [cleanupAudio, finalizeWaveformData, onSendVoiceMemo, recordingSeconds]);
+    }, [cleanupAudio, finalizeWaveformData, onSendVoiceMemo]);
 
     // Cancel recording
     const cancelRecording = useCallback(() => {
       cleanupAudio();
       setIsRecording(false);
       setIsPushToTalk(false);
+      isRecordingRef.current = false;
+      isPushToTalkRef.current = false;
       setRecordingSeconds(0);
       setStagedVoiceNote(null);
       setSlideOffset(0);
@@ -332,7 +346,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
     // Pointer Handlers for Push-to-Talk (Hold-to-record & Slide-to-cancel)
     const handlePointerDown = (e: React.PointerEvent) => {
-      if (disabled || isRecording || stagedVoiceNote) return;
+      if (disabled || isRecordingRef.current) return;
 
       pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
       isHeldRef.current = false;
@@ -345,7 +359,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
-      if (!isRecording || !isPushToTalk || !pointerStartPosRef.current) return;
+      if (!isRecordingRef.current || !isPushToTalkRef.current || !pointerStartPosRef.current) return;
 
       const deltaX = e.clientX - pointerStartPosRef.current.x;
       if (deltaX < 0) {
@@ -353,8 +367,10 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         setSlideOffset(offset);
         if (offset >= CANCEL_DRAG_THRESHOLD) {
           setIsCanceling(true);
+          isCancelingRef.current = true;
         } else {
           setIsCanceling(false);
+          isCancelingRef.current = false;
         }
       }
     };
@@ -367,15 +383,15 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
       if (!isHeldRef.current) {
         // Just a quick tap: start hands-free recording mode!
-        if (!isRecording && !stagedVoiceNote) {
+        if (!isRecordingRef.current) {
           startRecording(false);
         }
         return;
       }
 
       // Released from Push-to-Talk
-      if (isRecording && isPushToTalk) {
-        if (isCanceling || slideOffset >= CANCEL_DRAG_THRESHOLD) {
+      if (isRecordingRef.current && isPushToTalkRef.current) {
+        if (isCancelingRef.current) {
           cancelRecording();
         } else {
           sendRecordingDirectly();
@@ -391,7 +407,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         clearTimeout(holdTimeoutRef.current);
         holdTimeoutRef.current = null;
       }
-      if (isRecording && isPushToTalk) {
+      if (isRecordingRef.current && isPushToTalkRef.current) {
         cancelRecording();
       }
       isHeldRef.current = false;
