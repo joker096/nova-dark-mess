@@ -258,7 +258,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         {callStatus === 'connected' && (
           <div className="absolute bottom-28 left-4 z-20 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-white/90">Katie Rogers</span>
+            <span className="text-xs font-semibold text-white/90">{name}</span>
             <div className="flex items-end gap-0.5 h-3 ml-1">
               {[1, 2, 3, 4].map((bar) => {
                 const height =
