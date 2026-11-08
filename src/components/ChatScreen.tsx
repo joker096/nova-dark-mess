@@ -30,9 +30,10 @@ import {
   MapPin,
   FileText,
   Camera,
+  Download,
 } from 'lucide-react';
 import { INITIAL_KATIE_MESSAGES, KATIE_PROFILE, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
-import { ChatMessage, VoiceNoteData } from '../types/messenger';
+import { ChatMessage, VoiceNoteData, DocumentAttachment } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
@@ -40,6 +41,7 @@ import { WallpaperSettingsModal } from './WallpaperSettingsModal';
 import { ScheduleMessageModal } from './ScheduleMessageModal';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
+import { FileSelectionModal } from './FileSelectionModal';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -125,6 +127,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
   const [dismissedSmartReplyMsgId, setDismissedSmartReplyMsgId] = useState<string | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [stagedAttachment, setStagedAttachment] = useState<{
+    images?: string[];
+    document?: DocumentAttachment;
+  } | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   // Scheduled Messages State
@@ -924,30 +931,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
       setIsVoiceMemoActive(true);
       return;
     }
+    if (type === 'photo' || type === 'document') {
+      setIsFileModalOpen(true);
+      return;
+    }
 
     const messageId = 'm-' + Date.now();
     let newMsg: ChatMessage;
 
-    if (type === 'photo') {
-      newMsg = {
-        id: messageId,
-        senderId: 'me',
-        images: [
-          'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=800&q=80',
-        ],
-        text: 'Sharing a quick snapshot from today! 📸✨',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        replyTo: replyingTo
-          ? {
-              id: replyingTo.id,
-              text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
-            }
-          : undefined,
-      };
-      triggerPinnedToast('Photo attachment sent');
-    } else if (type === 'location') {
+    if (type === 'location') {
       newMsg = {
         id: messageId,
         senderId: 'me',
@@ -962,7 +954,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             }
           : undefined,
       };
-      triggerPinnedToast('Location shared');
     } else {
       newMsg = {
         id: messageId,
@@ -984,40 +975,72 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
     setMessages((prev) => [...prev, newMsg]);
     setReplyingTo(null);
 
-    // Transition read status after 1.8s
+    // Transition read status after 600ms
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
       );
-    }, 1800);
+    }, 600);
+
+    setTimeout(() => {
+      setTypingActivity('typing');
+      setIsTyping(true);
+    }, 850);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setTypingActivity('typing');
+      const attachmentResponses = [
+        "Love this! Looks amazing ✨",
+        "Got your attachment, opening it right now! 📄",
+        "Saved it, thank you! 🙌",
+      ];
+      const randomResponse = attachmentResponses[Math.floor(Math.random() * attachmentResponses.length)];
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'm-' + (Date.now() + 1),
+          senderId: 'other',
+          text: randomResponse,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }, 2600);
   };
 
-  const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
-    const text = (customText ?? inputText).trim();
-    if (!text) return;
-
+  const handleSendAttachmentFromModal = (payload: {
+    text?: string;
+    images?: string[];
+    document?: DocumentAttachment;
+  }) => {
     const messageId = 'm-' + Date.now();
-    const activeReply = forcedReplyTo !== undefined ? forcedReplyTo : replyingTo;
     const newMessage: ChatMessage = {
       id: messageId,
       senderId: 'me',
-      text,
+      text: payload.text,
+      images: payload.images,
+      document: payload.document,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
-      replyTo: activeReply
+      replyTo: replyingTo
         ? {
-            id: activeReply.id,
-            text: activeReply.text || (activeReply.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: activeReply.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
           }
         : undefined,
     };
 
     setMessages((prev) => [...prev, newMessage]);
-    if (!customText) {
-      setInputText('');
-    }
     setReplyingTo(null);
+    setStagedAttachment(null);
+    triggerPinnedToast(
+      payload.images
+        ? `Sent ${payload.images.length} photo(s)`
+        : payload.document
+        ? `Sent ${payload.document.name}`
+        : 'Attachment sent'
+    );
 
     // Transition read status after 500ms
     setTimeout(() => {
@@ -1035,12 +1058,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
     setTimeout(() => {
       setIsTyping(false);
       setTypingActivity('typing');
-      const responses = [
-        "Sounds awesome! Let's definitely do that.",
-        "Perfect, I'll text John now and let you know what he says!",
-        "Can't wait to catch up, it's been way too long! 🎉",
-        "Deal! Let's meet at 7pm then.",
-      ];
+      const responses = payload.images
+        ? [
+            "Love these photos! Looks so fun ✨",
+            "Awesome shots, saving these right away! 📸",
+            "Can't wait to catch up, thanks for sharing!",
+          ]
+        : payload.document
+        ? [
+            "Got the document! Reviewing it now 📄",
+            "Thanks for sharing this file, looks great!",
+            "Saved it, see you Sunday!",
+          ]
+        : [
+            "Sounds awesome! Let's definitely do that.",
+            "Can't wait to catch up! 🎉",
+          ];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
       setMessages((prev) => {
         const lastUserMsg = prev[prev.length - 1];
@@ -1055,19 +1088,126 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               lastUserMsg && lastUserMsg.senderId === 'me'
                 ? {
                     id: lastUserMsg.id,
-                    text: lastUserMsg.text || (lastUserMsg.voiceNote ? 'Voice message' : 'Photo attachment'),
+                    text:
+                      lastUserMsg.text ||
+                      (lastUserMsg.document ? `Document: ${lastUserMsg.document.name}` : 'Photo attachment'),
                     senderName: 'You',
                   }
                 : undefined,
           },
         ];
       });
-    }, 2800);
+    }, 2600);
+  };
+
+  const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
+    const text = (customText ?? inputText).trim();
+    if (!text && !stagedAttachment) return;
+
+    const messageId = 'm-' + Date.now();
+    const activeReply = forcedReplyTo !== undefined ? forcedReplyTo : replyingTo;
+    const currentAttachment = stagedAttachment;
+    const newMessage: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: text || undefined,
+      images: currentAttachment?.images,
+      document: currentAttachment?.document,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: activeReply
+        ? {
+            id: activeReply.id,
+            text: activeReply.text || (activeReply.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: activeReply.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+          }
+        : undefined,
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    if (!customText) {
+      setInputText('');
+    }
+    setReplyingTo(null);
+    setStagedAttachment(null);
+
+    // Transition read status after 500ms
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 500);
+
+    // Katie begins real-time typing after 750ms
+    setTimeout(() => {
+      setTypingActivity('typing');
+      setIsTyping(true);
+    }, 750);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setTypingActivity('typing');
+      const responses = currentAttachment?.images
+        ? [
+            "Love these photos! Looks so fun ✨",
+            "Awesome shots, saving these right away! 📸",
+            "Can't wait to catch up, thanks for sharing!",
+          ]
+        : currentAttachment?.document
+        ? [
+            "Got the document! Reviewing it now 📄",
+            "Thanks for sharing this file, looks great!",
+            "Saved it, see you Sunday!",
+          ]
+        : [
+            "Sounds awesome! Let's definitely do that.",
+            "Perfect, I'll text John now and let you know what he says!",
+            "Can't wait to catch up, it's been way too long! 🎉",
+            "Deal! Let's meet at 7pm then.",
+          ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      setMessages((prev) => {
+        const lastUserMsg = prev[prev.length - 1];
+        return [
+          ...prev,
+          {
+            id: 'm-' + (Date.now() + 1),
+            senderId: 'other',
+            text: randomResponse,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            replyTo:
+              lastUserMsg && lastUserMsg.senderId === 'me'
+                ? {
+                    id: lastUserMsg.id,
+                    text:
+                      lastUserMsg.text ||
+                      (lastUserMsg.document
+                        ? `Document: ${lastUserMsg.document.name}`
+                        : lastUserMsg.voiceNote
+                        ? 'Voice message'
+                        : 'Photo attachment'),
+                    senderName: 'You',
+                  }
+                : undefined,
+          },
+        ];
+      });
+    }, 2600);
   };
 
   // Context-aware Smart Reply suggestions based on the last received message content
   const lastReceivedMessage = useMemo(() => {
     return [...messages].reverse().find((m) => m.senderId === 'other');
+  }, [messages]);
+
+  // ID of the latest message sent by 'me' that has been read by Katie
+  const latestReadSentMsgId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].senderId === 'me' && messages[i].isRead) {
+        return messages[i].id;
+      }
+    }
+    return null;
   }, [messages]);
 
   const isLastMessageFromOther =
@@ -2033,7 +2173,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                           isMe={true}
                           accentColor="#ff4e18"
                         />
-                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/70 mt-1 font-medium select-none">
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/70 mt-1.5 font-medium select-none">
                           <button
                             type="button"
                             onPointerDown={(e) => e.stopPropagation()}
@@ -2047,15 +2187,34 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                             <Reply className="w-2.5 h-2.5" />
                             <span className="text-[9.5px]">Reply</span>
                           </button>
-                          <div className="flex items-center gap-1">
-                            <span>{msg.time}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-white/75 font-mono">{msg.time}</span>
                             {msg.isRead ? (
-                              <span title="Read" className="inline-flex items-center text-[#ff4e18] animate-in zoom-in-75 duration-200">
-                                <CheckCheck className="w-3.5 h-3.5 inline-block" />
+                              <span
+                                title="Read • Seen by Katie Rogers"
+                                className="inline-flex items-center text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-in zoom-in-75 duration-200 font-bold"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
                               </span>
                             ) : (
-                              <span title="Sent" className="inline-flex items-center text-white/50 animate-in fade-in duration-150">
-                                <Check className="w-3.5 h-3.5 inline-block" />
+                              <span
+                                title="Sent • Delivered to Katie"
+                                className="inline-flex items-center text-white/50 animate-in fade-in duration-150"
+                              >
+                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
+                              </span>
+                            )}
+                            {msg.id === latestReadSentMsgId && (
+                              <span
+                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
+                                title="Seen by Katie Rogers"
+                              >
+                                <img
+                                  src={KATIE_PROFILE.avatar}
+                                  alt="Seen"
+                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
+                                />
+                                <span className="text-[9px] font-semibold text-white/90 hidden sm:inline">Seen</span>
                               </span>
                             )}
                           </div>
@@ -2082,8 +2241,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                             </p>
                           </div>
                         )}
+                        {msg.images && msg.images.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2 rounded-[16px] overflow-hidden">
+                            {msg.images.map((imgUrl, idx) => (
+                              <div
+                                key={idx}
+                                className="rounded-[14px] overflow-hidden h-36 bg-black/20 border border-white/10 relative group cursor-pointer"
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt=""
+                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {msg.document && (
+                          <div className="flex items-center gap-3 p-3 bg-black/25 rounded-2xl border border-white/10 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
+                              <p className="text-[10.5px] text-white/70 mt-0.5">{msg.document.size}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                              className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer active:scale-95"
+                              title="Download document"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                         <p>{highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}</p>
-                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1 font-medium select-none">
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
                           <button
                             type="button"
                             onPointerDown={(e) => e.stopPropagation()}
@@ -2097,15 +2291,34 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                             <Reply className="w-2.5 h-2.5" />
                             <span className="text-[9.5px]">Reply</span>
                           </button>
-                          <div className="flex items-center gap-1">
-                            <span>{msg.time}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
                             {msg.isRead ? (
-                              <span title="Read" className="inline-flex items-center text-white animate-in zoom-in-75 duration-200">
-                                <CheckCheck className="w-3.5 h-3.5 inline-block" />
+                              <span
+                                title="Read • Seen by Katie Rogers"
+                                className="inline-flex items-center text-sky-200 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)] animate-in zoom-in-75 duration-200 font-bold"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
                               </span>
                             ) : (
-                              <span title="Sent" className="inline-flex items-center text-white/65 animate-in fade-in duration-150">
-                                <Check className="w-3.5 h-3.5 inline-block" />
+                              <span
+                                title="Sent • Delivered to Katie"
+                                className="inline-flex items-center text-white/60 animate-in fade-in duration-150"
+                              >
+                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
+                              </span>
+                            )}
+                            {msg.id === latestReadSentMsgId && (
+                              <span
+                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
+                                title="Seen by Katie Rogers"
+                              >
+                                <img
+                                  src={KATIE_PROFILE.avatar}
+                                  alt="Seen"
+                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
+                                />
+                                <span className="text-[9px] font-semibold text-white/95 hidden sm:inline">Seen</span>
                               </span>
                             )}
                           </div>
@@ -2157,6 +2370,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                             isMe={false}
                             accentColor="#ff4e18"
                           />
+                        </div>
+                      )}
+
+                      {msg.document && (
+                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 mb-2">
+                          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-[#ff4e18]" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
+                            <p className="text-[10.5px] text-[#868b98] mt-0.5">{msg.document.size}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer active:scale-95"
+                            title="Download document"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       )}
 
@@ -2490,6 +2723,56 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             </button>
           </div>
         )}
+        {/* STAGED ATTACHMENT PREVIEW CHIP */}
+        {stagedAttachment && (
+          <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[#ff4e18]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
+            {stagedAttachment.images && stagedAttachment.images.length > 0 && (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
+                  {stagedAttachment.images.slice(0, 3).map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt=""
+                      className="w-10 h-10 rounded-xl object-cover border-2 border-[#171825] shadow-md"
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {stagedAttachment.images.length}{' '}
+                    {stagedAttachment.images.length === 1 ? 'photo attached' : 'photos attached'}
+                  </span>
+                  <span className="text-[10.5px] text-[#868b98]">Ready to send with your message</span>
+                </div>
+              </div>
+            )}
+
+            {stagedAttachment.document && (
+              <div className="flex items-center gap-2.5 pl-1 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[#ff4e18] shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {stagedAttachment.document.name}
+                  </span>
+                  <span className="text-[10px] text-[#868b98]">{stagedAttachment.document.size}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setStagedAttachment(null)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition cursor-pointer shrink-0 ml-auto"
+              title="Remove attachment"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {isVoiceMemoActive ? (
           <VoiceMemoInput
             ref={voiceMemoRef}
@@ -2503,18 +2786,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           />
         ) : (
           <div className="flex items-center gap-2">
+            {/* Paperclip Button opening Simulated File Selection Menu */}
             <button
               type="button"
               onClick={() => {
-                setIsAttachmentMenuOpen((prev) => !prev);
+                setIsFileModalOpen(true);
                 setIsEmojiPickerOpen(false);
+                setIsAttachmentMenuOpen(false);
               }}
               className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-                isAttachmentMenuOpen
+                isFileModalOpen || stagedAttachment
                   ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-[#ff4e18]/30'
                   : 'bg-[#181920]/95 hover:bg-[#20222c] border-white/10 text-white/70 hover:text-white'
               }`}
-              title="Attach photo, location, or document"
+              title="Attach media or document (Paperclip)"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -2613,6 +2898,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
         onEndCall={handleEndVideoCall}
         onMinimize={() => setIsVideoCallMinimized(true)}
         onMaximize={() => setIsVideoCallMinimized(false)}
+      />
+
+      {/* SIMULATED FILE & MEDIA SELECTION MODAL */}
+      <FileSelectionModal
+        isOpen={isFileModalOpen}
+        onClose={() => setIsFileModalOpen(false)}
+        onSendAttachment={handleSendAttachmentFromModal}
+        onStageAttachment={(payload) => {
+          setStagedAttachment(payload);
+          triggerPinnedToast(
+            payload.images
+              ? `${payload.images.length} photo(s) attached`
+              : payload.document
+              ? `${payload.document.name} attached`
+              : 'Attachment added'
+          );
+        }}
       />
     </div>
   );
