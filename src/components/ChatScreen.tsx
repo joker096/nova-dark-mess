@@ -154,6 +154,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     document?: DocumentAttachment;
   } | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [dismissedSmartReplyMsgId, setDismissedSmartReplyMsgId] = useState<string | null>(null);
 
   // Scheduled Messages State
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessageItem[]>([]);
@@ -701,7 +702,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     if (isTyping) return;
     setTypingActivity('recording');
     setIsTyping(true);
-    triggerPinnedToast(`${KATIE_PROFILE.name} is recording an audio note...`);
+    triggerPinnedToast(`${profile.name} is recording an audio note...`);
     setTimeout(() => {
       setIsTyping(false);
       setTypingActivity('typing');
@@ -727,8 +728,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setIsTyping(true);
     triggerPinnedToast(
       activityType === 'recording'
-        ? `${KATIE_PROFILE.name} is recording audio...`
-        : `${KATIE_PROFILE.name} is typing in real time...`
+        ? `${profile.name} is recording audio...`
+        : `${profile.name} is typing in real time...`
     );
 
     setTimeout(() => {
@@ -961,26 +962,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     const messageId = 'm-' + Date.now();
     let newMsg: ChatMessage;
 
-    if (type === 'photo') {
-      newMsg = {
-        id: messageId,
-        senderId: 'me',
-        images: [
-          'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=800&q=80',
-        ],
-        text: 'Sharing a quick snapshot from today! 📸✨',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        replyTo: replyingTo
-          ? {
-              id: replyingTo.id,
-              text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
-            }
-          : undefined,
-      };
-      triggerPinnedToast('Photo attachment sent');
-    } else if (type === 'location') {
+    if (type === 'location') {
       newMsg = {
         id: messageId,
         senderId: 'me',
@@ -1160,7 +1142,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         ? {
             id: activeReply.id,
             text: activeReply.text || (activeReply.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: activeReply.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+            senderName: activeReply.senderId === 'me' ? 'You' : profile.name,
           }
         : undefined,
     };
@@ -1240,6 +1222,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const lastReceivedMessage = useMemo(() => {
     return [...messages].reverse().find((m) => m.senderId === 'other');
   }, [messages]);
+
+  const smartReplies = useMemo(() => {
+    if (!lastReceivedMessage || dismissedSmartReplyMsgId === lastReceivedMessage.id) return [];
+    const text = lastReceivedMessage.text?.toLowerCase() || '';
+    if (text.includes('?')) {
+      return ['Yes', 'No', 'Maybe 😄', 'Tell me more'];
+    }
+    if (text.includes('love') || text.includes('❤️')) {
+      return ['❤️', '💕', 'Same here!'];
+    }
+    return ['Nice! 👍', 'Haha 😄', 'For sure!'];
+  }, [lastReceivedMessage, dismissedSmartReplyMsgId]);
+  const shouldShowSmartReplies = smartReplies.length > 0 && !inputText.trim();
 
   // ID of the latest message sent by 'me' that has been read by Katie
   const latestReadSentMsgId = useMemo(() => {
