@@ -343,7 +343,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Escape') setSearchQuery('');
             }}
-            placeholder="Search contact name or message content..."
+            placeholder="Search conversations by contact name..."
             className="w-full bg-[#171821] border border-white/[0.08] focus:border-[#ff4e18] focus:bg-[#1a1b26] text-white placeholder-white/35 text-xs rounded-full pl-10 pr-24 py-2.5 transition-all shadow-inner focus:outline-none"
           />
 
