@@ -404,3 +404,83 @@ export const KATIE_PROFILE: ContactProfile = {
   sharedMedia: KATIE_SHARED_MEDIA,
 };
 
+export const CONTACT_PROFILES: Record<string, ContactProfile> = {
+  katie: KATIE_PROFILE,
+  thailand: {
+    name: 'Thailand Trip',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80',
+    status: 'Group · 5 members',
+    phone: '—',
+    nickname: '@thailand_trip',
+    mediaCount: 134,
+    filesCount: 12,
+    linksCount: 7,
+    voiceCount: 8,
+    mediaItems: [
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80',
+    ],
+  },
+  kurt: {
+    name: 'Kurt Williamson',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
+    status: 'Last seen 38 mins ago',
+    phone: '+38 093 111 22 33',
+    nickname: '@Kurt_Will',
+    mediaCount: 67,
+    filesCount: 23,
+    linksCount: 11,
+    voiceCount: 5,
+    mediaItems: [
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    ],
+  },
+  stacy: {
+    name: 'Stacy Roberts',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
+    status: 'Last seen 40 mins ago',
+    phone: '+38 050 444 55 66',
+    nickname: '@Stacy_R',
+    mediaCount: 89,
+    filesCount: 4,
+    linksCount: 9,
+    voiceCount: 12,
+    mediaItems: [
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80',
+    ],
+  },
+  daniel: {
+    name: 'Daniel Bowey',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
+    status: 'Last seen 2 hours ago',
+    phone: '+38 067 777 88 99',
+    nickname: '@Daniel_B',
+    mediaCount: 45,
+    filesCount: 31,
+    linksCount: 15,
+    voiceCount: 3,
+    mediaItems: [
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80',
+    ],
+  },
+  'kyiv-channel': {
+    name: 'Real Kyiv Life',
+    avatar: 'ukraine_trident',
+    status: 'Channel · 124K subscribers',
+    phone: '—',
+    nickname: '@real_kyiv_life',
+    mediaCount: 312,
+    filesCount: 0,
+    linksCount: 45,
+    voiceCount: 0,
+    mediaItems: [
+      'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&auto=format&fit=crop&q=80',
+      '/src/assets/images/kyiv_monument_digest_1793872305499.jpg',
+    ],
+  },
+};
+

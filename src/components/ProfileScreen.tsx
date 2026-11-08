@@ -22,15 +22,19 @@ import {
   VolumeX,
   Sparkles,
 } from 'lucide-react';
-import { KATIE_PROFILE, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
+import { CONTACT_PROFILES, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
 import { SharedMediaItem } from '../types/messenger';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ProfileScreenProps {
+  profileId: string;
   onBack: () => void;
   onOpenChat: () => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack, onOpenChat }) => {
+  const profile = CONTACT_PROFILES[profileId] || CONTACT_PROFILES['katie'];
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'media' | 'files' | 'links' | 'voice'>('media');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
   };
 
   // Filtered Media
-  const allMediaItems: SharedMediaItem[] = KATIE_PROFILE.sharedMedia || KATIE_SHARED_MEDIA;
+  const allMediaItems: SharedMediaItem[] = profile.sharedMedia || KATIE_SHARED_MEDIA;
   const filteredMedia = allMediaItems.filter((item) => {
     if (mediaFilter === 'photos') return item.type === 'image';
     if (mediaFilter === 'videos') return item.type === 'video';
@@ -112,7 +116,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0d11] text-white relative select-none overflow-y-auto no-scrollbar pb-10">
+    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-y-auto no-scrollbar pb-10">
       {/* Toast Notification */}
       {mediaToast && (
         <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/40 text-white text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
@@ -135,7 +139,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
           <button
             onClick={() => triggerToast('Contact edit modal')}
             className="w-10 h-10 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
-            title="Edit contact"
+            title={t('common.edit')}
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -145,7 +149,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
               triggerToast('Profile link copied to clipboard');
             }}
             className="w-10 h-10 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
-            title="Share profile"
+            title={t('common.share')}
           >
             <Share2 className="w-4 h-4" />
           </button>
@@ -156,8 +160,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
       <div className="flex flex-col items-center pt-2 pb-5 px-5">
         <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[#ff4e18]/40 shadow-xl shadow-black/80 mb-3 relative">
           <img
-            src={KATIE_PROFILE.avatar}
-            alt={KATIE_PROFILE.name}
+            src={profile.avatar}
+            alt={profile.name}
             className="w-full h-full rounded-full object-cover"
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
@@ -169,10 +173,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
         </div>
 
         <h1 className="text-xl font-bold text-white tracking-tight">
-          {KATIE_PROFILE.name}
+          {profile.name}
         </h1>
         <p className="text-xs text-[#828795] mt-0.5">
-          {KATIE_PROFILE.status}
+          {profile.status}
         </p>
 
         {/* 4 Quick Action Buttons */}
@@ -233,7 +237,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
 
       {/* Contact Details Card */}
       <div className="px-5 mb-4">
-        <div className="bg-[#171820]/95 border border-white/[0.06] rounded-[24px] p-4 space-y-4 shadow-md shadow-black/50">
+        <div className="bg-[#171820]/95 border border-white/5 rounded-[24px] p-4 space-y-4 shadow-md shadow-black/50">
           {/* Phone row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
@@ -245,14 +249,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                   Phone Number
                 </p>
                 <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
-                  {KATIE_PROFILE.phone}
+                  {profile.phone}
                 </p>
               </div>
             </div>
             <button
-              onClick={() => copyToClipboard(KATIE_PROFILE.phone, 'phone')}
+              onClick={() => copyToClipboard(profile.phone, 'phone')}
               className="p-2 text-white/50 hover:text-white transition cursor-pointer"
-              title="Copy phone"
+              title={t('common.copy')}
             >
               {copiedField === 'phone' ? (
                 <Check className="w-4 h-4 text-[#ff4e18]" />
@@ -275,14 +279,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                   Nickname
                 </p>
                 <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
-                  {KATIE_PROFILE.nickname}
+                  {profile.nickname}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowQrModal(true)}
               className="p-2 text-white/50 hover:text-white transition cursor-pointer"
-              title="Show QR Code"
+              title={t('common.contact')}
             >
               <QrCode className="w-4 h-4" />
             </button>
@@ -307,7 +311,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                 activeTab === 'media' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'
               }`}
             >
-              {KATIE_PROFILE.mediaCount}
+              {profile.mediaCount}
             </span>
           </button>
 
@@ -325,7 +329,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                 activeTab === 'files' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'
               }`}
             >
-              {KATIE_PROFILE.filesCount}
+              {profile.filesCount}
             </span>
           </button>
 
@@ -338,7 +342,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
             }`}
           >
             <span>Links</span>
-            <span className="text-[10px] text-[#6a6f7b]">{KATIE_PROFILE.linksCount}</span>
+            <span className="text-[10px] text-[#6a6f7b]">{profile.linksCount}</span>
           </button>
 
           <button
@@ -350,7 +354,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
             }`}
           >
             <span>Voice</span>
-            <span className="text-[10px] text-[#6a6f7b]">{KATIE_PROFILE.voiceCount}</span>
+            <span className="text-[10px] text-[#6a6f7b]">{profile.voiceCount}</span>
           </button>
         </div>
       </div>
@@ -588,13 +592,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
           <div className="flex flex-col items-center space-y-3 mt-8">
             <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#ff4e18] shadow-2xl p-1 animate-pulse">
               <img
-                src={KATIE_PROFILE.avatar}
+                src={profile.avatar}
                 alt=""
                 className="w-full h-full rounded-full object-cover"
               />
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              {KATIE_PROFILE.name}
+              {profile.name}
             </h2>
             <p className="text-sm text-[#ff4e18] font-medium">
               {showCallModal === 'video' ? 'Outgoing Video Call...' : 'Calling...'}
@@ -647,7 +651,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                   triggerToast('Shared to clipboard');
                 }}
                 className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-                title="Share"
+                title={t('common.share')}
               >
                 <Share2 className="w-4 h-4" />
               </button>
@@ -657,7 +661,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                   triggerToast('Downloaded to camera roll');
                 }}
                 className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-                title="Save"
+                title={t('common.save')}
               >
                 <Download className="w-4 h-4" />
               </button>
@@ -667,7 +671,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
                   setSelectedMediaIndex(null);
                 }}
                 className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-                title="Close"
+                title={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -684,7 +688,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
               <button
                 onClick={handlePrevMedia}
                 className="absolute left-1 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center active:scale-90 transition cursor-pointer"
-                title="Previous"
+                title={t('common.previous')}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -695,7 +699,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenChat
               <button
                 onClick={handleNextMedia}
                 className="absolute right-1 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center active:scale-90 transition cursor-pointer"
-                title="Next"
+                title={t('common.next')}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>

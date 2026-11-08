@@ -3,12 +3,14 @@ import { ArrowLeft, Search, Paperclip, Volume2, VolumeX, MoreVertical, MessageCi
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { ChannelPost } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ChannelScreenProps {
   onBack: () => void;
 }
 
 export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
+  const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<number>(24);
   const [posts, setPosts] = useState<ChannelPost[]>(MOCK_CHANNEL_POSTS);
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
@@ -146,7 +148,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search channel feed..."
+            placeholder={t('channel.searchFeed')}
             className="w-full px-4 py-2 bg-[#171820] border border-white/10 rounded-2xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#ff4e18]/60"
             autoFocus
           />
@@ -168,7 +170,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
               </div>
 
               {/* Post Card */}
-              <div className="flex-1 bg-[#171820]/95 border border-white/[0.06] rounded-[24px] p-4 text-white shadow-md shadow-black/50 space-y-3">
+              <div className="flex-1 bg-[#171820]/95 border border-white/5 rounded-[24px] p-4 text-white shadow-md shadow-black/50 space-y-3">
                 {/* Media Image Banner if present */}
                 {post.image && (
                   <div className="rounded-[18px] overflow-hidden relative bg-[#22242e] aspect-[16/9] group">
@@ -199,7 +201,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
                   <button
                     onClick={() => showToast('Post link copied to clipboard')}
                     className="text-white/40 hover:text-white p-1 rounded-full transition cursor-pointer"
-                    title="Post options"
+                    title={t('common.reply')}
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
@@ -255,8 +257,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
           {/* Share/attach button */}
           <button
             onClick={() => showToast('Channel share link copied')}
-            className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[#20222c] border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md"
-            title="Share channel"
+            className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[#20222a] border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md"
+            title={t('common.share')}
           >
             <Paperclip className="w-4 h-4" />
           </button>
@@ -267,7 +269,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
             className={`flex-1 py-2.5 px-4 rounded-full border border-white/10 flex items-center justify-center gap-2 text-xs font-semibold transition active:scale-98 cursor-pointer shadow-md ${
               isSoundEnabled
                 ? 'bg-[#ff4e18] text-white shadow-lg shadow-[#ff4e18]/25'
-                : 'bg-[#181920]/95 text-white/80 hover:text-white hover:bg-[#20222c]'
+                : 'bg-[#181920]/95 text-white/80 hover:text-white hover:bg-[#20222a]'
             }`}
           >
             {isSoundEnabled ? (
@@ -289,9 +291,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
             className={`w-11 h-11 rounded-full border border-white/10 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
               searchOpen
                 ? 'bg-[#ff4e18] text-white'
-                : 'bg-[#181920]/95 text-white/70 hover:text-white hover:bg-[#20222c]'
+                : 'bg-[#181920]/95 text-white/70 hover:text-white hover:bg-[#20222a]'
             }`}
-            title="Search channel"
+            title={t('common.search')}
           >
             <Search className="w-4 h-4" />
           </button>
