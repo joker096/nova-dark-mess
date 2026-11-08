@@ -144,6 +144,11 @@ export const INITIAL_KATIE_MESSAGES: ChatMessage[] = [
     senderId: 'other',
     text: 'Are they still open at sunday? We can give them a visit.',
     time: '19:34',
+    replyTo: {
+      id: 'm4',
+      text: "If you want to, we can meet and hang out at Harry's",
+      senderName: 'You',
+    },
   },
   {
     id: 'm6',
@@ -157,6 +162,11 @@ export const INITIAL_KATIE_MESSAGES: ChatMessage[] = [
     text: "Yeah, i'm here. Gonna talk to John and then will get back to you",
     time: '19:38',
     isRead: true,
+    replyTo: {
+      id: 'm6',
+      text: 'Anyway, waiting for your reply.',
+      senderName: 'Katie Rogers',
+    },
   },
   {
     id: 'm8',
