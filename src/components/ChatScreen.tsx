@@ -23,14 +23,13 @@ import {
   Clock,
   Calendar,
   Video,
-  Sparkles,
   Image as ImageIcon,
   Smile,
   MapPin,
   FileText,
   Camera,
 } from 'lucide-react';
-import { INITIAL_KATIE_MESSAGES, KATIE_PROFILE, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
+import { CONVERSATION_HISTORIES, CONTACT_PROFILES, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
@@ -45,8 +44,10 @@ import {
   WALLPAPER_INTENSITY_KEY,
   WallpaperId,
 } from '../data/wallpapers';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ChatScreenProps {
+  chatId: string;
   onBack: () => void;
   onOpenProfile: () => void;
 }
@@ -62,9 +63,11 @@ interface ScheduledMessageItem {
 const EMOJI_OPTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉'];
 const QUICK_SEARCH_CHIPS = ["Harry's", 'Sunday', 'hang out', 'Rebecca', 'photos', 'dinner', 'voice', 'remember'];
 
-export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile }) => {
+export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenProfile }) => {
+  const { t } = useLanguage();
+  const profile = CONTACT_PROFILES[chatId] || CONTACT_PROFILES['katie'];
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    return INITIAL_KATIE_MESSAGES.map((msg, idx) => {
+    return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
         return {
           ...msg,
@@ -77,6 +80,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
       return msg;
     });
   });
+
+  useEffect(() => {
+    setMessages((CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
+      if (idx === 1) {
+        return {
+          ...msg,
+          reactions: [
+            { emoji: '🔥', count: 2, fromMe: false },
+            { emoji: '❤️', count: 1, fromMe: true },
+          ],
+        };
+      }
+      return msg;
+    }));
+    setInputText('');
+    setReplyingTo(null);
+    setIsSearchOpen(false);
+  }, [chatId]);
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -120,7 +141,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pinnedToast, setPinnedToast] = useState<string | null>(null);
-  const [dismissedSmartReplyMsgId, setDismissedSmartReplyMsgId] = useState<string | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -408,7 +428,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
   const handleStartVideoCall = () => {
     setIsVideoCallOpen(true);
     setIsVideoCallMinimized(false);
-    triggerPinnedToast(`Starting video call with ${KATIE_PROFILE.name}...`);
+    triggerPinnedToast(`Starting video call with ${profile.name}...`);
   };
 
   const handleEndVideoCall = (durationFormatted: string) => {
@@ -420,7 +440,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
     const callRecordMsg: ChatMessage = {
       id: 'call-' + Date.now(),
       senderId: 'me',
-      text: `📹 Video call with ${KATIE_PROFILE.name.split(' ')[0]} • Duration: ${durationFormatted}`,
+      text: `📹 Video call with ${profile.name.split(' ')[0]} • Duration: ${durationFormatted}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: true,
     };
@@ -591,7 +611,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
         ? {
             id: replyingTo.id,
             text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
           }
         : undefined,
     };
@@ -706,6 +726,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
   };
 
   const handlePointerMove = (e: React.PointerEvent, msg: ChatMessage) => {
+    if (!pointerStartPosRef.current) return;
     const dx = e.clientX - pointerStartPosRef.current.x;
     const dy = e.clientY - pointerStartPosRef.current.y;
 
@@ -754,7 +775,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
     if (isDraggingRef.current && swipingMsgId === msg.id) {
       if (swipeOffset >= 42) {
         handleReplyMessage(msg);
-        triggerPinnedToast(`Replying to ${msg.senderId === 'me' ? 'myself' : KATIE_PROFILE.name}`);
+        triggerPinnedToast(`Replying to ${msg.senderId === 'me' ? 'myself' : profile.name}`);
         setTimeout(() => {
           mainInputRef.current?.focus();
         }, 80);
@@ -844,7 +865,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
     setIsAttachmentMenuOpen(false);
     setIsEmojiPickerOpen(false);
     const preview = msg.text || (msg.voiceNote ? `Voice message (${msg.voiceNote.duration})` : 'Photo attachment');
-    const sender = msg.senderId === 'me' ? 'myself' : KATIE_PROFILE.name;
+    const sender = msg.senderId === 'me' ? 'myself' : profile.name;
     triggerPinnedToast(`Replying to ${sender}: "${preview.slice(0, 26)}${preview.length > 26 ? '...' : ''}"`);
     setHighlightedMsgId(msg.id);
     setTimeout(() => {
@@ -877,7 +898,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           ? {
               id: replyingTo.id,
               text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
             }
           : undefined,
       };
@@ -893,7 +914,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           ? {
               id: replyingTo.id,
               text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
             }
           : undefined,
       };
@@ -909,7 +930,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           ? {
               id: replyingTo.id,
               text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
             }
           : undefined,
       };
@@ -942,7 +963,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
         ? {
             id: replyingTo.id,
             text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
           }
         : undefined,
     };
@@ -993,119 +1014,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
   const isLastMessageFromOther =
     messages.length > 0 && messages[messages.length - 1].senderId === 'other';
 
-  const smartReplies = useMemo(() => {
-    if (!lastReceivedMessage) return [];
-
-    // Voice note
-    if (lastReceivedMessage.voiceNote) {
-      return [
-        "Listening to it now! 🎧",
-        "Sounds like a plan! 🙌",
-        "I'll send a voice note back 🎙️",
-        "Can't wait to catch up! 🔥",
-      ];
-    }
-
-    const text = (lastReceivedMessage.text || '').toLowerCase();
-
-    // Questions about sunday, open hours, or visiting places
-    if (
-      text.includes('sunday') ||
-      text.includes('open') ||
-      text.includes('visit') ||
-      text.includes('?')
-    ) {
-      return [
-        "Yes, they're open till 11pm! 🍹",
-        "Let's definitely go on Sunday! 🙌",
-        "I'll double check the hours 🔍",
-        "What time works best for you? ⏰",
-      ];
-    }
-
-    // Waiting for reply
-    if (text.includes('waiting') || text.includes('reply') || text.includes('hear')) {
-      return [
-        "Sorry for the delay, free now! 🙏",
-        "Here now! What's the plan? 😊",
-        "Count me in! 🚀",
-        "Calling you in 5 mins 📞",
-      ];
-    }
-
-    // Plans / timing / meetup / 7pm
-    if (text.includes('meet') || text.includes('time') || text.includes('7pm') || text.includes('soon')) {
-      return [
-        "7pm at Harry's works great! 🍻",
-        "Perfect, see you there! 👋",
-        "I might be 10 mins late ⏳",
-        "Can't wait! ✨",
-      ];
-    }
-
-    // Confirmation / deal / awesome / perfect
-    if (
-      text.includes('awesome') ||
-      text.includes('perfect') ||
-      text.includes('deal') ||
-      text.includes('great')
-    ) {
-      return [
-        "Deal! See you then 🙌",
-        "Can't wait! 🎉",
-        "I'll text when I'm on my way 🚗",
-        "Sounds great! ✨",
-      ];
-    }
-
-    // Travel / photos / flight
-    if (
-      text.includes('flight') ||
-      text.includes('trip') ||
-      text.includes('photo') ||
-      text.includes('hostel')
-    ) {
-      return [
-        "Those photos look unreal! 📸",
-        "So excited for the trip! 🌴",
-        "Have the best time! 😍",
-        "Send more pictures please! 🏝️",
-      ];
-    }
-
-    // Video call record message
-    if (text.includes('video call')) {
-      return [
-        "Great talking to you! 👋",
-        "Let's call again soon! 📹",
-        "Send me the link we talked about 🔗",
-      ];
-    }
-
-    // Default intelligent conversational suggestions
-    return [
-      "Sounds good to me! 👍",
-      "Let's do it! 🚀",
-      "Give me just a few minutes ⏳",
-      "Haha totally agree! 😂",
-    ];
-  }, [lastReceivedMessage]);
-
-  const shouldShowSmartReplies =
-    !isRecording &&
-    !isVoiceMemoActive &&
-    !recordedVoiceNote &&
-    isLastMessageFromOther &&
-    lastReceivedMessage &&
-    dismissedSmartReplyMsgId !== lastReceivedMessage.id &&
-    smartReplies.length > 0;
-
   const sharedMediaCount = useMemo(() => {
     const urls = new Set<string>();
     messages.forEach((m) => {
       m.images?.forEach((u) => urls.add(u));
     });
-    (KATIE_PROFILE.sharedMedia || KATIE_SHARED_MEDIA).forEach((item) => {
+    (profile.sharedMedia || KATIE_SHARED_MEDIA).forEach((item) => {
       urls.add(item.url);
     });
     return urls.size;
@@ -1151,7 +1065,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               <button
                 onClick={handleCloseSearch}
                 className="w-8 h-8 rounded-full bg-[#1f2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer shrink-0"
-                title="Back to conversation"
+                title={t('common.back')}
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -1178,7 +1092,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       handlePrevMatch();
                     }
                   }}
-                  placeholder="Find words in chat..."
+                  placeholder={t('chat.searchInChat')}
                   className="w-full bg-transparent text-xs text-white placeholder-white/40 focus:outline-none py-0.5 min-w-0"
                 />
 
@@ -1190,7 +1104,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       searchInputRef.current?.focus();
                     }}
                     className="p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition cursor-pointer shrink-0"
-                    title="Clear search query"
+                    title={t('common.close')}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1212,14 +1126,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                   <button
                     onClick={handlePrevMatch}
                     className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[#ff4e18] transition cursor-pointer active:scale-95"
-                    title="Previous match (Shift+Enter / ▲)"
+                    title={t('common.previous')}
                   >
                     <ChevronUp className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleNextMatch}
                     className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[#ff4e18] transition cursor-pointer active:scale-95"
-                    title="Next match (Enter / ▼)"
+                    title={t('common.next')}
                   >
                     <ChevronDown className="w-4 h-4" />
                   </button>
@@ -1273,7 +1187,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                   className="flex flex-col items-center cursor-pointer focus:outline-none group truncate max-w-full"
                 >
                   <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[#ff4e18] transition truncate">
-                    {KATIE_PROFILE.name}
+                    {profile.name}
                   </span>
                   {isTyping ? (
                     <div className="flex items-center gap-1.5 mt-0.5 animate-in fade-in duration-200">
@@ -1288,7 +1202,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                     </div>
                   ) : (
                     <span className="text-[10px] text-[#868b98] font-normal leading-none mt-0.5 transition-colors">
-                      {KATIE_PROFILE.status}
+                      {profile.status}
                     </span>
                   )}
                 </button>
@@ -1362,7 +1276,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 <button
                   onClick={() => setIsSearchOpen(true)}
                   className="w-8 h-8 rounded-full bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18] flex items-center justify-center transition cursor-pointer active:scale-95"
-                  title="Search in this chat"
+                  title={t('common.search')}
                 >
                   <Search className="w-3.5 h-3.5" />
                 </button>
@@ -1375,7 +1289,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-md shadow-[#ff4e18]/30'
                       : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
                   }`}
-                  title="Change chat background (Abstract Gradients & Geometric Patterns)"
+                  title={t('settings.chatWallpaper')}
                 >
                   <Palette className="w-3.5 h-3.5" />
                 </button>
@@ -1410,7 +1324,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 <button
                   onClick={handleTriggerIncomingVoiceNote}
                   className="px-2 py-1 rounded-full bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-[10px] text-white/70 hover:text-[#ff4e18] transition flex items-center gap-1 cursor-pointer"
-                  title="Test: Receive voice note from Katie"
+                  title={t('common.voice')}
                 >
                   <Mic className="w-2.5 h-2.5 text-[#ff4e18]" />
                   <span className="hidden sm:inline">Receive</span>
@@ -1423,11 +1337,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                   ? 'border-[#ff4e18] ring-2 ring-[#ff4e18]/50 shadow-[0_0_14px_rgba(255,78,24,0.5)]'
                   : 'border-white/15 ring-2 ring-[#ff4e18]/20'
                   }`}
-                  title="View contact info"
+                  title={t('common.profile')}
                 >
                   <img
-                    src={KATIE_PROFILE.avatar}
-                    alt={KATIE_PROFILE.name}
+                    src={profile.avatar}
+                    alt={profile.name}
                     className="w-full h-full object-cover"
                   />
                 </button>
@@ -1441,7 +1355,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
       {activeHeaderTab === 'gallery' ? (
         <SharedMediaSection
           messages={messages}
-          contactName={KATIE_PROFILE.name}
+          contactName={profile.name}
+          contactId={chatId}
           onClose={() => setActiveHeaderTab('chat')}
           onJumpToMessage={handleJumpFromGallery}
         />
@@ -1493,14 +1408,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                     <button
                       onClick={handlePrevPin}
                       className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
-                      title="Previous pinned message"
+                      title={t('common.previous')}
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={handleNextPin}
                       className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
-                      title="Next pinned message"
+                      title={t('common.next')}
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
@@ -1509,7 +1424,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 <button
                   onClick={() => setIsPinnedCarouselOpen(false)}
                   className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer ml-1"
-                  title="Dismiss pinned carousel"
+                  title={t('common.close')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1521,7 +1436,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               <div
                 onClick={() => handleJumpToMessage(currentPinnedMsg.id)}
                 className="mt-2 p-2 rounded-xl bg-[#1b1c28]/90 hover:bg-[#202232] border border-white/5 transition cursor-pointer group flex items-start justify-between gap-2.5 active:scale-[0.99]"
-                title="Click to jump to this message in chat"
+                title={t('chat.replyingTo')}
               >
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   {currentPinnedMsg.images && currentPinnedMsg.images.length > 0 ? (
@@ -1545,7 +1460,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-semibold text-[#ff4e18]">
-                        {currentPinnedMsg.senderId === 'me' ? 'You' : KATIE_PROFILE.name}
+                        {currentPinnedMsg.senderId === 'me' ? 'You' : profile.name}
                       </span>
                       <span className="text-[10px] text-white/40">
                         {currentPinnedMsg.time}
@@ -1569,7 +1484,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                   <button
                     onClick={(e) => handleUnpinMessage(currentPinnedMsg.id, e)}
                     className="p-1 rounded-md text-white/40 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"
-                    title="Unpin message"
+                    title={t('common.unpin')}
                   >
                     <PinOff className="w-3.5 h-3.5" />
                   </button>
@@ -1739,7 +1654,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                           handleReplyMessage(msg);
                         }}
                         className="px-2 py-1 rounded-full bg-[#ff4e18] hover:bg-[#ff5d2b] text-white flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[#ff4e18]/40 active:scale-95"
-                        title="Reply to message"
+                        title={t('common.reply')}
                       >
                         <Reply className="w-3.5 h-3.5" />
                         <span>Reply</span>
@@ -1768,7 +1683,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                           handleCopyMessage(msg);
                         }}
                         className="p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                        title="Copy text"
+                        title={t('common.copy')}
                       >
                         {copiedMsgId === msg.id ? (
                           <CheckCheck className="w-3.5 h-3.5 text-[#ff4e18]" />
@@ -1809,7 +1724,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       handleReplyMessage(msg);
                     }}
                     className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-[#ff4e18] text-white/80 hover:text-white border border-white/10 hover:border-[#ff4e18]/50 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90"
-                    title="Reply to message"
+                    title={t('common.reply')}
                   >
                     <Reply className="w-3.5 h-3.5" />
                   </button>
@@ -1821,7 +1736,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       setActiveReactionMsgId(msg.id);
                     }}
                     className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-white/20 text-white/80 hover:text-white border border-white/10 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90"
-                    title="Add reaction or options"
+                    title={t('common.react')}
                   >
                     <Smile className="w-3.5 h-3.5" />
                   </button>
@@ -1885,7 +1800,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
                             className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/35"
-                            title="Jump to quoted message"
+                            title={t('chat.replyingTo')}
                           >
                             <div className="font-bold text-[10.5px] text-white/95 flex items-center gap-1">
                               <Reply className="w-2.5 h-2.5" />
@@ -1904,11 +1819,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                         <div className="flex items-center justify-end gap-1 text-[10px] text-white/70 mt-1 font-medium select-none">
                           <span>{msg.time}</span>
                           {msg.isRead ? (
-                            <span title="Read" className="inline-flex items-center text-[#ff4e18] animate-in zoom-in-75 duration-200">
+                            <span title={t('common.read')} className="inline-flex items-center text-[#ff4e18] animate-in zoom-in-75 duration-200">
                               <CheckCheck className="w-3.5 h-3.5 inline-block" />
                             </span>
                           ) : (
-                            <span title="Sent" className="inline-flex items-center text-white/50 animate-in fade-in duration-150">
+                            <span title={t('common.sent')} className="inline-flex items-center text-white/50 animate-in fade-in duration-150">
                               <Check className="w-3.5 h-3.5 inline-block" />
                             </span>
                           )}
@@ -1924,7 +1839,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
                             className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/35"
-                            title="Jump to quoted message"
+                            title={t('chat.replyingTo')}
                           >
                             <div className="font-bold text-[10.5px] text-white/95 flex items-center gap-1">
                               <Reply className="w-2.5 h-2.5" />
@@ -1939,11 +1854,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                         <div className="flex items-center justify-end gap-1 text-[10px] text-white/80 mt-1 font-medium select-none">
                           <span>{msg.time}</span>
                           {msg.isRead ? (
-                            <span title="Read" className="inline-flex items-center text-white animate-in zoom-in-75 duration-200">
+                            <span title={t('common.read')} className="inline-flex items-center text-white animate-in zoom-in-75 duration-200">
                               <CheckCheck className="w-3.5 h-3.5 inline-block" />
                             </span>
                           ) : (
-                            <span title="Sent" className="inline-flex items-center text-white/65 animate-in fade-in duration-150">
+                            <span title={t('common.sent')} className="inline-flex items-center text-white/65 animate-in fade-in duration-150">
                               <Check className="w-3.5 h-3.5 inline-block" />
                             </span>
                           )}
@@ -1951,7 +1866,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                       </div>
                     )
                   ) : (
-                    <div className="bg-[#181921]/95 border border-white/[0.06] text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
+                    <div className="bg-[#181921]/95 border border-white/5 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
                       {msg.replyTo && (
                         <div
                           onPointerDown={(e) => e.stopPropagation()}
@@ -1960,7 +1875,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                             handleJumpToMessage(msg.replyTo!.id);
                           }}
                           className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[#ff4e18] text-xs cursor-pointer select-none transition hover:bg-white/10"
-                          title="Jump to quoted message"
+                          title={t('chat.replyingTo')}
                         >
                           <div className="font-bold text-[10.5px] text-[#ff4e18] flex items-center gap-1">
                             <Reply className="w-2.5 h-2.5" />
@@ -2076,7 +1991,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             <button
               onClick={handlePrevMatch}
               className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
-              title="Previous match (Shift+Enter / ▲)"
+              title={t('common.previous')}
             >
               <ChevronUp className="w-3.5 h-3.5 text-[#ff4e18]" />
               <span className="text-[11px] font-semibold">Prev</span>
@@ -2084,7 +1999,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             <button
               onClick={handleNextMatch}
               className="px-2 py-1 rounded-lg bg-[#ff4e18]/20 hover:bg-[#ff4e18]/30 border border-[#ff4e18]/40 text-[#ff4e18] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
-              title="Next match (Enter / ▼)"
+              title={t('common.next')}
             >
               <span className="text-[11px] font-semibold">Next</span>
               <ChevronDown className="w-3.5 h-3.5" />
@@ -2099,7 +2014,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
           <div
             onClick={() => handleJumpToMessage(replyingTo.id)}
             className="flex items-center gap-2.5 truncate cursor-pointer group flex-1 mr-2"
-            title="Click to view message in chat"
+            title={t('chat.replyingTo')}
           >
             <div className="w-6 h-6 rounded-full bg-[#ff4e18]/20 flex items-center justify-center text-[#ff4e18] shrink-0 border border-[#ff4e18]/30">
               <Reply className="w-3.5 h-3.5" />
@@ -2107,7 +2022,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             <div className="truncate flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[#ff4e18] font-bold text-[11px] group-hover:underline">
-                  Replying to {replyingTo.senderId === 'me' ? 'Yourself' : KATIE_PROFILE.name}
+                  Replying to {replyingTo.senderId === 'me' ? 'Yourself' : profile.name}
                 </span>
                 <span className="text-[10px] text-white/40">· Click to jump</span>
               </div>
@@ -2122,7 +2037,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               triggerPinnedToast('Reply cancelled');
             }}
             className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer shrink-0 active:scale-95"
-            title="Cancel reply"
+            title={t('common.cancel')}
           >
             <X className="w-3.5 h-3.5 text-white/60" />
             <span>Cancel</span>
@@ -2170,7 +2085,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 triggerPinnedToast('Scheduled messages cancelled');
               }}
               className="text-white/40 hover:text-white p-0.5 cursor-pointer text-xs"
-              title="Cancel all scheduled"
+              title={t('common.cancel')}
             >
               ✕
             </button>
@@ -2219,7 +2134,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               type="button"
               onClick={() => setIsAttachmentMenuOpen(false)}
               className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition ml-auto shrink-0"
-              title="Close attachment menu"
+              title={t('common.close')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2253,39 +2168,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
             </button>
           </div>
         )}
-
-        {/* ROW OF SMART REPLY PILL BUTTONS */}
-        {shouldShowSmartReplies && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
-            <div className="flex items-center gap-1 text-[11px] text-[#ff4e18] font-semibold shrink-0 pl-1 pr-1">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-              <span className="hidden sm:inline">Smart:</span>
-            </div>
-
-            {smartReplies.map((reply, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(reply)}
-                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[#ff4e18] hover:text-white border border-white/10 hover:border-[#ff4e18] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
-                title={`Tap to send: "${reply}"`}
-              >
-                <span>{reply}</span>
-              </button>
-            ))}
-
-            <button
-              onClick={() => {
-                if (lastReceivedMessage) {
-                  setDismissedSmartReplyMsgId(lastReceivedMessage.id);
-                }
-              }}
-              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 text-white/40 hover:text-white flex items-center justify-center shrink-0 transition cursor-pointer ml-0.5"
-              title="Dismiss smart replies"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
         {isVoiceMemoActive ? (
           <VoiceMemoInput
             ref={voiceMemoRef}
@@ -2308,9 +2190,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
               className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
                 isAttachmentMenuOpen
                   ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-[#ff4e18]/30'
-                  : 'bg-[#181920]/95 hover:bg-[#20222c] border-white/10 text-white/70 hover:text-white'
+                  : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
               }`}
-              title="Attach photo, location, or document"
+              title={t('common.attach')}
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -2324,7 +2206,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSendMessage();
                 }}
-                placeholder={replyingTo ? `Replying to ${replyingTo.senderId === 'me' ? 'yourself' : KATIE_PROFILE.name}...` : 'Write a message...'}
+                placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
                 className="w-full bg-transparent text-sm text-white placeholder-white/35 focus:outline-none py-1 min-w-0"
               />
 
@@ -2340,7 +2222,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                     ? 'text-[#ff4e18] bg-white/10'
                     : 'text-white/50 hover:text-[#ff4e18] hover:bg-white/10'
                 }`}
-                title="Pick emoji"
+                title={t('common.react')}
               >
                 <Smile className="w-4 h-4" />
               </button>
@@ -2352,12 +2234,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
                 onPointerDown={handleSendPointerDown}
                 onPointerUp={handleSendPointerUp}
                 onPointerLeave={handleSendPointerCancel}
+                onPointerCancel={handleSendPointerCancel}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setIsScheduleModalOpen(true);
                 }}
+                style={{ touchAction: 'manipulation' }}
                 className="w-11 h-11 rounded-full bg-[#ff4e18] hover:bg-[#ff5d2b] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[#ff4e18]/30 transition cursor-pointer relative group select-none shrink-0"
-                title="Send message (hold to schedule)"
+                title={t('common.send')}
               >
                 <Send className="w-4 h-4 ml-0.5" />
                 {/* Hold hint badge */}
@@ -2409,6 +2293,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onBack, onOpenProfile })
         onEndCall={handleEndVideoCall}
         onMinimize={() => setIsVideoCallMinimized(true)}
         onMaximize={() => setIsVideoCallMinimized(false)}
+        contactName={profile.name}
+        contactAvatar={profile.avatar}
       />
     </div>
   );

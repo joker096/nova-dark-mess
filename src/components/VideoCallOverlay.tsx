@@ -16,7 +16,7 @@ import {
   Smile,
   Radio,
 } from 'lucide-react';
-import { KATIE_PROFILE, CURRENT_USER } from '../data/mockMessengerData';
+import { CURRENT_USER } from '../data/mockMessengerData';
 
 interface VideoCallOverlayProps {
   isOpen: boolean;
@@ -24,6 +24,8 @@ interface VideoCallOverlayProps {
   onMinimize?: () => void;
   isMinimized?: boolean;
   onMaximize?: () => void;
+  contactName?: string;
+  contactAvatar?: string;
 }
 
 type VideoFilter = 'none' | 'studio' | 'cyber' | 'noir';
@@ -34,7 +36,11 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   onMinimize,
   isMinimized = false,
   onMaximize,
+  contactName,
+  contactAvatar,
 }) => {
+  const name = contactName || 'Contact';
+  const avatar = contactAvatar || '';
   // Call state
   const [callDuration, setCallDuration] = useState<number>(0);
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected'>('connecting');
@@ -173,8 +179,8 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         {/* Remote Video Thumbnail */}
         <div className="absolute inset-0">
           <img
-            src={KATIE_PROFILE.avatar}
-            alt={KATIE_PROFILE.name}
+            src={avatar}
+            alt={name}
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${getFilterStyle(
               activeFilter
             )}`}
@@ -205,7 +211,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         <div className="absolute bottom-2 inset-x-2 z-10 flex items-center justify-between">
           <div className="truncate pr-1">
             <p className="text-[10px] font-bold text-white truncate leading-tight">
-              {KATIE_PROFILE.name.split(' ')[0]}
+              {name.split(' ')[0]}
             </p>
             <p className="text-[8px] text-white/60 leading-none">HD 1080p</p>
           </div>
@@ -234,8 +240,8 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
       {/* BACKGROUND / MAIN REMOTE VIDEO FEED (Katie Rogers) */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src={KATIE_PROFILE.avatar}
-          alt={KATIE_PROFILE.name}
+          src={avatar}
+          alt={name}
           className={`w-full h-full object-cover scale-[1.02] transition-all duration-700 ${getFilterStyle(
             activeFilter
           )}`}
@@ -386,7 +392,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         {/* Remote Participant Info */}
         <div className="text-center">
           <h2 className="text-lg font-bold text-white drop-shadow-md">
-            {KATIE_PROFILE.name}
+            {name}
           </h2>
           <p className="text-xs text-white/70 font-medium drop-shadow-sm">
             {callStatus === 'connecting'

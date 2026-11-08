@@ -20,11 +20,12 @@ import {
 } from '../data/mockMessengerData';
 import { ChatItem, Story, MessageSearchResult, ChatFolder } from '../types/messenger';
 import { FolderModal } from './FolderModal';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ChatsScreenProps {
   onSelectChat: (chatId: string) => void;
   onOpenChannel: () => void;
-  onOpenSettings?: () => void;
+
   onOpenContacts?: () => void;
   onOpenCalls?: () => void;
   onOpenProfile?: () => void;
@@ -79,9 +80,11 @@ export const DEFAULT_FOLDERS: ChatFolder[] = [
 export const ChatsScreen: React.FC<ChatsScreenProps> = ({
   onSelectChat,
   onOpenChannel,
+
   onOpenProfile,
   activeChatId,
 }) => {
+  const { t } = useLanguage();
   // Folders State with localStorage persistence
   const [folders, setFolders] = useState<ChatFolder[]>(() => {
     try {
@@ -278,7 +281,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0d11] text-white relative select-none">
+    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none">
       {/* Toast Notification */}
       {folderToast && (
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -293,7 +296,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           <button
             onClick={onOpenProfile}
             className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-[#181921] relative cursor-pointer active:scale-95 transition"
-            title="My Profile"
+            title={t('profile.title')}
           >
             <img
               src={CURRENT_USER.avatar}
@@ -322,10 +325,11 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           <button
             onClick={() => setNewChatModalOpen(true)}
             className="w-9 h-9 rounded-full bg-[#181921] hover:bg-[#ff4e18] hover:text-white border border-white/5 flex items-center justify-center text-white/80 transition cursor-pointer active:scale-90 shadow-md"
-            title="New Conversation"
+            title={t('chats.newChat')}
           >
             <Plus className="w-4 h-4" />
           </button>
+
         </div>
       </div>
 
@@ -357,7 +361,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
               <button
                 onClick={() => setSearchQuery('')}
                 className="text-white/50 hover:text-white p-1 transition cursor-pointer"
-                title="Clear search (Esc)"
+                title={t('common.close')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -663,7 +667,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           </div>
 
           {/* DYNAMIC FOLDER TABS SYSTEM WITH CREATE/MANAGE MODAL BUTTON */}
-          <div className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+          <div className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 max-w-full">
             {folders.map((folder) => {
               const isActive = activeFolderId === folder.id;
               const badge = getFolderBadge(folder);
@@ -675,7 +679,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                     className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                       isActive
                         ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
-                        : 'bg-[#18191f] text-[#8e93a0] hover:text-white hover:bg-[#20222a] border border-white/5'
+                        : 'bg-[#181921] text-[#8e93a0] hover:text-white hover:bg-[#20222a] border border-white/5'
                     }`}
                   >
                     <span>{folder.name}</span>
@@ -699,7 +703,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                         setIsFolderModalOpen(true);
                       }}
                       className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#20222c] hover:bg-[#ff4e18] text-white/70 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm border border-white/10 cursor-pointer"
-                      title="Edit folder"
+                      title={t('common.edit')}
                     >
                       <Settings className="w-2.5 h-2.5" />
                     </button>
@@ -714,8 +718,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                 setEditingFolder(null);
                 setIsFolderModalOpen(true);
               }}
-              className="w-8 h-8 rounded-full bg-[#18191f] hover:bg-[#ff4e18] text-[#8e93a0] hover:text-white hover:shadow-md hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
-              title="Add or manage folders"
+              className="w-8 h-8 rounded-full bg-[#181921] hover:bg-[#ff4e18] text-[#8e93a0] hover:text-white hover:shadow-md hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              title={t('common.folders')}
             >
               <Plus className="w-4 h-4" />
             </button>

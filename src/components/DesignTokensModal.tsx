@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Copy, Check, Palette, Code, Layers, Sparkles, GitBranch, Terminal, FileCode2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'repo' | 'tokens' | 'patch'>('repo');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -174,13 +176,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             </div>
             <div>
               <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                <span>Пакет внедрения для joker096/neumorphic-ui</span>
+                <span>{t('designTokens.subtitle')}</span>
                 <span className="text-[10px] font-mono bg-[#ff4e18]/20 text-[#ff4e18] px-2 py-0.5 rounded-full border border-[#ff4e18]/40">
-                  Ready to Apply
+                  {t('designTokens.readyToApply')}
                 </span>
               </h2>
               <p className="text-xs text-[#8c919d]">
-                Точные файлы и правки для перевода вашего репозитория на новый темный дизайн
+                {t('designTokens.description')}
               </p>
             </div>
           </div>
@@ -203,7 +205,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             }`}
           >
             <GitBranch className="w-3.5 h-3.5" />
-            <span>1. Файлы репозитория (Интеграция)</span>
+            <span>{t('designTokens.tabRepo')}</span>
           </button>
 
           <button
@@ -215,7 +217,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
-            <span>2. Git Patch (Команда git apply)</span>
+            <span>{t('designTokens.tabPatch')}</span>
           </button>
 
           <button
@@ -227,7 +229,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             }`}
           >
             <Palette className="w-3.5 h-3.5" />
-            <span>3. Цвета и чистые сниппеты</span>
+            <span>{t('designTokens.tabTokens')}</span>
           </button>
         </div>
 
@@ -240,15 +242,9 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
                   <FileCode2 className="w-4 h-4" />
                 </div>
                 <div className="text-xs text-[#a0a5b2] space-y-1">
-                  <p className="font-semibold text-white text-sm">
-                    Архитектура вашего репозитория проанализирована!
-                  </p>
-                  <p>
-                    В репозитории <code className="text-[#ff4e18]">joker096/neumorphic-ui</code> вся визуальная система сосредоточена в двух ключевых файлах: <code className="text-white">src/styles/tokens.css</code> и <code className="text-white">src/styles/messenger.css</code>.
-                  </p>
-                  <p>
-                    Ниже приведены готовые блоки кода. Просто скопируйте их в соответствующие файлы вашего проекта — и весь интерфейс (бабблы, списки, шрифты, контраст) мгновенно преобразится.
-                  </p>
+                  <p className="font-semibold text-white text-sm" dangerouslySetInnerHTML={{ __html: t('designTokens.architectureTitle') }} />
+                  <p dangerouslySetInnerHTML={{ __html: t('designTokens.architectureDesc') }} />
+                  <p dangerouslySetInnerHTML={{ __html: t('designTokens.architectureDesc2') }} />
                 </div>
               </div>
 
@@ -257,14 +253,14 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#ff4e18] text-white text-[11px] flex items-center justify-center">1</span>
-                    <span>src/styles/messenger.css (Бабблы и фоны диалогов)</span>
+                    <span>{t('designTokens.step1Title')}</span>
                   </h3>
                   <button
                     onClick={() => copyCode(repoMessengerCssReplacement, 'msg-css')}
                     className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 text-xs text-white rounded-lg transition"
                   >
                     {copiedKey === 'msg-css' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedKey === 'msg-css' ? 'Скопировано!' : 'Скопировать код'}</span>
+                    <span>{copiedKey === 'msg-css' ? t('designTokens.copied') : t('designTokens.copyCode')}</span>
                   </button>
                 </div>
                 <pre className="bg-[#090a0e] p-4 rounded-2xl border border-white/5 text-[11px] text-[#a0a5b2] overflow-x-auto font-mono">
@@ -277,14 +273,14 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#ff4e18] text-white text-[11px] flex items-center justify-center">2</span>
-                    <span>src/styles/tokens.css (Шрифты и глобальная палитра)</span>
+                    <span>{t('designTokens.step2Title')}</span>
                   </h3>
                   <button
                     onClick={() => copyCode(repoTokensReplacement, 'tokens-css')}
                     className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 text-xs text-white rounded-lg transition"
                   >
                     {copiedKey === 'tokens-css' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedKey === 'tokens-css' ? 'Скопировано!' : 'Скопировать код'}</span>
+                    <span>{copiedKey === 'tokens-css' ? t('designTokens.copied') : t('designTokens.copyCode')}</span>
                   </button>
                 </div>
                 <pre className="bg-[#090a0e] p-4 rounded-2xl border border-white/5 text-[11px] text-[#a0a5b2] overflow-x-auto font-mono">
@@ -297,26 +293,26 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
           {activeTab === 'patch' && (
             <div className="space-y-4">
               <div className="text-xs text-[#a0a5b2]">
-                Если вы работаете в терминале со своим репозиторием, вы можете сохранить этот патч в файл <code className="text-white">nova.patch</code> и выполнить команду:
+                <span dangerouslySetInnerHTML={{ __html: t('designTokens.patchInstruction') }} />
                 <div className="my-2 p-2.5 bg-[#090a0e] rounded-xl font-mono text-white flex items-center justify-between border border-white/10">
                   <code>git apply nova.patch</code>
                   <button
                     onClick={() => copyCode('git apply nova.patch', 'cmd')}
                     className="text-xs text-[#ff4e18] hover:underline"
                   >
-                    {copiedKey === 'cmd' ? 'Скопировано' : 'Копировать'}
+                    {copiedKey === 'cmd' ? t('designTokens.copied') : t('designTokens.copy')}
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-white">Содержимое nova.patch:</span>
+                <span className="text-xs font-bold text-white">{t('designTokens.patchContent')}</span>
                 <button
                   onClick={() => copyCode(gitPatchSnippet, 'patch-file')}
                   className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 text-xs text-white rounded-lg transition"
                 >
-                  {copiedKey === 'patch-file' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedKey === 'patch-file' ? 'Скопировано!' : 'Скопировать патч'}</span>
+                    {copiedKey === 'patch-file' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedKey === 'patch-file' ? t('designTokens.copied') : t('designTokens.copyPatch')}</span>
                 </button>
               </div>
               <pre className="bg-[#090a0e] p-4 rounded-2xl border border-white/5 text-[11px] text-[#a0a5b2] overflow-x-auto font-mono">
@@ -330,7 +326,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
               {/* Color Palette */}
               <div>
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
-                  Гекс-коды дизайн-системы
+                  {t('designTokens.tokensTitle')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {tokens.map((tok, i) => (
@@ -360,13 +356,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
         {/* Footer */}
         <div className="p-4 border-t border-white/10 flex items-center justify-between bg-[#101117]">
           <span className="text-xs text-[#8c919d]">
-            Все токены и классы на 100% совместимы с архитектурой joker096/neumorphic-ui
+            {t('designTokens.footerNote')}
           </span>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-[#ff4e18] hover:bg-[#ff5f2e] text-white font-semibold text-xs transition cursor-pointer"
           >
-            Закрыть
+            {t('common.close')}
           </button>
         </div>
       </div>

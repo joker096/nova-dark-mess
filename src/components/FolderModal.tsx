@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import {
   X,
   Check,
@@ -42,6 +43,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   onDelete,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>(
     editingFolder ? 'create' : 'create'
   );
@@ -79,7 +81,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setErrorMsg('Please enter a folder name');
+      setErrorMsg(t('folders.nameError'));
       return;
     }
 
@@ -113,10 +115,10 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm text-white leading-tight">
-                {editingFolder ? 'Edit Folder' : 'Chat Folders'}
+                {editingFolder ? t('folders.editTitle') : t('folders.title')}
               </h3>
               <p className="text-[10px] text-[#828795]">
-                Organize chats into custom categories
+                {t('folders.subtitle')}
               </p>
             </div>
           </div>
@@ -140,7 +142,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   : 'text-[#828795] hover:text-white'
               }`}
             >
-              New Folder
+              {t('folders.newTab')}
             </button>
             <button
               onClick={() => setActiveTab('manage')}
@@ -150,7 +152,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   : 'text-[#828795] hover:text-white'
               }`}
             >
-              Manage ({folders.length})
+              {t('folders.manageTab', { count: folders.length })}
             </button>
           </div>
         )}
@@ -161,7 +163,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             {/* Folder Name Input */}
             <div>
               <label className="block text-[11px] font-semibold text-[#868b98] mb-1">
-                Folder Name
+                {t('folders.nameLabel')}
               </label>
               <input
                 type="text"
@@ -170,7 +172,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   setName(e.target.value);
                   setErrorMsg('');
                 }}
-                placeholder="e.g. Work, Personal, Channels, Crypto"
+                placeholder={t('folders.namePlaceholder')}
                 className="w-full bg-[#1b1c28] border border-white/10 focus:border-[#ff4e18] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition shadow-inner"
                 autoFocus
               />
@@ -182,7 +184,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             {/* Folder Icon Selector */}
             <div>
               <label className="block text-[11px] font-semibold text-[#868b98] mb-1.5">
-                Folder Icon
+                {t('folders.iconLabel')}
               </label>
               <div className="flex items-center gap-2">
                 {FOLDER_ICONS.map((item) => {
@@ -211,7 +213,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-semibold text-[#868b98]">
-                  Included Chats ({selectedChatIds.length} of {chats.length})
+                  {t('folders.includedChats', { selected: selectedChatIds.length, total: chats.length })}
                 </label>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -219,7 +221,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                     onClick={selectOnlyDirect}
                     className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
                   >
-                    Personal
+                    {t('folders.selectPersonal')}
                   </button>
                   <span className="text-white/20 text-[9px]">·</span>
                   <button
@@ -227,7 +229,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                     onClick={selectOnlyChannels}
                     className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
                   >
-                    Channels
+                    {t('folders.selectChannels')}
                   </button>
                   <span className="text-white/20 text-[9px]">·</span>
                   <button
@@ -235,7 +237,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                     onClick={selectOnlyGroups}
                     className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
                   >
-                    Groups
+                    {t('folders.selectGroups')}
                   </button>
                 </div>
               </div>
@@ -271,11 +273,11 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                             {chat.name}
                           </p>
                           <p className="text-[10px] text-[#717682] truncate">
-                            {chat.type === 'channel'
-                              ? 'Channel'
-                              : chat.type === 'group'
-                              ? 'Group'
-                              : 'Direct'}
+                              {chat.type === 'channel'
+                                ? t('folders.chatTypeChannel')
+                                : chat.type === 'group'
+                                ? t('folders.chatTypeGroup')
+                                : t('folders.chatTypeDirect')}
                           </p>
                         </div>
                       </div>
@@ -301,14 +303,14 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                 type="submit"
                 className="flex-1 py-2.5 rounded-xl bg-[#ff4e18] hover:bg-[#ff5d2b] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[#ff4e18]/25 active:scale-95 text-center"
               >
-                {editingFolder ? 'Save Changes' : 'Create Folder'}
+                {editingFolder ? t('folders.saveButton') : t('folders.createButton')}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-semibold text-xs transition cursor-pointer"
               >
-                Cancel
+                {t('folders.cancelButton')}
               </button>
             </div>
           </form>
@@ -316,7 +318,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
           /* TAB 2: MANAGE ALL FOLDERS */
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-2">
             <p className="text-[11px] text-[#868b98] px-1">
-              Active folders filter your chats list on the main screen:
+              {t('folders.manageDescription')}
             </p>
 
             <div className="space-y-1.5">
@@ -336,11 +338,11 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                           <span>{f.name}</span>
                           {f.isDefault && (
                             <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/5 text-[#828795]">
-                              Default
+                              {t('folders.defaultBadge')}
                             </span>
                           )}
                         </p>
-                        <p className="text-[10px] text-[#717682]">{count} chats included</p>
+                        <p className="text-[10px] text-[#717682]">{t('folders.chatsIncluded', { count })}</p>
                       </div>
                     </div>
 
@@ -348,7 +350,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                       <button
                         onClick={() => onDelete(f.id)}
                         className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"
-                        title="Delete folder"
+                        title={t('folders.deleteFolder')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -364,7 +366,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                 className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <FolderPlus className="w-3.5 h-3.5 text-[#ff4e18]" />
-                <span>Add Another Folder</span>
+                <span>{t('folders.addAnother')}</span>
               </button>
             </div>
           </div>

@@ -15,11 +15,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ChatMessage, SharedMediaItem } from '../types/messenger';
-import { KATIE_SHARED_MEDIA, KATIE_PROFILE } from '../data/mockMessengerData';
+import { KATIE_SHARED_MEDIA, CONTACT_PROFILES } from '../data/mockMessengerData';
 
 interface SharedMediaSectionProps {
   messages: ChatMessage[];
   contactName?: string;
+  contactId?: string;
   onClose: () => void;
   onJumpToMessage?: (messageId: string) => void;
 }
@@ -28,10 +29,13 @@ type MediaFilter = 'all' | 'photos' | 'videos';
 
 export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
   messages,
-  contactName = KATIE_PROFILE.name,
+  contactName,
+  contactId,
   onClose,
   onJumpToMessage,
 }) => {
+  const profile = contactId ? (CONTACT_PROFILES[contactId] || CONTACT_PROFILES['katie']) : CONTACT_PROFILES['katie'];
+  const displayName = contactName || profile.name;
   const [filter, setFilter] = useState<MediaFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -71,7 +75,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
     });
 
     // B. Merge with predefined shared media for Katie
-    const baseSharedMedia = KATIE_PROFILE.sharedMedia || KATIE_SHARED_MEDIA;
+    const baseSharedMedia = profile.sharedMedia || KATIE_SHARED_MEDIA;
     baseSharedMedia.forEach((item) => {
       if (!seenUrls.has(item.url)) {
         seenUrls.add(item.url);
@@ -184,7 +188,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                   Shared Media
                 </h2>
                 <p className="text-[10px] text-white/50">
-                  {allMediaItems.length} photos & videos with {contactName.split(' ')[0]}
+                  {allMediaItems.length} photos & videos with {displayName.split(' ')[0]}
                 </p>
               </div>
             </div>

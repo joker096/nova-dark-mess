@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Nova Dark Messenger
 
-# Run and deploy your AI Studio app
+A secure, beautiful, and feature-rich messaging application built with React, TypeScript, and Tailwind CSS.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/206a9a0f-ef91-495b-972c-0054d7609a9d
+- 🌐 **Internationalization** - English, Russian, and Ukrainian support
+- 🎨 **Customizable Themes** - Dark mode with multiple wallpaper options
+- 💬 **Real-time Chat** - Messages, voice notes, images, and files
+- 📞 **Video Calls** - Full-featured video calling interface
+- 🔔 **Notifications** - Push notifications with sound
+- 📊 **Analytics Dashboard** - Usage statistics and insights
+- 🔒 **Security** - End-to-end encryption indicators
+- 📱 **Responsive Design** - Works on mobile and desktop
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Run the app:
    `npm run dev`
