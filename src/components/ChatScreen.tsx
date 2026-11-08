@@ -1292,8 +1292,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       )}
 
       {/* Floating Header Pill */}
-      <div className="p-3 shrink-0 relative z-20">
-        <div className="bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 flex items-center justify-between shadow-xl shadow-black/60 min-h-[52px]">
+      <div className="p-2 shrink-0 relative z-20">
+        <div className="bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
           {isSearchOpen ? (
             /* ACTIVE SEARCH BAR HEADER WITH WORD STEPPER & CONTROLS */
             <div className="flex items-center gap-1.5 w-full animate-in fade-in duration-200">
@@ -1416,7 +1416,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <ArrowLeft className="w-4 h-4" />
               </button>
 
-              <div className="flex flex-col items-center flex-1 mx-1.5 min-w-0">
+              <div className="flex flex-col items-center flex-1 mx-1 min-w-0">
                 <button
                   onClick={onOpenProfile}
                   className="flex flex-col items-center cursor-pointer focus:outline-none group truncate max-w-full"
@@ -1492,70 +1492,46 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                {/* Shared Media Gallery Button */}
-                <button
-                  onClick={() => setActiveHeaderTab((curr) => (curr === 'gallery' ? 'chat' : 'gallery'))}
-                  className={`relative w-8 h-8 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    activeHeaderTab === 'gallery'
-                      ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-md shadow-[#ff4e18]/30'
-                      : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
-                  }`}
-                  title={`Shared Media Gallery (${sharedMediaCount} items)`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  {sharedMediaCount > 0 && (
-                    <span
-                      className={`absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full text-[8px] font-bold flex items-center justify-center ${
-                        activeHeaderTab === 'gallery'
-                          ? 'bg-white text-[#ff4e18]'
-                          : 'bg-[#ff4e18] text-white shadow-sm'
-                      }`}
-                    >
-                      {sharedMediaCount}
-                    </span>
-                  )}
-                </button>
-
+              <div className="flex items-center gap-1">
                 {/* Video Call Toggle Button */}
                 <button
                   onClick={handleStartVideoCall}
-                  className={`w-8 h-8 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                     isVideoCallOpen
                       ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-md shadow-[#ff4e18]/30 animate-pulse'
                       : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
                   }`}
-                  title={isVideoCallOpen ? 'Video call in progress (click to view)' : 'Start video call with Katie'}
+                  title={isVideoCallOpen ? 'Video call in progress (click to view)' : `Start video call with ${profile.name}`}
                 >
-                  <Video className="w-3.5 h-3.5" />
+                  <Video className="w-3 h-3" />
                 </button>
 
                 {/* Search Messages in Chat Button */}
                 <button
                   onClick={() => setIsSearchOpen(true)}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18] flex items-center justify-center transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18] flex items-center justify-center transition cursor-pointer active:scale-95"
                   title={t('common.search')}
                 >
-                  <Search className="w-3.5 h-3.5" />
+                  <Search className="w-3 h-3" />
                 </button>
 
                 {/* Wallpaper Settings Button */}
                 <button
                   onClick={() => setIsWallpaperModalOpen(true)}
-                  className={`w-8 h-8 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                     isWallpaperModalOpen
                       ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-md shadow-[#ff4e18]/30'
                       : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
                   }`}
                   title={t('settings.chatWallpaper')}
                 >
-                  <Palette className="w-3.5 h-3.5" />
+                  <Palette className="w-3 h-3" />
                 </button>
 
                 {/* Pinned Messages Header Button */}
                 <button
                   onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
-                  className={`relative w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
+                  className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
                     isPinnedCarouselOpen
                       ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/30'
                       : pinnedMessages.length > 0
@@ -1564,7 +1540,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   }`}
                   title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
                 >
-                  <Pin className={`w-3.5 h-3.5 ${isPinnedCarouselOpen || pinnedMessages.length > 0 ? 'fill-current' : ''}`} />
+                  <Pin className={`w-3 h-3 ${isPinnedCarouselOpen || pinnedMessages.length > 0 ? 'fill-current' : ''}`} />
                   {pinnedMessages.length > 0 && (
                     <span
                       className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
@@ -1578,39 +1554,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   )}
                 </button>
 
-                {/* Real-time Typing Simulation Button */}
+                {/* Demo: simulate incoming message */}
                 <button
-                  onClick={() => handleSimulateTypingActivity('typing')}
+                  onClick={isTyping ? handleTriggerIncomingVoiceNote : () => handleSimulateTypingActivity('typing')}
                   disabled={isTyping}
-                  className={`px-2 py-1 rounded-full border text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer active:scale-95 ${
-                    isTyping && typingActivity === 'typing'
+                  className={`w-7 h-7 rounded-full border transition flex items-center justify-center cursor-pointer active:scale-95 ${
+                    isTyping
                       ? 'bg-[#ff4e18]/25 border-[#ff4e18] text-[#ff4e18] ring-1 ring-[#ff4e18]/40 animate-pulse'
                       : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
                   }`}
-                  title="Simulate Katie Rogers typing in real time"
+                  title={isTyping ? 'Receive voice note' : 'Simulate typing'}
                 >
-                  <Sparkles className="w-2.5 h-2.5 text-[#ff4e18]" />
-                  <span className="hidden sm:inline">Typing</span>
-                </button>
-
-                {/* Quick Demo: simulate incoming voice note from Katie */}
-                <button
-                  onClick={handleTriggerIncomingVoiceNote}
-                  disabled={isTyping}
-                  className={`px-2 py-1 rounded-full border text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer active:scale-95 ${
-                    isTyping && typingActivity === 'recording'
-                      ? 'bg-[#ff4e18]/25 border-[#ff4e18] text-[#ff4e18] ring-1 ring-[#ff4e18]/40 animate-pulse'
-                      : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
-                  }`}
-                  title={t('common.voice')}
-                >
-                  <Mic className="w-2.5 h-2.5 text-[#ff4e18]" />
-                  <span className="hidden sm:inline">Receive</span>
+                  {isTyping ? <Mic className="w-3 h-3 text-[#ff4e18]" /> : <Sparkles className="w-3 h-3 text-[#ff4e18]" />}
                 </button>
 
                 <button
                   onClick={onOpenProfile}
-                  className={`relative w-9 h-9 rounded-full border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
+                  className={`relative w-8 h-8 rounded-full border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                     isTyping
                       ? 'border-[#ff4e18] ring-2 ring-[#ff4e18]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
                       : 'border-white/15 ring-2 ring-[#ff4e18]/20'
