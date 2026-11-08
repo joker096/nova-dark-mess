@@ -25,12 +25,15 @@ import {
   Video,
   Image as ImageIcon,
   Smile,
+  Heart,
+  Sparkles,
   MapPin,
   FileText,
   Camera,
+  Download,
 } from 'lucide-react';
 import { CONVERSATION_HISTORIES, CONTACT_PROFILES, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
-import { ChatMessage, VoiceNoteData } from '../types/messenger';
+import { ChatMessage, VoiceNoteData, DocumentAttachment } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
@@ -38,6 +41,7 @@ import { WallpaperSettingsModal } from './WallpaperSettingsModal';
 import { ScheduleMessageModal } from './ScheduleMessageModal';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
+import { FileSelectionModal } from './FileSelectionModal';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -101,6 +105,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [typingActivity, setTypingActivity] = useState<'typing' | 'recording'>('typing');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
@@ -143,6 +148,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [pinnedToast, setPinnedToast] = useState<string | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [stagedAttachment, setStagedAttachment] = useState<{
+    images?: string[];
+    document?: DocumentAttachment;
+  } | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   // Scheduled Messages State
@@ -216,15 +226,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             setMessages((msgs) =>
               msgs.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
             );
-          }, 1800);
+          }, 600);
 
-          // Simulate Katie's reply
+          // Simulate Katie's real-time reply
           setTimeout(() => {
+            setTypingActivity('typing');
             setIsTyping(true);
-          }, 1200);
+          }, 850);
 
           setTimeout(() => {
             setIsTyping(false);
+            setTypingActivity('typing');
             setMessages((msgs) => [
               ...msgs,
               {
@@ -234,7 +246,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               },
             ]);
-          }, 2800);
+          }, 2700);
         });
 
         return prev.filter((item) => item.targetTimestamp > now);
@@ -626,15 +638,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
       );
-    }, 1800);
+    }, 500);
 
+    const shouldVoiceReply = Math.random() > 0.4;
     setTimeout(() => {
+      setTypingActivity(shouldVoiceReply ? 'recording' : 'typing');
       setIsTyping(true);
-    }, 1200);
+    }, 750);
 
     setTimeout(() => {
       setIsTyping(false);
-      const shouldVoiceReply = Math.random() > 0.4;
+      setTypingActivity('typing');
       if (shouldVoiceReply) {
         setMessages((prev) => [
           ...prev,
@@ -684,9 +698,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   };
 
   const handleTriggerIncomingVoiceNote = () => {
+    if (isTyping) return;
+    setTypingActivity('recording');
     setIsTyping(true);
+    triggerPinnedToast(`${KATIE_PROFILE.name} is recording an audio note...`);
     setTimeout(() => {
       setIsTyping(false);
+      setTypingActivity('typing');
       setMessages((prev) => [
         ...prev,
         {
@@ -700,7 +718,56 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-    }, 1200);
+    }, 2200);
+  };
+
+  const handleSimulateTypingActivity = (activityType: 'typing' | 'recording' = 'typing') => {
+    if (isTyping) return;
+    setTypingActivity(activityType);
+    setIsTyping(true);
+    triggerPinnedToast(
+      activityType === 'recording'
+        ? `${KATIE_PROFILE.name} is recording audio...`
+        : `${KATIE_PROFILE.name} is typing in real time...`
+    );
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setTypingActivity('typing');
+
+      if (activityType === 'recording') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'm-katie-voice-' + Date.now(),
+            senderId: 'other',
+            voiceNote: {
+              duration: '0:12',
+              durationSeconds: 12,
+              waveform: [30, 45, 70, 90, 85, 65, 50, 75, 95, 80, 60, 45, 35, 20],
+            },
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } else {
+        const spontaneousMsgs = [
+          "Hey! Are you still down for that coffee this Sunday?",
+          "By the way, John just texted me — he's bringing Rebecca too! 🎉",
+          "Sounds great, let's catch up then! Talk soon 🙌",
+          "Deal! I'll see you at Harry's at 7pm.",
+        ];
+        const randomText = spontaneousMsgs[Math.floor(Math.random() * spontaneousMsgs.length)];
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'm-spontaneous-' + Date.now(),
+            senderId: 'other',
+            text: randomText,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
+    }, 2400);
   };
 
   // Pointer, Swipe-to-Reply & Double-tap Handlers
@@ -842,6 +909,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           updatedReactions = [...existing, { emoji, count: 1, fromMe: true }];
         }
 
+        if (existingReaction && existingReaction.fromMe) {
+          triggerPinnedToast(`Removed reaction ${emoji}`);
+        } else {
+          triggerPinnedToast(`Reacted ${emoji}`);
+        }
+
         return { ...msg, reactions: updatedReactions };
       })
     );
@@ -878,6 +951,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setIsAttachmentMenuOpen(false);
     if (type === 'voice') {
       setIsVoiceMemoActive(true);
+      return;
+    }
+    if (type === 'photo' || type === 'document') {
+      setIsFileModalOpen(true);
       return;
     }
 
@@ -918,7 +995,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             }
           : undefined,
       };
-      triggerPinnedToast('Location shared');
     } else {
       newMsg = {
         id: messageId,
@@ -940,23 +1016,51 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setMessages((prev) => [...prev, newMsg]);
     setReplyingTo(null);
 
-    // Transition read status after 1.8s
+    // Transition read status after 600ms
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
       );
-    }, 1800);
+    }, 600);
+
+    setTimeout(() => {
+      setTypingActivity('typing');
+      setIsTyping(true);
+    }, 850);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setTypingActivity('typing');
+      const attachmentResponses = [
+        "Love this! Looks amazing ✨",
+        "Got your attachment, opening it right now! 📄",
+        "Saved it, thank you! 🙌",
+      ];
+      const randomResponse = attachmentResponses[Math.floor(Math.random() * attachmentResponses.length)];
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'm-' + (Date.now() + 1),
+          senderId: 'other',
+          text: randomResponse,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }, 2600);
   };
 
-  const handleSendMessage = (customText?: string) => {
-    const text = (customText ?? inputText).trim();
-    if (!text) return;
-
+  const handleSendAttachmentFromModal = (payload: {
+    text?: string;
+    images?: string[];
+    document?: DocumentAttachment;
+  }) => {
     const messageId = 'm-' + Date.now();
     const newMessage: ChatMessage = {
       id: messageId,
       senderId: 'me',
-      text,
+      text: payload.text,
+      images: payload.images,
+      document: payload.document,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
       replyTo: replyingTo
@@ -969,46 +1073,182 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     };
 
     setMessages((prev) => [...prev, newMessage]);
-    if (!customText) {
-      setInputText('');
-    }
     setReplyingTo(null);
+    setStagedAttachment(null);
+    triggerPinnedToast(
+      payload.images
+        ? `Sent ${payload.images.length} photo(s)`
+        : payload.document
+        ? `Sent ${payload.document.name}`
+        : 'Attachment sent'
+    );
 
-    // Transition read status after 1.8s
+    // Transition read status after 500ms
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
       );
-    }, 1800);
+    }, 500);
 
+    // Katie begins real-time typing after 750ms
     setTimeout(() => {
+      setTypingActivity('typing');
       setIsTyping(true);
-    }, 1200);
+    }, 750);
 
     setTimeout(() => {
       setIsTyping(false);
-      const responses = [
-        "Sounds awesome! Let's definitely do that.",
-        "Perfect, I'll text John now and let you know what he says!",
-        "Can't wait to catch up, it's been way too long! 🎉",
-        "Deal! Let's meet at 7pm then.",
-      ];
+      setTypingActivity('typing');
+      const responses = payload.images
+        ? [
+            "Love these photos! Looks so fun ✨",
+            "Awesome shots, saving these right away! 📸",
+            "Can't wait to catch up, thanks for sharing!",
+          ]
+        : payload.document
+        ? [
+            "Got the document! Reviewing it now 📄",
+            "Thanks for sharing this file, looks great!",
+            "Saved it, see you Sunday!",
+          ]
+        : [
+            "Sounds awesome! Let's definitely do that.",
+            "Can't wait to catch up! 🎉",
+          ];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'm-' + (Date.now() + 1),
-          senderId: 'other',
-          text: randomResponse,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-    }, 2800);
+      setMessages((prev) => {
+        const lastUserMsg = prev[prev.length - 1];
+        return [
+          ...prev,
+          {
+            id: 'm-' + (Date.now() + 1),
+            senderId: 'other',
+            text: randomResponse,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            replyTo:
+              lastUserMsg && lastUserMsg.senderId === 'me'
+                ? {
+                    id: lastUserMsg.id,
+                    text:
+                      lastUserMsg.text ||
+                      (lastUserMsg.document ? `Document: ${lastUserMsg.document.name}` : 'Photo attachment'),
+                    senderName: 'You',
+                  }
+                : undefined,
+          },
+        ];
+      });
+    }, 2600);
+  };
+
+  const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
+    const text = (customText ?? inputText).trim();
+    if (!text && !stagedAttachment) return;
+
+    const messageId = 'm-' + Date.now();
+    const activeReply = forcedReplyTo !== undefined ? forcedReplyTo : replyingTo;
+    const currentAttachment = stagedAttachment;
+    const newMessage: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: text || undefined,
+      images: currentAttachment?.images,
+      document: currentAttachment?.document,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: activeReply
+        ? {
+            id: activeReply.id,
+            text: activeReply.text || (activeReply.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: activeReply.senderId === 'me' ? 'You' : KATIE_PROFILE.name,
+          }
+        : undefined,
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    if (!customText) {
+      setInputText('');
+    }
+    setReplyingTo(null);
+    setStagedAttachment(null);
+
+    // Transition read status after 500ms
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 500);
+
+    // Katie begins real-time typing after 750ms
+    setTimeout(() => {
+      setTypingActivity('typing');
+      setIsTyping(true);
+    }, 750);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      setTypingActivity('typing');
+      const responses = currentAttachment?.images
+        ? [
+            "Love these photos! Looks so fun ✨",
+            "Awesome shots, saving these right away! 📸",
+            "Can't wait to catch up, thanks for sharing!",
+          ]
+        : currentAttachment?.document
+        ? [
+            "Got the document! Reviewing it now 📄",
+            "Thanks for sharing this file, looks great!",
+            "Saved it, see you Sunday!",
+          ]
+        : [
+            "Sounds awesome! Let's definitely do that.",
+            "Perfect, I'll text John now and let you know what he says!",
+            "Can't wait to catch up, it's been way too long! 🎉",
+            "Deal! Let's meet at 7pm then.",
+          ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      setMessages((prev) => {
+        const lastUserMsg = prev[prev.length - 1];
+        return [
+          ...prev,
+          {
+            id: 'm-' + (Date.now() + 1),
+            senderId: 'other',
+            text: randomResponse,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            replyTo:
+              lastUserMsg && lastUserMsg.senderId === 'me'
+                ? {
+                    id: lastUserMsg.id,
+                    text:
+                      lastUserMsg.text ||
+                      (lastUserMsg.document
+                        ? `Document: ${lastUserMsg.document.name}`
+                        : lastUserMsg.voiceNote
+                        ? 'Voice message'
+                        : 'Photo attachment'),
+                    senderName: 'You',
+                  }
+                : undefined,
+          },
+        ];
+      });
+    }, 2600);
   };
 
   // Context-aware Smart Reply suggestions based on the last received message content
   const lastReceivedMessage = useMemo(() => {
     return [...messages].reverse().find((m) => m.senderId === 'other');
+  }, [messages]);
+
+  // ID of the latest message sent by 'me' that has been read by Katie
+  const latestReadSentMsgId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].senderId === 'me' && messages[i].isRead) {
+        return messages[i].id;
+      }
+    }
+    return null;
   }, [messages]);
 
   const isLastMessageFromOther =
@@ -1190,20 +1430,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     {profile.name}
                   </span>
                   {isTyping ? (
-                    <div className="flex items-center gap-1.5 mt-0.5 animate-in fade-in duration-200">
-                      <span className="text-[11px] font-semibold text-[#ff4e18] tracking-tight animate-pulse">
-                        Katie is typing...
+                    <div className="flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-full bg-[#ff4e18]/15 border border-[#ff4e18]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[#ff4e18]/20 select-none">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff4e18] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff4e18]"></span>
                       </span>
-                      <div className="flex items-center gap-0.5 pt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce" />
-                      </div>
+                      {typingActivity === 'recording' ? (
+                        <>
+                          <Mic className="w-2.5 h-2.5 text-[#ff4e18] animate-pulse" />
+                          <span className="text-[11px] font-semibold text-[#ff4e18] tracking-tight">
+                            recording audio
+                          </span>
+                          <div className="flex items-center gap-0.5 h-2">
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1" />
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-2" />
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1.5" />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[11px] font-semibold text-[#ff4e18] tracking-tight">
+                            typing...
+                          </span>
+                          <div className="flex items-center gap-0.5 pt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce" />
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
-                    <span className="text-[10px] text-[#868b98] font-normal leading-none mt-0.5 transition-colors">
-                      {profile.status}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5 transition-colors select-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
+                      <span className="text-[10px] text-[#868b98] font-normal leading-none">
+                        {profile.status}
+                      </span>
+                    </div>
                   )}
                 </button>
 
@@ -1320,10 +1583,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   )}
                 </button>
 
+                {/* Real-time Typing Simulation Button */}
+                <button
+                  onClick={() => handleSimulateTypingActivity('typing')}
+                  disabled={isTyping}
+                  className={`px-2 py-1 rounded-full border text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    isTyping && typingActivity === 'typing'
+                      ? 'bg-[#ff4e18]/25 border-[#ff4e18] text-[#ff4e18] ring-1 ring-[#ff4e18]/40 animate-pulse'
+                      : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
+                  }`}
+                  title="Simulate Katie Rogers typing in real time"
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-[#ff4e18]" />
+                  <span className="hidden sm:inline">Typing</span>
+                </button>
+
                 {/* Quick Demo: simulate incoming voice note from Katie */}
                 <button
                   onClick={handleTriggerIncomingVoiceNote}
-                  className="px-2 py-1 rounded-full bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-[10px] text-white/70 hover:text-[#ff4e18] transition flex items-center gap-1 cursor-pointer"
+                  disabled={isTyping}
+                  className={`px-2 py-1 rounded-full border text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    isTyping && typingActivity === 'recording'
+                      ? 'bg-[#ff4e18]/25 border-[#ff4e18] text-[#ff4e18] ring-1 ring-[#ff4e18]/40 animate-pulse'
+                      : 'bg-white/5 hover:bg-[#ff4e18]/20 border-white/10 hover:border-[#ff4e18]/40 text-white/70 hover:text-[#ff4e18]'
+                  }`}
                   title={t('common.voice')}
                 >
                   <Mic className="w-2.5 h-2.5 text-[#ff4e18]" />
@@ -1332,10 +1615,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
                 <button
                   onClick={onOpenProfile}
-                  className={`w-9 h-9 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 ${
+                  className={`relative w-9 h-9 rounded-full border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                     isTyping
-                  ? 'border-[#ff4e18] ring-2 ring-[#ff4e18]/50 shadow-[0_0_14px_rgba(255,78,24,0.5)]'
-                  : 'border-white/15 ring-2 ring-[#ff4e18]/20'
+                      ? 'border-[#ff4e18] ring-2 ring-[#ff4e18]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
+                      : 'border-white/15 ring-2 ring-[#ff4e18]/20'
                   }`}
                   title={t('common.profile')}
                 >
@@ -1344,6 +1627,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     alt={profile.name}
                     className="w-full h-full object-cover"
                   />
+                  {/* Real-time live status beacon on avatar */}
+                  {isTyping ? (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#ff4e18] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[#ff4e18]/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    </span>
+                  ) : (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
+                  )}
                 </button>
               </div>
             </>
@@ -1710,38 +2001,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 </div>
               )}
 
-              <div className={`flex items-center gap-2 max-w-full group/row relative ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                {/* Quick Action Toolbar (Reply & Reaction) */}
-                <div
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 shrink-0 select-none pb-2 transition-opacity duration-150 opacity-90 sm:opacity-0 sm:group-hover/row:opacity-100"
-                >
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReplyMessage(msg);
-                    }}
-                    className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-[#ff4e18] text-white/80 hover:text-white border border-white/10 hover:border-[#ff4e18]/50 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90"
-                    title={t('common.reply')}
-                  >
-                    <Reply className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveReactionMsgId(msg.id);
-                    }}
-                    className="w-7 h-7 rounded-full bg-[#1b1c26]/95 hover:bg-white/20 text-white/80 hover:text-white border border-white/10 flex items-center justify-center transition cursor-pointer shadow-md active:scale-90"
-                    title={t('common.react')}
-                  >
-                    <Smile className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
+              <div className={`flex items-center max-w-full group/row relative ${isMine ? 'justify-end' : 'justify-start'}`}>
                 {/* Message Bubble Container with Touch and Pointer Handlers */}
                 <div
                   onPointerDown={(e) => handlePointerDown(e, msg.id)}
@@ -1772,6 +2032,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       : ''
                   }`}
                 >
+                  {/* Quick Action Pill on hover (Desktop) attached directly to the message bubble */}
+                  <div
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[#141520]/95 border border-white/20 backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 group-hover:opacity-100 transition-all duration-150 scale-95 group-hover:scale-100 select-none`}
+                  >
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReplyMessage(msg);
+                      }}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[#ff4e18] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
+                      title="Reply to message"
+                    >
+                      <Reply className="w-3 h-3 text-[#ff4e18]" />
+                      <span>Reply</span>
+                    </button>
+                    <div className="w-[1px] h-3 bg-white/15" />
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
+                      }}
+                      className="p-1 rounded-full hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition active:scale-90 cursor-pointer"
+                      title="Add reaction (emoji popup)"
+                    >
+                      <Heart className="w-3 h-3 fill-rose-400/50" />
+                    </button>
+                  </div>
                   {/* Pinned Message Indicator Badge on the bubble */}
                   {msg.isPinned && (
                     <div
@@ -1816,17 +2108,51 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           isMe={true}
                           accentColor="#ff4e18"
                         />
-                        <div className="flex items-center justify-end gap-1 text-[10px] text-white/70 mt-1 font-medium select-none">
-                          <span>{msg.time}</span>
-                          {msg.isRead ? (
-                            <span title={t('common.read')} className="inline-flex items-center text-[#ff4e18] animate-in zoom-in-75 duration-200">
-                              <CheckCheck className="w-3.5 h-3.5 inline-block" />
-                            </span>
-                          ) : (
-                            <span title={t('common.sent')} className="inline-flex items-center text-white/50 animate-in fade-in duration-150">
-                              <Check className="w-3.5 h-3.5 inline-block" />
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/70 mt-1.5 font-medium select-none">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplyMessage(msg);
+                            }}
+                            className="text-white/60 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('common.reply')}
+                          >
+                            <Reply className="w-2.5 h-2.5" />
+                            <span className="text-[9.5px]">Reply</span>
+                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-white/75 font-mono">{msg.time}</span>
+                            {msg.isRead ? (
+                              <span
+                                title={t('common.read')}
+                                className="inline-flex items-center text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-in zoom-in-75 duration-200 font-bold"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
+                              </span>
+                            ) : (
+                              <span
+                                title={t('common.sent')}
+                                className="inline-flex items-center text-white/50 animate-in fade-in duration-150"
+                              >
+                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
+                              </span>
+                            )}
+                            {msg.id === latestReadSentMsgId && (
+                              <span
+                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
+                                title={t('common.read')}
+                              >
+                                <img
+                                  src={profile.avatar}
+                                  alt="Seen"
+                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
+                                />
+                                <span className="text-[9px] font-semibold text-white/90 hidden sm:inline">Seen</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -1850,18 +2176,87 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </p>
                           </div>
                         )}
+                        {msg.images && msg.images.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2 rounded-[16px] overflow-hidden">
+                            {msg.images.map((imgUrl, idx) => (
+                              <div
+                                key={idx}
+                                className="rounded-[14px] overflow-hidden h-36 bg-black/20 border border-white/10 relative group cursor-pointer"
+                              >
+                                <img
+                                  src={imgUrl}
+                                  alt=""
+                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {msg.document && (
+                          <div className="flex items-center gap-3 p-3 bg-black/25 rounded-2xl border border-white/10 mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
+                              <p className="text-[10.5px] text-white/70 mt-0.5">{msg.document.size}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                              className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer active:scale-95"
+                              title="Download document"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                         <p>{highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}</p>
-                        <div className="flex items-center justify-end gap-1 text-[10px] text-white/80 mt-1 font-medium select-none">
-                          <span>{msg.time}</span>
-                          {msg.isRead ? (
-                            <span title={t('common.read')} className="inline-flex items-center text-white animate-in zoom-in-75 duration-200">
-                              <CheckCheck className="w-3.5 h-3.5 inline-block" />
-                            </span>
-                          ) : (
-                            <span title={t('common.sent')} className="inline-flex items-center text-white/65 animate-in fade-in duration-150">
-                              <Check className="w-3.5 h-3.5 inline-block" />
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplyMessage(msg);
+                            }}
+                            className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('common.reply')}
+                          >
+                            <Reply className="w-2.5 h-2.5" />
+                            <span className="text-[9.5px]">Reply</span>
+                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
+                            {msg.isRead ? (
+                              <span
+                                title={t('common.read')}
+                                className="inline-flex items-center text-sky-200 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)] animate-in zoom-in-75 duration-200 font-bold"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
+                              </span>
+                            ) : (
+                              <span
+                                title={t('common.sent')}
+                                className="inline-flex items-center text-white/60 animate-in fade-in duration-150"
+                              >
+                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
+                              </span>
+                            )}
+                            {msg.id === latestReadSentMsgId && (
+                              <span
+                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
+                                title={t('common.read')}
+                              >
+                                <img
+                                  src={profile.avatar}
+                                  alt="Seen"
+                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
+                                />
+                                <span className="text-[9px] font-semibold text-white/95 hidden sm:inline">Seen</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )
@@ -1913,10 +2308,57 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         </div>
                       )}
 
+                      {msg.document && (
+                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 mb-2">
+                          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-[#ff4e18]" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
+                            <p className="text-[10.5px] text-[#868b98] mt-0.5">{msg.document.size}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer active:scale-95"
+                            title="Download document"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
                       {msg.text && <p>{highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}</p>}
 
-                      <div className="text-[10px] text-[#717682] text-right mt-1.5 font-medium select-none">
-                        {msg.time}
+                      <div className="flex items-center justify-between gap-1 text-[10px] text-[#717682] mt-1.5 font-medium select-none">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplyMessage(msg);
+                            }}
+                            className="text-[#ff4e18] hover:text-[#ff6e38] flex items-center gap-1 py-0.5 px-1.5 rounded-md hover:bg-white/5 cursor-pointer transition active:scale-90"
+                            title="Reply to this message"
+                          >
+                            <Reply className="w-3 h-3" />
+                            <span className="text-[10px] font-semibold">Reply</span>
+                          </button>
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
+                            }}
+                            className="text-[#717682] hover:text-rose-400 p-1 rounded-md hover:bg-white/5 transition active:scale-90 cursor-pointer"
+                            title="Add reaction"
+                          >
+                            <Heart className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span>{msg.time}</span>
                       </div>
                     </div>
                   )}
@@ -1955,13 +2397,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
         {isTyping && (
           <div className="flex items-start animate-in fade-in duration-200">
-            <div className="bg-[#181921]/95 border border-[#ff4e18]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2 shadow-md shadow-black/50">
-              <span className="text-xs text-[#ff4e18] font-semibold">Katie is typing</span>
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce" />
-              </div>
+            <div className="bg-[#181921]/95 border border-[#ff4e18]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-md shadow-black/50">
+              {typingActivity === 'recording' ? (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-[#ff4e18] animate-pulse" />
+                  <span className="text-xs text-[#ff4e18] font-semibold">Katie is recording audio</span>
+                  <div className="flex items-center gap-0.5 h-2.5">
+                    <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1" />
+                    <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-2.5" />
+                    <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1.5" />
+                    <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.1s_infinite] h-2" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs text-[#ff4e18] font-semibold">Katie is typing</span>
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -2168,6 +2625,89 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             </button>
           </div>
         )}
+
+        {/* ROW OF SMART REPLY PILL BUTTONS */}
+        {shouldShowSmartReplies && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
+            <div className="flex items-center gap-1 text-[11px] text-[#ff4e18] font-semibold shrink-0 pl-1 pr-1">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+              <span className="hidden sm:inline">Smart:</span>
+            </div>
+
+            {smartReplies.map((reply, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(reply, replyingTo ?? lastReceivedMessage)}
+                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[#ff4e18] hover:text-white border border-white/10 hover:border-[#ff4e18] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
+                title={`Tap to send: "${reply}"`}
+              >
+                <span>{reply}</span>
+              </button>
+            ))}
+
+            <button
+              onClick={() => {
+                if (lastReceivedMessage) {
+                  setDismissedSmartReplyMsgId(lastReceivedMessage.id);
+                }
+              }}
+              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 text-white/40 hover:text-white flex items-center justify-center shrink-0 transition cursor-pointer ml-0.5"
+              title="Dismiss smart replies"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {/* STAGED ATTACHMENT PREVIEW CHIP */}
+        {stagedAttachment && (
+          <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[#ff4e18]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
+            {stagedAttachment.images && stagedAttachment.images.length > 0 && (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
+                  {stagedAttachment.images.slice(0, 3).map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt=""
+                      className="w-10 h-10 rounded-xl object-cover border-2 border-[#171825] shadow-md"
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {stagedAttachment.images.length}{' '}
+                    {stagedAttachment.images.length === 1 ? 'photo attached' : 'photos attached'}
+                  </span>
+                  <span className="text-[10.5px] text-[#868b98]">Ready to send with your message</span>
+                </div>
+              </div>
+            )}
+
+            {stagedAttachment.document && (
+              <div className="flex items-center gap-2.5 pl-1 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[#ff4e18] shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {stagedAttachment.document.name}
+                  </span>
+                  <span className="text-[10px] text-[#868b98]">{stagedAttachment.document.size}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setStagedAttachment(null)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition cursor-pointer shrink-0 ml-auto"
+              title="Remove attachment"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {isVoiceMemoActive ? (
           <VoiceMemoInput
             ref={voiceMemoRef}
@@ -2181,14 +2721,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           />
         ) : (
           <div className="flex items-center gap-2">
+            {/* Paperclip Button opening Simulated File Selection Menu */}
             <button
               type="button"
               onClick={() => {
-                setIsAttachmentMenuOpen((prev) => !prev);
+                setIsFileModalOpen(true);
                 setIsEmojiPickerOpen(false);
+                setIsAttachmentMenuOpen(false);
               }}
               className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-                isAttachmentMenuOpen
+                isFileModalOpen || stagedAttachment
                   ? 'bg-[#ff4e18] text-white border-[#ff4e18] shadow-[#ff4e18]/30'
                   : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
               }`}
@@ -2295,6 +2837,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         onMaximize={() => setIsVideoCallMinimized(false)}
         contactName={profile.name}
         contactAvatar={profile.avatar}
+      />
+
+      {/* SIMULATED FILE & MEDIA SELECTION MODAL */}
+      <FileSelectionModal
+        isOpen={isFileModalOpen}
+        onClose={() => setIsFileModalOpen(false)}
+        onSendAttachment={handleSendAttachmentFromModal}
+        onStageAttachment={(payload) => {
+          setStagedAttachment(payload);
+          triggerPinnedToast(
+            payload.images
+              ? `${payload.images.length} photo(s) attached`
+              : payload.document
+              ? `${payload.document.name} attached`
+              : 'Attachment added'
+          );
+        }}
       />
     </div>
   );

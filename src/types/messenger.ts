@@ -36,11 +36,19 @@ export interface VoiceNoteData {
   audioUrl?: string;
 }
 
+export interface DocumentAttachment {
+  name: string;
+  size: string;
+  type: 'pdf' | 'doc' | 'sheet' | 'zip' | 'other';
+  url?: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: 'me' | 'other';
   text?: string;
   images?: string[];
+  document?: DocumentAttachment;
   voiceNote?: VoiceNoteData;
   time: string;
   isRead?: boolean;
