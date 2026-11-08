@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CONTACT_PROFILES, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
+import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaItem } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -39,7 +40,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [showCallModal, setShowCallModal] = useState<'audio' | 'video' | null>(null);
+  const [showCallModal, setShowCallModal] = useState<'audio' | null>(null);
+  const [showVideoCall, setShowVideoCall] = useState(false);
 
   // Active Lightbox State
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
@@ -209,7 +211,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
 
           {/* Video call */}
           <button
-            onClick={() => setShowCallModal('video')}
+            onClick={() => setShowVideoCall(true)}
             className="flex flex-col items-center gap-1.5 group cursor-pointer"
           >
             <div className="w-12 h-12 rounded-full bg-[#181921] group-hover:bg-[#ff4e18] group-hover:shadow-lg group-hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
@@ -586,7 +588,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
         </div>
       )}
 
-      {/* Calling Simulation Modal */}
+      {/* Audio Calling Simulation Modal */}
       {showCallModal && (
         <div className="fixed inset-0 z-50 bg-[#0c0d12]/95 backdrop-blur-xl flex flex-col items-center justify-between py-16 px-6 animate-in fade-in">
           <div className="flex flex-col items-center space-y-3 mt-8">
@@ -600,9 +602,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             <h2 className="text-2xl font-bold text-white tracking-tight">
               {profile.name}
             </h2>
-            <p className="text-sm text-[#ff4e18] font-medium">
-              {showCallModal === 'video' ? 'Outgoing Video Call...' : 'Calling...'}
-            </p>
+            <p className="text-sm text-[#ff4e18] font-medium">Calling...</p>
           </div>
 
           <div className="flex items-center gap-6 mb-8">
@@ -615,6 +615,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
           </div>
         </div>
       )}
+
+      {/* Video Call Overlay (shared component) */}
+      <VideoCallOverlay
+        isOpen={showVideoCall}
+        onEndCall={() => setShowVideoCall(false)}
+        contactName={profile.name}
+        contactAvatar={profile.avatar}
+      />
 
       {/* FULL-FEATURED MEDIA LIGHTBOX (PHOTOS & VIDEOS) */}
       {activeMediaItem && (
