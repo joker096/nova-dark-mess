@@ -1416,60 +1416,56 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <ArrowLeft className="w-4 h-4" />
               </button>
 
-              <div className="flex flex-col items-center flex-1 mx-1 min-w-0">
-                <button
-                  onClick={onOpenProfile}
-                  className="flex flex-col items-center cursor-pointer focus:outline-none group truncate max-w-full"
-                >
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-2 cursor-pointer focus:outline-none group min-w-0 flex-1 mx-0.5"
+              >
+                <div className="flex flex-col items-center min-w-0">
                   <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[#ff4e18] transition truncate">
                     {profile.name}
                   </span>
                   {isTyping ? (
-                    <div className="flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-full bg-[#ff4e18]/15 border border-[#ff4e18]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[#ff4e18]/20 select-none">
-                      <span className="relative flex h-2 w-2">
+                    <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[#ff4e18]/15 border border-[#ff4e18]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[#ff4e18]/20 select-none">
+                      <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff4e18] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff4e18]"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#ff4e18]"></span>
                       </span>
                       {typingActivity === 'recording' ? (
                         <>
-                          <Mic className="w-2.5 h-2.5 text-[#ff4e18] animate-pulse" />
-                          <span className="text-[11px] font-semibold text-[#ff4e18] tracking-tight">
-                            recording audio
-                          </span>
-                          <div className="flex items-center gap-0.5 h-2">
-                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1" />
-                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-2" />
-                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1.5" />
+                          <Mic className="w-2 h-2 text-[#ff4e18] animate-pulse" />
+                          <span className="text-[10px] font-semibold text-[#ff4e18] tracking-tight">recording</span>
+                          <div className="flex items-center gap-0.5 h-1.5">
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-1" />
+                            <span className="w-0.5 bg-[#ff4e18] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1" />
                           </div>
                         </>
                       ) : (
                         <>
-                          <span className="text-[11px] font-semibold text-[#ff4e18] tracking-tight">
-                            typing...
-                          </span>
-                          <div className="flex items-center gap-0.5 pt-0.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] animate-bounce" />
+                          <span className="text-[10px] font-semibold text-[#ff4e18] tracking-tight">typing</span>
+                          <div className="flex items-center gap-0.5 pt-px">
+                            <span className="w-1 h-1 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.32s]" />
+                            <span className="w-1 h-1 rounded-full bg-[#ff4e18] animate-bounce [animation-delay:-0.16s]" />
+                            <span className="w-1 h-1 rounded-full bg-[#ff4e18] animate-bounce" />
                           </div>
                         </>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5 mt-0.5 transition-colors select-none">
+                    <div className="flex items-center gap-1 mt-0.5 select-none">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
                       <span className="text-[10px] text-[#868b98] font-normal leading-none">
                         {profile.status}
                       </span>
                     </div>
                   )}
-                </button>
+                </div>
 
                 {/* Header Menu Tabs: [ Chat | Gallery ] */}
-                <div className="flex items-center gap-0.5 mt-1 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
+                <div className="flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
                   <button
-                    onClick={() => setActiveHeaderTab('chat')}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                    onClick={(e) => { e.stopPropagation(); setActiveHeaderTab('chat'); }}
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
                       activeHeaderTab === 'chat'
                         ? 'bg-[#ff4e18] text-white shadow-sm'
                         : 'text-white/60 hover:text-white'
@@ -1478,8 +1474,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     Chat
                   </button>
                   <button
-                    onClick={() => setActiveHeaderTab('gallery')}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center gap-1 ${
+                    onClick={(e) => { e.stopPropagation(); setActiveHeaderTab('gallery'); }}
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center gap-0.5 ${
                       activeHeaderTab === 'gallery'
                         ? 'bg-[#ff4e18] text-white shadow-sm'
                         : 'text-white/60 hover:text-white'
@@ -1490,7 +1486,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     <span className="text-[9px] opacity-80 font-mono">({sharedMediaCount})</span>
                   </button>
                 </div>
-              </div>
+              </button>
 
               <div className="flex items-center gap-1">
                 {/* Video Call Toggle Button */}

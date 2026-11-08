@@ -7,8 +7,8 @@ test("open Katie's chat and send a message", async ({ app, screen }) => {
   // The chat list is a heading; tap the first (and only) Katie Rogers entry.
   await screen.getByRole('heading', 'Katie Rogers').tap();
 
-  // Chat screen opens with Katie's name in the header button.
-  await expect(screen.getByRole('button', 'Katie Rogers Last seen 2 minutes ago')).toBeVisible();
+  // Chat screen opens with Katie's name + status in the header button.
+  await expect(screen.getByRole('button', 'Katie Rogers Last seen 2 minutes ago Chat Gallery (11)')).toBeVisible();
 
   const message = 'Hello Katie! e2e test message.';
   const input = screen.getByRole('textbox', 'Type a message...');
