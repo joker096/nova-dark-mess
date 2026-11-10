@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles } from 'lucide-react';
-import { useLanguage, Language } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -98,7 +99,7 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
 );
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { t, language, changeLanguage, languages } = useLanguage();
+  const { t } = useLanguage();
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const { identity, is2FAEnabled, totpSecret, enable2FA, disable2FA, exportEncryptedBackup, importEncryptedBackup, pinEnabled, setPin, verifyPin, removePin, clearLocalEncryptedData } = useSecurity();
@@ -374,10 +375,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     } catch { void 0; }
   };
 
-  const handleLangClick = (code: Language) => {
-    changeLanguage(code);
-  };
-
   const fontSizeOptions: { value: Prefs['fontSize']; label: string }[] = [
     { value: 'small', label: 'Small' },
     { value: 'medium', label: 'Medium' },
@@ -420,29 +417,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             icon={<Languages className="w-3.5 h-3.5" />}
             title={t('settings.language')}
           />
-          <div className="space-y-1">
-            {languages.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => handleLangClick(lang.code)}
-                className={`w-full flex items-center gap-3 py-2 px-2.5 rounded-xl border transition cursor-pointer ${
-                  language === lang.code
-                    ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/40'
-                    : 'bg-white/[0.03] border-transparent hover:bg-white/[0.06]'
-                }`}
-              >
-                <span className="text-lg leading-none">{lang.flag}</span>
-                <span className="flex-1 text-left text-[13px] font-medium text-white/90">
-                  {lang.nativeName}
-                </span>
-                {language === lang.code && (
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--nova-accent-color)] text-white">
-                    <Check className="w-3 h-3" />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <LanguageSwitcher />
 
           <SectionHeader
             icon={<Palette className="w-3.5 h-3.5" />}

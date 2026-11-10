@@ -503,7 +503,6 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       {wallpaperId === 'notebook' && (
         <svg
           className="w-full h-full text-white transition-opacity duration-500"
-          style={{ opacity: svgPatternOpacity }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -514,10 +513,10 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
               patternUnits="userSpaceOnUse"
             >
               {/* Red margin field on the left */}
-              <rect x="0" y="0" width="56" height="26" fill="#3a0f0f" fillOpacity="0.35" />
-              <line x1="56" y1="0" x2="56" y2="26" stroke="#ef4444" strokeWidth="1.2" opacity="0.5" />
+              <rect x="0" y="0" width="56" height="26" fill="#ef4444" fillOpacity="0.18" />
+              <line x1="56" y1="0" x2="56" y2="26" stroke="#ef4444" strokeWidth="1.5" strokeOpacity="0.55" />
               {/* Horizontal ruled lines */}
-              <line x1="0" y1="25" x2="100" y2="25" stroke="#4a5568" strokeWidth="1" />
+              <line x1="0" y1="25" x2="100" y2="25" stroke="#94a3b8" strokeWidth="1" strokeOpacity="0.45" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#notebook-pattern)" />
@@ -528,7 +527,6 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       {wallpaperId === 'grid-paper' && (
         <svg
           className="w-full h-full text-white transition-opacity duration-500"
-          style={{ opacity: svgPatternOpacity }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -538,7 +536,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
               height="20"
               patternUnits="userSpaceOnUse"
             >
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#2a2e38" strokeWidth="1" />
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#64748b" strokeWidth="1" strokeOpacity="0.5" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid-pattern)" />
