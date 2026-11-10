@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Share2,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   QrCode,
   FileText,
+  Key,
   Link2,
   Mic,
   Check,
@@ -22,10 +23,12 @@ import {
   VolumeX,
   Sparkles,
 } from 'lucide-react';
-import { CONTACT_PROFILES, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
+import { CONTACT_PROFILES, CURRENT_USER, KATIE_SHARED_MEDIA } from '../data/mockMessengerData';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaItem } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
+import { useSecurity } from '../hooks/useSecurity';
+import { toDataURL } from 'qrcode';
 
 interface ProfileScreenProps {
   profileId: string;
@@ -35,13 +38,36 @@ interface ProfileScreenProps {
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack, onOpenChat }) => {
   const profile = CONTACT_PROFILES[profileId] || CONTACT_PROFILES['katie'];
+  const isOwnProfile = profileId === CURRENT_USER.id;
+  const initials = profile.name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
   const { t } = useLanguage();
+  const { identity } = useSecurity();
   const [activeTab, setActiveTab] = useState<'media' | 'files' | 'links' | 'voice'>('media');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState<'audio' | null>(null);
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<'nickname' | 'phone' | null>(null);
+  const [editableNickname, setEditableNickname] = useState<string | null>(null);
+  const [editablePhone, setEditablePhone] = useState<string | null>(null);
+  const [fieldDraft, setFieldDraft] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showQrModal) setShowQrModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showQrModal]);
 
   // Active Lightbox State
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
@@ -61,8 +87,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
     setTimeout(() => setMediaToast(null), 2200);
   };
 
+  const openQr = async () => {
+    setShowQrModal(true);
+    try {
+      const url = await toDataURL(`https://nova.app/u/${profile.nickname.replace('@', '')}`, {
+        width: 260,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+      setQrDataUrl(url);
+    } catch {
+      setQrDataUrl(null);
+    }
+  };
+
+  const saveField = () => {
+    if (editingField === 'nickname') setEditableNickname(fieldDraft);
+    if (editingField === 'phone') setEditablePhone(fieldDraft);
+    setEditingField(null);
+    setFieldDraft('');
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setFieldDraft('');
+  };
+
   // Filtered Media
-  const allMediaItems: SharedMediaItem[] = profile.sharedMedia || KATIE_SHARED_MEDIA;
+  const allMediaItems: SharedMediaItem[] = profile.sharedMedia || (isOwnProfile ? [] : KATIE_SHARED_MEDIA);
   const filteredMedia = allMediaItems.filter((item) => {
     if (mediaFilter === 'photos') return item.type === 'image';
     if (mediaFilter === 'videos') return item.type === 'video';
@@ -121,8 +173,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
     <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-y-auto no-scrollbar pb-10">
       {/* Toast Notification */}
       {mediaToast && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/40 text-white text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
-          <Check className="w-3.5 h-3.5 text-[#ff4e18]" />
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color)]/40 text-white text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
+          <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{mediaToast}</span>
         </div>
       )}
@@ -147,7 +199,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
           </button>
           <button
             onClick={() => {
-              copyToClipboard('https://nova.app/u/katie_rogers', 'share');
+              copyToClipboard(`https://nova.app/u/${profile.nickname.replace('@', '')}`, 'share');
               triggerToast('Profile link copied to clipboard');
             }}
             className="w-10 h-10 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
@@ -160,7 +212,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
 
       {/* Avatar & Profile Hero */}
       <div className="flex flex-col items-center pt-2 pb-5 px-5">
-        <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[#ff4e18]/40 shadow-xl shadow-black/80 mb-3 relative">
+        <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[var(--nova-accent-color)]/40 shadow-xl shadow-black/80 mb-3 relative">
           <img
             src={profile.avatar}
             alt={profile.name}
@@ -169,8 +221,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
-          <div className="w-full h-full rounded-full bg-[#ff4e18] flex items-center justify-center font-bold text-2xl text-white">
-            KR
+          <div className="w-full h-full rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center font-bold text-2xl text-white">
+            {initials}
           </div>
         </div>
 
@@ -182,45 +234,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
         </p>
 
         {/* 4 Quick Action Buttons */}
-        <div className="grid grid-cols-4 gap-3 mt-6 w-full max-w-[340px]">
-          {/* Message */}
+        <div className={`grid ${isOwnProfile ? 'grid-cols-1' : 'grid-cols-4'} gap-3 mt-6 w-full max-w-[340px]`}>
+          {!isOwnProfile && (
           <button
             onClick={onOpenChat}
             className="flex flex-col items-center gap-1.5 group cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-full bg-[#181921] group-hover:bg-[#ff4e18] group-hover:shadow-lg group-hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
+            <div className="w-12 h-12 rounded-full bg-[#181921] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
               <MessageSquare className="w-5 h-5 text-white/90 group-hover:text-white" />
             </div>
             <span className="text-[11px] font-medium text-[#868b98] group-hover:text-white transition">
               Message
             </span>
           </button>
+          )}
 
-          {/* Call */}
-          <button
-            onClick={() => setShowCallModal('audio')}
-            className="flex flex-col items-center gap-1.5 group cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#181921] group-hover:bg-[#ff4e18] group-hover:shadow-lg group-hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-              <Phone className="w-5 h-5 text-white/90 group-hover:text-white" />
-            </div>
-            <span className="text-[11px] font-medium text-[#868b98] group-hover:text-white transition">
-              Call
-            </span>
-          </button>
 
-          {/* Video call */}
-          <button
-            onClick={() => setShowVideoCall(true)}
-            className="flex flex-col items-center gap-1.5 group cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#181921] group-hover:bg-[#ff4e18] group-hover:shadow-lg group-hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-              <Video className="w-5 h-5 text-white/90 group-hover:text-white" />
-            </div>
-            <span className="text-[11px] font-medium text-[#868b98] group-hover:text-white transition">
-              Video call
-            </span>
-          </button>
 
           {/* More */}
           <button
@@ -240,40 +269,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
       {/* Contact Details Card */}
       <div className="px-5 mb-4">
         <div className="bg-[#171820]/95 border border-white/5 rounded-[24px] p-4 space-y-4 shadow-md shadow-black/50">
-          {/* Phone row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[#ff4e18]">
-                <Phone className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
-                  Phone Number
-                </p>
-                <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
-                  {profile.phone}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => copyToClipboard(profile.phone, 'phone')}
-              className="p-2 text-white/50 hover:text-white transition cursor-pointer"
-              title={t('common.copy')}
-            >
-              {copiedField === 'phone' ? (
-                <Check className="w-4 h-4 text-[#ff4e18]" />
-              ) : (
-                <Edit2 className="w-4 h-4" />
-              )}
-            </button>
-          </div>
 
           <div className="h-[1px] bg-white/[0.04]" />
 
           {/* Nickname row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[#ff4e18] font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                 @
               </div>
               <div>
@@ -281,17 +283,155 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                   Nickname
                 </p>
                 <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
-                  {profile.nickname}
+                  {editableNickname ?? profile.nickname}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowQrModal(true)}
-              className="p-2 text-white/50 hover:text-white transition cursor-pointer"
-              title={t('common.contact')}
-            >
-              <QrCode className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {editingField === 'nickname' ? (
+                <>
+                  <input
+                    value={fieldDraft}
+                    onChange={(e) => setFieldDraft(e.target.value)}
+                    autoFocus
+                    className="w-32 px-2 py-1.5 rounded-lg bg-[#181920] border border-white/10 text-[11px] text-white outline-none focus:border-[var(--nova-accent-color)]"
+                  />
+                  <button
+                    onClick={saveField}
+                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-white hover:opacity-90 transition cursor-pointer"
+                    title={t('common.save')}
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="p-1.5 rounded-lg bg-white/[0.05] text-white/70 hover:bg-white/[0.1] transition cursor-pointer"
+                    title={t('common.cancel')}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setFieldDraft(editableNickname ?? profile.nickname);
+                      setEditingField('nickname');
+                    }}
+                    className="p-2 text-white/50 hover:text-white transition cursor-pointer"
+                    title={t('common.edit')}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={openQr}
+                    className="p-2 text-white/50 hover:text-white transition cursor-pointer"
+                    title={t('common.contact')}
+                  >
+                    <QrCode className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Crypto ID row */}
+          {isOwnProfile && identity && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                    Crypto ID
+                  </p>
+                  <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5 truncate max-w-[200px]">
+                    `nova_pk_${identity.fingerprint.slice(0, 8)}...${identity.fingerprint.slice(-8)}`
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => copyToClipboard(identity.fingerprint, 'fingerprint')}
+                className="p-2 text-white/50 hover:text-white transition cursor-pointer"
+                title={t('common.copy')}
+              >
+                {copiedField === 'fingerprint' ? (
+                  <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
+                ) : (
+                  <Edit2 className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          )}
+          <div className="h-[1px] bg-white/[0.04]" />
+
+          {/* Additional phone (optional, not used for lookup — search by ID) */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[#6a6f7b]">
+                <Phone className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[11px] text-[#6a6f7b] font-normal leading-tight">
+                  Additional phone
+                </p>
+                <p className="text-[14px] font-semibold text-[#cbd5e1] tracking-wide mt-0.5">
+                  {editablePhone ?? (profile.phone || '—')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {editingField === 'phone' ? (
+                <>
+                  <input
+                    value={fieldDraft}
+                    onChange={(e) => setFieldDraft(e.target.value)}
+                    autoFocus
+                    inputMode="numeric"
+                    className="w-32 px-2 py-1.5 rounded-lg bg-[#181920] border border-white/10 text-[11px] text-white outline-none focus:border-[var(--nova-accent-color)]"
+                  />
+                  <button
+                    onClick={saveField}
+                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-white hover:opacity-90 transition cursor-pointer"
+                    title={t('common.save')}
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="p-1.5 rounded-lg bg-white/[0.05] text-white/70 hover:bg-white/[0.1] transition cursor-pointer"
+                    title={t('common.cancel')}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setFieldDraft(editablePhone ?? (profile.phone || ''));
+                      setEditingField('phone');
+                    }}
+                    className="p-2 text-white/50 hover:text-white transition cursor-pointer"
+                    title={t('common.edit')}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(profile.phone, 'phone')}
+                    className="p-2 text-[#6a6f7b] hover:text-white transition cursor-pointer"
+                    title={t('common.copy')}
+                  >
+                    {copiedField === 'phone' ? (
+                      <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
+                    ) : (
+                      <Edit2 className="w-4 h-4" />
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -303,7 +443,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             onClick={() => setActiveTab('media')}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
               activeTab === 'media'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
             }`}
           >
@@ -321,7 +461,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             onClick={() => setActiveTab('files')}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
               activeTab === 'files'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
             }`}
           >
@@ -339,7 +479,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             onClick={() => setActiveTab('links')}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
               activeTab === 'links'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
             }`}
           >
@@ -351,7 +491,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             onClick={() => setActiveTab('voice')}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
               activeTab === 'voice'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
             }`}
           >
@@ -444,7 +584,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
 
                             {/* Center Play Icon circle */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 group-hover:bg-[#ff4e18] group-hover:scale-110 transition duration-200">
+                              <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 group-hover:bg-[var(--nova-accent-color)] group-hover:scale-110 transition duration-200">
                                 <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
                               </div>
                             </div>
@@ -485,7 +625,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                 className="p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#ff4e18]/15 text-[#ff4e18] flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] flex items-center justify-center">
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
@@ -497,7 +637,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                 </div>
                 <button
                   onClick={() => triggerToast(`Downloading ${file.name}...`)}
-                  className="text-xs text-[#ff4e18] hover:underline cursor-pointer"
+                  className="text-xs text-[var(--nova-accent-color)] hover:underline cursor-pointer"
                 >
                   Download
                 </button>
@@ -521,7 +661,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                 }}
                 className="p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center gap-3 hover:border-white/20 transition cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#20222b] text-[#ff4e18] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#20222b] text-[var(--nova-accent-color)] flex items-center justify-center">
                   <Link2 className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -545,7 +685,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                 className="p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#ff4e18] text-white flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center">
                     <Mic className="w-4 h-4" />
                   </div>
                   <div>
@@ -567,20 +707,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
 
       {/* QR Code Modal */}
       {showQrModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
+        >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-white">Katie's QR Code</h3>
-            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner">
-              <div className="w-48 h-48 bg-black flex items-center justify-center rounded-lg p-2 text-white">
-                <QrCode className="w-40 h-40 text-black stroke-black fill-black" />
-              </div>
+            <h3 className="font-bold text-lg text-white">{profile.name}'s QR Code</h3>
+            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 rounded-lg" />
+              ) : (
+                <div className="w-48 h-48 bg-black flex items-center justify-center rounded-lg p-2 text-white">
+                  <QrCode className="w-40 h-40 text-black stroke-black fill-black" />
+                </div>
+              )}
             </div>
             <p className="text-xs text-[#8c919d]">
-              Scan to add @Katie_Rogers to your contact list
+              Scan to add {profile.nickname} to your contact list
             </p>
             <button
               onClick={() => setShowQrModal(false)}
-              className="w-full py-2.5 bg-[#ff4e18] text-white font-semibold text-xs rounded-xl hover:bg-[#ff5f2e] transition cursor-pointer"
+              className="w-full py-2.5 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
             >
               Close
             </button>
@@ -592,7 +740,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
       {showCallModal && (
         <div className="fixed inset-0 z-50 bg-[#0c0d12]/95 backdrop-blur-xl flex flex-col items-center justify-between py-16 px-6 animate-in fade-in">
           <div className="flex flex-col items-center space-y-3 mt-8">
-            <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#ff4e18] shadow-2xl p-1 animate-pulse">
+            <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[var(--nova-accent-color)] shadow-2xl p-1 animate-pulse">
               <img
                 src={profile.avatar}
                 alt=""
@@ -602,7 +750,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             <h2 className="text-2xl font-bold text-white tracking-tight">
               {profile.name}
             </h2>
-            <p className="text-sm text-[#ff4e18] font-medium">Calling...</p>
+            <p className="text-sm text-[var(--nova-accent-color)] font-medium">Calling...</p>
           </div>
 
           <div className="flex items-center gap-6 mb-8">
@@ -636,7 +784,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             className="flex items-center justify-between w-full max-w-md mx-auto pt-2 shrink-0 z-10"
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ff4e18]/20 text-[#ff4e18] border border-[#ff4e18]/30 flex items-center gap-1">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 flex items-center gap-1">
                 {activeMediaItem.type === 'video' ? (
                   <>
                     <Play className="w-2.5 h-2.5 fill-current" /> Video
@@ -733,7 +881,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                   <div className="flex items-center gap-3">
                     <button
                       onClick={toggleVideoPlayback}
-                      className="w-8 h-8 rounded-full bg-[#ff4e18] text-white flex items-center justify-center active:scale-95 transition cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center active:scale-95 transition cursor-pointer"
                     >
                       {isVideoPlaying ? (
                         <Pause className="w-4 h-4 fill-white" />
@@ -790,7 +938,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                   {activeMediaItem.caption || 'Shared Media'}
                 </p>
                 <p className="text-[10px] text-[#868b98]">
-                  {activeMediaItem.date} · Shared with Katie Rogers
+                  {activeMediaItem.date} · Shared with {profile.name}
                 </p>
               </div>
 
@@ -800,7 +948,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                   setSelectedMediaIndex(null);
                   onOpenChat();
                 }}
-                className="px-2.5 py-1 bg-[#252834] hover:bg-[#ff4e18] hover:text-white text-[#ff4e18] text-[11px] font-medium rounded-lg border border-[#ff4e18]/20 transition cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                className="px-2.5 py-1 bg-[#252834] hover:bg-[var(--nova-accent-color)] hover:text-white text-[var(--nova-accent-color)] text-[11px] font-medium rounded-lg border border-[var(--nova-accent-color)]/20 transition cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
               >
                 <MessageSquare className="w-3 h-3" />
                 <span>Show in Chat</span>
@@ -810,7 +958,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             {/* Chat Context Snippet */}
             {activeMediaItem.chatMessageSnippet && (
               <div className="bg-black/30 rounded-xl p-2 border border-white/5 flex items-center gap-2">
-                <span className="text-[10px] text-[#ff4e18] font-semibold shrink-0">
+                <span className="text-[10px] text-[var(--nova-accent-color)] font-semibold shrink-0">
                   Chat Context:
                 </span>
                 <span className="text-[11px] text-white/80 italic truncate">
