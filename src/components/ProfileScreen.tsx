@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import {
   ArrowLeft,
   Share2,
@@ -50,6 +51,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
   const [activeTab, setActiveTab] = useState<'media' | 'files' | 'links' | 'voice'>('media');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const profileTabsRef = useWheelScroll();
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState<'audio' | null>(null);
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -438,7 +440,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
 
       {/* Main Tabs Selector: Media, Files, Links, Voice */}
       <div className="px-5 mb-3">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div ref={profileTabsRef} className="flex items-center gap-2 overflow-x-auto scrollbar-x">
           <button
             onClick={() => setActiveTab('media')}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${

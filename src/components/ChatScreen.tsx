@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import {
   ArrowLeft,
   Paperclip,
@@ -229,6 +230,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const isLongPressFiredRef = useRef(false);
   const pointerStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+  const quickSearchChipsRef = useWheelScroll();
+  const attachmentMenuRef = useWheelScroll();
+  const emojiBarRef = useWheelScroll();
+  const smartRepliesRef = useWheelScroll();
 
 
 
@@ -1747,7 +1752,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         <>
           {/* QUICK SEARCH KEYWORD CHIPS (when search is open) */}
       {isSearchOpen && (
-        <div className="px-3 -mt-1 mb-2 shrink-0 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 fade-in">
+        <div ref={quickSearchChipsRef} className="px-3 -mt-1 mb-2 shrink-0 z-20 flex items-center gap-1.5 overflow-x-auto scrollbar-x animate-in slide-in-from-top-1 fade-in">
           <span className="text-[10px] text-[#868b98] shrink-0 font-medium pl-1">Suggested:</span>
           {QUICK_SEARCH_CHIPS.map((chip) => (
             <button
@@ -2743,7 +2748,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       <div className="p-3 pt-1 relative z-20 shrink-0 space-y-2">
         {/* ATTACHMENT MENU DRAWER */}
         {isAttachmentMenuOpen && (
-          <div className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto no-scrollbar">
+          <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
             <button
               type="button"
               onClick={() => handleAttachItem('photo')}
@@ -2789,7 +2794,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
         {/* EMOJI QUICK BAR */}
         {isEmojiPickerOpen && (
-          <div className="flex items-center gap-1.5 p-2 bg-[#141520]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto no-scrollbar">
+          <div ref={emojiBarRef} className="flex items-center gap-1.5 p-2 bg-[#141520]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
             <span className="text-[10px] text-white/40 font-semibold px-1 shrink-0">Insert:</span>
             {['😊', '❤️', '🔥', '👍', '😂', '🎉', '🏖️', '✨', '🙌', '🍹', '😍', '👏'].map((emoji) => (
               <button
@@ -2817,7 +2822,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
         {/* ROW OF SMART REPLY PILL BUTTONS */}
         {shouldShowSmartReplies && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
+          <div ref={smartRepliesRef} className="flex items-center gap-1.5 overflow-x-auto scrollbar-x py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
             <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color, #ff4e18)] font-semibold shrink-0 pl-1 pr-1">
               <Sparkles className="w-3.5 h-3.5 animate-pulse" />
               <span className="hidden sm:inline">Smart:</span>

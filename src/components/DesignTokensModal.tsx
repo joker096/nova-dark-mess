@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Copy, Check, Palette, Code, Layers, Sparkles, GitBranch, Terminal, FileCode2 } from 'lucide-react';
+import { Copy, Check, Palette, GitBranch, Terminal, FileCode2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { sanitizeHtml } from '../lib/security/sanitize';
+import { useWheelScroll } from '../lib/ui/useWheelScroll';
 
 export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
@@ -9,6 +11,7 @@ export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void 
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'repo' | 'tokens' | 'patch'>('repo');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const tokensTabRef = useWheelScroll();
 
   if (!isOpen) return null;
 
@@ -171,13 +174,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
         {/* Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#15161f]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#ff4e18] flex items-center justify-center text-white shadow-lg shadow-[#ff4e18]/30">
+            <div className="w-10 h-10 rounded-2xl bg-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-lg shadow-[var(--nova-accent-color)]/30">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
                 <span>{t('designTokens.subtitle')}</span>
-                <span className="text-[10px] font-mono bg-[#ff4e18]/20 text-[#ff4e18] px-2 py-0.5 rounded-full border border-[#ff4e18]/40">
+                <span className="text-[10px] font-mono bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] px-2 py-0.5 rounded-full border border-[var(--nova-accent-color)]/40">
                   {t('designTokens.readyToApply')}
                 </span>
               </h2>
@@ -189,18 +192,19 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center text-sm transition"
+            aria-label={t('common.close')}
           >
             ✕
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-5 pt-3 pb-2 border-b border-white/5 bg-[#14151c] flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div ref={tokensTabRef} className="px-5 pt-3 pb-2 border-b border-white/5 bg-[#14151c] flex items-center gap-2 overflow-x-auto scrollbar-x">
           <button
             onClick={() => setActiveTab('repo')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
               activeTab === 'repo'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'text-[#8c919d] hover:text-white bg-white/5'
             }`}
           >
@@ -212,7 +216,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             onClick={() => setActiveTab('patch')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
               activeTab === 'patch'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'text-[#8c919d] hover:text-white bg-white/5'
             }`}
           >
@@ -224,7 +228,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             onClick={() => setActiveTab('tokens')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
               activeTab === 'tokens'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                 : 'text-[#8c919d] hover:text-white bg-white/5'
             }`}
           >
@@ -238,13 +242,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
           {activeTab === 'repo' && (
             <div className="space-y-6">
               <div className="p-4 bg-[#181922] border border-white/10 rounded-2xl flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#ff4e18]/20 text-[#ff4e18] flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] flex items-center justify-center shrink-0 mt-0.5">
                   <FileCode2 className="w-4 h-4" />
                 </div>
                 <div className="text-xs text-[#a0a5b2] space-y-1">
-                  <p className="font-semibold text-white text-sm" dangerouslySetInnerHTML={{ __html: t('designTokens.architectureTitle') }} />
-                  <p dangerouslySetInnerHTML={{ __html: t('designTokens.architectureDesc') }} />
-                  <p dangerouslySetInnerHTML={{ __html: t('designTokens.architectureDesc2') }} />
+                  <p className="font-semibold text-white text-sm">{t('designTokens.architectureTitle')}</p>
+                  <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(t('designTokens.architectureDesc'), { allowTags: true }) }} />
+                  <p>{t('designTokens.architectureDesc2')}</p>
                 </div>
               </div>
 
@@ -252,7 +256,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#ff4e18] text-white text-[11px] flex items-center justify-center">1</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] flex items-center justify-center">1</span>
                     <span>{t('designTokens.step1Title')}</span>
                   </h3>
                   <button
@@ -272,7 +276,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#ff4e18] text-white text-[11px] flex items-center justify-center">2</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] flex items-center justify-center">2</span>
                     <span>{t('designTokens.step2Title')}</span>
                   </h3>
                   <button
@@ -293,12 +297,12 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
           {activeTab === 'patch' && (
             <div className="space-y-4">
               <div className="text-xs text-[#a0a5b2]">
-                <span dangerouslySetInnerHTML={{ __html: t('designTokens.patchInstruction') }} />
+                <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(t('designTokens.patchInstruction'), { allowTags: true }) }} />
                 <div className="my-2 p-2.5 bg-[#090a0e] rounded-xl font-mono text-white flex items-center justify-between border border-white/10">
                   <code>git apply nova.patch</code>
                   <button
                     onClick={() => copyCode('git apply nova.patch', 'cmd')}
-                    className="text-xs text-[#ff4e18] hover:underline"
+                    className="text-xs text-[var(--nova-accent-color)] hover:underline"
                   >
                     {copiedKey === 'cmd' ? t('designTokens.copied') : t('designTokens.copy')}
                   </button>
@@ -341,7 +345,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
                         />
                         <div>
                           <div className="text-xs font-semibold text-white">{tok.label}</div>
-                          <div className="text-[11px] font-mono text-[#ff4e18]">{tok.hex}</div>
+                          <div className="text-[11px] font-mono text-[var(--nova-accent-color)]">{tok.hex}</div>
                         </div>
                       </div>
                       <p className="text-[11px] text-[#787d8a] leading-tight">{tok.role}</p>
@@ -360,7 +364,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#ff4e18] hover:bg-[#ff5f2e] text-white font-semibold text-xs transition cursor-pointer"
+            className="px-5 py-2 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2e)] text-white font-semibold text-xs transition cursor-pointer"
           >
             {t('common.close')}
           </button>

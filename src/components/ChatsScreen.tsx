@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import {
   Search,
   Plus,
@@ -127,14 +128,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const folderTabsRef = useRef<HTMLDivElement>(null);
-
-  const handleFolderTabsWheel = (e: React.WheelEvent) => {
-    if (e.deltaY === 0) return;
-    e.preventDefault();
-    const el = folderTabsRef.current;
-    if (el) el.scrollLeft += e.deltaY;
-  };
+  const folderTabsRef = useWheelScroll();
+  const quickSearchChipsRef = useWheelScroll();
+  const storiesRef = useWheelScroll();
 
   // Global shortcut: Cmd+K / Ctrl+K jumps to search
   useEffect(() => {
@@ -407,7 +403,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         </div>
 
         {/* Quick Search Keyword Chips */}
-        <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-x" ref={quickSearchChipsRef}>
           <span className="text-[10px] text-[#737887] shrink-0 font-medium pl-0.5">Quick search:</span>
           {CHAT_SEARCH_CHIPS.map((chip) => (
               <button
@@ -675,7 +671,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         <>
           {/* Stories Row */}
           <div className="pt-1 pb-3 px-5 shrink-0">
-            <div className="flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth">
+            <div ref={storiesRef} className="flex gap-2.5 overflow-x-auto scrollbar-x scroll-smooth">
               {MOCK_STORIES.map((story) => (
                 <button
                   key={story.id}
@@ -712,11 +708,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           </div>
 
           {/* DYNAMIC FOLDER TABS SYSTEM WITH CREATE/MANAGE MODAL BUTTON */}
-          <div
-            ref={folderTabsRef}
-            onWheel={handleFolderTabsWheel}
-            className="px-5 py-2 flex items-center gap-2 overflow-x-auto shrink-0 max-w-full scrollbar-thin scrollbar-thumb-rounded"
-          >
+          <div ref={folderTabsRef} className="px-5 py-2 flex items-center gap-2 overflow-x-auto scrollbar-x shrink-0 max-w-full">
             {folders.map((folder) => {
               const isActive = activeFolderId === folder.id;
               const badge = getFolderBadge(folder);

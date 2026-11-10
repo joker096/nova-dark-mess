@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+  --nova-accent-color: #ff4e18;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,4 +35,22 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Subtle always-visible thin scrollbar for horizontal lists */
+.scrollbar-x {
+  scrollbar-width: thin;
+}
+.scrollbar-x::-webkit-scrollbar {
+  height: 6px;
+}
+.scrollbar-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-x::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+.scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
