@@ -16,7 +16,10 @@ export type WallpaperId =
   | 'constellation'
   | 'bauhaus-grid'
   | 'carbon-weave'
-  | 'doodles';
+  | 'doodles'
+  // Notebook / grid paper
+  | 'notebook'
+  | 'grid-paper';
 
 export interface WallpaperOption {
   id: WallpaperId;
@@ -181,5 +184,22 @@ export const WALLPAPER_OPTIONS: WallpaperOption[] = [
     gradientBg: 'from-[#0d0f15] via-[#161823] to-[#0a0b10]',
     accentColor: '#ff4e18',
     badge: 'Classic',
+  },
+  // --- Notebook / Grid Paper ---
+  {
+    id: 'notebook',
+    name: 'Тетрадь',
+    subtitle: 'Линейный лист с красным полем',
+    category: 'geometric',
+    gradientBg: 'from-[#0f1118] via-[#14151c] to-[#0e0f14]',
+    accentColor: '#ef4444',
+  },
+  {
+    id: 'grid-paper',
+    name: 'Клетка',
+    subtitle: 'Клетчатый лист в темных тонах',
+    category: 'geometric',
+    gradientBg: 'from-[#0d0e13] via-[#12131c] to-[#0c0d12]',
+    accentColor: '#94a3b8',
   },
 ];

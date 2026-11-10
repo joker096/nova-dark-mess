@@ -499,6 +499,52 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         </svg>
       )}
 
+      {/* H. NOTEBOOK PAPER */}
+      {wallpaperId === 'notebook' && (
+        <svg
+          className="w-full h-full text-white transition-opacity duration-500"
+          style={{ opacity: svgPatternOpacity }}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern
+              id="notebook-pattern"
+              width="100"
+              height="26"
+              patternUnits="userSpaceOnUse"
+            >
+              {/* Red margin field on the left */}
+              <rect x="0" y="0" width="56" height="26" fill="#3a0f0f" fillOpacity="0.35" />
+              <line x1="56" y1="0" x2="56" y2="26" stroke="#ef4444" strokeWidth="1.2" opacity="0.5" />
+              {/* Horizontal ruled lines */}
+              <line x1="0" y1="25" x2="100" y2="25" stroke="#4a5568" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#notebook-pattern)" />
+        </svg>
+      )}
+
+      {/* I. GRID PAPER */}
+      {wallpaperId === 'grid-paper' && (
+        <svg
+          className="w-full h-full text-white transition-opacity duration-500"
+          style={{ opacity: svgPatternOpacity }}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern
+              id="grid-pattern"
+              width="20"
+              height="20"
+              patternUnits="userSpaceOnUse"
+            >
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#2a2e38" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+        </svg>
+      )}
+
       {/* 4. Protective Edge Vignette & Top/Bottom Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0b0c10]/35 via-transparent to-[#0b0c10]/60 pointer-events-none" />
     </div>

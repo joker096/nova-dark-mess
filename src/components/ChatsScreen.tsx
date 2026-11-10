@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   Search,
   Plus,
   Users,
-  Phone,
   MessageSquare,
   Settings,
   Pin,
@@ -11,6 +10,7 @@ import {
   MessageCircle,
   FolderPlus,
   Folder,
+  BarChart3,
 } from 'lucide-react';
 import {
   CURRENT_USER,
@@ -29,7 +29,11 @@ interface ChatsScreenProps {
   onOpenContacts?: () => void;
   onOpenCalls?: () => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
+  onOpenFolders?: () => void;
   activeChatId?: string;
+  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'analytics';
+  onOpenAnalytics?: () => void;
 }
 
 const FOLDERS_STORAGE_KEY = 'nova_messenger_chat_folders';
@@ -77,13 +81,18 @@ export const DEFAULT_FOLDERS: ChatFolder[] = [
   },
 ];
 
-export const ChatsScreen: React.FC<ChatsScreenProps> = ({
-  onSelectChat,
-  onOpenChannel,
+export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScreenProps>((props, ref) => {
+  const {
+    onSelectChat,
+    onOpenChannel,
 
-  onOpenProfile,
-  activeChatId,
-}) => {
+    onOpenProfile,
+    onOpenSettings,
+    onOpenFolders,
+    onOpenAnalytics,
+    activeChatId,
+    activeNavTab,
+  } = props;
   const { t } = useLanguage();
   // Folders State with localStorage persistence
   const [folders, setFolders] = useState<ChatFolder[]>(() => {
@@ -95,13 +104,22 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           return parsed;
         }
       }
-    } catch {}
+    } catch {
+      void 0;
+    }
     return DEFAULT_FOLDERS;
   });
 
   const [activeFolderId, setActiveFolderId] = useState<string>('all');
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    openFolderModal: () => {
+      setEditingFolder(null);
+      setIsFolderModalOpen(true);
+    },
+  }));
   const [folderToast, setFolderToast] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,6 +127,14 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const folderTabsRef = useRef<HTMLDivElement>(null);
+
+  const handleFolderTabsWheel = (e: React.WheelEvent) => {
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    const el = folderTabsRef.current;
+    if (el) el.scrollLeft += e.deltaY;
+  };
 
   // Global shortcut: Cmd+K / Ctrl+K jumps to search
   useEffect(() => {
@@ -136,7 +162,9 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
         : [...prev, folderToSave];
       try {
         localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(updated));
-      } catch {}
+      } catch {
+      void 0;
+    }
       return updated;
     });
     setActiveFolderId(folderToSave.id);
@@ -148,7 +176,9 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
       const updated = prev.filter((f) => f.id !== folderId);
       try {
         localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(updated));
-      } catch {}
+      } catch {
+      void 0;
+    }
       return updated;
     });
     if (activeFolderId === folderId) {
@@ -182,7 +212,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
   // Calculate badge (unread or count) for each folder tab
   const getFolderBadge = (folder: ChatFolder) => {
     if (folder.id === 'all') return null;
-    let matchedList: ChatItem[] = [];
+    let matchedList: ChatItem[];
     if (folder.filterType === 'direct') {
       matchedList = MOCK_CHATS.filter((c) => c.type === 'direct');
     } else if (folder.filterType === 'channels') {
@@ -268,7 +298,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           part.toLowerCase() === query.toLowerCase() ? (
             <span
               key={i}
-              className="text-[#ff4e18] font-semibold bg-[#ff4e18]/20 px-1 py-0.2 rounded"
+              className="text-[var(--nova-accent-color)] font-semibold bg-[var(--nova-accent-color)]/20 px-1 py-0.2 rounded"
             >
               {part}
             </span>
@@ -284,8 +314,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
     <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none">
       {/* Toast Notification */}
       {folderToast && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <FolderPlus className="w-3.5 h-3.5 text-[#ff4e18]" />
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{folderToast}</span>
         </div>
       )}
@@ -296,6 +326,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           <button
             onClick={onOpenProfile}
             className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-[#181921] relative cursor-pointer active:scale-95 transition"
+            aria-label={t('profile.title')}
             title={t('profile.title')}
           >
             <img
@@ -306,7 +337,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <div className="w-full h-full bg-[#ff4e18] flex items-center justify-center text-xs font-bold text-white">
+            <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
               JS
             </div>
           </button>
@@ -315,7 +346,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
               Hello, {CURRENT_USER.name}
             </h1>
             <p className="text-[11px] text-[#828795] font-normal leading-tight">
-              You've got <span className="text-[#ff4e18] font-medium">{CURRENT_USER.unreadTotal} unread</span> chats
+              You&apos;ve got <span className="text-[var(--nova-accent-color)] font-medium">{CURRENT_USER.unreadTotal} unread</span> chats
             </p>
           </div>
         </div>
@@ -324,7 +355,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setNewChatModalOpen(true)}
-            className="w-9 h-9 rounded-full bg-[#181921] hover:bg-[#ff4e18] hover:text-white border border-white/5 flex items-center justify-center text-white/80 transition cursor-pointer active:scale-90 shadow-md"
+            className="w-9 h-9 rounded-full bg-[#181921] hover:bg-[var(--nova-accent-color)] hover:text-white border border-white/5 flex items-center justify-center text-white/80 transition cursor-pointer active:scale-90 shadow-md"
+            aria-label={t('chats.newChat')}
             title={t('chats.newChat')}
           >
             <Plus className="w-4 h-4" />
@@ -336,7 +368,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
       {/* PROMINENT TOP REAL-TIME CHAT SEARCH BAR */}
       <div className="px-5 pt-1 pb-2 shrink-0">
         <div className="relative flex items-center">
-          <div className="absolute left-3.5 text-[#ff4e18] pointer-events-none flex items-center justify-center">
+          <div className="absolute left-3.5 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
             <Search className="w-4 h-4" />
           </div>
           <input
@@ -348,12 +380,12 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
               if (e.key === 'Escape') setSearchQuery('');
             }}
             placeholder="Search conversations by contact name..."
-            className="w-full bg-[#171821] border border-white/[0.08] focus:border-[#ff4e18] focus:bg-[#1a1b26] text-white placeholder-white/35 text-xs rounded-full pl-10 pr-24 py-2.5 transition-all shadow-inner focus:outline-none"
+            className="w-full bg-[#171821] border border-white/[0.08] focus:border-[var(--nova-accent-color)] focus:bg-[#1a1b26] text-white placeholder-white/35 text-xs rounded-full pl-10 pr-24 py-2.5 transition-all shadow-inner focus:outline-none"
           />
 
           <div className="absolute right-2.5 flex items-center gap-1">
             {searchQuery.trim() && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#ff4e18]/20 text-[#ff4e18] font-semibold border border-[#ff4e18]/30 shrink-0">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] font-semibold border border-[var(--nova-accent-color)]/30 shrink-0">
                 {matchedChats.length} {matchedChats.length === 1 ? 'chat' : 'chats'}
               </span>
             )}
@@ -361,6 +393,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
               <button
                 onClick={() => setSearchQuery('')}
                 className="text-white/50 hover:text-white p-1 transition cursor-pointer"
+                aria-label={t('common.close')}
                 title={t('common.close')}
               >
                 <X className="w-3.5 h-3.5" />
@@ -377,15 +410,16 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
         <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar">
           <span className="text-[10px] text-[#737887] shrink-0 font-medium pl-0.5">Quick search:</span>
           {CHAT_SEARCH_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => setSearchQuery(chip)}
-              className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-medium transition cursor-pointer shrink-0 ${
-                searchQuery.toLowerCase() === chip.toLowerCase()
-                  ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30 font-semibold'
-                  : 'bg-[#181921] text-[#8b909d] hover:text-white border border-white/5'
-              }`}
-            >
+              <button
+                key={chip}
+                onClick={() => setSearchQuery(chip)}
+                className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-medium transition cursor-pointer shrink-0 ${
+                  searchQuery.toLowerCase() === chip.toLowerCase()
+                    ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold'
+                    : 'bg-[#181921] text-[#8b909d] hover:text-white border border-white/5'
+                }`}
+                aria-label={chip}
+              >
               {chip}
             </button>
           ))}
@@ -393,6 +427,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
             <button
               onClick={() => setSearchQuery('')}
               className="px-2 py-0.5 rounded-full text-[10px] text-white/50 hover:text-white bg-white/5 transition cursor-pointer shrink-0"
+              aria-label={t('common.reset') ?? 'Reset'}
             >
               Reset
             </button>
@@ -414,6 +449,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                     ? 'bg-[#222430] text-white shadow-sm'
                     : 'text-[#828795] hover:text-white'
                 }`}
+                aria-label={`All filter, ${totalResults} results`}
               >
                 All ({totalResults})
               </button>
@@ -424,6 +460,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                     ? 'bg-[#222430] text-white shadow-sm'
                     : 'text-[#828795] hover:text-white'
                 }`}
+                aria-label={`Chats filter, ${matchedChats.length} results`}
               >
                 Chats ({matchedChats.length})
               </button>
@@ -434,6 +471,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                     ? 'bg-[#222430] text-white shadow-sm'
                     : 'text-[#828795] hover:text-white'
                 }`}
+                aria-label={`Messages filter, ${matchedMessages.length} results`}
               >
                 Messages ({matchedMessages.length})
               </button>
@@ -450,7 +488,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                 </div>
                 <p className="text-sm font-semibold text-white/80">No results found</p>
                 <p className="text-xs text-[#717682] mt-1 max-w-[220px]">
-                  No chats or messages match "{searchQuery}"
+                  No chats or messages match &quot;{searchQuery}&quot;
                 </p>
               </div>
             ) : (
@@ -462,7 +500,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                       <span className="text-[11px] font-bold text-[#868b98] uppercase tracking-wider">
                         Matching Chats ({matchedChats.length})
                       </span>
-                      <span className="text-[10px] text-[#ff4e18] font-medium">Real-time match</span>
+                      <span className="text-[10px] text-[var(--nova-accent-color)] font-medium">Real-time match</span>
                     </div>
                     {matchedChats.map((chat) => {
                       const isSelected = activeChatId === chat.id;
@@ -478,16 +516,19 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                         <div
                           key={chat.id}
                           onClick={() => handleChatClick(chat.id, chat.isChannel)}
+                          role="button"
+                          aria-label={`Chat with ${chat.name}`}
+                          tabIndex={0}
                           className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-center gap-3.5 shadow-sm ${
                             isSelected
-                              ? 'bg-[#222432] border-[#ff4e18]/60 shadow-lg shadow-[#ff4e18]/15 ring-1 ring-[#ff4e18]/30'
+                              ? 'bg-[#222432] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
                               : 'bg-[#17181e]/90 hover:bg-[#1e1f27] active:bg-[#23242e] border-white/[0.04]'
                           }`}
                         >
                           {/* Avatar Slot */}
                           <div className="relative shrink-0">
                             {chat.isChannel ? (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#dc2626] to-[#ff4e18] flex items-center justify-center text-white shadow-inner font-bold">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#dc2626] to-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-inner font-bold">
                                 <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
                                   <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
                                 </svg>
@@ -525,11 +566,11 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
                               <div className="flex items-center gap-1.5 truncate">
-                                <h2 className="font-semibold text-white text-[15px] truncate tracking-tight group-hover:text-[#ff4e18] transition-colors">
+                                <h2 className="font-semibold text-white text-[15px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
                                   {highlightMatch(chat.name, searchQuery)}
                                 </h2>
                                 {nameMatches && (
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#ff4e18]/15 text-[#ff4e18] font-semibold border border-[#ff4e18]/30 shrink-0">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] font-semibold border border-[var(--nova-accent-color)]/30 shrink-0">
                                     Contact
                                   </span>
                                 )}
@@ -545,7 +586,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                                   highlightMatch(chat.snippet, searchQuery)
                                 ) : matchingHistMsg ? (
                                   <span>
-                                    <span className="text-[#ff4e18] font-medium">Found in message: </span>
+                                    <span className="text-[var(--nova-accent-color)] font-medium">Found in message: </span>
                                     {highlightMatch(matchingHistMsg.text || '', searchQuery)}
                                   </span>
                                 ) : (
@@ -560,7 +601,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                                   </div>
                                 )}
                                 {chat.unreadCount && (
-                                  <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#ff4e18] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[#ff4e18]/30">
+                                  <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
                                     {chat.unreadCount}
                                   </div>
                                 )}
@@ -583,11 +624,14 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                       <div
                         key={match.messageId}
                         onClick={() => handleChatClick(match.chatId, match.isChannel)}
+                        role="button"
+                        aria-label={`Message from ${match.chatName} by ${match.senderName}`}
+                        tabIndex={0}
                         className="group bg-[#17181e]/90 hover:bg-[#1f2029] active:bg-[#252734] border border-white/[0.04] rounded-2xl p-3 transition cursor-pointer flex items-start gap-3 shadow-sm"
                       >
                         <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 bg-[#20222a] shrink-0 mt-0.5">
                           {match.isChannel ? (
-                            <div className="w-full h-full bg-[#ff4e18] flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">
                               CH
                             </div>
                           ) : (
@@ -637,6 +681,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                   key={story.id}
                   onClick={() => setActiveStory(story)}
                   className="w-[84px] h-[116px] rounded-[20px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-white/5 shadow-md shadow-black/40"
+                  aria-label={`Story from ${story.name}`}
                 >
                   <img
                     src={story.coverImage}
@@ -650,7 +695,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                   </div>
 
                   <div className="absolute bottom-2 inset-x-0 flex flex-col items-center">
-                    <div className="w-6 h-6 rounded-full overflow-hidden border-[1.5px] border-[#ff4e18] shadow-sm mb-1 bg-black/40">
+                    <div className="w-6 h-6 rounded-full overflow-hidden border-[1.5px] border-[var(--nova-accent-color)] shadow-sm mb-1 bg-black/40">
                       <img
                         src={story.avatar}
                         alt=""
@@ -667,7 +712,11 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
           </div>
 
           {/* DYNAMIC FOLDER TABS SYSTEM WITH CREATE/MANAGE MODAL BUTTON */}
-          <div className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 max-w-full">
+          <div
+            ref={folderTabsRef}
+            onWheel={handleFolderTabsWheel}
+            className="px-5 py-2 flex items-center gap-2 overflow-x-auto shrink-0 max-w-full scrollbar-thin scrollbar-thumb-rounded"
+          >
             {folders.map((folder) => {
               const isActive = activeFolderId === folder.id;
               const badge = getFolderBadge(folder);
@@ -678,9 +727,10 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                     onClick={() => setActiveFolderId(folder.id)}
                     className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                       isActive
-                        ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                        ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                         : 'bg-[#181921] text-[#8e93a0] hover:text-white hover:bg-[#20222a] border border-white/5'
                     }`}
+                    aria-label={`Folder ${folder.name}${isActive ? ', active' : ''}`}
                   >
                     <span>{folder.name}</span>
                     {badge && (
@@ -702,7 +752,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                         setEditingFolder(folder);
                         setIsFolderModalOpen(true);
                       }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#20222c] hover:bg-[#ff4e18] text-white/70 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm border border-white/10 cursor-pointer"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#20222c] hover:bg-[var(--nova-accent-color)] text-white/70 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm border border-white/10 cursor-pointer"
+                      aria-label={t('settings.editFolder') ?? `Edit folder ${folder.name}`}
                       title={t('common.edit')}
                     >
                       <Settings className="w-2.5 h-2.5" />
@@ -718,7 +769,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                 setEditingFolder(null);
                 setIsFolderModalOpen(true);
               }}
-              className="w-8 h-8 rounded-full bg-[#181921] hover:bg-[#ff4e18] text-[#8e93a0] hover:text-white hover:shadow-md hover:shadow-[#ff4e18]/25 border border-white/5 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-full bg-[#181921] hover:bg-[var(--nova-accent-color)] text-[#8e93a0] hover:text-white hover:shadow-md hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              aria-label={t('folders.addAnother') ?? 'Create new folder'}
               title={t('common.folders')}
             >
               <Plus className="w-4 h-4" />
@@ -731,19 +783,20 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
               /* Empty Folder State */
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in">
                 <div className="w-12 h-12 rounded-full bg-[#181922] border border-white/10 flex items-center justify-center text-white/40 mb-3 shadow-inner">
-                  <FolderPlus className="w-5 h-5 text-[#ff4e18]" />
+                  <FolderPlus className="w-5 h-5 text-[var(--nova-accent-color)]" />
                 </div>
                 <p className="text-sm font-semibold text-white/90">Folder is empty</p>
                 <p className="text-xs text-[#828795] mt-1 max-w-[220px]">
-                  There are no chats assigned to "{currentFolder.name}" yet.
+                  There are no chats assigned to &quot;{currentFolder.name}&quot; yet.
                 </p>
-                <button
-                  onClick={() => {
-                    setEditingFolder(currentFolder);
-                    setIsFolderModalOpen(true);
-                  }}
-                  className="mt-3 px-3.5 py-1.5 rounded-full bg-[#ff4e18] text-white text-xs font-semibold hover:bg-[#ff5d2b] transition shadow-md shadow-[#ff4e18]/25 cursor-pointer"
-                >
+                  <button
+                    onClick={() => {
+                      setEditingFolder(currentFolder);
+                      setIsFolderModalOpen(true);
+                    }}
+                    className="mt-3 px-3.5 py-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-xs font-semibold hover:bg-[var(--nova-accent-color, ff5d2b)] transition shadow-md shadow-[var(--nova-accent-color)]/25 cursor-pointer"
+                    aria-label={`Manage folder ${currentFolder.name} chats`}
+                  >
                   Manage Folder Chats
                 </button>
               </div>
@@ -754,16 +807,19 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                 <div
                   key={chat.id}
                   onClick={() => handleChatClick(chat.id, chat.isChannel)}
+                  role="button"
+                  aria-label={`Chat with ${chat.name}, ${chat.time}`}
+                  tabIndex={0}
                   className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-center gap-3.5 shadow-sm ${
                     isSelected
-                      ? 'bg-[#222432] border-[#ff4e18]/60 shadow-lg shadow-[#ff4e18]/15 ring-1 ring-[#ff4e18]/30'
+                      ? 'bg-[#222432] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
                       : 'bg-[#17181e]/90 hover:bg-[#1e1f27] active:bg-[#23242e] border-white/[0.04]'
                   }`}
                 >
                   {/* Avatar Slot */}
                   <div className="relative shrink-0">
                     {chat.isChannel ? (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#dc2626] to-[#ff4e18] flex items-center justify-center text-white shadow-inner font-bold">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#dc2626] to-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-inner font-bold">
                         <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
                           <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
                         </svg>
@@ -801,7 +857,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <div className="flex items-center gap-1.5 truncate">
-                        <h2 className="font-semibold text-white text-[15px] truncate tracking-tight group-hover:text-[#ff4e18] transition-colors">
+                        <h2 className="font-semibold text-white text-[15px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
                           {chat.name}
                         </h2>
                       </div>
@@ -822,7 +878,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                           </div>
                         )}
                         {chat.unreadCount && (
-                          <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#ff4e18] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[#ff4e18]/30">
+                          <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
                             {chat.unreadCount}
                           </div>
                         )}
@@ -842,39 +898,80 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
         <div className="bg-[#181921]/90 backdrop-blur-xl border border-white/10 rounded-full px-5 py-2.5 flex items-center gap-7 shadow-2xl shadow-black/80 pointer-events-auto">
           <button
             onClick={() => setActiveFolderId('all')}
+            title={t('chats.title')}
             className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeFolderId === 'all' ? 'text-[#ff4e18]' : 'text-white/50 hover:text-white'
+              activeNavTab === 'chats'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
             }`}
           >
-            <MessageSquare className="w-5 h-5 fill-current" />
-            <span className="text-[9px] font-bold">Chats</span>
+            <MessageSquare className={`w-5 h-5 ${activeNavTab === 'chats' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'chats' ? 'bold' : 'normal'}`}>{t('chats.title')}</span>
           </button>
 
           <button
             onClick={onOpenChannel}
-            className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white cursor-pointer active:scale-90 transition"
+            title={t('channels')}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
+              activeNavTab === 'channel'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
+            }`}
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-[9px] font-medium">Channel</span>
+            <MessageCircle className={`w-5 h-5 ${activeNavTab === 'channel' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'channel' ? 'bold' : 'normal'}`}>{t('channels')}</span>
           </button>
 
           <button
-            onClick={() => {
-              setEditingFolder(null);
-              setIsFolderModalOpen(true);
-            }}
-            className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white cursor-pointer active:scale-90 transition"
+            onClick={onOpenFolders ? onOpenFolders : () => { setEditingFolder(null); setIsFolderModalOpen(true); }}
+            title={t('folders')}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
+              activeNavTab === 'folders'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
+            }`}
           >
-            <Folder className="w-5 h-5" />
-            <span className="text-[9px] font-medium">Folders</span>
+            <Folder className={`w-5 h-5 ${activeNavTab === 'folders' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'folders' ? 'bold' : 'normal'}`}>{t('folders')}</span>
           </button>
 
           <button
             onClick={onOpenProfile}
-            className="flex flex-col items-center gap-0.5 text-white/50 hover:text-white cursor-pointer active:scale-90 transition"
+            title={t('profile.title')}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
+              activeNavTab === 'profile'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
+            }`}
           >
-            <Users className="w-5 h-5" />
-            <span className="text-[9px] font-medium">Profile</span>
+            <Users className={`w-5 h-5 ${activeNavTab === 'profile' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'profile' ? 'bold' : 'normal'}`}>{t('profile.title')}</span>
+          </button>
+
+          <button
+            onClick={onOpenAnalytics}
+            title={t('analytics.title')}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
+              activeNavTab === 'analytics'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
+            }`}
+          >
+            <BarChart3 className={`w-5 h-5 ${activeNavTab === 'analytics' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'analytics' ? 'bold' : 'normal'}`}>{t('analytics.title')}</span>
+          </button>
+
+          <button
+            onClick={onOpenSettings}
+            title={t('settings.title')}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
+              activeNavTab === 'settings'
+                ? 'text-[var(--nova-accent-color)] font-bold'
+                : 'text-white/50 hover:text-white'
+            }`}
+          >
+            <Settings className={`w-5 h-5 ${activeNavTab === 'settings' ? 'fill-current' : 'fill-white/50'}`} />
+            <span className={`text-[9px] font-${activeNavTab === 'settings' ? 'bold' : 'normal'}`}>{t('settings.title')}</span>
           </button>
         </div>
       </div>
@@ -898,6 +995,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
             <button
               onClick={() => setActiveStory(null)}
               className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold"
+              aria-label={t('common.close')}
             >
               ✕
             </button>
@@ -934,9 +1032,10 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                   setNewChatModalOpen(false);
                   onSelectChat('katie');
                 }}
-                className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[#ff4e18] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+                className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+                aria-label="Start conversation with Katie Rogers"
               >
-                <div className="w-6 h-6 rounded-full bg-[#ff4e18] flex items-center justify-center text-[10px]">
+                <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center text-[10px]">
                   KR
                 </div>
                 <span>Katie Rogers</span>
@@ -946,7 +1045,8 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
                   setNewChatModalOpen(false);
                   onOpenChannel();
                 }}
-                className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[#ff4e18] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+                className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+                aria-label="Open Real Kyiv Life Channel"
               >
                 <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-[10px]">
                   CH
@@ -957,6 +1057,7 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
             <button
               onClick={() => setNewChatModalOpen(false)}
               className="w-full py-2 bg-white/5 hover:bg-white/10 text-white/70 font-semibold text-xs rounded-xl transition"
+              aria-label={t('common.cancel')}
             >
               Cancel
             </button>
@@ -979,4 +1080,4 @@ export const ChatsScreen: React.FC<ChatsScreenProps> = ({
       />
     </div>
   );
-};
+});
