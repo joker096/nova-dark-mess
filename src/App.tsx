@@ -1,30 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquare,
   Radio,
-  Sparkles,
-  Flame,
   BarChart3,
   Settings,
+  Folder,
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
 import { ChannelScreen } from './components/ChannelScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { AnalyticsScreen } from './components/AnalyticsScreen';
+import { AppIcon } from './components/AppIcon';
+import { PinLockScreen } from './components/PinLockScreen';
 
 import { SettingsModal } from './components/SettingsModal';
 import { CURRENT_USER } from './data/mockMessengerData';
 import { useLanguage } from './context/LanguageContext';
+import { useSecurity } from './hooks/useSecurity';
+import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/ui/appearance';
 
 type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics';
 
 export default function App() {
   const { t } = useLanguage();
+  const { isLocked, pinHash, unlock } = useSecurity();
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
   const [activeChatId, setActiveChatId] = useState<string>('katie');
+  const [activeProfileId, setActiveProfileId] = useState<string>('katie');
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const foldersRef = useRef<{ openFolderModal: () => void } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('nova_accent_color');
+      if (saved) {
+        document.documentElement.style.setProperty('--nova-accent-color', saved);
+      } else {
+        document.documentElement.style.setProperty('--nova-accent-color', '#ff4e18');
+      }
+      } catch {
+        void 0;
+      }
+    applyAppTheme(readAppTheme());
+    applyFontSize(readFontSize());
+  }, []);
+
+  const openProfile = (profileId: string) => {
+    setActiveProfileId(profileId);
+    setCurrentScreen('profile-katie');
+  };
 
   // Desktop Main Panel renderer
   const renderDesktopMainScreen = () => {
@@ -41,13 +68,11 @@ export default function App() {
       case 'profile-katie':
         return (
           <ProfileScreen
-            profileId={activeChatId}
+            profileId={activeProfileId}
             onBack={() => {
-              setActiveChatId(activeChatId);
               setCurrentScreen('chat-katie');
             }}
             onOpenChat={() => {
-              setActiveChatId(activeChatId);
               setCurrentScreen('chat-katie');
             }}
           />
@@ -63,7 +88,7 @@ export default function App() {
             onBack={() => {
               setCurrentScreen('chats');
             }}
-            onOpenProfile={() => setCurrentScreen('profile-katie')}
+            onOpenProfile={() => openProfile(activeChatId)}
           />
         );
     }
@@ -83,8 +108,11 @@ export default function App() {
               setActiveChatId('kyiv-channel');
               setCurrentScreen('channel-kyiv');
             }}
-            onOpenProfile={() => setCurrentScreen('profile-katie')}
+            onOpenProfile={() => openProfile(CURRENT_USER.id)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenAnalytics={() => setCurrentScreen('analytics')}
             activeChatId={activeChatId}
+            activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
           />
         );
       case 'chat-katie':
@@ -92,7 +120,7 @@ export default function App() {
           <ChatScreen
             chatId={activeChatId}
             onBack={() => setCurrentScreen('chats')}
-            onOpenProfile={() => setCurrentScreen('profile-katie')}
+            onOpenProfile={() => openProfile(activeChatId)}
           />
         );
       case 'channel-kyiv':
@@ -102,13 +130,13 @@ export default function App() {
       case 'profile-katie':
         return (
           <ProfileScreen
-            profileId={activeChatId}
+            profileId={activeProfileId}
             onBack={() => setCurrentScreen('chat-katie')}
             onOpenChat={() => setCurrentScreen('chat-katie')}
           />
         );
       case 'analytics':
-        return <AnalyticsScreen />;
+        return <AnalyticsScreen onBack={() => setCurrentScreen('chats')} />;
       default:
         return null;
     }
@@ -119,7 +147,11 @@ export default function App() {
 
 
   return (
-    <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[#ff4e18]/30 select-none">
+    <>
+      {isLocked && pinHash ? (
+        <PinLockScreen onUnlock={unlock} />
+      ) : (
+        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
       {/* ======================================================== */}
@@ -130,13 +162,14 @@ export default function App() {
         <div className="flex flex-col items-center gap-3">
           <button
             onClick={() => {
-              setActiveChatId('katie');
-              setCurrentScreen('chat-katie');
+              setCurrentScreen('chats');
+              setActiveChatId('');
+              setActiveProfileId('');
             }}
-            className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff4e18] to-[#ff6b3d] flex items-center justify-center shadow-lg shadow-[#ff4e18]/35 active:scale-90 transition cursor-pointer group relative"
+            className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[var(--nova-accent-color)] to-[var(--nova-accent-color, #ff6b3d)] flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/35 active:scale-90 transition cursor-pointer group relative"
             title={t('app.name')}
           >
-            <Flame className="w-5 h-5 text-white fill-white group-hover:scale-110 transition-transform" />
+            <AppIcon size={20} variant="light" className="group-hover:scale-110 transition-transform" />
           </button>
           <div className="w-7 h-[1px] bg-white/10" />
         </div>
@@ -151,15 +184,15 @@ export default function App() {
             }}
             className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               isDesktopChatActive
-                ? 'bg-[#ff4e18] text-white shadow-lg shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
             }`}
             title={t('common.chats')}
           >
-            <MessageSquare className="w-5 h-5 fill-current" />
+            <MessageSquare className="w-5 h-5 fill-[var(--nova-accent-color)]" />
             {/* Active Pill Indicator on left edge */}
             {isDesktopChatActive && (
-              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[#ff4e18]" />
+              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
           </button>
 
@@ -171,15 +204,24 @@ export default function App() {
             }}
             className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               isDesktopChannelActive
-                ? 'bg-[#ff4e18] text-white shadow-lg shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
             }`}
             title={t('common.channels')}
           >
-            <Radio className="w-5 h-5" />
+            <Radio className={`w-5 h-5 ${isDesktopChannelActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
             {isDesktopChannelActive && (
-              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[#ff4e18]" />
+              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
+          </button>
+
+          {/* Folders tab */}
+          <button
+            onClick={() => foldersRef.current?.openFolderModal()}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group text-white/45 hover:text-white hover:bg-white/[0.08]`}
+            title={t('folders')}
+          >
+            <Folder className="w-5 h-5" />
           </button>
 
 
@@ -189,14 +231,14 @@ export default function App() {
             onClick={() => setCurrentScreen('analytics')}
             className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               currentScreen === 'analytics'
-                ? 'bg-[#ff4e18] text-white shadow-lg shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
             }`}
             title={t('analytics.title')}
           >
-            <BarChart3 className="w-5 h-5" />
+            <BarChart3 className={`w-5 h-5 ${currentScreen === 'analytics' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
             {currentScreen === 'analytics' && (
-              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[#ff4e18]" />
+              <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
           </button>
 
@@ -206,7 +248,7 @@ export default function App() {
         {/* Settings Trigger (language switch moved into Settings) */}
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className="w-11 h-11 rounded-2xl text-white/45 hover:text-[#ff4e18] hover:bg-white/[0.08] flex items-center justify-center transition cursor-pointer"
+          className="w-11 h-11 rounded-2xl text-white/45 hover:text-[var(--nova-accent-color)] hover:bg-white/[0.08] flex items-center justify-center transition cursor-pointer"
           title={t('settings.title')}
         >
           <Settings className="w-5 h-5" />
@@ -215,8 +257,8 @@ export default function App() {
         {/* User Avatar with Status indicator */}
         <div className="flex flex-col items-center gap-2">
           <button
-            onClick={() => setCurrentScreen('profile-katie')}
-            className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[#ff4e18]/60 group"
+            onClick={() => openProfile(CURRENT_USER.id)}
+            className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
             title={`${CURRENT_USER.name} (Online)`}
           >
             <img
@@ -227,7 +269,7 @@ export default function App() {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <div className="w-full h-full bg-[#ff4e18] text-white font-bold text-xs flex items-center justify-center">
+            <div className="w-full h-full bg-[var(--nova-accent-color)] text-white font-bold text-xs flex items-center justify-center">
               ME
             </div>
             {/* Online Green Beacon */}
@@ -239,6 +281,7 @@ export default function App() {
       {/* Chats Column (Desktop Only) */}
       <section className="hidden md:flex w-[340px] lg:w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden">
         <ChatsScreen
+          ref={foldersRef}
           onSelectChat={(id) => {
             setActiveChatId(id);
             setCurrentScreen('chat-katie');
@@ -247,8 +290,10 @@ export default function App() {
             setActiveChatId('kyiv-channel');
             setCurrentScreen('channel-kyiv');
           }}
-          onOpenProfile={() => setCurrentScreen('profile-katie')}
+          onOpenProfile={() => openProfile(CURRENT_USER.id)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           activeChatId={activeChatId}
+          activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
         />
       </section>
 
@@ -268,6 +313,8 @@ export default function App() {
 
       {/* App Settings Modal (language switch lives here) */}
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-    </div>
+        </div>
+      )}
+    </>
   );
 }
