@@ -14,3 +14,15 @@ coverage/
 # Signing keystores — never commit
 *.jks
 *.keystore
+
+# open-mem local memory database (large, machine-local)
+.open-mem/*.db
+.open-mem/*.db-shm
+.open-mem/*.db-wal
+
+# e2e run artifacts (regenerated on every run)
+.e2e/artifacts/
+.e2e/cache/
+.e2e/report.json
+.e2e/bugbash/**/artifacts/
+.e2e/bugbash/**/report.json
