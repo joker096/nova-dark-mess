@@ -12,7 +12,15 @@ import {
   Star,
   Users,
   Layers,
+  Shield,
+  Crown,
+  Gift,
+  Rocket,
+  Sparkles,
+  Heart,
+  Lock,
 } from 'lucide-react';
+import { usePremium } from '../hooks/usePremium';
 import { ChatFolder, ChatItem } from '../types/messenger';
 
 interface FolderModalProps {
@@ -25,14 +33,29 @@ interface FolderModalProps {
   onClose: () => void;
 }
 
-const FOLDER_ICONS = [
+const FOLDER_ICONS: Array<{
+  id: string;
+  icon: React.ElementType;
+  label: string;
+  premium?: boolean;
+}> = [
   { id: 'folder', icon: Folder, label: 'Folder' },
   { id: 'user', icon: User, label: 'Personal' },
   { id: 'briefcase', icon: Briefcase, label: 'Work' },
   { id: 'radio', icon: Radio, label: 'Channel' },
   { id: 'star', icon: Star, label: 'Favorite' },
   { id: 'users', icon: Users, label: 'Group' },
+  { id: 'shield', icon: Shield, label: 'Shield', premium: true },
+  { id: 'crown', icon: Crown, label: 'Crown', premium: true },
+  { id: 'gift', icon: Gift, label: 'Gift', premium: true },
+  { id: 'rocket', icon: Rocket, label: 'Rocket', premium: true },
+  { id: 'sparkles', icon: Sparkles, label: 'Sparkles', premium: true },
+  { id: 'heart', icon: Heart, label: 'Heart', premium: true },
 ];
+
+const ICON_BY_ID: Record<string, React.ElementType> = Object.fromEntries(
+  FOLDER_ICONS.map((i) => [i.id, i.icon])
+);
 
 export const FolderModal: React.FC<FolderModalProps> = ({
   isOpen,
@@ -44,6 +67,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   onClose,
 }) => {
   const { t } = useLanguage();
+  const { premium, checkout } = usePremium();
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>(
     editingFolder ? 'create' : 'create'
   );
@@ -110,7 +134,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#ff4e18]/20 flex items-center justify-center text-[#ff4e18]">
+            <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)]">
               <FolderPlus className="w-4 h-4" />
             </div>
             <div>
@@ -126,6 +150,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+            aria-label={t('common.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -173,7 +198,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   setErrorMsg('');
                 }}
                 placeholder={t('folders.namePlaceholder')}
-                className="w-full bg-[#1b1c28] border border-white/10 focus:border-[#ff4e18] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition shadow-inner"
+                className="w-full bg-[#1b1c28] border border-white/10 focus:border-[var(--nova-accent-color)] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition shadow-inner"
                 autoFocus
               />
               {errorMsg && (
@@ -186,23 +211,41 @@ export const FolderModal: React.FC<FolderModalProps> = ({
               <label className="block text-[11px] font-semibold text-[#868b98] mb-1.5">
                 {t('folders.iconLabel')}
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                 {FOLDER_ICONS.map((item) => {
                   const IconComp = item.icon;
                   const isSelected = selectedIcon === item.id;
+                  const isLocked = item.premium && !premium;
+
+                  const handleIconClick = () => {
+                    if (isLocked) {
+                      checkout();
+                      return;
+                    }
+                    setSelectedIcon(item.id);
+                  };
+
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSelectedIcon(item.id)}
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                      onClick={handleIconClick}
+                      className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                         isSelected
-                          ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/30 scale-105'
+                          ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/30 scale-105'
+                          : isLocked
+                          ? 'bg-[#1b1c28] text-white/40 border border-white/5 opacity-60 cursor-not-allowed hover:bg-[#1b1c28]'
                           : 'bg-[#1b1c28] text-white/60 hover:text-white border border-white/5'
                       }`}
-                      title={item.label}
+                      title={
+                        isLocked ? t('premium.lockedIcon') : item.label
+                      }
+                      disabled={isLocked}
                     >
-                      <IconComp className="w-4 h-4" />
+                      <IconComp className="w-5 h-5" />
+                      {isLocked && (
+                        <Lock className="w-[10px] h-[10px] text-white/70 absolute bottom-1 right-1" />
+                      )}
                     </button>
                   );
                 })}
@@ -219,7 +262,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   <button
                     type="button"
                     onClick={selectOnlyDirect}
-                    className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
+                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
                   >
                     {t('folders.selectPersonal')}
                   </button>
@@ -227,7 +270,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   <button
                     type="button"
                     onClick={selectOnlyChannels}
-                    className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
+                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
                   >
                     {t('folders.selectChannels')}
                   </button>
@@ -235,7 +278,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   <button
                     type="button"
                     onClick={selectOnlyGroups}
-                    className="text-[9px] text-[#ff4e18] hover:underline cursor-pointer"
+                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
                   >
                     {t('folders.selectGroups')}
                   </button>
@@ -285,7 +328,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                       <div
                         className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
                           isChecked
-                            ? 'bg-[#ff4e18] text-white shadow-sm'
+                            ? 'bg-[var(--nova-accent-color)] text-white shadow-sm'
                             : 'border border-white/20 bg-black/20'
                         }`}
                       >
@@ -301,7 +344,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             <div className="pt-2 flex items-center gap-2">
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-[#ff4e18] hover:bg-[#ff5d2b] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[#ff4e18]/25 active:scale-95 text-center"
+                className="flex-1 py-2.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[var(--nova-accent-color)]/25 active:scale-95 text-center"
               >
                 {editingFolder ? t('folders.saveButton') : t('folders.createButton')}
               </button>
@@ -324,14 +367,15 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             <div className="space-y-1.5">
               {folders.map((f) => {
                 const count = f.id === 'all' ? chats.length : f.chatIds.length;
+                const FolderIconComp = ICON_BY_ID[f.icon] || Folder;
                 return (
                   <div
                     key={f.id}
                     className="flex items-center justify-between p-2.5 rounded-2xl bg-[#1b1c28] border border-white/5"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-[#252838] flex items-center justify-center text-[#ff4e18]">
-                        <Folder className="w-3.5 h-3.5" />
+                      <div className="w-7 h-7 rounded-lg bg-[#252838] flex items-center justify-center text-[var(--nova-accent-color)]">
+                        <FolderIconComp className="w-3.5 h-3.5" />
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-white flex items-center gap-1.5">
@@ -365,7 +409,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                 onClick={() => setActiveTab('create')}
                 className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <FolderPlus className="w-3.5 h-3.5 text-[#ff4e18]" />
+                <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
                 <span>{t('folders.addAnother')}</span>
               </button>
             </div>

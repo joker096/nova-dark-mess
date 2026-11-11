@@ -3,15 +3,10 @@ import {
   X,
   Image as ImageIcon,
   FileText,
-  Camera,
   Check,
   Upload,
-  Download,
   Paperclip,
   Send,
-  FileSpreadsheet,
-  FileCode,
-  FolderOpen,
 } from 'lucide-react';
 import { ModalOverlay } from './ModalOverlay';
 import { DocumentAttachment } from '../types/messenger';
@@ -275,7 +270,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#171824]/90">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#ff4e18]/20 border border-[#ff4e18]/40 flex items-center justify-center text-[#ff4e18]">
+            <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 flex items-center justify-center text-[var(--nova-accent-color)]">
               <Paperclip className="w-4 h-4" />
             </div>
             <div>
@@ -300,7 +295,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               onClick={() => setActiveTab('images')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'images'
-                  ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -311,7 +306,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               onClick={() => setActiveTab('documents')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === 'documents'
-                  ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/25'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -333,10 +328,10 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[#ff4e18]/20 border border-white/10 hover:border-[#ff4e18]/40 text-xs font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color)]/20 border border-white/10 hover:border-[var(--nova-accent-color)]/40 text-xs font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-95 shrink-0"
             title="Browse genuine file from device"
           >
-            <Upload className="w-3.5 h-3.5 text-[#ff4e18]" />
+            <Upload className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
             <span className="hidden sm:inline">Browse Device</span>
           </button>
         </div>
@@ -353,7 +348,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                     onClick={() => toggleImageSelect(img.id)}
                     className={`group relative rounded-2xl overflow-hidden aspect-[4/3] border cursor-pointer transition duration-150 select-none ${
                       isSelected
-                        ? 'border-[#ff4e18] ring-2 ring-[#ff4e18] shadow-lg shadow-[#ff4e18]/30 scale-[0.98]'
+                        ? 'border-[var(--nova-accent-color)] ring-2 ring-[var(--nova-accent-color)] shadow-lg shadow-[var(--nova-accent-color)]/30 scale-[0.98]'
                         : 'border-white/10 hover:border-white/30'
                     }`}
                   >
@@ -367,7 +362,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                         <div
                           className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
                             isSelected
-                              ? 'bg-[#ff4e18] border-[#ff4e18] text-white scale-110 shadow-sm'
+                              ? 'bg-[var(--nova-accent-color)] border-[var(--nova-accent-color)] text-white scale-110 shadow-sm'
                               : 'bg-black/40 border-white/40 text-transparent'
                           }`}
                         >
@@ -398,13 +393,13 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                     onClick={() => handleSelectDoc(doc.id)}
                     className={`flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer select-none ${
                       isSelected
-                        ? 'bg-[#221820] border-[#ff4e18] ring-1 ring-[#ff4e18]/60 shadow-md shadow-[#ff4e18]/15'
+                        ? 'bg-[#221820] border-[var(--nova-accent-color)] ring-1 ring-[var(--nova-accent-color)]/60 shadow-md shadow-[var(--nova-accent-color)]/15'
                         : 'bg-[#181926]/90 hover:bg-[#1f2132] border-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 pr-2">
                       <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5 text-[#ff4e18]" />
+                        <FileText className="w-5 h-5 text-[var(--nova-accent-color)]" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -422,7 +417,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
                         isSelected
-                          ? 'bg-[#ff4e18] border-[#ff4e18] text-white scale-105'
+                          ? 'bg-[var(--nova-accent-color)] border-[var(--nova-accent-color)] text-white scale-105'
                           : 'border-white/30 text-transparent'
                       }`}
                     >
@@ -445,17 +440,17 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               if (e.key === 'Enter') handleSend();
             }}
             placeholder="Add an optional message or caption..."
-            className="w-full bg-[#11121a] border border-white/10 focus:border-[#ff4e18] rounded-xl px-3.5 py-2 text-xs text-white placeholder-white/35 focus:outline-none transition shadow-inner"
+            className="w-full bg-[#11121a] border border-white/10 focus:border-[var(--nova-accent-color)] rounded-xl px-3.5 py-2 text-xs text-white placeholder-white/35 focus:outline-none transition shadow-inner"
           />
 
           <div className="flex items-center justify-between gap-2">
             <div className="text-[11px] text-[#8e93a0] truncate">
               {selectedImageIds.length > 0 ? (
-                <span className="text-[#ff4e18] font-semibold">
+                <span className="text-[var(--nova-accent-color)] font-semibold">
                   {selectedImageIds.length} {selectedImageIds.length === 1 ? 'photo' : 'photos'} selected
                 </span>
               ) : selectedDocId ? (
-                <span className="text-[#ff4e18] font-semibold">1 document selected</span>
+                <span className="text-[var(--nova-accent-color)] font-semibold">1 document selected</span>
               ) : (
                 <span>No files selected</span>
               )}
@@ -474,7 +469,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                 type="button"
                 onClick={handleSend}
                 disabled={!hasSelected}
-                className="px-4 py-1.5 rounded-xl bg-[#ff4e18] hover:bg-[#ff5d2b] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-[#ff4e18]/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                className="px-4 py-1.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-[var(--nova-accent-color)]/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
               >
                 <span>Send</span>
                 <Send className="w-3 h-3" />

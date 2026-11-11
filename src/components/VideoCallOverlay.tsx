@@ -174,7 +174,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
     return (
       <div
         onClick={onMaximize}
-        className="fixed bottom-20 right-4 z-50 w-36 h-52 bg-[#12131c] rounded-2xl border-2 border-[#ff4e18] shadow-2xl shadow-black/80 overflow-hidden cursor-pointer group animate-in slide-in-from-bottom-5 duration-300 select-none"
+        className="fixed bottom-20 right-4 z-50 w-36 h-52 bg-[#12131c] rounded-2xl border-2 border-[var(--nova-accent-color)] shadow-2xl shadow-black/80 overflow-hidden cursor-pointer group animate-in slide-in-from-bottom-5 duration-300 select-none"
       >
         {/* Remote Video Thumbnail */}
         <div className="absolute inset-0">
@@ -367,7 +367,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           /* Camera Off State */
           <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#12131c] text-white/60 text-center">
             <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center mb-1 text-white/40">
-              <VideoOff className="w-4 h-4 text-[#ff4e18]" />
+              <VideoOff className="w-4 h-4 text-[var(--nova-accent-color)]" />
             </div>
             <span className="text-[10px] font-semibold text-white/70">Camera Off</span>
             <span className="text-[8px] text-white/40 mt-0.5">You are muted</span>
@@ -377,7 +377,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
       {/* FILTER NOTIFICATION PILL */}
       {activeFilter !== 'none' && (
-        <div className="absolute top-20 left-4 z-30 bg-black/50 backdrop-blur-md border border-[#ff4e18]/40 px-2.5 py-1 rounded-full text-[10px] font-semibold text-[#ff4e18] flex items-center gap-1.5 animate-in fade-in">
+        <div className="absolute top-20 left-4 z-30 bg-black/50 backdrop-blur-md border border-[var(--nova-accent-color)]/40 px-2.5 py-1 rounded-full text-[10px] font-semibold text-[var(--nova-accent-color)] flex items-center gap-1.5 animate-in fade-in">
           <Sparkles className="w-3 h-3" />
           <span>Filter: {activeFilter.toUpperCase()}</span>
         </div>
@@ -488,7 +488,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             }}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
               activeFilter !== 'none'
-                ? 'bg-[#ff4e18] text-white shadow-md shadow-[#ff4e18]/40'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/40'
                 : 'bg-white/15 hover:bg-white/25 text-white'
             }`}
             title={`Video Filter (Current: ${activeFilter})`}

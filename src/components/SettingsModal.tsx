@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, Globe, DollarSign } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -120,6 +121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   });
   const [backupModal, setBackupModal] = useState<{ open: boolean; mode: 'export' | 'import' } | null>(null);
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
   const [exportPassphrase, setExportPassphrase] = useState('');
   const [importPassphrase, setImportPassphrase] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -564,6 +566,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => setCryptoModalOpen(true)}
+              disabled={premium}
+              className="w-full py-2 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 hover:text-white text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <DollarSign className="w-3.5 h-3.5 mr-1.5" />
+              {t('premium.cryptoTitle')}
+            </button>
           </div>
 
           <SectionHeader
@@ -953,6 +964,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
         </div>
+      )}
+
+      {/* Crypto Premium Checkout Modal */}
+      {cryptoModalOpen && (
+        <CryptoCheckoutModal
+          isOpen={cryptoModalOpen}
+          onClose={() => setCryptoModalOpen(false)}
+          onSuccess={() => {
+            setCryptoModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

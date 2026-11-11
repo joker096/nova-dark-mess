@@ -1,304 +1,1063 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Search, Paperclip, Volume2, VolumeX, MoreVertical, MessageCircle } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  Search,
+  Paperclip,
+  Volume2,
+  VolumeX,
+  MessageCircle,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Clock,
+  Trash2,
+  Copy,
+  Check,
+  Radio,
+  MoreVertical,
+  SmilePlus,
+} from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
-import { ChannelPost } from '../types/messenger';
+import type {
+  ChannelDraft,
+  ChannelInfo,
+  ChannelPost,
+  ChannelPostDraft,
+} from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { useLanguage } from '../context/LanguageContext';
+import { usePremium } from '../hooks/usePremium';
+import { ChannelAvatar } from './ChannelAvatar';
+import { ChannelSwitcherModal } from './ChannelSwitcherModal';
+import { ChannelCreateModal } from './ChannelCreateModal';
+import { ChannelPostComposerModal } from './ChannelPostComposerModal';
+import {
+  createDefaultChannel,
+  dayKey,
+  isPostScheduled,
+  startOfDay,
+  KYIV_CHANNEL_ID,
+} from '../lib/social/store';
 
 interface ChannelScreenProps {
   onBack: () => void;
+  channelId?: string;
+  channels?: ChannelInfo[];
+  posts?: ChannelPost[];
+  now?: number;
+  onCreateChannel?: (draft: ChannelDraft) => ChannelInfo | void;
+  onSelectChannel?: (channelId: string) => void;
+  onDeleteChannel?: (channelId: string) => void;
+  onCreatePost?: (channelId: string, draft: ChannelPostDraft) => ChannelPost | void;
+  onDeletePost?: (postId: string) => void;
+  onToggleReaction?: (postId: string, emoji: string) => void;
+  onToggleSound?: (channelId: string, enabled: boolean) => void;
 }
 
-export const ChannelScreen: React.FC<ChannelScreenProps> = ({ onBack }) => {
-  const { t } = useLanguage();
-  const [selectedDate, setSelectedDate] = useState<number>(24);
-  const [posts, setPosts] = useState<ChannelPost[]>(MOCK_CHANNEL_POSTS);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+const POST_REACTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉', '😍', '😎', '🙏', '💯', '🤔', '😢', '😡', '🎊', '🍻', '🎁', '👀', '💪'];
+const MONTHS = [
+  { value: 0, label: 'January' },
+  { value: 1, label: 'February' },
+  { value: 2, label: 'March' },
+  { value: 3, label: 'April' },
+  { value: 4, label: 'May' },
+  { value: 5, label: 'June' },
+  { value: 6, label: 'July' },
+  { value: 7, label: 'August' },
+  { value: 8, label: 'September' },
+  { value: 9, label: 'October' },
+  { value: 10, label: 'November' },
+  { value: 11, label: 'December' },
+];
+const HEADER_AUTO_COLLAPSE_OFFSET = 64;
+const HEADER_SCROLL_DELTA = 12;
+const HEADER_MANUAL_GRACE_MS = 700;
+
+export const ChannelScreen: React.FC<ChannelScreenProps> = ({
+  onBack,
+  channelId,
+  channels,
+  posts,
+  now = Date.now(),
+  onCreateChannel,
+  onSelectChannel,
+  onDeleteChannel,
+  onCreatePost,
+  onDeletePost,
+  onToggleReaction,
+  onToggleSound,
+}) => {
+  const { t, language } = useLanguage();
+  const { checkout, canUse } = usePremium();
+  const fallbackChannels = useMemo(() => [createDefaultChannel()], []);
+  const availableChannels = channels ?? fallbackChannels;
+  const channel = availableChannels.find((item) => item.id === channelId) ?? availableChannels[0];
+
+  const sourcePosts = useMemo(() => {
+    if (posts !== undefined) return posts;
+    return channel?.id === KYIV_CHANNEL_ID ? MOCK_CHANNEL_POSTS : [];
+  }, [posts, channel?.id]);
+
+  const postCreatedAt = (post: ChannelPost): number => {
+    if (typeof post.createdAt === 'number') return post.createdAt;
+    const date = startOfDay(now);
+    if (post.dateKey !== new Date(now).getDate()) {
+      date.setDate(date.getDate() - 1);
+    }
+    const [hours, minutes] = post.time.split(':').map(Number);
+    date.setHours(hours, minutes, 0, 0);
+    return date.getTime();
+  };
+
+  const channelPosts = useMemo(
+    () =>
+      sourcePosts.filter(
+        (post) => (post.channelId ?? KYIV_CHANNEL_ID) === channel?.id,
+      ),
+    [sourcePosts, channel?.id],
+  );
+
+  const latestDay = useMemo(() => {
+    const days = channelPosts.map((post) => dayKey(postCreatedAt(post)));
+    return days.length > 0 ? Math.max(...days) : dayKey(now);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelPosts, now]);
+
+  const [selectedDay, setSelectedDay] = useState<number>(latestDay);
+  const [focusDate, setFocusDate] = useState<number>(dayKey(startOfDay(now)));
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const dateScrubberRef = useRef<HTMLDivElement>(null);
+  const [localSoundEnabled, setLocalSoundEnabled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [postComposerOpen, setPostComposerOpen] = useState(false);
+  const [postMenuId, setPostMenuId] = useState<string | null>(null);
+  const [reactionPickerPostId, setReactionPickerPostId] = useState<string | null>(null);
+  const [customReactionEmoji, setCustomReactionEmoji] = useState('');
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const toastTimer = useRef<number | null>(null);
+  const postsScrollRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollTopRef = useRef(0);
+  const lastManualToggleRef = useRef(0);
+  const manualCollapsedRef = useRef(false);
+  const scrollDirectionRef = useRef<'up' | 'down' | null>(null);
+  const scrollAccumulatorRef = useRef(0);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2000);
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current !== null) {
+        window.clearTimeout(toastTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!postMenuId) return undefined;
+    const closeMenu = () => setPostMenuId(null);
+    document.addEventListener('click', closeMenu);
+    return () => document.removeEventListener('click', closeMenu);
+  }, [postMenuId]);
+
+  useEffect(() => {
+    if (!reactionPickerPostId) return undefined;
+    const closePicker = () => setReactionPickerPostId(null);
+    document.addEventListener('click', closePicker);
+    return () => document.removeEventListener('click', closePicker);
+  }, [reactionPickerPostId]);
+
+  useEffect(() => {
+    setReactionPickerPostId(null);
+  }, [selectedDay]);
+
+  useEffect(() => {
+    const scrollNode = postsScrollRef.current;
+    if (scrollNode) {
+      scrollNode.scrollTop = 0;
+    }
+    lastScrollTopRef.current = 0;
+    manualCollapsedRef.current = false;
+    scrollDirectionRef.current = null;
+    scrollAccumulatorRef.current = 0;
+    setHeaderCollapsed(false);
+  }, [selectedDay]);
+
+  const toggleHeader = () => {
+    const nextCollapsed = !headerCollapsed;
+    lastManualToggleRef.current = Date.now();
+    manualCollapsedRef.current = nextCollapsed;
+    scrollDirectionRef.current = null;
+    scrollAccumulatorRef.current = 0;
+    setHeaderCollapsed(nextCollapsed);
+    setPostMenuId(null);
+    setReactionPickerPostId(null);
   };
 
-  const dates = [
-    { day: 20, hasDot: false },
-    { day: 21, hasDot: true },
-    { day: 22, hasDot: false },
-    { day: 23, hasDot: false },
-    { day: 24, hasDot: false },
-    { day: 25, hasDot: false },
-    { day: 26, hasDot: false },
-  ];
+  const handlePostsScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = event.currentTarget.scrollTop;
+    const delta = scrollTop - lastScrollTopRef.current;
+    lastScrollTopRef.current = scrollTop;
+
+    if (Date.now() - lastManualToggleRef.current < HEADER_MANUAL_GRACE_MS) {
+      return;
+    }
+
+    if (delta === 0) {
+      return;
+    }
+
+    const direction = delta > 0 ? 'down' : 'up';
+    if (direction !== scrollDirectionRef.current) {
+      scrollDirectionRef.current = direction;
+      scrollAccumulatorRef.current = 0;
+    }
+    scrollAccumulatorRef.current += Math.abs(delta);
+
+    if (scrollTop <= 8) {
+      scrollAccumulatorRef.current = 0;
+      if (!manualCollapsedRef.current) {
+        setHeaderCollapsed(false);
+      }
+      return;
+    }
+
+    if (
+      scrollDirectionRef.current === 'down' &&
+      scrollAccumulatorRef.current >= HEADER_SCROLL_DELTA &&
+      scrollTop > HEADER_AUTO_COLLAPSE_OFFSET
+    ) {
+      scrollAccumulatorRef.current = 0;
+      setHeaderCollapsed(true);
+    } else if (
+      scrollDirectionRef.current === 'up' &&
+      scrollAccumulatorRef.current >= HEADER_SCROLL_DELTA &&
+      !manualCollapsedRef.current
+    ) {
+      scrollAccumulatorRef.current = 0;
+      setHeaderCollapsed(false);
+    }
+  };
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    toastTimer.current = window.setTimeout(() => setToastMessage(null), 2200);
+  };
+
+  const weekDays = useMemo(() => {
+    const focus = new Date(focusDate);
+    const year = focus.getFullYear();
+    const month = focus.getMonth();
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+    for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+      days.push(new Date(d));
+    }
+    return days;
+  }, [focusDate]);
+
+  useEffect(() => {
+    if (!dateScrubberRef.current) return;
+    const index = weekDays.findIndex((d) => dayKey(d) === selectedDay);
+    if (index === -1) return;
+    const container = dateScrubberRef.current;
+    const target = container.children[index];
+    if (!target) return;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const offset = targetRect.left - containerRect.left - containerRect.width / 2 + targetRect.width / 2;
+    if (typeof container.scrollBy === 'function') {
+      container.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  }, [selectedDay, weekDays]);
+
+  const daysWithPosts = useMemo(
+    () => new Set(channelPosts.map((post) => dayKey(postCreatedAt(post)))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [channelPosts, now],
+  );
+
+  const dayPosts = useMemo(
+    () =>
+      channelPosts
+        .filter((post) => dayKey(postCreatedAt(post)) === selectedDay)
+        .filter((post) => Boolean(channel?.isOwned) || !isPostScheduled(post, now))
+        .sort((a, b) => postCreatedAt(a) - postCreatedAt(b)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [channelPosts, selectedDay, channel?.isOwned, now],
+  );
+
+  const query = searchQuery.trim().toLowerCase();
+  const displayPosts = dayPosts.filter(
+    (post) =>
+      !query ||
+      post.title.toLowerCase().includes(query) ||
+      post.text.toLowerCase().includes(query),
+  );
+
+  const monthLabel = new Intl.DateTimeFormat(language, {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(focusDate));
+
+  const dateLabel = new Intl.DateTimeFormat(language, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(selectedDay));
+
+  const shiftMonth = (offset: number) => {
+    const next = new Date(focusDate);
+    next.setMonth(next.getMonth() + offset);
+    setFocusDate(dayKey(startOfDay(next)));
+  };
+
+  const focus = new Date(focusDate);
+  const focusMonth = focus.getMonth();
+  const focusYear = focus.getFullYear();
+
+  const nowYear = now ? new Date(now).getFullYear() : new Date().getFullYear();
+  const YEAR_OPTIONS = useMemo(
+    () => Array.from({ length: 21 }, (_, i) => nowYear - 10 + i),
+    [nowYear],
+  );
+
+  const setFocusMonth = (month: number) => {
+    setFocusDate(dayKey(new Date(focusYear, month, 1)));
+  };
+
+  const setFocusYear = (year: number) => {
+    setFocusDate(dayKey(new Date(year, focusMonth, 1)));
+  };
+
+  const applyMonthPicker = () => {
+    setIsMonthPickerOpen(false);
+  };
+
+  const handleJumpToMonth = () => {
+    if (!canUse('date_picker')) {
+      checkout();
+      return;
+    }
+    setIsMonthPickerOpen((open) => !open);
+  };
+
+  const goToday = () => {
+    const today = dayKey(now);
+    setSelectedDay(today);
+    setFocusDate(today);
+  };
+
+  const handleSelectChannel = (id: string) => {
+    onSelectChannel?.(id);
+  };
+
+  const handleCreateChannel = (draft: ChannelDraft) => {
+    const created = onCreateChannel?.(draft);
+    if (created && 'id' in created) {
+      onSelectChannel?.(created.id);
+      setSelectedDay(dayKey(now));
+      setFocusDate(dayKey(now));
+    }
+    showToast(t('channel.channelCreated'));
+  };
+
+  const handlePublishPost = (draft: ChannelPostDraft) => {
+    if (!channel) return;
+    onCreatePost?.(channel.id, draft);
+    const target = draft.scheduledFor ?? Date.now();
+    setSelectedDay(dayKey(target));
+    setFocusDate(dayKey(target));
+    if (draft.scheduledFor) {
+      showToast(
+        t('channel.postScheduled', {
+          date: new Intl.DateTimeFormat(language, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date(draft.scheduledFor)),
+        }),
+      );
+    } else {
+      showToast(t('channel.postPublished'));
+    }
+  };
 
   const handleToggleReaction = (postId: string, emoji: string) => {
-    setPosts((prev) =>
-      prev.map((post) => {
-        if (post.id !== postId) return post;
-        return {
-          ...post,
-          reactions: post.reactions.map((r) => {
-            if (r.emoji === emoji) {
-              const userReacted = !r.userReacted;
-              return {
-                ...r,
-                userReacted,
-                count: userReacted ? r.count + 1 : r.count - 1,
-              };
-            }
-            return r;
-          }),
-        };
-      })
-    );
+    onToggleReaction?.(postId, emoji);
+    if (!onToggleReaction) {
+      showToast(t('channel.reactionAdded'));
+    }
   };
 
-  const filteredPosts = posts.filter((p) => {
-    const matchesDate = selectedDate ? p.dateKey === selectedDate : true;
-    const matchesSearch = searchQuery
-      ? p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.text.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    return matchesDate && matchesSearch;
-  });
+  const soundEnabled = onToggleSound
+    ? Boolean(channel?.soundEnabled)
+    : localSoundEnabled;
+
+  const toggleSound = () => {
+    if (!channel) return;
+    const next = !soundEnabled;
+    setLocalSoundEnabled(next);
+    onToggleSound?.(channel.id, next);
+    showToast(next ? t('channel.soundOn') : t('channel.soundOff'));
+  };
+
+  if (!channel) {
+    return (
+      <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none">
+        <DoodleBackground />
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center p-6 text-center">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#181921] text-[var(--nova-accent-color)]">
+            <Radio className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-white">{t('channel.noChannels')}</p>
+          <p className="mt-1 max-w-[260px] text-xs text-[#828795]">
+            {t('channel.noChannelsSubtitle')}
+          </p>
+          <button
+            type="button"
+            onClick={() => setCreateChannelOpen(true)}
+            className="mt-4 flex items-center gap-1.5 rounded-full bg-[var(--nova-accent-color)] px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('channel.createChannel')}
+          </button>
+        </div>
+
+        <ChannelCreateModal
+          isOpen={createChannelOpen}
+          onClose={() => setCreateChannelOpen(false)}
+          onCreate={handleCreateChannel}
+        />
+      </div>
+    );
+  }
+
+  const subscribersLabel = new Intl.NumberFormat(language, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(channel.subscribers);
 
   return (
-    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-hidden">
-      <DoodleBackground />
-
+    <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none">
       {/* Floating Header Card with Date Scrubber */}
-      <div className="p-3 shrink-0 relative z-20">
-        <div className="bg-[#14151c]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-3 shadow-xl shadow-black/70">
+      <div className="relative z-20 shrink-0 p-3">
+          <div
+            className={`relative overflow-hidden rounded-3xl border border-white/10 shadow-xl shadow-black/70 backdrop-blur-xl transition-all duration-300 ${
+              headerCollapsed ? 'p-2' : 'p-3 min-h-[200px]'
+            } bg-[#14151c]/70`}
+          >
           {/* Channel Top row */}
-          <div className="flex items-center justify-between mb-3">
+          <div
+            className={`flex items-center justify-between gap-2 ${
+              headerCollapsed ? '' : 'mb-2'
+            }`}
+          >
             <button
               onClick={onBack}
-              className="w-9 h-9 rounded-full bg-[#1e2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer md:hidden shrink-0"
-              aria-label="Back"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/90 transition active:scale-95 md:hidden"
+              aria-label={t('common.back')}
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
 
-            <div className="text-center">
-              <h2 className="font-bold text-[16px] text-white tracking-tight">
-                Real Kyiv Life
+            <div className="min-w-0 flex-1 text-center">
+              <h2 className="truncate text-[16px] font-bold tracking-tight text-white">
+                {channel.name}
               </h2>
-              <p className="text-[11px] text-[#868b98]">3,495,530 subscribers</p>
+              <p className="text-[11px] text-[#868b98]">
+                {t('channel.subscribersCompact', { value: subscribersLabel })}
+              </p>
             </div>
 
-            {/* Red trident coat of arms avatar */}
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#e11d48] to-[#ff4e18] flex items-center justify-center shadow-lg shadow-red-950/40 border border-white/15">
-              <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
-                <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
-              </svg>
-            </div>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={soundEnabled}
+              aria-label={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
+              title={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+                soundEnabled
+                  ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
+                  : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-4 w-4" />
+              ) : (
+                <VolumeX className="h-4 w-4" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSwitcherOpen(true)}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 pr-1.5 transition hover:bg-white/10 active:scale-95"
+              aria-label={t('channel.switchChannel')}
+              title={t('channel.switchChannel')}
+            >
+              <ChannelAvatar
+                avatar={channel.avatar}
+                name={channel.name}
+                size="sm"
+                className="opacity-80"
+              />
+              <ChevronsUpDown className="h-3.5 w-3.5 text-white/45" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleHeader}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+              aria-label={
+                headerCollapsed
+                  ? t('channel.expandPanel')
+                  : t('channel.collapsePanel')
+              }
+              title={
+                headerCollapsed
+                  ? t('channel.expandPanel')
+                  : t('channel.collapsePanel')
+              }
+              aria-expanded={!headerCollapsed}
+              aria-controls="channel-date-scrubber"
+            >
+              {headerCollapsed ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronUp className="h-4 w-4" />
+              )}
+            </button>
           </div>
 
-          {/* Interactive Date Scrubber / Timeline Ruler */}
-          <div className="pt-1 px-1">
-            <div className="flex items-center justify-between relative px-2">
-              {/* Ruler horizontal line with ticks */}
-              <div className="absolute inset-x-4 top-[17px] h-[1px] bg-white/10 z-0 pointer-events-none" />
+          {/* Date Scrubber / Timeline Ruler */}
+          {!headerCollapsed && (
+            <div id="channel-date-scrubber" className="w-full px-1">
+              <div className="mb-1 flex items-center justify-between px-1">
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(-1)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition hover:bg-white/5 hover:text-white"
+                  aria-label={t('channel.previousMonth')}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
 
-              {dates.map((item) => {
-                const isSelected = selectedDate === item.day;
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleJumpToMonth}
+                    className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 transition hover:text-white"
+                    aria-label={t('channel.jumpToMonth')}
+                    disabled={!canUse('date_picker')}
+                  >
+                    {monthLabel}
+                    {canUse('date_picker') && (
+                      <ChevronDown className="h-3 w-3 text-white/40" />
+                    )}
+                    {!canUse('date_picker') && (
+                      <span className="text-[8px] opacity-70">(Premium)</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToday}
+                    className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold text-white/55 transition hover:border-[var(--nova-accent-color)]/40 hover:text-white"
+                  >
+                    {t('channel.today')}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(1)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition hover:bg-white/5 hover:text-white"
+                  aria-label={t('channel.nextMonth')}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {canUse('date_picker') && isMonthPickerOpen && (
+                <div className="mt-1 px-1 flex items-center gap-2">
+                  <label className="text-[9px] text-[#868b98] uppercase tracking-wider">Month</label>
+                  <select
+                    value={String(focusMonth)}
+                    onChange={(e) => setFocusMonth(Number(e.target.value))}
+                    className="rounded border border-white/10 bg-[#1e2029]/60 px-2 py-1 text-[11px] text-white outline-none"
+                  >
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="text-[9px] text-[#868b98] uppercase tracking-wider">Year</label>
+                  <select
+                    value={String(focusYear)}
+                    onChange={(e) => setFocusYear(Number(e.target.value))}
+                    className="rounded border border-white/10 bg-[#1e2029]/60 px-2 py-1 text-[11px] text-white outline-none"
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={applyMonthPicker}
+                    className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+
+              <div
+                ref={dateScrubberRef}
+                className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap"
+                onWheel={(e) => {
+                  if (e.deltaX === 0 && e.deltaY !== 0) {
+                    e.preventDefault();
+                    dateScrubberRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
+                  }
+                }}
+              >
+                {weekDays.map((date) => {
+                  const key = dayKey(date);
+                const isSelected = selectedDay === key;
+                const isToday = dayKey(now) === key;
+                const hasPosts = daysWithPosts.has(key);
+                const weekday = new Intl.DateTimeFormat(language, {
+                  weekday: 'short',
+                }).format(date);
+
                 return (
                   <button
-                    key={item.day}
-                    onClick={() => setSelectedDate(item.day)}
-                    className="relative z-10 flex flex-col items-center group cursor-pointer focus:outline-none transition active:scale-95"
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedDay(key)}
+                    className="shrink-0 min-w-[48px] group relative z-10 flex flex-col items-center transition active:scale-95"
+                    aria-label={new Intl.DateTimeFormat(language, {
+                      dateStyle: 'full',
+                    }).format(date)}
+                    aria-pressed={isSelected}
                   >
-                    <div
-                      className={`text-[12px] font-semibold transition px-2 py-0.5 rounded-lg ${
-                        isSelected
-                          ? 'bg-[#22242f] text-white border border-white/15 shadow-sm scale-110'
-                          : 'text-[#6e727e] group-hover:text-white/80'
+                    <span
+                      className={`text-[9px] font-semibold uppercase tracking-wide ${
+                        isSelected ? 'text-white/65' : 'text-white/30'
                       }`}
                     >
-                      {item.day}
-                    </div>
-
-                    {/* Ruler tick mark */}
+                      {weekday}
+                    </span>
                     <div
-                      className={`w-[1px] transition my-1 ${
+                      className={`mt-0.5 rounded-lg border px-2 py-0.5 text-[12px] font-semibold transition ${
                         isSelected
-                          ? 'h-3 bg-[#ff4e18]'
+                          ? 'scale-110 border-white/15 bg-[#22242f] text-white shadow-sm'
+                          : 'border-transparent text-[#6e727e] group-hover:text-white/80'
+                      } ${isToday && !isSelected ? 'ring-1 ring-inset ring-[var(--nova-accent-color)]/50' : ''}`}
+                    >
+                      {date.getDate()}
+                    </div>
+                    <div
+                      className={`my-1 h-[1px] w-[1px] transition ${
+                        isSelected
+                          ? 'h-3 bg-[var(--nova-accent-color)]'
                           : 'h-1.5 bg-white/20 group-hover:bg-white/40'
                       }`}
                     />
-
-                    {/* Dot indicator if has unread/special news */}
-                    {item.hasDot && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff4e18] shadow-sm shadow-[#ff4e18]" />
-                    )}
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        hasPosts
+                          ? 'bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]'
+                          : 'bg-transparent'
+                      }`}
+                    />
                   </button>
                 );
               })}
             </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Search Bar when toggled */}
       {searchOpen && (
-        <div className="px-4 pb-2 z-20">
+        <div className="relative z-20 px-4 pb-2">
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('channel.searchFeed')}
-            className="w-full px-4 py-2 bg-[#171820] border border-white/10 rounded-2xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#ff4e18]/60"
-            autoFocus
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t('channel.searchFeedPlaceholder')}
+            className="w-full rounded-2xl border border-white/10 bg-[#171820] px-4 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
       )}
 
       {/* Posts Stream */}
-      <div className="flex-1 overflow-y-auto px-4 py-1 space-y-4 relative z-10 pb-20">
-        {filteredPosts.length === 0 ? (
-          <div className="text-center py-12 text-[#717682] text-sm">
-            No posts found for day {selectedDate}. Try selecting another date on the ruler!
+      <div
+        ref={postsScrollRef}
+        onScroll={handlePostsScroll}
+        data-testid="channel-posts-scroll"
+        className="relative z-10 flex-1 overflow-y-auto px-4 py-1 pb-20"
+      >
+        <div className="mb-2 flex items-center justify-between px-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#868b98]">
+            {dateLabel}
+          </span>
+          <span className="text-[10px] text-[#636875]">
+            {t('channel.postsCount', { count: displayPosts.length })}
+          </span>
+        </div>
+
+        {displayPosts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/5 bg-[#181921] text-white/30">
+              <Radio className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-semibold text-white/80">
+              {query ? t('channel.noSearchResults') : t('channel.noPosts')}
+            </p>
+            <p className="mt-1 max-w-[230px] text-xs text-[#717682]">
+              {query
+                ? t('channel.noSearchResultsSubtitle')
+                : channel.isOwned
+                  ? t('channel.noPostsSubtitle')
+                  : t('channel.noPostsSubtitleOther')}
+            </p>
+            {!query && channel.isOwned && onCreatePost && (
+              <button
+                type="button"
+                onClick={() => setPostComposerOpen(true)}
+                className="mt-3 flex items-center gap-1.5 rounded-full bg-[var(--nova-accent-color)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t('channel.newPost')}
+              </button>
+            )}
           </div>
         ) : (
-          filteredPosts.map((post) => (
-            <div key={post.id} className="relative flex items-start gap-2.5">
-              {/* Left Timestamp Margin */}
-              <div className="text-[11px] font-medium text-[#717682] pt-3 shrink-0 w-10 text-right tabular-nums">
-                {post.time}
-              </div>
+          <div className="space-y-4">
+            {displayPosts.map((post) => {
+              const scheduled = isPostScheduled(post, now);
+              const postCardClassName = scheduled
+                ? 'bg-[#171820]/80 border border-dashed border-[var(--nova-accent-color)]/40 shadow-md shadow-black/40'
+                : 'bg-[#171820]/95 border border-white/5 shadow-md shadow-black/50';
 
-              {/* Post Card */}
-              <div className="flex-1 bg-[#171820]/95 border border-white/5 rounded-[24px] p-4 text-white shadow-md shadow-black/50 space-y-3">
-                {/* Media Image Banner if present */}
-                {post.image && (
-                  <div className="rounded-[18px] overflow-hidden relative bg-[#22242e] aspect-[16/9] group">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    />
-                    {post.imageBadge && (
-                      <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold text-white border border-white/10">
-                        {post.imageBadge}
+              return (
+                <div key={post.id} className="relative flex items-start gap-2.5">
+                  {/* Left Timestamp Margin */}
+                  <div className="w-10 shrink-0 pt-3 text-right text-[11px] font-medium tabular-nums text-[#717682]">
+                    {post.time}
+                  </div>
+
+                  {/* Post Card */}
+                  <div className={`flex-1 space-y-3 rounded-[24px] p-4 text-white ${postCardClassName}`}>
+                    {scheduled && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--nova-accent-color)]">
+                        <Clock className="h-3 w-3" />
+                        {t('channel.scheduledBadge')} ·{' '}
+                        {new Intl.DateTimeFormat(language, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        }).format(new Date(post.scheduledFor ?? postCreatedAt(post)))}
                       </div>
                     )}
-                    {/* Carousel indicator dots */}
-                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+
+                    {/* Media Image Banner if present */}
+                    {post.image && (
+                      <div className="group relative aspect-[16/9] overflow-hidden rounded-[18px] bg-[#22242e]">
+                        <img
+                          src={post.image}
+                          alt={post.title}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                        {post.imageBadge && (
+                          <div className="absolute bottom-2.5 left-2.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+                            {post.imageBadge}
+                          </div>
+                        )}
+                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Title & menu */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-[14.5px] font-bold leading-snug text-white">
+                        {post.title}
+                      </h3>
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPostMenuId((current) =>
+                              current === post.id ? null : post.id,
+                            );
+                          }}
+                          className="rounded-full p-1 text-white/40 transition hover:bg-white/5 hover:text-white"
+                          aria-label={t('common.more')}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+
+                        {postMenuId === post.id && (
+                          <div
+                            className="absolute right-0 top-7 z-20 w-40 rounded-xl border border-white/10 bg-[#1b1c28] p-1 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                showToast(t('channel.linkCopied'));
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {t('common.copy')}
+                            </button>
+                            {channel.isOwned && onDeletePost && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeletePost(post.id);
+                                  setPostMenuId(null);
+                                  showToast(t('channel.postDeleted'));
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/10"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                {t('channel.deletePost')}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Body Text */}
+                    {post.text && (
+                      <p className="text-[13px] font-normal leading-relaxed text-[#a0a5b2]">
+                        {post.text}
+                      </p>
+                    )}
+
+                    {/* Reactions & Comments Row */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-xs font-medium text-[#8c919d]">
+                        <MessageCircle className="h-3.5 w-3.5 text-[#8c919d]" />
+                        <span>{post.commentsCount}</span>
+                      </div>
+
+                      {post.reactions.map((reaction, index) => (
+                        <button
+                          key={`${reaction.emoji}-${index}`}
+                          type="button"
+                          onClick={() => handleToggleReaction(post.id, reaction.emoji)}
+                          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition active:scale-90 ${
+                            reaction.userReacted
+                              ? 'border border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 font-semibold text-white'
+                              : 'border border-white/5 bg-[#1e2028] text-[#a6abb8] hover:bg-[#252834]'
+                          }`}
+                        >
+                          <span className="text-[13px]">{reaction.emoji}</span>
+                          <span className="text-[11px] font-medium tabular-nums">
+                            {reaction.count}
+                          </span>
+                        </button>
+                      ))}
+
+                      {onToggleReaction && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setReactionPickerPostId((current) =>
+                                current === post.id ? null : post.id,
+                              );
+                            }}
+                            className={`flex h-7 w-7 items-center justify-center rounded-full border transition active:scale-90 ${
+                              reactionPickerPostId === post.id
+                                ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]'
+                                : 'border-white/5 bg-[#1e2028] text-[#8c919d] hover:bg-[#252834] hover:text-white'
+                            }`}
+                            aria-label={t('common.react')}
+                            title={t('common.react')}
+                            aria-expanded={reactionPickerPostId === post.id}
+                          >
+                            <SmilePlus className="h-3.5 w-3.5" />
+                          </button>
+
+                          {reactionPickerPostId === post.id && (
+                            <div
+                              className="absolute bottom-9 left-0 z-30 grid w-[152px] grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-[#1b1c28] p-1.5 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {POST_REACTIONS.map((emoji) => {
+                                const reacted = post.reactions.some(
+                                  (reaction) =>
+                                    reaction.emoji === emoji && reaction.userReacted,
+                                );
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                      handleToggleReaction(post.id, emoji);
+                                      setReactionPickerPostId(null);
+                                    }}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-sm transition active:scale-90 ${
+                                      reacted
+                                        ? 'bg-[var(--nova-accent-color)]/20 ring-1 ring-[var(--nova-accent-color)]/50'
+                                        : 'hover:bg-white/10'
+                                    }`}
+                                    aria-label={`${t('common.react')} ${emoji}`}
+                                    aria-pressed={reacted}
+                                  >
+                                    {emoji}
+                                  </button>
+                                );
+                              })}
+                              {/* Custom reaction input */}
+                              <div className="col-span-4 flex items-center gap-1 pt-1">
+                                <input
+                                  type="text"
+                                  value={customReactionEmoji}
+                                  onChange={(e) => setCustomReactionEmoji(e.target.value)}
+                                  maxLength={2}
+                                  className="flex-1 bg-[#1e2028] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder-[#6e727e] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                                  placeholder="❤️"
+                                  title="Свой эмодзи"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const emoji = customReactionEmoji.trim();
+                                    if (!emoji) return;
+                                    handleToggleReaction(post.id, emoji);
+                                    setCustomReactionEmoji('');
+                                    setReactionPickerPostId(null);
+                                  }}
+                                  disabled={!customReactionEmoji.trim()}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl text-sm transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    customReactionEmoji.trim()
+                                      ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] ring-1 ring-[var(--nova-accent-color)]/50'
+                                      : 'hover:bg-white/10 text-white/60'
+                                  }"
+                                  aria-label="Добавить свой эмодзи"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {post.reactions.some((reaction) => reaction.userReacted) && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-[var(--nova-accent-color)]">
+                          <Check className="h-3 w-3" />
+                          {t('channel.youReacted')}
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
-
-                {/* Title & 3-dots */}
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-[14.5px] text-white leading-snug">
-                    {post.title}
-                  </h3>
-                  <button
-                    onClick={() => showToast('Post link copied to clipboard')}
-                    className="text-white/40 hover:text-white p-1 rounded-full transition cursor-pointer"
-                    title={t('common.reply')}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
                 </div>
-
-                {/* Body Text */}
-                <p className="text-[13px] text-[#a0a5b2] font-normal leading-relaxed">
-                  {post.text}
-                </p>
-
-                {/* Reactions & Comments Row */}
-                <div className="pt-1 flex items-center gap-1.5 flex-wrap">
-                  {/* Comments count pill */}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1e2028] text-xs text-[#8c919d] border border-white/5 font-medium">
-                    <MessageCircle className="w-3.5 h-3.5 text-[#8c919d]" />
-                    <span>{post.commentsCount}</span>
-                  </div>
-
-                  {/* Reaction Pills with interactive counters */}
-                  {post.reactions.map((reaction, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleToggleReaction(post.id, reaction.emoji)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition cursor-pointer active:scale-90 ${
-                        reaction.userReacted
-                          ? 'bg-[#ff4e18]/20 border border-[#ff4e18]/50 text-white font-semibold'
-                          : 'bg-[#1e2028] hover:bg-[#252834] text-[#a6abb8] border border-white/5'
-                      }`}
-                    >
-                      <span className="text-[13px]">{reaction.emoji}</span>
-                      <span className="text-[11px] font-medium tabular-nums">
-                        {reaction.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+        <div className="fixed left-1/2 top-14 z-50 -translate-x-1/2 rounded-full border border-[var(--nova-accent-color)]/50 bg-[#1e202a]/95 px-3.5 py-1.5 text-xs text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
           {toastMessage}
         </div>
       )}
 
       {/* Bottom Action Bar */}
-      <div className="p-3 relative z-20 shrink-0">
+      <div className="relative z-20 shrink-0 p-3">
         <div className="flex items-center gap-2.5">
-          {/* Share/attach button */}
           <button
-            onClick={() => showToast('Channel share link copied')}
-            className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[#20222a] border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md"
+            type="button"
+            onClick={() => showToast(t('channel.linkCopied'))}
+            className="mr-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#181920]/95 text-white/70 shadow-md transition hover:bg-[#20222a] hover:text-white active:scale-95"
             title={t('common.share')}
           >
-            <Paperclip className="w-4 h-4" />
+            <Paperclip className="h-4 w-4" />
           </button>
 
-          {/* Center Sound Toggle Pill */}
           <button
-            onClick={() => setIsSoundEnabled(!isSoundEnabled)}
-            className={`flex-1 py-2.5 px-4 rounded-full border border-white/10 flex items-center justify-center gap-2 text-xs font-semibold transition active:scale-98 cursor-pointer shadow-md ${
-              isSoundEnabled
-                ? 'bg-[#ff4e18] text-white shadow-lg shadow-[#ff4e18]/25'
-                : 'bg-[#181920]/95 text-white/80 hover:text-white hover:bg-[#20222a]'
-            }`}
-          >
-            {isSoundEnabled ? (
-              <>
-                <Volume2 className="w-4 h-4 text-white" />
-                <span>Sound Enabled</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="w-4 h-4 text-white/70" />
-                <span>Enable Sound</span>
-              </>
-            )}
-          </button>
-
-          {/* Search Button */}
-          <button
-            onClick={() => setSearchOpen(!searchOpen)}
-            className={`w-11 h-11 rounded-full border border-white/10 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
+            type="button"
+            onClick={() => setSearchOpen((current) => !current)}
+            className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 shadow-md transition active:scale-95 ${
               searchOpen
-                ? 'bg-[#ff4e18] text-white'
-                : 'bg-[#181920]/95 text-white/70 hover:text-white hover:bg-[#20222a]'
+                ? 'bg-[var(--nova-accent-color)] text-white'
+                : 'bg-[#181920]/95 text-white/70 hover:bg-[#20222a] hover:text-white'
             }`}
             title={t('common.search')}
           >
-            <Search className="w-4 h-4" />
+            <Search className="h-4 w-4" />
           </button>
+
+          {channel.isOwned && onCreatePost && (
+            <button
+              type="button"
+              onClick={() => setPostComposerOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
+              title={t('channel.newPost')}
+              aria-label={t('channel.newPost')}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
+
+      <ChannelSwitcherModal
+        isOpen={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        channels={availableChannels}
+        activeChannelId={channel.id}
+        onSelect={handleSelectChannel}
+        onCreateRequest={() => {
+          setSwitcherOpen(false);
+          setCreateChannelOpen(true);
+        }}
+        onDelete={(id) => {
+          onDeleteChannel?.(id);
+          showToast(t('channel.channelDeleted'));
+        }}
+      />
+
+      <ChannelCreateModal
+        isOpen={createChannelOpen}
+        onClose={() => setCreateChannelOpen(false)}
+        onCreate={handleCreateChannel}
+      />
+
+      <ChannelPostComposerModal
+        isOpen={postComposerOpen}
+        onClose={() => setPostComposerOpen(false)}
+        channelName={channel.name}
+        onPublish={handlePublishPost}
+      />
     </div>
   );
 };

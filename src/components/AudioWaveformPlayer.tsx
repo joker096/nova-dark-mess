@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Play, Pause } from 'lucide-react';
 import { VoiceNoteData } from '../types/messenger';
 
@@ -30,9 +30,10 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   const duration = voiceNote.durationSeconds || 10;
-  const waveform = voiceNote.waveform && voiceNote.waveform.length > 0
+  const waveform = useMemo(() => voiceNote.waveform && voiceNote.waveform.length > 0
     ? voiceNote.waveform
-    : [20, 35, 50, 70, 90, 60, 40, 65, 80, 95, 60, 45, 30, 50, 75, 85, 60, 40, 25, 35];
+    : [20, 35, 50, 70, 90, 60, 40, 65, 80, 95, 60, 45, 30, 50, 75, 85, 60, 40, 25, 35],
+  [voiceNote.waveform]);
 
   // Setup real audio if audioUrl is provided
   useEffect(() => {
@@ -53,7 +54,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
   }, [voiceNote.audioUrl, playbackSpeed, onPlaybackEnd]);
 
   // Soft synth sound generator when playing without audioUrl
-  const startAudioTone = (progress: number) => {
+  const startAudioTone = useCallback((progress: number) => {
     try {
       if (!audioCtxRef.current) {
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -68,7 +69,9 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         try {
           oscRef.current.stop();
           oscRef.current.disconnect();
-        } catch {}
+        } catch {
+          void 0;
+        }
       }
 
       const barIndex = Math.min(
@@ -96,7 +99,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
     } catch {
       // AudioContext may be restricted by browser policy before user interaction
     }
-  };
+  }, [waveform]);
 
   const stopAudioTone = () => {
     try {
@@ -112,15 +115,19 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
             oscRef.current?.stop();
             oscRef.current?.disconnect();
             oscRef.current = null;
-          } catch {}
+          } catch {
+            void 0;
+          }
         }, 100);
       }
-    } catch {}
+    } catch {
+      void 0;
+    }
   };
 
   // Playback timer loop
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
 
     if (isPlaying) {
       if (audioElementRef.current) {
@@ -178,7 +185,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
       }
       stopAudioTone();
     };
-  }, [isPlaying, playbackSpeed, duration, waveform]);
+  }, [isPlaying, playbackSpeed, duration, waveform, currentTime, onPlaybackEnd, startAudioTone]);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -229,8 +236,8 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         onClick={togglePlay}
         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition active:scale-90 cursor-pointer shadow-md ${
           isMe
-            ? 'bg-[#ff4e18] hover:bg-[#ff5f2b] text-white shadow-[#ff4e18]/25'
-            : 'bg-[#ff4e18] hover:bg-[#ff5f2b] text-white shadow-black/40'
+            ? 'bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2b)] text-white shadow-[var(--nova-accent-color)]/25'
+            : 'bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2b)] text-white shadow-black/40'
         }`}
         aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
       >
@@ -256,7 +263,15 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
             return (
               <div
                 key={i}
+                role="button"
+                tabIndex={0}
                 onClick={(e) => handleSeek(e, i)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSeek(e as unknown as React.MouseEvent, i);
+                  }
+                }}
                 className="flex-1 flex items-center justify-center h-full group-hover:opacity-90"
               >
                 <div

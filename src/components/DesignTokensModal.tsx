@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Copy, Check, Palette, GitBranch, Terminal, FileCode2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeHtml } from '../lib/security/sanitize';
-import { useWheelScroll } from '../lib/ui/useWheelScroll';
+import { ScrollableRow } from '../lib/ui/ScrollableRow';
 
 export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
@@ -11,7 +11,7 @@ export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void 
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'repo' | 'tokens' | 'patch'>('repo');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const tokensTabRef = useWheelScroll();
+  const tokensTabRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
 
@@ -199,7 +199,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
         </div>
 
         {/* Tab Switcher */}
-        <div ref={tokensTabRef} className="px-5 pt-3 pb-2 border-b border-white/5 bg-[#14151c] flex items-center gap-2 overflow-x-auto scrollbar-x">
+        <ScrollableRow ref={tokensTabRef} wheelScroll={true} gap="2" data-testid="tokens-tabs" className="px-5 pt-3 pb-2 border-b border-white/5 bg-[#14151c]">
           <button
             onClick={() => setActiveTab('repo')}
             className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
@@ -235,7 +235,7 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
             <Palette className="w-3.5 h-3.5" />
             <span>{t('designTokens.tabTokens')}</span>
           </button>
-        </div>
+        </ScrollableRow>
 
         {/* Scrollable Tab Content */}
         <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">

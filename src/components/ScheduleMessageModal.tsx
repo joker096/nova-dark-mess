@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, Calendar, X, Check, Sparkles, Send } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ScheduleMessageModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
   onSchedule,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [selectedPreset, setSelectedPreset] = useState<'5s' | '15m' | 'tonight' | 'tomorrow' | 'custom'>('5s');
   
   // Custom time inputs
@@ -71,7 +73,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#ff4e18]/20 flex items-center justify-center text-[#ff4e18]">
+            <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)]">
               <Clock className="w-4 h-4" />
             </div>
             <div>
@@ -87,6 +89,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+            aria-label={t('common.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -94,7 +97,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
 
         {/* Message preview snippet */}
         <div className="bg-[#1b1c28] border border-white/5 rounded-2xl p-3">
-          <span className="text-[10px] font-semibold text-[#ff4e18] uppercase tracking-wider block mb-1">
+          <span className="text-[10px] font-semibold text-[var(--nova-accent-color)] uppercase tracking-wider block mb-1">
             Message Preview
           </span>
           <p className="text-xs text-white/90 italic truncate">
@@ -115,13 +118,13 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               onClick={() => setSelectedPreset('5s')}
               className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                 selectedPreset === '5s'
-                  ? 'border-[#ff4e18] bg-[#ff4e18]/15 text-white shadow-sm'
+                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white shadow-sm'
                   : 'border-white/5 bg-[#1b1c28] text-white/70 hover:text-white hover:border-white/15'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">In 5 seconds</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#ff4e18] text-white font-bold">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--nova-accent-color)] text-white font-bold">
                   Demo
                 </span>
               </div>
@@ -134,7 +137,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               onClick={() => setSelectedPreset('15m')}
               className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                 selectedPreset === '15m'
-                  ? 'border-[#ff4e18] bg-[#ff4e18]/15 text-white shadow-sm'
+                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white shadow-sm'
                   : 'border-white/5 bg-[#1b1c28] text-white/70 hover:text-white hover:border-white/15'
               }`}
             >
@@ -148,7 +151,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               onClick={() => setSelectedPreset('tonight')}
               className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                 selectedPreset === 'tonight'
-                  ? 'border-[#ff4e18] bg-[#ff4e18]/15 text-white shadow-sm'
+                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white shadow-sm'
                   : 'border-white/5 bg-[#1b1c28] text-white/70 hover:text-white hover:border-white/15'
               }`}
             >
@@ -162,7 +165,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               onClick={() => setSelectedPreset('tomorrow')}
               className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                 selectedPreset === 'tomorrow'
-                  ? 'border-[#ff4e18] bg-[#ff4e18]/15 text-white shadow-sm'
+                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white shadow-sm'
                   : 'border-white/5 bg-[#1b1c28] text-white/70 hover:text-white hover:border-white/15'
               }`}
             >
@@ -179,16 +182,16 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
             onClick={() => setSelectedPreset('custom')}
             className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between ${
               selectedPreset === 'custom'
-                ? 'border-[#ff4e18] bg-[#ff4e18]/15 text-white'
+                ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white'
                 : 'border-white/5 bg-[#1b1c28] text-white/70 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#ff4e18]" />
+              <Calendar className="w-4 h-4 text-[var(--nova-accent-color)]" />
               <span className="text-xs font-semibold">Custom Date & Time</span>
             </div>
             {selectedPreset === 'custom' && (
-              <Check className="w-4 h-4 text-[#ff4e18]" />
+              <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
             )}
           </button>
 
@@ -200,7 +203,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="w-full bg-[#1b1c28] border border-white/10 rounded-lg p-1.5 text-xs text-white focus:outline-none focus:border-[#ff4e18]"
+                  className="w-full bg-[#1b1c28] border border-white/10 rounded-lg p-1.5 text-xs text-white focus:outline-none focus:border-[var(--nova-accent-color)]"
                 />
               </div>
               <div>
@@ -209,7 +212,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   type="time"
                   value={customTime}
                   onChange={(e) => setCustomTime(e.target.value)}
-                  className="w-full bg-[#1b1c28] border border-white/10 rounded-lg p-1.5 text-xs text-white focus:outline-none focus:border-[#ff4e18]"
+                  className="w-full bg-[#1b1c28] border border-white/10 rounded-lg p-1.5 text-xs text-white focus:outline-none focus:border-[var(--nova-accent-color)]"
                 />
               </div>
             </div>
@@ -221,7 +224,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
           <button
             type="button"
             onClick={handleConfirmSchedule}
-            className="flex-1 py-2.5 rounded-xl bg-[#ff4e18] hover:bg-[#ff5d2b] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[#ff4e18]/25 flex items-center justify-center gap-1.5 active:scale-95"
+            className="flex-1 py-2.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[var(--nova-accent-color)]/25 flex items-center justify-center gap-1.5 active:scale-95"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Schedule Message</span>

@@ -25,7 +25,7 @@ const persona = {
 export default {
   ...shared,
   tests: [shared.tests ?? 'tests/**/*.e2e.ts', 'tests/bugbash/**/*.e2e.ts'].flat(),
-  targets: [{ name: 'web', engine: web(), app: { url: process.env.APP_URL ?? 'http://localhost:3001' } }],
+  targets: [{ name: 'web', engine: web(), app: { url: process.env.APP_URL ?? 'http://localhost:3000' } }],
   retries: 0,
   reporters: ['list'],
   agents: {

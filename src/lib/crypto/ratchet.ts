@@ -1,0 +1,387 @@
+import { x25519 } from '@noble/curves/ed25519.js';
+import { hkdf } from '@noble/hashes/hkdf.js';
+import { hmac } from '@noble/hashes/hmac.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { base64ToBuffer, bufferToBase64, EncryptedData, encryptAESGCM, decryptAESGCM } from './aes';
+import {
+  OneTimePreKey,
+  PreKeyBundle,
+  SignedPreKey,
+  UserIdentity,
+  fingerprintFromSigningKey,
+  identityPrivateKeys,
+  oneTimePreKeyPair,
+  signWithIdentity,
+  signedPreKeyPair,
+  verifyIdentitySignature,
+  verifyPreKeyBundle,
+} from './identity';
+
+export interface X3DHHeader {
+  senderFingerprint: string;
+  senderIdentityKey: string;
+  senderSigningKey: string;
+  ephemeralKey: string;
+  signedPreKeyId: number;
+  oneTimePreKeyId?: number;
+  signature: string;
+}
+
+export interface RatchetMessagePayload {
+  version: 2;
+  senderFingerprint: string;
+  recipientFingerprint: string;
+  sequenceNumber: number;
+  previousChainLength: number;
+  ephemeralPublicKey: string;
+  encryptedContent: EncryptedData;
+  timestamp: number;
+  x3dh?: X3DHHeader;
+}
+
+export interface RatchetState {
+  rootKey: string;
+  sendChainKey: string | null;
+  recvChainKey: string | null;
+  dhSelfSecret: string;
+  dhSelfPublic: string;
+  dhRemotePublic: string | null;
+  sendCount: number;
+  recvCount: number;
+  previousSendCount: number;
+  skippedMessageKeys: Record<string, string>;
+  peerIdentityKey: string | null;
+  peerFingerprint: string | null;
+}
+
+const encoder = new TextEncoder();
+const X3DH_INFO = encoder.encode('NovaX3DH-v2');
+const ROOT_INFO = encoder.encode('NovaRatchetRoot-v2');
+const X3DH_PREFIX = new Uint8Array(32).fill(0xff);
+const MAX_SKIPPED_MESSAGES = 1000;
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const arr of arrays) {
+    output.set(arr, offset);
+    offset += arr.length;
+  }
+  return output;
+}
+
+function kdfRoot(rootKey: Uint8Array, dhOutput: Uint8Array): {
+  rootKey: Uint8Array;
+  chainKey: Uint8Array;
+} {
+  const output = hkdf(sha256, dhOutput, rootKey, ROOT_INFO, 64);
+  return { rootKey: output.slice(0, 32), chainKey: output.slice(32, 64) };
+}
+
+function kdfChain(chainKey: Uint8Array): {
+  messageKey: Uint8Array;
+  nextChainKey: Uint8Array;
+} {
+  return {
+    messageKey: hmac(sha256, chainKey, new Uint8Array([0x01])),
+    nextChainKey: hmac(sha256, chainKey, new Uint8Array([0x02])),
+  };
+}
+
+async function importMessageKey(messageKey: Uint8Array, usage: KeyUsage): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    messageKey as BufferSource,
+    { name: 'AES-GCM' },
+    false,
+    [usage]
+  );
+}
+
+function x3dhSigningData(header: Omit<X3DHHeader, 'signature'>): string {
+  return [
+    'nova-x3dh-v2',
+    header.senderFingerprint,
+    header.senderIdentityKey,
+    header.senderSigningKey,
+    header.ephemeralKey,
+    String(header.signedPreKeyId),
+    String(header.oneTimePreKeyId ?? ''),
+  ].join('|');
+}
+
+async function initiatorSharedSecret(
+  identity: UserIdentity,
+  bundle: PreKeyBundle
+): Promise<{ sharedSecret: Uint8Array; ephemeralSecret: Uint8Array; ephemeralPublic: Uint8Array }> {
+  if (!verifyPreKeyBundle(bundle)) {
+    throw new Error('Invalid prekey bundle signature');
+  }
+
+  const { x25519Secret } = identityPrivateKeys(identity);
+  const remoteIdentityKey = base64ToBuffer(bundle.identityKey);
+  const remoteSignedPreKey = base64ToBuffer(bundle.signedPreKey.publicKey);
+  const ephemeralSecret = x25519.utils.randomSecretKey();
+  const ephemeralPublic = x25519.getPublicKey(ephemeralSecret);
+
+  const dh1 = x25519.getSharedSecret(x25519Secret, remoteSignedPreKey);
+  const dh2 = x25519.getSharedSecret(ephemeralSecret, remoteIdentityKey);
+  const dh3 = x25519.getSharedSecret(ephemeralSecret, remoteSignedPreKey);
+  const dhParts = [dh1, dh2, dh3];
+
+  if (bundle.oneTimePreKey) {
+    dhParts.push(
+      x25519.getSharedSecret(ephemeralSecret, base64ToBuffer(bundle.oneTimePreKey.publicKey))
+    );
+  }
+
+  const sharedSecret = hkdf(sha256, concatBytes(X3DH_PREFIX, ...dhParts), new Uint8Array(32), X3DH_INFO, 32);
+  return { sharedSecret, ephemeralSecret, ephemeralPublic };
+}
+
+async function responderSharedSecret(
+  identity: UserIdentity,
+  signedPreKey: SignedPreKey,
+  oneTimePreKey: OneTimePreKey | null,
+  header: X3DHHeader
+): Promise<Uint8Array> {
+  const { signature, ...unsignedHeader } = header;
+  if (!verifyIdentitySignature(header.senderSigningKey, x3dhSigningData(unsignedHeader), signature)) {
+    throw new Error('Invalid X3DH header signature');
+  }
+  if (fingerprintFromSigningKey(header.senderSigningKey) !== header.senderFingerprint) {
+    throw new Error('X3DH sender fingerprint mismatch');
+  }
+
+  const { x25519Secret } = identityPrivateKeys(identity);
+  const signedPreKeySecrets = signedPreKeyPair(signedPreKey);
+  const senderIdentityKey = base64ToBuffer(header.senderIdentityKey);
+  const senderEphemeralKey = base64ToBuffer(header.ephemeralKey);
+
+  const dh1 = x25519.getSharedSecret(signedPreKeySecrets.secretKey, senderIdentityKey);
+  const dh2 = x25519.getSharedSecret(x25519Secret, senderEphemeralKey);
+  const dh3 = x25519.getSharedSecret(signedPreKeySecrets.secretKey, senderEphemeralKey);
+  const dhParts = [dh1, dh2, dh3];
+
+  if (oneTimePreKey && header.oneTimePreKeyId === oneTimePreKey.keyId) {
+    dhParts.push(x25519.getSharedSecret(oneTimePreKeyPair(oneTimePreKey).secretKey, senderEphemeralKey));
+  } else if (header.oneTimePreKeyId !== undefined) {
+    throw new Error('Unknown one-time prekey');
+  }
+
+  return hkdf(sha256, concatBytes(X3DH_PREFIX, ...dhParts), new Uint8Array(32), X3DH_INFO, 32);
+}
+
+export async function createOutboundRatchetSession(
+  identity: UserIdentity,
+  bundle: PreKeyBundle
+): Promise<{ state: RatchetState; header: X3DHHeader }> {
+  const { sharedSecret, ephemeralPublic } = await initiatorSharedSecret(identity, bundle);
+  const ratchetSecret = x25519.utils.randomSecretKey();
+  const ratchetPublic = x25519.getPublicKey(ratchetSecret);
+  const dh = x25519.getSharedSecret(ratchetSecret, base64ToBuffer(bundle.signedPreKey.publicKey));
+  const { rootKey, chainKey } = kdfRoot(sharedSecret, dh);
+
+  const state: RatchetState = {
+    rootKey: bufferToBase64(rootKey),
+    sendChainKey: bufferToBase64(chainKey),
+    recvChainKey: null,
+    dhSelfSecret: bufferToBase64(ratchetSecret),
+    dhSelfPublic: bufferToBase64(ratchetPublic),
+    dhRemotePublic: bundle.signedPreKey.publicKey,
+    sendCount: 0,
+    recvCount: 0,
+    previousSendCount: 0,
+    skippedMessageKeys: {},
+    peerIdentityKey: bundle.identityKey,
+    peerFingerprint: bundle.fingerprint,
+  };
+
+  const unsignedHeader: Omit<X3DHHeader, 'signature'> = {
+    senderFingerprint: identity.fingerprint,
+    senderIdentityKey: identity.publicKey,
+    senderSigningKey: identity.signingPublicKey,
+    ephemeralKey: bufferToBase64(ephemeralPublic),
+    signedPreKeyId: bundle.signedPreKey.keyId,
+    oneTimePreKeyId: bundle.oneTimePreKey?.keyId,
+  };
+
+  const header: X3DHHeader = {
+    ...unsignedHeader,
+    signature: signWithIdentity(identity, x3dhSigningData(unsignedHeader)),
+  };
+
+  return { state, header };
+}
+
+export async function createInboundRatchetSession(
+  identity: UserIdentity,
+  signedPreKey: SignedPreKey,
+  oneTimePreKey: OneTimePreKey | null,
+  header: X3DHHeader
+): Promise<RatchetState> {
+  const sharedSecret = await responderSharedSecret(identity, signedPreKey, oneTimePreKey, header);
+  const signedPreKeySecrets = signedPreKeyPair(signedPreKey);
+
+  return {
+    rootKey: bufferToBase64(sharedSecret),
+    sendChainKey: null,
+    recvChainKey: null,
+    dhSelfSecret: bufferToBase64(signedPreKeySecrets.secretKey),
+    dhSelfPublic: bufferToBase64(signedPreKeySecrets.publicKey),
+    dhRemotePublic: null,
+    sendCount: 0,
+    recvCount: 0,
+    previousSendCount: 0,
+    skippedMessageKeys: {},
+    peerIdentityKey: header.senderIdentityKey,
+    peerFingerprint: header.senderFingerprint,
+  };
+}
+
+function cloneState(state: RatchetState): RatchetState {
+  return {
+    ...state,
+    skippedMessageKeys: { ...state.skippedMessageKeys },
+  };
+}
+
+function skipMessageKeys(state: RatchetState, until: number): void {
+  if (!state.recvChainKey) {
+    if (state.recvCount < until) {
+      throw new Error('Missing receive chain for skipped messages');
+    }
+    return;
+  }
+
+  while (state.recvCount < until) {
+    if (Object.keys(state.skippedMessageKeys).length >= MAX_SKIPPED_MESSAGES) {
+      throw new Error('Too many skipped messages');
+    }
+    const { messageKey, nextChainKey } = kdfChain(base64ToBuffer(state.recvChainKey));
+    const keyId = `${state.dhRemotePublic}|${state.recvCount}`;
+    state.skippedMessageKeys[keyId] = bufferToBase64(messageKey);
+    state.recvChainKey = bufferToBase64(nextChainKey);
+    state.recvCount += 1;
+  }
+}
+
+function performDhRatchet(state: RatchetState, remotePublicKey: string): void {
+  const dhReceive = x25519.getSharedSecret(
+    base64ToBuffer(state.dhSelfSecret),
+    base64ToBuffer(remotePublicKey)
+  );
+  const receive = kdfRoot(base64ToBuffer(state.rootKey), dhReceive);
+
+  const nextSelfSecret = x25519.utils.randomSecretKey();
+  const nextSelfPublic = x25519.getPublicKey(nextSelfSecret);
+  const dhSend = x25519.getSharedSecret(nextSelfSecret, base64ToBuffer(remotePublicKey));
+  const send = kdfRoot(receive.rootKey, dhSend);
+
+  state.rootKey = bufferToBase64(send.rootKey);
+  state.recvChainKey = bufferToBase64(receive.chainKey);
+  state.sendChainKey = bufferToBase64(send.chainKey);
+  state.dhSelfSecret = bufferToBase64(nextSelfSecret);
+  state.dhSelfPublic = bufferToBase64(nextSelfPublic);
+  state.dhRemotePublic = remotePublicKey;
+  state.previousSendCount = state.sendCount;
+  state.sendCount = 0;
+  state.recvCount = 0;
+}
+
+function ensureSendingChain(state: RatchetState): void {
+  if (state.sendChainKey) return;
+  if (!state.dhRemotePublic) {
+    throw new Error('Cannot send without a remote ratchet key');
+  }
+
+  const nextSecret = x25519.utils.randomSecretKey();
+  const nextPublic = x25519.getPublicKey(nextSecret);
+  const dh = x25519.getSharedSecret(nextSecret, base64ToBuffer(state.dhRemotePublic));
+  const { rootKey, chainKey } = kdfRoot(base64ToBuffer(state.rootKey), dh);
+
+  state.rootKey = bufferToBase64(rootKey);
+  state.sendChainKey = bufferToBase64(chainKey);
+  state.dhSelfSecret = bufferToBase64(nextSecret);
+  state.dhSelfPublic = bufferToBase64(nextPublic);
+  state.previousSendCount = state.sendCount;
+  state.sendCount = 0;
+}
+
+export async function ratchetEncryptMessage(
+  state: RatchetState,
+  plaintext: string,
+  senderFingerprint: string,
+  recipientFingerprint: string,
+  x3dh?: X3DHHeader
+): Promise<{ payload: RatchetMessagePayload; updatedState: RatchetState }> {
+  const nextState = cloneState(state);
+  ensureSendingChain(nextState);
+
+  if (!nextState.sendChainKey) {
+    throw new Error('Sending chain unavailable');
+  }
+
+  const { messageKey, nextChainKey } = kdfChain(base64ToBuffer(nextState.sendChainKey));
+  const messageSequence = nextState.sendCount;
+  nextState.sendChainKey = bufferToBase64(nextChainKey);
+  nextState.sendCount += 1;
+
+  const cryptoKey = await importMessageKey(messageKey, 'encrypt');
+  const encryptedContent = await encryptAESGCM(plaintext, cryptoKey);
+
+  const payload: RatchetMessagePayload = {
+    version: 2,
+    senderFingerprint,
+    recipientFingerprint,
+    sequenceNumber: messageSequence,
+    previousChainLength: nextState.previousSendCount,
+    ephemeralPublicKey: nextState.dhSelfPublic,
+    encryptedContent,
+    timestamp: Date.now(),
+    x3dh,
+  };
+
+  return { payload, updatedState: nextState };
+}
+
+export async function ratchetDecryptMessage(
+  state: RatchetState,
+  payload: RatchetMessagePayload
+): Promise<{ plaintext: string; updatedState: RatchetState }> {
+  const nextState = cloneState(state);
+  const skippedKeyId = `${payload.ephemeralPublicKey}|${payload.sequenceNumber}`;
+  const skippedKey = nextState.skippedMessageKeys[skippedKeyId];
+
+  if (skippedKey) {
+    delete nextState.skippedMessageKeys[skippedKeyId];
+    const cryptoKey = await importMessageKey(base64ToBuffer(skippedKey), 'decrypt');
+    const plaintext = await decryptAESGCM(payload.encryptedContent, cryptoKey);
+    return { plaintext, updatedState: nextState };
+  }
+
+  if (payload.ephemeralPublicKey !== nextState.dhRemotePublic) {
+    skipMessageKeys(nextState, payload.previousChainLength);
+    performDhRatchet(nextState, payload.ephemeralPublicKey);
+  }
+
+  if (payload.sequenceNumber < nextState.recvCount) {
+    throw new Error('Message key already used and not available');
+  }
+
+  skipMessageKeys(nextState, payload.sequenceNumber);
+
+  if (!nextState.recvChainKey) {
+    throw new Error('Receiving chain unavailable');
+  }
+
+  const { messageKey, nextChainKey } = kdfChain(base64ToBuffer(nextState.recvChainKey));
+  nextState.recvChainKey = bufferToBase64(nextChainKey);
+  nextState.recvCount += 1;
+
+  const cryptoKey = await importMessageKey(messageKey, 'decrypt');
+  const plaintext = await decryptAESGCM(payload.encryptedContent, cryptoKey);
+
+  return { plaintext, updatedState: nextState };
+}

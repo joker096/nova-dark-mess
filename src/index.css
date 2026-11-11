@@ -1,4 +1,8 @@
-@import "tailwindcss";
+/* Scan only real sources: automatic detection would also walk generated
+   Tauri/Gradle assets and emit bogus utilities for stale bundles. */
+@import "tailwindcss" source(none);
+@source "../index.html";
+@source "../src";
 
 :root {
   --nova-accent-color: #ff4e18;

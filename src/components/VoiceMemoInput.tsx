@@ -429,7 +429,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           </button>
 
           {/* Staged Audio Waveform Player */}
-          <div className="flex-1 bg-[#181920]/95 border border-[#ff4e18]/45 rounded-full px-3.5 py-1.5 flex items-center justify-between shadow-lg shadow-black/50 min-w-0">
+          <div className="flex-1 bg-[#181920]/95 border border-[var(--nova-accent-color)]/45 rounded-full px-3.5 py-1.5 flex items-center justify-between shadow-lg shadow-black/50 min-w-0">
             <AudioWaveformPlayer
               voiceNote={stagedVoiceNote}
               isMe={true}
@@ -462,7 +462,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
                 setStagedVoiceNote(null);
               }
             }}
-            className="w-11 h-11 rounded-full bg-[#ff4e18] hover:bg-[#ff5d2b] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[#ff4e18]/40 transition cursor-pointer shrink-0"
+            className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0"
             title="Send voice note (right click to schedule)"
           >
             <Send className="w-4 h-4 ml-0.5" />
@@ -499,14 +499,14 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             className={`flex-1 bg-[#181920]/95 border rounded-full px-4 py-2 flex items-center justify-between shadow-lg shadow-black/50 transition-colors min-w-0 ${
               isCanceling
                 ? 'border-red-500/70 bg-red-950/30'
-                : 'border-[#ff4e18]/50 focus-within:border-[#ff4e18]'
+                : 'border-[var(--nova-accent-color)]/50 focus-within:border-[var(--nova-accent-color)]'
             }`}
           >
             {/* Pulsing Beacon & Duration Counter */}
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="relative flex items-center justify-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ff4e18] animate-ping absolute opacity-80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ff4e18] relative" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] animate-ping absolute opacity-80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] relative" />
               </div>
               <span className="text-xs font-mono font-semibold text-white tracking-wider">
                 {formatTime(recordingSeconds)}
@@ -522,7 +522,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
                   className={`w-1 rounded-full transition-all duration-75 ${
                     isCanceling
                       ? 'bg-red-400'
-                      : 'bg-[#ff4e18] shadow-[0_0_4px_rgba(255,78,24,0.5)]'
+                      : 'bg-[var(--nova-accent-color)] shadow-[0_0_4px_rgba(255,78,24,0.5)]'
                   }`}
                 />
               ))}
@@ -560,7 +560,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
               <button
                 type="button"
                 onClick={sendRecordingDirectly}
-                className="w-11 h-11 rounded-full bg-[#ff4e18] hover:bg-[#ff5d2b] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[#ff4e18]/40 transition cursor-pointer shrink-0"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0"
                 title="Send voice memo now"
               >
                 <Send className="w-4 h-4 ml-0.5" />
@@ -569,7 +569,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           ) : (
             /* Push-to-Talk Send Button */
             <div
-              className="w-11 h-11 rounded-full bg-[#ff4e18] text-white flex items-center justify-center shadow-xl shadow-[#ff4e18]/50 animate-pulse shrink-0"
+              className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center shadow-xl shadow-[var(--nova-accent-color)]/50 animate-pulse shrink-0"
               title="Recording in progress"
             >
               <Mic className="w-4 h-4" />
@@ -588,10 +588,10 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         disabled={disabled}
-        className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[#ff4e18] hover:text-white hover:shadow-lg hover:shadow-[#ff4e18]/30 border border-white/10 text-white/80 flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md group shrink-0 touch-manipulation relative"
+        className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[var(--nova-accent-color)] hover:text-white hover:shadow-lg hover:shadow-[var(--nova-accent-color)]/30 border border-white/10 text-white/80 flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md group shrink-0 touch-manipulation relative"
         title="Tap to record or hold for push-to-talk voice memo"
       >
-        <Mic className="w-4 h-4 group-hover:scale-110 transition-transform text-[#ff4e18] group-hover:text-white" />
+        <Mic className="w-4 h-4 group-hover:scale-110 transition-transform text-[var(--nova-accent-color)] group-hover:text-white" />
       </button>
     );
   }
