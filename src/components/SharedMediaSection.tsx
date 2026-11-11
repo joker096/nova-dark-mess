@@ -10,6 +10,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
+  Minimize2,
+  Plus,
+  Minus,
   Download,
   Share2,
   Sparkles,
@@ -151,6 +154,64 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
     setLightboxIndex((prev) => (prev! < filteredMedia.length - 1 ? prev! + 1 : 0));
   };
 
+  // Lightbox zoom / pan for photos
+  const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragPos = useRef({ x: 0, y: 0 });
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const clampScale = (value: number) => Math.min(4, Math.max(1, Math.round(value * 4) / 4));
+
+  const setZoomScale = (value: number) => {
+    const scale = clampScale(value);
+    setZoom({ scale, x: 0, y: 0 });
+  };
+
+  const clampPosition = (scale: number, x: number, y: number) => {
+    if (scale <= 1) return { x: 0, y: 0 };
+    const container = containerRef.current;
+    const img = imgRef.current;
+    if (!container || !img) return { x: 0, y: 0 };
+    const cr = container.getBoundingClientRect();
+    const ir = img.getBoundingClientRect();
+    const maxX = Math.max(0, (ir.width * scale - cr.width) / 2);
+    const maxY = Math.max(0, (ir.height * scale - cr.height) / 2);
+    return { x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
+  };
+
+  const handleZoomWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (activeLightboxItem?.type !== 'image') return;
+    setZoom((prev) => {
+      const scale = clampScale(prev.scale - e.deltaY * 0.002);
+      return { scale, x: 0, y: 0 };
+    });
+  };
+
+  const handleZoomDblClick = () => {
+    if (activeLightboxItem?.type !== 'image') return;
+    setZoom((prev) => (prev.scale > 1 ? { scale: 1, x: 0, y: 0 } : { scale: 2, x: 0, y: 0 }));
+  };
+
+  const handleZoomPointerDown = (e: React.PointerEvent) => {
+    if (activeLightboxItem?.type !== 'image' || zoom.scale <= 1) return;
+    setDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    dragPos.current = { x: zoom.x, y: zoom.y };
+    e.target instanceof Element && e.target.setPointerCapture(e.pointerId);
+  };
+
+  const handleZoomPointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const next = clampPosition(zoom.scale, dragPos.current.x + e.clientX - dragStart.current.x, dragPos.current.y + e.clientY - dragStart.current.y);
+    dragPos.current = next;
+    setZoom((prev) => ({ ...prev, x: next.x, y: next.y }));
+  };
+
+  const handleZoomPointerUp = () => setDragging(false);
+
   // Keyboard navigation for lightbox
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -168,8 +229,8 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
     <div className="flex flex-col h-full bg-[#0b0c10] text-white relative z-20 select-none overflow-hidden animate-in fade-in duration-200">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[#ff4e18]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <Sparkles className="w-3.5 h-3.5 text-[#ff4e18]" />
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -180,7 +241,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
           {/* Top row: Title & Quick close */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#ff4e18]/20 border border-[#ff4e18]/30 flex items-center justify-center text-[#ff4e18]">
+              <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]">
                 <ImageIcon className="w-4 h-4" />
               </div>
               <div>
@@ -203,7 +264,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
           </div>
 
           {/* Search Bar within Shared Media */}
-          <div className="bg-[#1a1b26] border border-white/10 focus-within:border-[#ff4e18]/60 rounded-xl px-2.5 py-1.5 flex items-center gap-2 shadow-inner">
+          <div className="bg-[#1a1b26] border border-white/10 focus-within:border-[var(--nova-accent-color)]/60 rounded-xl px-2.5 py-1.5 flex items-center gap-2 shadow-inner">
             <Search className="w-3.5 h-3.5 text-white/40 shrink-0" />
             <input
               type="text"
@@ -228,7 +289,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
               onClick={() => setFilter('all')}
               className={`flex-1 py-1 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 filter === 'all'
-                  ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -239,7 +300,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
               onClick={() => setFilter('photos')}
               className={`flex-1 py-1 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 filter === 'photos'
-                  ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -251,7 +312,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
               onClick={() => setFilter('videos')}
               className={`flex-1 py-1 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 filter === 'videos'
-                  ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -286,7 +347,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
               {/* Timeline Header (Anti-slop clean text metadata with dot separator) */}
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
-                  <Calendar className="w-3.5 h-3.5 text-[#ff4e18]" />
+                  <Calendar className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
                   <span>{groupTitle}</span>
                   <span className="text-white/30" aria-hidden="true">
                     ·
@@ -306,7 +367,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                     <div
                       key={item.id}
                       onClick={() => setLightboxIndex(globalIndex)}
-                      className="group relative aspect-square rounded-xl overflow-hidden bg-[#181922] border border-white/5 hover:border-[#ff4e18]/60 cursor-pointer shadow-md transition-all duration-200 active:scale-[0.97]"
+                      className="group relative aspect-square rounded-xl overflow-hidden bg-[#181922] border border-white/5 hover:border-[var(--nova-accent-color)]/60 cursor-pointer shadow-md transition-all duration-200 active:scale-[0.97]"
                     >
                       {/* Media Image / Thumbnail */}
                       <img
@@ -321,7 +382,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                         <>
                           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-8 h-8 rounded-full bg-black/60 group-hover:bg-[#ff4e18] backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-black/60 group-hover:bg-[var(--nova-accent-color)] backdrop-blur-md flex items-center justify-center text-white shadow-lg transition-colors">
                               <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                             </div>
                           </div>
@@ -339,6 +400,15 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                           {item.caption || item.date}
                         </span>
                       </div>
+
+                      {/* Zoom hint icon (photos) */}
+                      {item.type === 'image' && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
+                            <Maximize2 className="w-4 h-4" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -408,14 +478,24 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
             {/* Prev Arrow */}
             <button
               onClick={handlePrev}
-              className="absolute left-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[#ff4e18] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
+              className="absolute left-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[var(--nova-accent-color)] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
               title="Previous media (Left Arrow)"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
 
             {/* Media Canvas */}
-            <div className="max-w-4xl max-h-[75vh] w-full h-full flex items-center justify-center">
+            <div
+              ref={containerRef}
+              onWheel={handleZoomWheel}
+              onDoubleClick={handleZoomDblClick}
+              onPointerDown={handleZoomPointerDown}
+              onPointerMove={handleZoomPointerMove}
+              onPointerUp={handleZoomPointerUp}
+              onPointerLeave={handleZoomPointerUp}
+              className="max-w-4xl max-h-[75vh] w-full h-full flex items-center justify-center"
+              style={{ touchAction: zoom.scale > 1 ? 'none' : 'auto' }}
+            >
               {activeLightboxItem.type === 'video' ? (
                 <div className="relative w-full max-h-[70vh] rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10">
                   <video
@@ -428,18 +508,29 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                   />
                 </div>
               ) : (
-                <img
-                  src={activeLightboxItem.url}
-                  alt={activeLightboxItem.caption || 'Shared photo'}
-                  className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
-                />
+                <div
+                  ref={imgRef}
+                  style={{
+                    transform: `scale(${zoom.scale}) translate(${zoom.x}px, ${zoom.y}px)`,
+                    transformOrigin: 'center center',
+                    transition: dragging ? 'none' : 'transform 0.2s ease',
+                    cursor: zoom.scale > 1 ? 'grab' : 'pointer',
+                  }}
+                  className="flex items-center justify-center"
+                >
+                  <img
+                    src={activeLightboxItem.url}
+                    alt={activeLightboxItem.caption || 'Shared photo'}
+                    className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
+                  />
+                </div>
               )}
             </div>
 
             {/* Next Arrow */}
             <button
               onClick={handleNext}
-              className="absolute right-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[#ff4e18] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
+              className="absolute right-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[var(--nova-accent-color)] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
               title="Next media (Right Arrow)"
             >
               <ChevronRight className="w-6 h-6" />
@@ -452,6 +543,43 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
             className="p-4 border-t border-white/10 bg-black/80 backdrop-blur-xl relative z-10 space-y-2.5"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {activeLightboxItem.type === 'image' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomScale(zoom.scale - 0.25);
+                    }}
+                    disabled={zoom.scale <= 1}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Уменьшить"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomScale(zoom.scale + 0.25);
+                    }}
+                    disabled={zoom.scale >= 4}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Увеличить"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomScale(1);
+                    }}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                    title="По размеру"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                  </button>
+                  <span className="text-[10px] text-white/50">{Math.round(zoom.scale * 100)}%</span>
+                </div>
+              )}
               <div>
                 <p className="text-sm font-semibold text-white">
                   {activeLightboxItem.caption || 'Media file'}
@@ -472,7 +600,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                     onClose();
                     onJumpToMessage(id);
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#ff4e18] hover:bg-[#ff5d2b] text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-[#ff4e18]/30 transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
+                  className="px-4 py-2 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-[var(--nova-accent-color)]/30 transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>View in Chat</span>

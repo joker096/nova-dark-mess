@@ -304,3 +304,28 @@ describe('ChatScreen - long press and double tap', () => {
     expect(screen.queryByTitle('React with ❤️')).toBeNull();
   });
 });
+
+describe('ChatScreen - horizontal lists hide scrollbar', () => {
+  it('quick search chips list uses no-scrollbar when search opened', () => {
+    renderChat();
+    fireEvent.click(screen.getByTitle('common.search'));
+    const list = screen.getByTestId('quick-search-chips');
+    expect(list.className).toContain('no-scrollbar');
+    expect(list.className).not.toContain('scrollbar-x');
+  });
+
+  it('emoji quick bar uses no-scrollbar when emoji picker opened', () => {
+    renderChat();
+    fireEvent.click(screen.getByTitle('common.react'));
+    const list = screen.getByTestId('emoji-bar');
+    expect(list.className).toContain('no-scrollbar');
+    expect(list.className).not.toContain('scrollbar-x');
+  });
+
+  it('smart replies list uses no-scrollbar by default', () => {
+    renderChat();
+    const list = screen.getByTestId('smart-replies');
+    expect(list.className).toContain('no-scrollbar');
+    expect(list.className).not.toContain('scrollbar-x');
+  });
+});

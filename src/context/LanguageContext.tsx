@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useCallback, useMemo, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
+import { loadLanguage } from '../i18n';
 
-export type Language = 'en' | 'ru' | 'uk';
+export type Language = 'en' | 'ru' | 'uk' | 'de' | 'es' | 'tr' | 'id' | 'vi' | 'ar' | 'th';
 
 export interface LanguageItem {
   code: Language;
@@ -15,6 +16,13 @@ export const SUPPORTED_LANGUAGES: LanguageItem[] = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
   { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺' },
   { code: 'uk', name: 'Ukrainian', nativeName: 'Українська', flag: '🇺🇦' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
+  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia', flag: '🇮🇩' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦' },
+  { code: 'th', name: 'Thai', nativeName: 'ไทย', flag: '🇹🇭' },
 ];
 
 interface LanguageContextType {
@@ -32,8 +40,12 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const language = (i18n.language || 'ru') as Language;
   
   const changeLanguage = useCallback((lang: Language) => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem('appLanguage', lang);
+    // Non-English locales are lazy chunks: fetch the bundle before switching so
+    // the UI never renders raw translation keys.
+    void loadLanguage(lang).then(() => {
+      i18n.changeLanguage(lang);
+      localStorage.setItem('appLanguage', lang);
+    });
   }, [i18n]);
 
   const value = useMemo(() => ({

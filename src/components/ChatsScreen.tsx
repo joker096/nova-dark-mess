@@ -12,6 +12,7 @@ import {
   FolderPlus,
   Folder,
   BarChart3,
+  Clock,
 } from 'lucide-react';
 import {
   CURRENT_USER,
@@ -19,8 +20,11 @@ import {
   MOCK_CHATS,
   CONVERSATION_HISTORIES,
 } from '../data/mockMessengerData';
-import { ChatItem, Story, MessageSearchResult, ChatFolder } from '../types/messenger';
+import { ChatItem, Story, MessageSearchResult, ChatFolder, ChannelInfo, StoryDraft } from '../types/messenger';
 import { FolderModal } from './FolderModal';
+import { StoryComposerModal } from './StoryComposerModal';
+import { StoryViewer } from './StoryViewer';
+import { getStoryFeed, isStoryScheduled } from '../lib/social/store';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ChatsScreenProps {
@@ -35,6 +39,13 @@ interface ChatsScreenProps {
   activeChatId?: string;
   activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'analytics';
   onOpenAnalytics?: () => void;
+  stories?: Story[];
+  channels?: ChannelInfo[];
+  now?: number;
+  onCreateStory?: (draft: StoryDraft) => void;
+  onDeleteStory?: (storyId: string) => void;
+  onViewStory?: (storyId: string) => void;
+  onToggleStoryReaction?: (storyId: string, emoji: string) => void;
 }
 
 const FOLDERS_STORAGE_KEY = 'nova_messenger_chat_folders';
@@ -93,6 +104,12 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onOpenAnalytics,
     activeChatId,
     activeNavTab,
+    stories = MOCK_STORIES,
+    now = Date.now(),
+    onCreateStory,
+    onDeleteStory,
+    onViewStory,
+    onToggleStoryReaction,
   } = props;
   const { t } = useLanguage();
   // Folders State with localStorage persistence
@@ -125,7 +142,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilter, setSearchFilter] = useState<'all' | 'chats' | 'messages'>('all');
-  const [activeStory, setActiveStory] = useState<Story | null>(null);
+  const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null);
+  const [isStoryComposerOpen, setIsStoryComposerOpen] = useState(false);
+  const storyFeed = useMemo(() => getStoryFeed(stories, now), [stories, now]);
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const folderTabsRef = useWheelScroll();
@@ -403,7 +422,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         </div>
 
         {/* Quick Search Keyword Chips */}
-          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-x" ref={quickSearchChipsRef}>
+          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar" ref={quickSearchChipsRef} data-testid="quick-search-chips">
           <span className="text-[10px] text-[#737887] shrink-0 font-medium pl-0.5">Quick search:</span>
           {CHAT_SEARCH_CHIPS.map((chip) => (
               <button
@@ -671,11 +690,23 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         <>
           {/* Stories Row */}
           <div className="pt-1 pb-3 px-5 shrink-0">
-            <div ref={storiesRef} className="flex gap-2.5 overflow-x-auto scrollbar-x scroll-smooth">
-              {MOCK_STORIES.map((story) => (
+            <div ref={storiesRef} className="flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth" data-testid="stories-row">
+              <button
+                onClick={() => setIsStoryComposerOpen(true)}
+                className="w-[84px] h-[116px] rounded-[20px] shrink-0 border border-dashed border-white/20 bg-white/5 flex flex-col items-center justify-center gap-2 text-white/70 hover:text-white hover:border-[var(--nova-accent-color)] active:scale-95 transition cursor-pointer"
+                aria-label={t('stories.addStory')}
+              >
+                <span className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/50 flex items-center justify-center">
+                  <Plus className="w-4 h-4" />
+                </span>
+                <span className="text-[11px] font-medium text-center leading-tight max-w-[72px]">
+                  {t('stories.addStory')}
+                </span>
+              </button>
+              {storyFeed.map((story, index) => (
                 <button
                   key={story.id}
-                  onClick={() => setActiveStory(story)}
+                  onClick={() => setStoryViewerIndex(index)}
                   className="w-[84px] h-[116px] rounded-[20px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-white/5 shadow-md shadow-black/40"
                   aria-label={`Story from ${story.name}`}
                 >
@@ -686,8 +717,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35" />
 
-                  <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-semibold text-white flex items-center justify-center border border-white/15">
-                    {story.unreadCount}
+                  <div className="absolute top-2 left-2 h-5 min-w-5 px-1 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-semibold text-white flex items-center justify-center border border-white/15">
+                    {isStoryScheduled(story, now) ? <Clock className="w-3 h-3" /> : story.unreadCount}
                   </div>
 
                   <div className="absolute bottom-2 inset-x-0 flex flex-col items-center">
@@ -708,7 +739,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           </div>
 
           {/* DYNAMIC FOLDER TABS SYSTEM WITH CREATE/MANAGE MODAL BUTTON */}
-          <div ref={folderTabsRef} className="px-5 py-2 flex items-center gap-2 overflow-x-auto scrollbar-x shrink-0 max-w-full">
+          <div ref={folderTabsRef} className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 max-w-full" data-testid="folder-tabs">
             {folders.map((folder) => {
               const isActive = activeFolderId === folder.id;
               const badge = getFolderBadge(folder);
@@ -969,42 +1000,26 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       </div>
 
       {/* Story Viewer Modal */}
-      {activeStory && (
-        <div
-          onClick={() => setActiveStory(null)}
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 cursor-pointer animate-in fade-in"
-        >
-          <div className="w-full flex items-center justify-between pt-2 px-2 z-10">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20">
-                <img src={activeStory.avatar} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">{activeStory.name}</p>
-                <p className="text-[10px] text-white/60">2 hours ago</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveStory(null)}
-              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold"
-              aria-label={t('common.close')}
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="relative flex-1 flex items-center justify-center my-auto max-w-sm mx-auto overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
-            <img src={activeStory.coverImage} alt="" className="w-full h-auto max-h-[70vh] object-cover" />
-          </div>
-
-          <div className="w-full max-w-sm mx-auto pb-4 px-2 z-10">
-            <div className="bg-white/10 backdrop-blur-md rounded-full px-4 py-2 flex items-center justify-between text-xs text-white/70">
-              <span>Reply to {activeStory.name}...</span>
-              <span className="text-lg">🔥</span>
-            </div>
-          </div>
-        </div>
+      {storyViewerIndex !== null && storyFeed.length > 0 && (
+        <StoryViewer
+          stories={storyFeed}
+          initialIndex={storyViewerIndex}
+          now={now}
+          onClose={() => setStoryViewerIndex(null)}
+          onViewed={onViewStory}
+          onDelete={onDeleteStory}
+          onToggleReaction={onToggleStoryReaction}
+        />
       )}
+
+      <StoryComposerModal
+        isOpen={isStoryComposerOpen}
+        onClose={() => setIsStoryComposerOpen(false)}
+        onPublish={(draft) => {
+          onCreateStory?.(draft);
+          setIsStoryComposerOpen(false);
+        }}
+      />
 
       {/* New Conversation Modal */}
       {newChatModalOpen && (

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "report-1",
   "run": {
-    "id": "01a1b1b7-6896-7478-b5e4-4289af788509",
+    "id": "01a1c17e-67e1-7a39-bc0c-991e69d5d16a",
     "specVersion": "0.1",
     "runner": {
       "name": "e2e",
@@ -9,11 +9,11 @@
     },
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-06T16:35:50.341Z",
-    "finishedAt": "2026-11-06T16:35:53.190Z",
+    "startedAt": "2026-11-09T18:07:30.089Z",
+    "finishedAt": "2026-11-09T18:07:34.745Z",
     "project": {
       "id": "react-example",
-      "configDigest": "b3d2d51dd142b77188dd7a3c16e3a3e3c49f583183e7d5cf0a93d63c47240bab"
+      "configDigest": "88a20b9a9a0085d0e312466b4a7e0ef73813d69414a6e063d6bd39237170eca1"
     },
     "environment": {
       "ci": false,
@@ -23,8 +23,8 @@
       "runtime": "node v22.15.0"
     },
     "vcs": {
-      "commit": "1f204ed9b20c930ee698c98170718e6746052d54",
-      "branch": "master",
+      "commit": "049537aba24a84558b51e722e740ffed35d74edf",
+      "branch": "main",
       "dirty": true
     },
     "targets": [
@@ -32,7 +32,7 @@
         "id": "web",
         "index": 0,
         "platform": "web",
-        "baseOrigin": "http://localhost:3001",
+        "baseOrigin": "http://localhost:3000",
         "environment": "test",
         "engine": {
           "name": "web",
@@ -82,14 +82,14 @@
         "status": "passed",
         "attempts": [
           {
-            "id": "01a1b1b7-70f8-70b7-8e98-635a8a1f48a1",
+            "id": "01a1c17e-6fb6-7189-aebe-de346c1ab150",
             "index": 0,
             "status": "passed",
-            "startedAt": "2026-11-06T16:35:51.672Z",
-            "durationMs": 1040,
+            "startedAt": "2026-11-09T18:07:31.254Z",
+            "durationMs": 2822,
             "artifacts": [
               {
-                "id": "01a1b1b7-70f8-70b7-8e98-635a8a1f48a1:artifact:0",
+                "id": "01a1c17e-6fb6-7189-aebe-de346c1ab150:artifact:0",
                 "kind": "trace",
                 "mediaType": "application/zip",
                 "redaction": "not-required",
@@ -97,22 +97,22 @@
                   "kind": "attempt"
                 },
                 "path": "web/tests_example.e2e.ts__app_20opens-4a1103e9/default/attempt-0/trace/trace.zip",
-                "size": 1369605,
-                "sha256": "faa06154f1d1f28f81d84ecaed692a605f3b35a82ea8780d4cfcd7f0b413ecdb"
+                "size": 1805254,
+                "sha256": "ed69f9667e3b8776ba7426752d4b1e3b99085e2172969d477649c5598a2b1e6c"
               }
             ],
             "secondaryErrors": [],
             "cleanup": "complete",
             "steps": [
               {
-                "id": "01a1b1b7-70f8-70b7-8e98-635a8a1f48a1:0",
+                "id": "01a1c17e-6fb6-7189-aebe-de346c1ab150:0",
                 "index": 0,
                 "kind": "app",
                 "api": "app.open",
                 "label": "/",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:51.830Z",
-                "durationMs": 671,
+                "startedAt": "2026-11-09T18:07:31.400Z",
+                "durationMs": 2164,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -122,14 +122,14 @@
                 }
               },
               {
-                "id": "01a1b1b7-70f8-70b7-8e98-635a8a1f48a1:1",
+                "id": "01a1c17e-6fb6-7189-aebe-de346c1ab150:1",
                 "index": 1,
                 "kind": "assertion",
                 "api": "expect.toBeVisible",
                 "label": "locator(\"body\")",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.503Z",
-                "durationMs": 90,
+                "startedAt": "2026-11-09T18:07:33.566Z",
+                "durationMs": 294,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -165,14 +165,14 @@
         "status": "passed",
         "attempts": [
           {
-            "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97",
+            "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5",
             "index": 0,
             "status": "passed",
-            "startedAt": "2026-11-06T16:35:51.686Z",
-            "durationMs": 1411,
+            "startedAt": "2026-11-09T18:07:31.218Z",
+            "durationMs": 3408,
             "artifacts": [
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:artifact:0",
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:artifact:0",
                 "kind": "trace",
                 "mediaType": "application/zip",
                 "redaction": "not-required",
@@ -180,22 +180,22 @@
                   "kind": "attempt"
                 },
                 "path": "web/tests_send-message.e2e.ts__open_20Katie_27s_20chat_20and_20send_20a_20message-a36d0f89/default/attempt-0/trace/trace.zip",
-                "size": 1682539,
-                "sha256": "917e6f9bba00e8ef130a7f2c711c73e531317e0fa92b18b7cb9958505fa1691e"
+                "size": 3260954,
+                "sha256": "f892f0060db6e10910fbe0a1fdfd2ee2f94faf850d7e4ea6eba3bdf521689188"
               }
             ],
             "secondaryErrors": [],
             "cleanup": "complete",
             "steps": [
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:0",
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:0",
                 "index": 0,
                 "kind": "app",
                 "api": "app.open",
                 "label": "/",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:51.849Z",
-                "durationMs": 695,
+                "startedAt": "2026-11-09T18:07:31.362Z",
+                "durationMs": 2179,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -205,14 +205,14 @@
                 }
               },
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:1",
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:1",
                 "index": 1,
                 "kind": "locator",
                 "api": "locator.tap",
                 "label": "getByRole(\"heading\", name: \"Katie Rogers\")",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.547Z",
-                "durationMs": 250,
+                "startedAt": "2026-11-09T18:07:33.543Z",
+                "durationMs": 518,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -222,31 +222,14 @@
                 }
               },
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:2",
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:2",
                 "index": 2,
-                "kind": "assertion",
-                "api": "expect.toBeVisible",
-                "label": "getByText(\"Katie Rogers\")",
-                "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.798Z",
-                "durationMs": 26,
-                "events": [],
-                "artifacts": [],
-                "source": {
-                  "file": "node_modules/e2e/dist/run/steps.js",
-                  "line": 26,
-                  "column": 16
-                }
-              },
-              {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:3",
-                "index": 3,
                 "kind": "locator",
                 "api": "locator.fill",
-                "label": "getByPlaceholder(\"Write a message...\")",
+                "label": "getByRole(\"textbox\", name: \"Type a message...\")",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.824Z",
-                "durationMs": 55,
+                "startedAt": "2026-11-09T18:07:34.062Z",
+                "durationMs": 113,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -256,14 +239,14 @@
                 }
               },
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:4",
-                "index": 4,
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:3",
+                "index": 3,
                 "kind": "locator",
                 "api": "locator.press",
-                "label": "getByPlaceholder(\"Write a message...\")",
+                "label": "getByRole(\"textbox\", name: \"Type a message...\")",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.879Z",
-                "durationMs": 59,
+                "startedAt": "2026-11-09T18:07:34.176Z",
+                "durationMs": 193,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -273,14 +256,14 @@
                 }
               },
               {
-                "id": "01a1b1b7-7106-7416-a728-fc15b5a78e97:5",
-                "index": 5,
+                "id": "01a1c17e-6f91-7984-a3e8-b328d6ab9ff5:4",
+                "index": 4,
                 "kind": "assertion",
                 "api": "expect.toBeVisible",
-                "label": "getByText(\"Hello Katie! e2e test message.\")",
+                "label": "getByText(\"Hello Katie! e2e test message.\").first()",
                 "status": "passed",
-                "startedAt": "2026-11-06T16:35:52.939Z",
-                "durationMs": 14,
+                "startedAt": "2026-11-09T18:07:34.371Z",
+                "durationMs": 17,
                 "events": [],
                 "artifacts": [],
                 "source": {
@@ -317,7 +300,7 @@
       "maxAgentContextBytes": 0,
       "maxLedgerBytes": 0,
       "maxObservationBytes": 0,
-      "artifactBytes": 3052144,
+      "artifactBytes": 5066208,
       "downloads": 0,
       "events": 0,
       "modelTokens": 0,

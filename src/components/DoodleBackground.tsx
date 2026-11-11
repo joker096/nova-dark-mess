@@ -503,6 +503,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       {wallpaperId === 'notebook' && (
         <svg
           className="w-full h-full text-white transition-opacity duration-500"
+          style={{ opacity: svgPatternOpacity }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -527,6 +528,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       {wallpaperId === 'grid-paper' && (
         <svg
           className="w-full h-full text-white transition-opacity duration-500"
+          style={{ opacity: svgPatternOpacity }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>

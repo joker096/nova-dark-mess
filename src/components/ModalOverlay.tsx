@@ -72,7 +72,7 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
             e.stopPropagation();
             onClose();
           }}
-          className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white text-base hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[#ff4e18]"
+          className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white text-base hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />

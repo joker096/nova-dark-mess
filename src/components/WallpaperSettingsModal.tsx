@@ -69,7 +69,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#ff4e18]/20 border border-[#ff4e18]/30 flex items-center justify-center text-[#ff4e18]">
+            <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]">
               <Palette className="w-4 h-4" />
             </div>
             <div>
@@ -86,7 +86,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
             {/* Cycle / Shuffle button */}
             <button
               onClick={onCycle}
-              className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-[#ff4e18] hover:text-white border border-white/10 text-white/80 transition flex items-center gap-1.5 text-[11px] font-medium cursor-pointer active:scale-95"
+              className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color)] hover:text-white border border-white/10 text-white/80 transition flex items-center gap-1.5 text-[11px] font-medium cursor-pointer active:scale-95"
               title="Cycle to next wallpaper"
             >
               <RotateCw className="w-3 h-3" />
@@ -112,7 +112,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
               <span className="text-[10px] font-semibold text-white/90 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
                 {activeOption.name}
               </span>
-              <span className="text-[9px] text-[#ff4e18] font-medium bg-[#ff4e18]/15 px-1.5 py-0.5 rounded-full border border-[#ff4e18]/30 uppercase tracking-wider">
+              <span className="text-[9px] text-[var(--nova-accent-color)] font-medium bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 rounded-full border border-[var(--nova-accent-color)]/30 uppercase tracking-wider">
                 Active
               </span>
             </div>
@@ -129,7 +129,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
               </div>
             </div>
             <div className="flex justify-end">
-              <div className="bg-gradient-to-r from-[#ff521a] to-[#ff3b00] text-white rounded-[14px] rounded-br-[2px] px-2.5 py-1 text-[11px] shadow-md shadow-[#ff4e18]/20 flex items-center gap-1.5">
+              <div className="bg-gradient-to-r from-[var(--nova-accent-color, ff521a)] to-[var(--nova-accent-color, ff3b00)] text-white rounded-[14px] rounded-br-[2px] px-2.5 py-1 text-[11px] shadow-md shadow-[var(--nova-accent-color)]/20 flex items-center gap-1.5">
                 <span>Deal! See you there 🙌</span>
                 <CheckCheck className="w-3 h-3 text-white" />
               </div>
@@ -143,7 +143,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
             onClick={() => setSelectedCategory('all')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               selectedCategory === 'all'
-                ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/60 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -155,7 +155,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
             onClick={() => setSelectedCategory('gradients')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               selectedCategory === 'gradients'
-                ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/60 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -167,7 +167,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
             onClick={() => setSelectedCategory('geometric')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               selectedCategory === 'geometric'
-                ? 'bg-[#ff4e18] text-white shadow-sm shadow-[#ff4e18]/30'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-sm shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/60 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -187,7 +187,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
                 onClick={() => onSelect(item.id)}
                 className={`relative rounded-2xl overflow-hidden border p-3 cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[104px] group active:scale-[0.98] ${
                   isSelected
-                    ? 'border-[#ff4e18] ring-2 ring-[#ff4e18]/40 shadow-lg shadow-[#ff4e18]/15 bg-[#1b1d28]'
+                    ? 'border-[var(--nova-accent-color)] ring-2 ring-[var(--nova-accent-color)]/40 shadow-lg shadow-[var(--nova-accent-color)]/15 bg-[#1b1d28]'
                     : 'border-white/10 hover:border-white/25 bg-[#161722]'
                 }`}
               >
@@ -210,7 +210,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
                   )}
 
                   {isSelected && (
-                    <div className="w-5 h-5 rounded-full bg-[#ff4e18] flex items-center justify-center text-white shadow-md shadow-[#ff4e18]/50 animate-in zoom-in-75 duration-150">
+                    <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-md shadow-[var(--nova-accent-color)]/50 animate-in zoom-in-75 duration-150">
                       <Check className="w-3 h-3 stroke-[3]" />
                     </div>
                   )}
@@ -218,7 +218,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
 
                 {/* Bottom Title & Subtitle */}
                 <div className="relative z-10 mt-4">
-                  <p className="text-xs font-bold text-white truncate group-hover:text-[#ff4e18] transition">
+                  <p className="text-xs font-bold text-white truncate group-hover:text-[var(--nova-accent-color)] transition">
                     {item.name}
                   </p>
                   <p className="text-[9.5px] text-[#9196a6] truncate mt-0.5">
@@ -234,7 +234,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
         <div className="bg-[#171824] border border-white/5 rounded-2xl p-3 space-y-1.5">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-white/70 font-medium flex items-center gap-1.5">
-              <Sliders className="w-3 h-3 text-[#ff4e18]" />
+              <Sliders className="w-3 h-3 text-[var(--nova-accent-color)]" />
               Pattern & Glow Intensity
             </span>
             <span className="text-white/90 font-mono text-[10px] bg-white/5 px-2 py-0.5 rounded-md">
@@ -262,7 +262,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
           <span>Saved across sessions in browser</span>
           <button
             onClick={() => onSelect('neon-nebula')}
-            className="text-[#ff4e18] hover:underline cursor-pointer"
+            className="text-[var(--nova-accent-color)] hover:underline cursor-pointer"
           >
             Reset default
           </button>

@@ -18,10 +18,10 @@ export default {
   targets: [{
     engine: web(),
     app: {
-      url: process.env.APP_URL ?? 'http://localhost:3001',
+      url: process.env.APP_URL ?? 'http://localhost:3000',
       command: {
         executable: 'npx',
-        args: ['vite', '--port=3001', '--host=0.0.0.0'],
+        args: ['vite', '--port=3000', '--host=0.0.0.0'],
         log: '.e2e/logs/app.log',
         reuseExisting: true,
       },

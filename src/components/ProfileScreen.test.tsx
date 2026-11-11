@@ -141,3 +141,12 @@ describe('ProfileScreen - editable fields and QR code', () => {
   });
 });
 
+describe('ProfileScreen - horizontal lists hide scrollbar', () => {
+  it('profile tabs list uses no-scrollbar (no visible slider)', () => {
+    renderProfile('katie');
+    const list = screen.getByTestId('profile-tabs');
+    expect(list.className).toContain('no-scrollbar');
+    expect(list.className).not.toContain('scrollbar-x');
+  });
+});
+

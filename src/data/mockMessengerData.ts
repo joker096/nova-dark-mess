@@ -1,6 +1,7 @@
 import { Story, ChatItem, ChatMessage, ChannelPost, ContactProfile } from '../types/messenger';
 
 export const CURRENT_USER = {
+  id: 'joseph',
   name: 'Joseph',
   avatar: '/src/assets/images/joseph_avatar_blond_1793872305362.jpg',
   unreadTotal: 5,
@@ -475,6 +476,20 @@ export const CONTACT_PROFILES: Record<string, ContactProfile> = {
     mediaItems: [
       'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80',
+    ],
+  },
+  joseph: {
+    name: 'Joseph',
+    avatar: '/src/assets/images/joseph_avatar_blond_1793872305362.jpg',
+    status: 'Online',
+    phone: '+38 063 100 20 30',
+    nickname: '@joseph_nova',
+    mediaCount: 52,
+    filesCount: 14,
+    linksCount: 6,
+    voiceCount: 9,
+    mediaItems: [
+      '/src/assets/images/joseph_avatar_blond_1793872305362.jpg',
     ],
   },
   'kyiv-channel': {

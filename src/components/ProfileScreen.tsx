@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useWheelScroll } from '../lib/ui/useWheelScroll';
+import { ScrollableRow, NovaSelectableButton } from '../lib/ui';
 import {
   ArrowLeft,
   Share2,
@@ -29,6 +29,7 @@ import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaItem } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
+import { ContactShareModal } from './ContactShareModal';
 import { toDataURL } from 'qrcode';
 
 interface ProfileScreenProps {
@@ -51,7 +52,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
   const [activeTab, setActiveTab] = useState<'media' | 'files' | 'links' | 'voice'>('media');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const profileTabsRef = useWheelScroll();
+  const profileTabsRef = useRef<HTMLDivElement>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState<'audio' | null>(null);
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -60,6 +61,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
   const [editableNickname, setEditableNickname] = useState<string | null>(null);
   const [editablePhone, setEditablePhone] = useState<string | null>(null);
   const [fieldDraft, setFieldDraft] = useState('');
+  const [shareContactOpen, setShareContactOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -200,10 +202,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              copyToClipboard(`https://nova.app/u/${profile.nickname.replace('@', '')}`, 'share');
-              triggerToast('Profile link copied to clipboard');
-            }}
+            onClick={() => setShareContactOpen(true)}
             className="w-10 h-10 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
             title={t('common.share')}
           >
@@ -420,87 +419,57 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => copyToClipboard(profile.phone, 'phone')}
-                    className="p-2 text-[#6a6f7b] hover:text-white transition cursor-pointer"
-                    title={t('common.copy')}
-                  >
-                    {copiedField === 'phone' ? (
-                      <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
-                    ) : (
-                      <Edit2 className="w-4 h-4" />
-                    )}
-                  </button>
                 </>
               )}
             </div>
           </div>
+          <div className="h-[1px] bg-white/[0.04]" />
         </div>
       </div>
 
       {/* Main Tabs Selector: Media, Files, Links, Voice */}
       <div className="px-5 mb-3">
-        <div ref={profileTabsRef} className="flex items-center gap-2 overflow-x-auto scrollbar-x">
-          <button
+        <ScrollableRow ref={profileTabsRef} wheelScroll={true} gap="2" data-testid="profile-tabs" className="">
+          <NovaSelectableButton
+            selected={activeTab === 'media'}
             onClick={() => setActiveTab('media')}
-            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-              activeTab === 'media'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
-                : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
-            }`}
           >
-            <span>Media</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                activeTab === 'media' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'
-              }`}
-            >
+            Media
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'media' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
               {profile.mediaCount}
             </span>
-          </button>
+          </NovaSelectableButton>
 
-          <button
+          <NovaSelectableButton
+            selected={activeTab === 'files'}
             onClick={() => setActiveTab('files')}
-            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-              activeTab === 'files'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
-                : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
-            }`}
           >
-            <span>Files</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                activeTab === 'files' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'
-              }`}
-            >
+            Files
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'files' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
               {profile.filesCount}
             </span>
-          </button>
+          </NovaSelectableButton>
 
-          <button
+          <NovaSelectableButton
+            selected={activeTab === 'links'}
             onClick={() => setActiveTab('links')}
-            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-              activeTab === 'links'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
-                : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
-            }`}
           >
-            <span>Links</span>
-            <span className="text-[10px] text-[#6a6f7b]">{profile.linksCount}</span>
-          </button>
+            Links
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'links' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+              {profile.linksCount}
+            </span>
+          </NovaSelectableButton>
 
-          <button
+          <NovaSelectableButton
+            selected={activeTab === 'voice'}
             onClick={() => setActiveTab('voice')}
-            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-              activeTab === 'voice'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
-                : 'bg-[#181921] text-[#868b98] hover:text-white border border-white/5'
-            }`}
           >
-            <span>Voice</span>
-            <span className="text-[10px] text-[#6a6f7b]">{profile.voiceCount}</span>
-          </button>
-        </div>
+            Voice
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'voice' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+              {profile.voiceCount}
+            </span>
+          </NovaSelectableButton>
+        </ScrollableRow>
       </div>
 
       {/* Tab Content */}
@@ -971,6 +940,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profileId, onBack,
           </div>
         </div>
       )}
+      <ContactShareModal
+        isOpen={shareContactOpen}
+        onClose={() => setShareContactOpen(false)}
+        contactName={profile.name}
+        contactId={profileId}
+        onShared={(sharedId) => {
+          triggerToast(`Contact ID shared: ${sharedId}`);
+        }}
+      />
     </div>
   );
 };

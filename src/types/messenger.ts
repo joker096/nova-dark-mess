@@ -4,6 +4,51 @@ export interface Story {
   avatar: string;
   coverImage: string;
   unreadCount: number;
+  caption?: string;
+  createdAt?: number;
+  expiresAt?: number;
+  scheduledFor?: number;
+  viewed?: boolean;
+  isMine?: boolean;
+  reactions?: {
+    emoji: string;
+    count: number;
+    userReacted?: boolean;
+  }[];
+}
+
+export interface StoryDraft {
+  coverImage: string;
+  caption?: string;
+  scheduledFor?: number;
+}
+
+export interface ChannelInfo {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  coverImage?: string;
+  subscribers: number;
+  createdAt: number;
+  isOwned?: boolean;
+  isPopular?: boolean;
+  soundEnabled?: boolean;
+}
+
+export interface ChannelDraft {
+  name: string;
+  description?: string;
+  avatar?: string;
+  coverImage?: string;
+  isPopular?: boolean;
+}
+
+export interface ChannelPostDraft {
+  title: string;
+  text: string;
+  image?: string;
+  scheduledFor?: number;
 }
 
 export interface ChatFolder {
@@ -64,12 +109,13 @@ export interface ChatMessage {
     text?: string;
     senderName: string;
   };
+  forwardedFrom?: string;
 }
 
 export interface ChannelPost {
   id: string;
   time: string;
-  dateKey: number; // e.g. 24
+  dateKey: number;
   title: string;
   text: string;
   image?: string;
@@ -80,6 +126,10 @@ export interface ChannelPost {
     count: number;
     userReacted?: boolean;
   }[];
+  channelId?: string;
+  createdAt?: number;
+  scheduledFor?: number;
+  authorName?: string;
 }
 
 export interface SharedMediaItem {
