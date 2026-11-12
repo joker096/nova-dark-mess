@@ -1,4 +1,5 @@
 import { Story, ChatItem, ChatMessage, ChannelPost, ContactProfile } from '../types/messenger';
+import { STICKER_PACKS } from './stickers';
 
 export const CURRENT_USER = {
   id: 'joseph',
@@ -182,6 +183,45 @@ export const INITIAL_KATIE_MESSAGES: ChatMessage[] = [
     pinnedNote: "Katie's voice note on Sunday plan",
     reactions: [{ emoji: '🔥', count: 1, fromMe: true }],
   },
+  {
+    id: 'm9',
+    senderId: 'other',
+    text: "Where should we grab dinner on Sunday? Let's vote!",
+    time: '19:42',
+    poll: {
+      id: 'poll-sunday-dinner',
+      question: 'Where should we grab dinner on Sunday? 🍕',
+      options: [
+        { id: 'opt-1', text: "Harry's Bar & Bistro", votes: 4, votedByMe: true },
+        { id: 'opt-2', text: 'Unit.City Terrace Lounge', votes: 2, votedByMe: false },
+        { id: 'opt-3', text: 'Golden Gate Italian Piazza', votes: 1, votedByMe: false },
+      ],
+      totalVotes: 7,
+      isAnonymous: true,
+      allowsMultiple: false,
+    },
+  },
+  {
+    id: 'm10',
+    senderId: 'other',
+    text: '🐱 Cyber Cat',
+    time: '19:43',
+    sticker: STICKER_PACKS[0].stickers[0],
+  },
+  {
+    id: 'm11',
+    senderId: 'me',
+    text: "📍 Harry's Bar & Bistro, Kyiv",
+    time: '19:44',
+    isRead: true,
+    location: {
+      latitude: 50.4501,
+      longitude: 30.5234,
+      title: "Harry's Bar & Bistro",
+      address: '12 Khreshchatyk Street, Kyiv',
+      isLive: false,
+    },
+  },
 ];
 
 export const CONVERSATION_HISTORIES: Record<string, ChatMessage[]> = {
@@ -256,6 +296,31 @@ export const MOCK_CHANNEL_POSTS: ChannelPost[] = [
       { emoji: '❤️', count: 54 },
       { emoji: '👏', count: 31 },
     ],
+  },
+  {
+    id: 'p4',
+    time: '15:40',
+    dateKey: 24,
+    title: 'Community Poll: Preferred Weekend Spot?',
+    text: 'Cast your vote for the best outdoor work and chill spot in central Kyiv:',
+    commentsCount: 142,
+    reactions: [
+      { emoji: '🔥', count: 180 },
+      { emoji: '😍', count: 95 },
+    ],
+    poll: {
+      id: 'channel-poll-1',
+      question: 'Which Kyiv park is your favorite for weekend walks?',
+      options: [
+        { id: 'cp-1', text: 'Mariinsky Park & Viewpoint', votes: 245, votedByMe: false },
+        { id: 'cp-2', text: 'Botanical Garden (Pechersk)', votes: 312, votedByMe: true },
+        { id: 'cp-3', text: 'Taras Shevchenko Park', votes: 128, votedByMe: false },
+        { id: 'cp-4', text: 'Podil Waterfront & River Station', votes: 194, votedByMe: false },
+      ],
+      totalVotes: 879,
+      isAnonymous: true,
+      allowsMultiple: false,
+    },
   },
   {
     id: 'p0',

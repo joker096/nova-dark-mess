@@ -34,6 +34,7 @@ import { ChannelAvatar } from './ChannelAvatar';
 import { ChannelSwitcherModal } from './ChannelSwitcherModal';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { ChannelPostComposerModal } from './ChannelPostComposerModal';
+import { PollBubble } from './chat/PollBubble';
 import {
   createDefaultChannel,
   dayKey,
@@ -96,10 +97,52 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const availableChannels = channels ?? fallbackChannels;
   const channel = availableChannels.find((item) => item.id === channelId) ?? availableChannels[0];
 
+  const [localPosts, setLocalPosts] = useState<ChannelPost[] | null>(null);
   const sourcePosts = useMemo(() => {
+    if (localPosts !== null) return localPosts;
     if (posts !== undefined) return posts;
     return channel?.id === KYIV_CHANNEL_ID ? MOCK_CHANNEL_POSTS : [];
-  }, [posts, channel?.id]);
+  }, [localPosts, posts, channel?.id]);
+
+  const handleChannelPollVote = (pollId: string, optionId: string) => {
+    const updateTarget = (prevList: ChannelPost[]) =>
+      prevList.map((p) => {
+        if (!p.poll || p.poll.id !== pollId) return p;
+        const curPoll = p.poll;
+        const updatedOptions = curPoll.options.map((opt) => {
+          if (opt.id === optionId) {
+            const nowVoted = !opt.votedByMe;
+            return {
+              ...opt,
+              votedByMe: nowVoted,
+              votes: nowVoted ? opt.votes + 1 : Math.max(0, opt.votes - 1),
+            };
+          }
+          if (!curPoll.allowsMultiple && opt.votedByMe) {
+            return {
+              ...opt,
+              votedByMe: false,
+              votes: Math.max(0, opt.votes - 1),
+            };
+          }
+          return opt;
+        });
+        const total = updatedOptions.reduce((s, o) => s + o.votes, 0);
+        return {
+          ...p,
+          poll: {
+            ...curPoll,
+            options: updatedOptions,
+            totalVotes: total,
+          },
+        };
+      });
+
+    setLocalPosts((prev) => {
+      const base = prev ?? (posts ?? (channel?.id === KYIV_CHANNEL_ID ? MOCK_CHANNEL_POSTS : []));
+      return updateTarget(base);
+    });
+  };
 
   const postCreatedAt = (post: ChannelPost): number => {
     if (typeof post.createdAt === 'number') return post.createdAt;
@@ -854,6 +897,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       <p className="text-[13px] font-normal leading-relaxed text-[#a0a5b2]">
                         {post.text}
                       </p>
+                    )}
+
+                    {/* Interactive Poll in Channel Post */}
+                    {post.poll && (
+                      <div className="pt-2 pb-1">
+                        <PollBubble
+                          poll={post.poll}
+                          onVote={handleChannelPollVote}
+                          onRetractVote={(pollId) => handleChannelPollVote(pollId, '')}
+                        />
+                      </div>
                     )}
 
                     {/* Reactions & Comments Row */}
