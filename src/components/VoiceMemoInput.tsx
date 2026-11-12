@@ -12,7 +12,6 @@ import {
   Send,
   Square,
   ChevronLeft,
-  Volume2,
   RefreshCw,
 } from 'lucide-react';
 import { VoiceNoteData } from '../types/messenger';
@@ -38,7 +37,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     const [isRecording, setIsRecording] = useState(false);
     const [isPushToTalk, setIsPushToTalk] = useState(false);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
-    const [slideOffset, setSlideOffset] = useState(0);
+    const [, setSlideOffset] = useState(0);
     const [isCanceling, setIsCanceling] = useState(false);
     const [stagedVoiceNote, setStagedVoiceNote] = useState<VoiceNoteData | null>(null);
 
@@ -102,7 +101,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try {
           mediaRecorderRef.current.stop();
-        } catch {}
+        } catch { /* ignore */ }
       }
 
       if (micStreamRef.current) {
@@ -113,7 +112,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
         try {
           audioCtxRef.current.close();
-        } catch {}
+        } catch { /* ignore */ }
         audioCtxRef.current = null;
       }
     }, []);
@@ -180,7 +179,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
               };
               mediaRecorder.start(100);
               mediaRecorderRef.current = mediaRecorder;
-            } catch {}
+            } catch { /* ignore */ }
 
             // Live visual frequency loop
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -252,7 +251,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             const mime = mediaRecorderRef.current?.mimeType || 'audio/webm';
             const blob = new Blob(audioChunksRef.current, { type: mime });
             recordedAudioUrlRef.current = URL.createObjectURL(blob);
-          } catch {}
+          } catch { /* ignore */ }
         }
 
         const samples = accumulatedSamplesRef.current;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, Globe, DollarSign } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';

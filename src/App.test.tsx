@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 
 vi.mock('./context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -16,21 +16,23 @@ vi.mock('./hooks/useSecurity', () => ({
   useSecurity: () => ({ isLocked: false, pinHash: null, unlock: vi.fn() }),
 }));
 
-let capturedRef: { openFolderModal: () => void } | null = null;
+const capturedRef: { current: { openFolderModal: () => void } | null } = { current: null };
 
 function MockChatsScreen(
   _props: unknown,
   ref: React.Ref<{ openFolderModal: () => void }>,
 ) {
-  const handle = { openFolderModal: vi.fn() };
+  const handle = useRef({ openFolderModal: vi.fn() }).current;
   if (ref) {
     if (typeof ref === 'function') {
       ref(handle);
     } else {
       (ref as React.MutableRefObject<{ openFolderModal: () => void } | null>).current = handle;
     }
-    capturedRef = handle;
   }
+  useEffect(() => {
+    if (ref) capturedRef.current = handle;
+  }, [ref, handle]);
   return <div data-testid="chats-screen" />;
 }
 vi.mock('./components/ChatsScreen', () => ({ ChatsScreen: forwardRef(MockChatsScreen) }));
@@ -54,12 +56,11 @@ vi.mock('./components/PinLockScreen', () => ({
   PinLockScreen: vi.fn(() => <div data-testid="pin-lock" />),
 }));
 
-import { SettingsModal } from './components/SettingsModal';
 import App from './App';
 
 describe('App - desktop navigation rail', () => {
   beforeEach(() => {
-    capturedRef = null;
+    capturedRef.current = null;
     vi.clearAllMocks();
   });
 
@@ -73,8 +74,8 @@ describe('App - desktop navigation rail', () => {
     render(<App />);
     const foldersBtn = screen.getAllByRole('button', { name: 'folders' })[0];
     fireEvent.click(foldersBtn);
-    expect(capturedRef?.openFolderModal).toBeTruthy();
-    expect(capturedRef?.openFolderModal).toHaveBeenCalledTimes(1);
+    expect(capturedRef.current?.openFolderModal).toBeTruthy();
+    expect(capturedRef.current?.openFolderModal).toHaveBeenCalledTimes(1);
     // settings modal should NOT be opened by the Folders button
     const settingsModal = await screen.findByTestId('settings-modal');
     expect(settingsModal.getAttribute('data-isopen')).toBe('false');

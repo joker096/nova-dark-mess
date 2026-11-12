@@ -14,7 +14,6 @@ interface ContactShareModalProps {
 export const ContactShareModal: React.FC<ContactShareModalProps> = ({
   isOpen,
   onClose,
-  contactName,
   contactId,
   onShared,
 }) => {

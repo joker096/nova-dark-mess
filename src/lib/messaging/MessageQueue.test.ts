@@ -12,9 +12,7 @@ import {
   getAllMessages,
   expireOldMessages,
   getQueueStats,
-  type MessageAckStatus,
 } from './MessageQueue';
-import { createMessageEnvelope } from './MessageEnvelope';
 
 vi.useFakeTimers({ toFake: ['Date'] });
 
