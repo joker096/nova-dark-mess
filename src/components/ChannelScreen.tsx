@@ -35,6 +35,7 @@ import { ChannelSwitcherModal } from './ChannelSwitcherModal';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { ChannelPostComposerModal } from './ChannelPostComposerModal';
 import { PollBubble } from './chat/PollBubble';
+import { StickerMedia } from './chat/StickerMedia';
 import {
   createDefaultChannel,
   dayKey,
@@ -914,15 +915,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     {/* Sticker in Channel Post */}
                     {post.sticker && (
                       <div className="flex justify-start pt-1">
-                        {post.sticker.imageUrl ? (
-                          <img
-                            src={post.sticker.imageUrl}
-                            alt={post.sticker.name}
-                            className="h-28 w-28 object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                          />
-                        ) : (
-                          <span className="text-5xl">{post.sticker.emoji}</span>
-                        )}
+                        <StickerMedia
+                          sticker={post.sticker}
+                          className="h-28 w-28 object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                          emojiClassName="text-5xl"
+                        />
                       </div>
                     )}
 
