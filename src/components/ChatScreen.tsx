@@ -3286,9 +3286,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           <button
             type="button"
             onClick={() => {
-              setIsFileModalOpen(true);
+              setIsAttachmentMenuOpen((prev) => !prev);
               setIsEmojiPickerOpen(false);
-              setIsAttachmentMenuOpen(false);
+              setIsFileModalOpen(false);
             }}
             className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               isFileModalOpen || stagedAttachment

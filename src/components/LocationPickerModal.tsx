@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Radio, Clock, Search, Check } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
-import { NovaButton } from '../lib/ui/NovaButton';
 import { LocationData } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -249,21 +248,27 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
         {/* Modal Buttons */}
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
-          <NovaButton variant="ghost" size="md" type="button" onClick={onClose}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition cursor-pointer active:scale-95"
+          >
             {t('common.cancel', 'Cancel')}
-          </NovaButton>
-          <NovaButton
-            variant="accent"
-            size="md"
+          </button>
+          <button
             type="button"
             onClick={handleSend}
-            className={mode === 'live' ? '!bg-emerald-600 hover:!bg-emerald-500' : ''}
+            className={`flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-md transition cursor-pointer active:scale-95 ${
+              mode === 'live'
+                ? 'bg-emerald-600 hover:bg-emerald-500'
+                : 'bg-[var(--nova-accent-color,#ff4e18)] hover:brightness-110'
+            }`}
           >
             <MapPin className="w-4 h-4 mr-1.5" />
             {mode === 'live'
               ? t('location.sendLiveButton', 'Start Sharing Live')
               : t('location.sendLocationButton', 'Send This Location')}
-          </NovaButton>
+          </button>
         </div>
       </div>
     </NovaModal>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, HelpCircle, Check, BarChart2 } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
-import { NovaButton } from '../lib/ui/NovaButton';
 import { PollData, PollOption } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -199,7 +198,10 @@ export const PollCreateModal: React.FC<PollCreateModalProps> = ({
                     handleOptionChange(idx, e.target.value);
                     if (error) setError(null);
                   }}
-                  placeholder={t('poll.optionPlaceholder', `Option ${idx + 1}`)}
+                  placeholder={t('poll.optionPlaceholder', {
+                    count: idx + 1,
+                    defaultValue: `Option ${idx + 1}`,
+                  })}
                   className="flex-1 bg-[#11121a] border border-white/10 focus:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-3.5 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition"
                   maxLength={100}
                 />
@@ -297,13 +299,20 @@ export const PollCreateModal: React.FC<PollCreateModalProps> = ({
 
         {/* Modal Actions */}
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-          <NovaButton variant="ghost" size="md" type="button" onClick={handleClose}>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition cursor-pointer active:scale-95"
+          >
             {t('common.cancel', 'Cancel')}
-          </NovaButton>
-          <NovaButton variant="accent" size="md" type="submit">
+          </button>
+          <button
+            type="submit"
+            className="flex items-center px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--nova-accent-color,#ff4e18)] hover:brightness-110 text-white shadow-md transition cursor-pointer active:scale-95"
+          >
             <BarChart2 className="w-4 h-4 mr-1.5" />
             {t('poll.createButton', 'Create Poll')}
-          </NovaButton>
+          </button>
         </div>
       </form>
     </NovaModal>
