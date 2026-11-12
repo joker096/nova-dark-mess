@@ -610,13 +610,18 @@
     "public": "استطلاع عام",
     "quiz": "اختبار",
     "explanation": "الشرح",
-    "votesCount": "{{count}} أصوات",
     "retractVote": "سحب التصويت",
     "pollCreated": "تم إنشاء الاستطلاع!",
     "votedNotification": "صوّت {{name}} في استطلاعك",
     "errorQuestionRequired": "يرجى إدخال سؤال الاستطلاع",
     "errorOptionsRequired": "يرجى تقديم خيارين على الأقل",
-    "errorSelectCorrectOption": "يرجى اختيار الإجابة الصحيحة للاختبار"
+    "errorSelectCorrectOption": "يرجى اختيار الإجابة الصحيحة للاختبار",
+    "votesCount_zero": "لا أصوات",
+    "votesCount_one": "صوت واحد",
+    "votesCount_two": "صوتان",
+    "votesCount_few": "{{count}} أصوات",
+    "votesCount_many": "{{count}} صوتًا",
+    "votesCount_other": "{{count}} صوت"
   },
   "stickers": {
     "title": "ملصقات",

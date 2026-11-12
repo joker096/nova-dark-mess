@@ -610,13 +610,14 @@
     "public": "Bình chọn công khai",
     "quiz": "Trắc nghiệm",
     "explanation": "Giải thích",
-    "votesCount": "{{count}} phiếu",
     "retractVote": "Rút phiếu",
     "pollCreated": "Đã tạo bình chọn!",
     "votedNotification": "{{name}} đã bỏ phiếu trong bình chọn của bạn",
     "errorQuestionRequired": "Vui lòng nhập câu hỏi bình chọn",
     "errorOptionsRequired": "Vui lòng cung cấp ít nhất 2 lựa chọn",
-    "errorSelectCorrectOption": "Vui lòng chọn đáp án đúng cho trắc nghiệm"
+    "errorSelectCorrectOption": "Vui lòng chọn đáp án đúng cho trắc nghiệm",
+    "votesCount_one": "{{count}} phiếu",
+    "votesCount_other": "{{count}} phiếu"
   },
   "stickers": {
     "title": "Nhãn dán",
