@@ -307,7 +307,10 @@
     "sendAt": "إرسال في",
     "morseEncode": "إظهار رمز مورس",
     "morseDecode": "إظهار النص",
-    "morseSample": "أبجديات"
+    "morseSample": "أبجديات",
+    "messageDeleted": "تم حذف هذه الرسالة",
+    "edited": "(تم تعديلها)",
+    "forwardedFrom": "أُعيد توجيهه من"
   },
   "stories": {
     "title": "القصص",
@@ -637,6 +640,22 @@
     "title": "ملصقات",
     "gifs": "صور متحركة",
     "tapToInsert": "اضغط على الرمز التعبيري لإدراجه:",
-    "searchGifs": "ابحث عن صور متحركة..."
+    "searchGifs": "ابحث عن صور متحركة...",
+    "searchStickers": "ابحث عن الملصقات...",
+    "all": "الكل",
+    "recent": "الأحدث",
+    "favorites": "المفضلة",
+    "premium": "مميز",
+    "unlockPremium": "افتح جميع الملصقات المميزة",
+    "addFavorite": "أضف إلى المفضلة",
+    "removeFavorite": "إزالة من المفضلة",
+    "emptySearch": "لم يتم العثور على شيء",
+    "emptyRecent": "لا توجد ملصقات حديثة بعد",
+    "emptyFavorites": "لا توجد ملصقات مفضلة بعد",
+    "emptyPack": "لا توجد ملصقات في هذه الحزمة",
+    "importPack": "استيراد حزمة ملصقات محلية",
+    "importError": "تعذر استيراد هذه الحزمة",
+    "importedPack": "الحزمة المستوردة",
+    "removePack": "إزالة الحزمة"
   }
 }

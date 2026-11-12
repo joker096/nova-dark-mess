@@ -299,7 +299,10 @@
     "sendAt": "ส่งเมื่อ",
     "morseEncode": "แสดงรหัสมอร์ส",
     "morseDecode": "แสดงข้อความ",
-    "morseSample": "อีสาน"
+    "morseSample": "อีสาน",
+    "messageDeleted": "ข้อความนี้ถูกลบ",
+    "edited": "(แก้ไขแล้ว)",
+    "forwardedFrom": "ส่งต่อจาก"
   },
   "stories": {
     "title": "สตอรี่",
@@ -625,6 +628,22 @@
     "title": "สติกเกอร์",
     "gifs": "GIF",
     "tapToInsert": "แตะอีโมจิเพื่อแทรก:",
-    "searchGifs": "ค้นหา GIF..."
+    "searchGifs": "ค้นหา GIF...",
+    "searchStickers": "ค้นหาสติกเกอร์...",
+    "all": "ทั้งหมด",
+    "recent": "ล่าสุด",
+    "favorites": "รายการโปรด",
+    "premium": "พรีเมียม",
+    "unlockPremium": "ปลดล็อกสติกเกอร์พรีเมียมทั้งหมด",
+    "addFavorite": "เพิ่มในรายการโปรด",
+    "removeFavorite": "ลบออกจากรายการโปรด",
+    "emptySearch": "ไม่พบสิ่งใด",
+    "emptyRecent": "ยังไม่มีสติกเกอร์ล่าสุด",
+    "emptyFavorites": "ยังไม่มีสติกเกอร์โปรด",
+    "emptyPack": "ไม่มีสติกเกอร์ในแพ็กนี้",
+    "importPack": "นำเข้าแพ็กสติกเกอร์แบบทางเลือก",
+    "importError": "ไม่สามารถนำเข้าแพ็กนี้",
+    "importedPack": "แพ็กที่นำเข้า",
+    "removePack": "นำออกแพ็ก"
   }
 }

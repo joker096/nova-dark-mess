@@ -299,7 +299,10 @@
     "sendAt": "Senden um",
     "morseEncode": "Morse-Code anzeigen",
     "morseDecode": "Text anzeigen",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Diese Nachricht wurde gelöscht",
+    "edited": "(bearbeitet)",
+    "forwardedFrom": "Weitergeleitet von"
   },
   "stories": {
     "title": "Stories",
@@ -625,6 +628,22 @@
     "title": "Sticker",
     "gifs": "GIFs",
     "tapToInsert": "Emoji zum Einfügen antippen:",
-    "searchGifs": "GIFs suchen..."
+    "searchGifs": "GIFs suchen...",
+    "searchStickers": "Sticker suchen...",
+    "all": "Alle",
+    "recent": "Zuletzt",
+    "favorites": "Favoriten",
+    "premium": "Premium",
+    "unlockPremium": "Alle Premium-Sticker freischalten",
+    "addFavorite": "Zu Favoriten hinzufügen",
+    "removeFavorite": "Aus Favoriten entfernen",
+    "emptySearch": "Nichts gefunden",
+    "emptyRecent": "Noch keine letzten Sticker",
+    "emptyFavorites": "Noch keine Lieblingssticker",
+    "emptyPack": "Keine Sticker in diesem Paket",
+    "importPack": "Lokales Sticker-Paket importieren",
+    "importError": "Dieses Sticker-Paket konnte nicht importiert werden",
+    "importedPack": "Importiertes Paket",
+    "removePack": "Paket entfernen"
   }
 }

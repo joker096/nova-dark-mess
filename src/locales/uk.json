@@ -176,7 +176,10 @@
     "sendAt": "Надіслати о",
     "morseEncode": "Показати код Морзе",
     "morseDecode": "Показати текст",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Повідомлення видалено",
+    "edited": "(змінено)",
+    "forwardedFrom": "Переслано від"
   },
   "stories": {
     "title": "Сторіз",
@@ -605,7 +608,23 @@
     "title": "Стікери",
     "gifs": "GIF",
     "tapToInsert": "Натисніть на емодзі для вставки:",
-    "searchGifs": "Пошук GIF..."
+    "searchGifs": "Пошук GIF...",
+    "searchStickers": "Пошук стікерів...",
+    "all": "Усі",
+    "recent": "Нещодавні",
+    "favorites": "Обране",
+    "premium": "Преміум",
+    "unlockPremium": "Розблокувати всі преміум-стікери",
+    "addFavorite": "Додати в обране",
+    "removeFavorite": "Прибрати з обраного",
+    "emptySearch": "Нічого не знайдено",
+    "emptyRecent": "Нещодавніх стікерів ще немає",
+    "emptyFavorites": "В обраному ще немає стікерів",
+    "emptyPack": "У цьому паку немає стікерів",
+    "importPack": "Імпортувати локальний пакет стікерів",
+    "importError": "Не вдалося імпортувати цей пакет стікерів",
+    "importedPack": "Імпортований пакет",
+    "removePack": "Видалити пакет"
   },
   "contact": {
     "shareTitle": "Поділитися контактом",

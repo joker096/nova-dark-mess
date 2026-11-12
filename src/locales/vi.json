@@ -299,7 +299,10 @@
     "sendAt": "Gửi lúc",
     "morseEncode": "Hiển thị mã Morse",
     "morseDecode": "Hiển thị văn bản",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Tin nhắn này đã bị xóa",
+    "edited": "(đã chỉnh sửa)",
+    "forwardedFrom": "Chuyển tiếp từ"
   },
   "stories": {
     "title": "Truyện",
@@ -625,6 +628,22 @@
     "title": "Nhãn dán",
     "gifs": "GIF",
     "tapToInsert": "Chạm vào emoji để chèn:",
-    "searchGifs": "Tìm GIF..."
+    "searchGifs": "Tìm GIF...",
+    "searchStickers": "Tìm nhãn dán...",
+    "all": "Tất cả",
+    "recent": "Gần đây",
+    "favorites": "Yêu thích",
+    "premium": "Cao cấp",
+    "unlockPremium": "Mở khóa tất cả nhãn dán cao cấp",
+    "addFavorite": "Thêm vào yêu thích",
+    "removeFavorite": "Bỏ khỏi yêu thích",
+    "emptySearch": "Không tìm thấy gì",
+    "emptyRecent": "Chưa có nhãn dán gần đây",
+    "emptyFavorites": "Chưa có nhãn dán yêu thích",
+    "emptyPack": "Không có nhãn dán trong gói này",
+    "importPack": "Nhập gói nhãn dán cục bộ",
+    "importError": "Không thể nhập gói nhãn dán này",
+    "importedPack": "Gói đã nhập",
+    "removePack": "Xóa gói"
   }
 }

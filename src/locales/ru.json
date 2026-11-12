@@ -176,7 +176,10 @@
     "sendAt": "Отправить в",
     "morseEncode": "Показать код Морзе",
     "morseDecode": "Показать текст",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Сообщение удалено",
+    "edited": "(изменено)",
+    "forwardedFrom": "Переслано от"
   },
   "stories": {
     "title": "Истории",
@@ -605,7 +608,23 @@
     "title": "Стикеры",
     "gifs": "GIF",
     "tapToInsert": "Нажмите на эмодзи для вставки:",
-    "searchGifs": "Поиск GIF..."
+    "searchGifs": "Поиск GIF...",
+    "searchStickers": "Поиск стикеров...",
+    "all": "Все",
+    "recent": "Недавние",
+    "favorites": "Избранное",
+    "premium": "Премиум",
+    "unlockPremium": "Разблокировать все премиум-стикеры",
+    "addFavorite": "Добавить в избранное",
+    "removeFavorite": "Убрать из избранного",
+    "emptySearch": "Ничего не найдено",
+    "emptyRecent": "Недавних стикеров пока нет",
+    "emptyFavorites": "В избранном пока нет стикеров",
+    "emptyPack": "В этом паке нет стикеров",
+    "importPack": "Импортировать локальный пакет стикеров",
+    "importError": "Не удалось импортировать этот пакет стикеров",
+    "importedPack": "Импортированный пакет",
+    "removePack": "Удалить пакет"
   },
   "contact": {
     "shareTitle": "Поделиться контактом",

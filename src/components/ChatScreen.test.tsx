@@ -329,3 +329,45 @@ describe('ChatScreen - horizontal lists hide scrollbar', () => {
     expect(list.className).not.toContain('scrollbar-x');
   });
 });
+
+describe('ChatScreen - message edit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('edits an own message and marks it as edited', () => {
+    renderChat();
+    const bubble = getBubble('m3');
+    fireEvent.click(within(bubble).getByTitle('chat.messageActions.edit'));
+    const input = within(bubble).getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Updated text' } });
+    fireEvent.click(within(bubble).getByText('common.save'));
+    expect(screen.getByText('Updated text')).toBeTruthy();
+    expect(within(bubble).getByText('chat.edited')).toBeTruthy();
+  });
+
+  it('cancels editing without changing the message', () => {
+    renderChat();
+    const bubble = getBubble('m3');
+    fireEvent.click(within(bubble).getByTitle('chat.messageActions.edit'));
+    const input = within(bubble).getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Changed' } });
+    fireEvent.click(within(bubble).getByText('common.cancel'));
+    expect(screen.getByText('Yeah, good times. For sure...')).toBeTruthy();
+    expect(screen.queryByText('Changed')).toBeNull();
+  });
+});
+
+describe('ChatScreen - message delete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deletes an own message and shows a tombstone', () => {
+    renderChat();
+    const bubble = getBubble('m3');
+    fireEvent.click(within(bubble).getByTitle('chat.messageActions.delete'));
+    expect(screen.getByText('chat.messageDeleted')).toBeTruthy();
+    expect(screen.queryByText('Yeah, good times. For sure...')).toBeNull();
+  });
+});
