@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "Emoji"
   },
   "chats": {
     "title": "Obrolan",
@@ -198,16 +199,29 @@
     "expandPanel": "Bentangkan panel",
     "searchChannels": "Cari saluran...",
     "popular": "Saluran Populer",
-      "addPopular": "Tambahkan ke populer",
-      "removePopular": "Hapus dari populer"
-    },
-    "location": {
-      "shareTitle": "Bagikan Lokasi",
-      "shareDesc": "Anda sedang membuka lokasi Anda saat ini di obrolan ini. Lokasi Anda akan terlihat oleh peserta percakapan.",
-      "shareConfirm": "Saya mengerti, bagikan",
-      "cancel": "Batal"
-    },
-    "contact": {
+    "addPopular": "Tambahkan ke populer",
+    "removePopular": "Hapus dari populer"
+  },
+  "location": {
+    "shareTitle": "Bagikan Lokasi",
+    "shareDesc": "Anda sedang membuka lokasi Anda saat ini di obrolan ini. Lokasi Anda akan terlihat oleh peserta percakapan.",
+    "shareConfirm": "Saya mengerti, bagikan",
+    "cancel": "Batal",
+    "sendLocation": "Kirim Lokasi",
+    "currentOrPlace": "Lokasi Saat Ini & Tempat",
+    "shareLive": "Bagikan Lokasi Langsung",
+    "liveLocationTitle": "Lokasi Langsung (Siaran GPS)",
+    "shareDuration": "Bagikan lokasi langsung selama:",
+    "liveSecurityNote": "Peserta di chat ini dapat melihat koordinat GPS real-time Anda hingga timer berakhir.",
+    "searchNearby": "Cari tempat terdekat...",
+    "sendLiveButton": "Mulai Bagikan Langsung",
+    "sendLocationButton": "Kirim Lokasi Ini",
+    "liveActive": "GPS LANGSUNG",
+    "liveEnded": "LANGSUNG BERAKHIR",
+    "openInMaps": "Buka di Peta",
+    "broadcastDuration": "Berbagi selama {{duration}}"
+  },
+  "contact": {
     "shareTitle": "Bagikan kontak",
     "idOnly": "Hanya ID",
     "idOnlyDesc": "Hanya ID kontak yang dibagikan. Tidak ada telepon, email, atau data pribadi lain yang dibocorkan.",
@@ -572,5 +586,42 @@
     "lockedIcon": "Ikon Premium",
     "freeTrial": "Coba gratis — {{days}} hari tersisa",
     "subscribe": "Langganan"
+  },
+  "poll": {
+    "title": "Polling",
+    "createTitle": "Polling Baru",
+    "questionLabel": "Pertanyaan",
+    "questionPlaceholder": "Ajukan pertanyaan...",
+    "optionsLabel": "Opsi polling",
+    "optionPlaceholder": "Opsi {{count}}",
+    "addOption": "Tambah opsi",
+    "settings": "Pengaturan Polling",
+    "anonymousVoting": "Voting Anonim",
+    "anonymousDesc": "Tidak ada yang melihat siapa memilih apa",
+    "multipleAnswers": "Jawaban Ganda",
+    "multipleDesc": "Pengguna dapat memilih lebih dari satu opsi",
+    "quizMode": "Mode Kuis",
+    "quizDesc": "Polling punya satu jawaban benar dan penjelasan",
+    "markCorrect": "Tandai sebagai jawaban benar",
+    "explanationLabel": "Penjelasan (opsional)",
+    "explanationPlaceholder": "Pengguna akan melihat penjelasan ini setelah memilih jawaban...",
+    "createButton": "Buat Polling",
+    "anonymous": "Polling Anonim",
+    "public": "Polling Publik",
+    "quiz": "Kuis",
+    "explanation": "Penjelasan",
+    "votesCount": "{{count}} suara",
+    "retractVote": "Tarik suara",
+    "pollCreated": "Polling dibuat!",
+    "votedNotification": "{{name}} memilih di polling Anda",
+    "errorQuestionRequired": "Masukkan pertanyaan polling",
+    "errorOptionsRequired": "Berikan minimal 2 opsi",
+    "errorSelectCorrectOption": "Pilih jawaban yang benar untuk kuis"
+  },
+  "stickers": {
+    "title": "Stiker",
+    "gifs": "GIF",
+    "tapToInsert": "Ketuk emoji untuk menyisipkan:",
+    "searchGifs": "Cari GIF..."
   }
 }

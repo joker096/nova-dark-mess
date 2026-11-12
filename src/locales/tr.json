@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "Emojiler"
   },
   "chats": {
     "title": "Sohbetler",
@@ -198,16 +199,29 @@
     "expandPanel": "Paneli genişlet",
     "searchChannels": "Kanalları ara...",
     "popular": "Popüler Kanallar",
-      "addPopular": "Popülerlere ekle",
-      "removePopular": "Popülerlerden kaldır"
-    },
-    "location": {
-      "shareTitle": "Konumu paylaş",
-      "shareDesc": "Bu sohbette mevcut konumunuzu açıklıyorsunuz. Konumunuz sohbet katılımcılara görünür olacaktır.",
-      "shareConfirm": "Anladım, paylaş",
-      "cancel": "İptal"
-    },
-    "contact": {
+    "addPopular": "Popülerlere ekle",
+    "removePopular": "Popülerlerden kaldır"
+  },
+  "location": {
+    "shareTitle": "Konumu paylaş",
+    "shareDesc": "Bu sohbette mevcut konumunuzu açıklıyorsunuz. Konumunuz sohbet katılımcılara görünür olacaktır.",
+    "shareConfirm": "Anladım, paylaş",
+    "cancel": "İptal",
+    "sendLocation": "Konum Gönder",
+    "currentOrPlace": "Mevcut Konum ve Yerler",
+    "shareLive": "Canlı Konum Paylaş",
+    "liveLocationTitle": "Canlı Konum (GPS Yayını)",
+    "shareDuration": "Canlı konumu şu süre boyunca paylaş:",
+    "liveSecurityNote": "Bu sohbetin katılımcıları, süre dolana kadar gerçek zamanlı GPS koordinatlarını görebilecek.",
+    "searchNearby": "Yakındaki yerleri ara...",
+    "sendLiveButton": "Canlı paylaşımı başlat",
+    "sendLocationButton": "Bu Konumu Gönder",
+    "liveActive": "CANLI GPS",
+    "liveEnded": "CANLI BİTTİ",
+    "openInMaps": "Haritalarda Aç",
+    "broadcastDuration": "{{duration}} boyunca paylaşılıyor"
+  },
+  "contact": {
     "shareTitle": "Kişiyi paylaş",
     "idOnly": "Yalnızca Kimlik",
     "idOnlyDesc": "Yalnızca kişi kimliği paylaşılır. Telefon, e-posta veya diğer kişisel veriler ifşa edilmez.",
@@ -572,5 +586,42 @@
     "lockedIcon": "Premium simgesi",
     "freeTrial": "Ücretsiz deneme — {{days}} gün kaldı",
     "subscribe": "Abone ol"
+  },
+  "poll": {
+    "title": "Anket",
+    "createTitle": "Yeni Anket",
+    "questionLabel": "Soru",
+    "questionPlaceholder": "Bir soru sor...",
+    "optionsLabel": "Anket seçenekleri",
+    "optionPlaceholder": "Seçenek {{count}}",
+    "addOption": "Seçenek ekle",
+    "settings": "Anket Ayarları",
+    "anonymousVoting": "Anonim Oylama",
+    "anonymousDesc": "Kimin neye oy verdiğini kimse görmez",
+    "multipleAnswers": "Çoklu Yanıt",
+    "multipleDesc": "Kullanıcılar birden fazla seçenek seçebilir",
+    "quizMode": "Quiz Modu",
+    "quizDesc": "Anketin tek doğru yanıtı ve açıklaması olur",
+    "markCorrect": "Doğru yanıt olarak işaretle",
+    "explanationLabel": "Açıklama (isteğe bağlı)",
+    "explanationPlaceholder": "Kullanıcılar bir yanıt seçtikten sonra bu açıklamayı görecek...",
+    "createButton": "Anket Oluştur",
+    "anonymous": "Anonim Anket",
+    "public": "Herkese Açık Anket",
+    "quiz": "Quiz",
+    "explanation": "Açıklama",
+    "votesCount": "{{count}} oy",
+    "retractVote": "Oyu geri çek",
+    "pollCreated": "Anket oluşturuldu!",
+    "votedNotification": "{{name}} anketinde oy kullandı",
+    "errorQuestionRequired": "Lütfen bir anket sorusu gir",
+    "errorOptionsRequired": "Lütfen en az 2 seçenek gir",
+    "errorSelectCorrectOption": "Lütfen quiz için doğru yanıtı seç"
+  },
+  "stickers": {
+    "title": "Çıkartmalar",
+    "gifs": "GIF'ler",
+    "tapToInsert": "Eklemek için emojiye dokun:",
+    "searchGifs": "GIF ara..."
   }
 }

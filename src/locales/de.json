@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "Emojis"
   },
   "chats": {
     "title": "Chats",
@@ -198,16 +199,29 @@
     "expandPanel": "Panel ausklappen",
     "searchChannels": "Kanäle suchen...",
     "popular": "Beliebte Kanäle",
-      "addPopular": "Zu Favoriten hinzufügen",
-      "removePopular": "Aus Favoriten entfernen"
-    },
-    "location": {
-      "shareTitle": "Standort teilen",
-      "shareDesc": "Sie geben Ihren aktuellen Standort in diesem Chat preis. Ihr Standort wird für die Gesprächsteilnehmer sichtbar sein.",
-      "shareConfirm": "Ich verstehe, teilen",
-      "cancel": "Abbrechen"
-    },
-    "contact": {
+    "addPopular": "Zu Favoriten hinzufügen",
+    "removePopular": "Aus Favoriten entfernen"
+  },
+  "location": {
+    "shareTitle": "Standort teilen",
+    "shareDesc": "Sie geben Ihren aktuellen Standort in diesem Chat preis. Ihr Standort wird für die Gesprächsteilnehmer sichtbar sein.",
+    "shareConfirm": "Ich verstehe, teilen",
+    "cancel": "Abbrechen",
+    "sendLocation": "Standort senden",
+    "currentOrPlace": "Aktueller Standort & Orte",
+    "shareLive": "Live-Standort teilen",
+    "liveLocationTitle": "Live-Standort (GPS-Übertragung)",
+    "shareDuration": "Live-Standort teilen für:",
+    "liveSecurityNote": "Teilnehmer dieses Chats sehen deine GPS-Koordinaten in Echtzeit, bis der Timer abläuft.",
+    "searchNearby": "Orte in der Nähe suchen...",
+    "sendLiveButton": "Live teilen starten",
+    "sendLocationButton": "Diesen Standort senden",
+    "liveActive": "LIVE-GPS",
+    "liveEnded": "LIVE BEENDET",
+    "openInMaps": "In Karten öffnen",
+    "broadcastDuration": "Wird für {{duration}} geteilt"
+  },
+  "contact": {
     "shareTitle": "Kontakt teilen",
     "idOnly": "Nur ID",
     "idOnlyDesc": "Nur die Kontakt-ID wird geteilt. Keine Telefonnummer, E-Mail oder andere personenbezogene Daten werden offenbart.",
@@ -572,5 +586,42 @@
     "lockedIcon": "Premium-Symbol",
     "freeTrial": "Kostenlose Testversion — noch {{days}} Tage",
     "subscribe": "Abonnieren"
+  },
+  "poll": {
+    "title": "Umfrage",
+    "createTitle": "Neue Umfrage",
+    "questionLabel": "Frage",
+    "questionPlaceholder": "Stelle eine Frage...",
+    "optionsLabel": "Umfrageoptionen",
+    "optionPlaceholder": "Option {{count}}",
+    "addOption": "Option hinzufügen",
+    "settings": "Umfrage-Einstellungen",
+    "anonymousVoting": "Anonyme Abstimmung",
+    "anonymousDesc": "Niemand sieht, wer wofür gestimmt hat",
+    "multipleAnswers": "Mehrere Antworten",
+    "multipleDesc": "Nutzer können mehr als eine Option wählen",
+    "quizMode": "Quizmodus",
+    "quizDesc": "Die Umfrage hat eine richtige Antwort und eine Erklärung",
+    "markCorrect": "Als richtige Antwort markieren",
+    "explanationLabel": "Erklärung (optional)",
+    "explanationPlaceholder": "Nutzer sehen diese Erklärung nach der Auswahl einer Antwort...",
+    "createButton": "Umfrage erstellen",
+    "anonymous": "Anonyme Umfrage",
+    "public": "Öffentliche Umfrage",
+    "quiz": "Quiz",
+    "explanation": "Erklärung",
+    "votesCount": "{{count}} Stimmen",
+    "retractVote": "Stimme zurückziehen",
+    "pollCreated": "Umfrage erstellt!",
+    "votedNotification": "{{name}} hat in deiner Umfrage abgestimmt",
+    "errorQuestionRequired": "Bitte gib eine Frage ein",
+    "errorOptionsRequired": "Bitte gib mindestens 2 Optionen an",
+    "errorSelectCorrectOption": "Bitte wähle die richtige Antwort für das Quiz"
+  },
+  "stickers": {
+    "title": "Sticker",
+    "gifs": "GIFs",
+    "tapToInsert": "Emoji zum Einfügen antippen:",
+    "searchGifs": "GIFs suchen..."
   }
 }
