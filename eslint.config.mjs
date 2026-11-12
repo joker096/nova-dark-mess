@@ -25,6 +25,9 @@ export default [
       'react-hooks': reactHooksPlugin,
     },
     rules: {
+      // Base rules superseded by their TypeScript-aware counterparts.
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
       ...reactHooksPlugin.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],

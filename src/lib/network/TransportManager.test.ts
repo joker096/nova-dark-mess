@@ -31,7 +31,6 @@ function createMockBackend(
     sendShouldFail = false,
   } = options;
 
-  let connected = false;
   const sentMessages: Uint8Array[] = [];
 
   return {
@@ -44,10 +43,8 @@ function createMockBackend(
     lastProbe: null,
     connect: async () => {
       if (connectShouldFail) throw new Error(`Connect failed for ${id}`);
-      connected = true;
     },
     disconnect: async () => {
-      connected = false;
     },
     send: async (data: Uint8Array) => {
       if (sendShouldFail) throw new Error(`Send failed for ${id}`);

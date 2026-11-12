@@ -6,7 +6,6 @@ import {
   Edit2,
   MessageSquare,
   Phone,
-  Video,
   MoreHorizontal,
   QrCode,
   FileText,

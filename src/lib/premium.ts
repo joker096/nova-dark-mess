@@ -38,7 +38,7 @@ export function isPremium(): boolean {
       }
       return true;
     }
-  } catch {}
+  } catch { /* ignore */ }
   return false;
 }
 
@@ -51,7 +51,7 @@ export function setPremium(active: boolean, expiryMs?: number) {
       localStorage.removeItem(PREMIUM_KEY);
       localStorage.removeItem(PREMIUM_EXPIRY_KEY);
     }
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 /**
@@ -65,7 +65,7 @@ export function ensureFirstMonthFree() {
     const now = Date.now();
     localStorage.setItem(FIRST_INSTALL_KEY, String(now));
     localStorage.setItem(PREMIUM_FREE_UNTIL_KEY, String(now + FREE_TRIAL_DAYS * DAY_MS));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 export function freeDaysRemaining(): number {
@@ -81,7 +81,7 @@ export function freeDaysRemaining(): number {
   }
 }
 
-export function canUseFeature(feature: 'chat_themes' | 'wallpaper' | 'date_picker' | 'location_sharing' | 'all'): boolean {
+export function canUseFeature(_feature: 'chat_themes' | 'wallpaper' | 'date_picker' | 'location_sharing' | 'all'): boolean {
   return isPremium();
 }
 

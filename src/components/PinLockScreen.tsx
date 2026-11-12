@@ -8,12 +8,12 @@ interface PinLockScreenProps {
   onSetPin?: () => void;
 }
 
-export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin }) => {
+export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSetPin }) => {
   const { t } = useLanguage();
-  const { verifyPin, setPin, pinHash } = useSecurity();
+  const { pinHash } = useSecurity();
   const [pin, setPinInput] = useState('');
   const [error, setError] = useState(false);
-  const [isSetting, setIsSetting] = useState(!pinHash);
+  const [isSetting] = useState(!pinHash);
 
   const handleDigit = (digit: string) => {
     setError(false);
@@ -27,28 +27,6 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
     setPinInput(pin.slice(0, -1));
   };
 
-  const handleSubmit = async () => {
-    if (isSetting) {
-      if (pin.length < 4) {
-        setError(true);
-        return;
-      }
-      await setPin(pin);
-      setIsSetting(false);
-      setPinInput('');
-      onUnlock();
-      return;
-    }
-    const ok = await verifyPin(pin);
-    if (ok) {
-      setError(false);
-      setPinInput('');
-      onUnlock();
-    } else {
-      setError(true);
-      setPinInput('');
-    }
-  };
 
   const digits = '1234567890'.split('');
 

@@ -13,7 +13,6 @@ import {
   Minimize2,
   ShieldCheck,
   Signal,
-  Smile,
   Radio,
 } from 'lucide-react';
 import { CURRENT_USER } from '../data/mockMessengerData';
@@ -51,7 +50,6 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   const [activeFilter, setActiveFilter] = useState<VideoFilter>('none');
   const [showControls, setShowControls] = useState<boolean>(true);
   const [remoteAudioLevel, setRemoteAudioLevel] = useState<number>(3);
-  const [pipPosition, setPipPosition] = useState<{ x: number; y: number } | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);

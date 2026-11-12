@@ -19,7 +19,7 @@ const VARIANT_CONFIG: Record<string, string> = {
 };
 
 export const NovaSelectableButton = forwardRef<HTMLButtonElement, NovaSelectableButtonProps>(
-  ({ selected = false, disabled = false, icon, label, accent = true, className, children, ...props }, ref) => {
+  ({ selected = false, disabled = false, icon, label, accent: _accent = true, className, children, ...props }, ref) => {
     const variantClasses = selected
       ? VARIANT_CONFIG.selected
       : disabled
