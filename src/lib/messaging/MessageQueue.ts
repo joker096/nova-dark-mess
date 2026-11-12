@@ -107,7 +107,7 @@ export async function removeMessage(id: string): Promise<void> {
 
 export async function getAllMessages(): Promise<QueuedMessage[]> {
   const messages: QueuedMessage[] = [];
-  for (const [id, record] of store) {
+  for (const record of store.values()) {
     messages.push({
       id: record.id,
       envelope: deserializeMessageEnvelope(record.envelope),

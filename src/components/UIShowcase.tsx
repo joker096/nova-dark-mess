@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import { MeshRadar } from './MeshRadar';
-import { TransportManager } from '../lib/network/TransportManager';
-import { MeshRoutingTable } from '../lib/p2p/MeshRoutingTable';
 import {
   Video,
   Search,
   Palette,
-  Sparkles,
   Pin,
-  Mic,
-  X,
   Lock,
   Folder,
 } from 'lucide-react';

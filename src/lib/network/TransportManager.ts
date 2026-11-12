@@ -192,7 +192,7 @@ export class TransportManager {
         backend.lastProbe = Date.now();
         backend.isBlocked = false;
         backend.isAvailable = true;
-      } catch (err) {
+      } catch {
         backend.isBlocked = true;
         backend.isAvailable = false;
         backend.latency = 0;

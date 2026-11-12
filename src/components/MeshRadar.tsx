@@ -6,8 +6,6 @@ import {
   Link,
   Minus,
   Plus,
-  Maximize2,
-  Minimize2,
 } from 'lucide-react';
 
 export interface MeshNode {
@@ -359,7 +357,6 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
               {nodes.map((node) => {
                 const isSelected = selectedNode === node.id;
                 const statusColor = STATUS_COLORS[node.status];
-                const isPulsing = node.status === 'relaying' || node.status === 'connecting';
 
                 return (
                   <g
