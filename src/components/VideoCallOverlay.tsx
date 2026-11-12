@@ -25,6 +25,14 @@ interface VideoCallOverlayProps {
   onMaximize?: () => void;
   contactName?: string;
   contactAvatar?: string;
+  mode?: 'voice' | 'video';
+  localStream?: MediaStream | null;
+  remoteStream?: MediaStream | null;
+  connectionStatus?: 'connecting' | 'connected' | 'failed';
+  isMicOn?: boolean;
+  isCameraOn?: boolean;
+  onToggleMic?: () => void;
+  onToggleCamera?: () => void;
 }
 
 type VideoFilter = 'none' | 'studio' | 'cyber' | 'noir';
@@ -37,33 +45,64 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   onMaximize,
   contactName,
   contactAvatar,
+  mode = 'video',
+  localStream = null,
+  remoteStream = null,
+  connectionStatus,
+  isMicOn: controlledMicOn,
+  isCameraOn: controlledCameraOn,
+  onToggleMic,
+  onToggleCamera,
 }) => {
   const name = contactName || 'Contact';
   const avatar = contactAvatar || '';
+  const isVoiceCall = mode === 'voice';
   // Call state
   const [callDuration, setCallDuration] = useState<number>(0);
-  const [callStatus, setCallStatus] = useState<'connecting' | 'connected'>('connecting');
-  const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
-  const [isMicOn, setIsMicOn] = useState<boolean>(true);
+  const [simulatedStatus, setSimulatedStatus] = useState<'connecting' | 'connected'>('connecting');
+  const [internalCameraOn, setInternalCameraOn] = useState<boolean>(true);
+  const [internalMicOn, setInternalMicOn] = useState<boolean>(true);
   const [isSpeakerOn, setIsSpeakerOn] = useState<boolean>(true);
   const [cameraFacing, setCameraFacing] = useState<'front' | 'back'>('front');
   const [activeFilter, setActiveFilter] = useState<VideoFilter>('none');
   const [showControls, setShowControls] = useState<boolean>(true);
   const [remoteAudioLevel, setRemoteAudioLevel] = useState<number>(3);
 
+  const isCameraOn = controlledCameraOn ?? internalCameraOn;
+  const isMicOn = controlledMicOn ?? internalMicOn;
+  const callStatus = connectionStatus ?? simulatedStatus;
+
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Connection delay simulation: 1.2s connecting then connected
+  // Bind real media streams (when a P2P call is active).
+  useEffect(() => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [localStream, remoteStream, isMinimized, isOpen, isCameraOn]);
+
+  // Connection delay simulation used only when no real call status is supplied.
+  useEffect(() => {
+    if (!isOpen || connectionStatus) return;
+    setSimulatedStatus('connecting');
+    setCallDuration(0);
+    const connectTimer = setTimeout(() => {
+      setSimulatedStatus('connected');
+    }, 1200);
+
+    return () => clearTimeout(connectTimer);
+  }, [isOpen, connectionStatus]);
+
+  // Reset duration when a new call opens.
   useEffect(() => {
     if (isOpen) {
-      setCallStatus('connecting');
       setCallDuration(0);
-      const connectTimer = setTimeout(() => {
-        setCallStatus('connected');
-      }, 1200);
-
-      return () => clearTimeout(connectTimer);
     }
   }, [isOpen]);
 
@@ -121,12 +160,14 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   };
 
   const handleToggleCamera = () => {
-    setIsCameraOn((prev) => !prev);
+    setInternalCameraOn((prev) => !prev);
+    onToggleCamera?.();
     resetControlsTimeout();
   };
 
   const handleToggleMic = () => {
-    setIsMicOn((prev) => !prev);
+    setInternalMicOn((prev) => !prev);
+    onToggleMic?.();
     resetControlsTimeout();
   };
 
@@ -136,7 +177,14 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   };
 
   const handleFlipCamera = () => {
-    setCameraFacing((prev) => (prev === 'front' ? 'back' : 'front'));
+    const nextFacing = cameraFacing === 'front' ? 'back' : 'front';
+    setCameraFacing(nextFacing);
+    const track = localStream?.getVideoTracks()[0];
+    if (track) {
+      void track
+        .applyConstraints({ facingMode: nextFacing === 'front' ? 'user' : 'environment' })
+        .catch(() => undefined);
+    }
     resetControlsTimeout();
   };
 
@@ -176,13 +224,24 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
       >
         {/* Remote Video Thumbnail */}
         <div className="absolute inset-0">
-          <img
-            src={avatar}
-            alt={name}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${getFilterStyle(
-              activeFilter
-            )}`}
-          />
+          {remoteStream && !isVoiceCall ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${getFilterStyle(
+                activeFilter
+              )}`}
+            />
+          ) : (
+            <img
+              src={avatar}
+              alt={name}
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${getFilterStyle(
+                activeFilter
+              )}`}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
         </div>
 
@@ -211,7 +270,9 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             <p className="text-[10px] font-bold text-white truncate leading-tight">
               {name.split(' ')[0]}
             </p>
-            <p className="text-[8px] text-white/60 leading-none">HD 1080p</p>
+            <p className="text-[8px] text-white/60 leading-none">
+              {isVoiceCall ? 'HD Audio' : 'HD 1080p'}
+            </p>
           </div>
 
           <button
@@ -235,15 +296,26 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
       onClick={resetControlsTimeout}
       className="absolute inset-0 z-50 bg-[#08090d] text-white flex flex-col justify-between overflow-hidden select-none animate-in fade-in zoom-in-95 duration-300"
     >
-      {/* BACKGROUND / MAIN REMOTE VIDEO FEED (Katie Rogers) */}
+      {/* BACKGROUND / MAIN REMOTE VIDEO FEED */}
       <div className="absolute inset-0 overflow-hidden">
-        <img
-          src={avatar}
-          alt={name}
-          className={`w-full h-full object-cover scale-[1.02] transition-all duration-700 ${getFilterStyle(
-            activeFilter
-          )}`}
-        />
+        {remoteStream && !isVoiceCall ? (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className={`w-full h-full object-cover scale-[1.02] transition-all duration-700 ${getFilterStyle(
+              activeFilter
+            )}`}
+          />
+        ) : (
+          <img
+            src={avatar}
+            alt={name}
+            className={`w-full h-full object-cover scale-[1.02] transition-all duration-700 ${getFilterStyle(
+              activeFilter
+            )}`}
+          />
+        )}
 
         {/* Dynamic ambient video grain & lighting simulation */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/85" />
@@ -305,7 +377,12 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
         {/* Center: Call Duration or Connecting State */}
         <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full shadow-lg">
-          {callStatus === 'connecting' ? (
+          {callStatus === 'failed' ? (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-xs font-medium text-red-300">Connection failed</span>
+            </div>
+          ) : callStatus === 'connecting' ? (
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               <span className="text-xs font-medium text-amber-200">Connecting...</span>
@@ -321,57 +398,73 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         {/* Right: Quality status badge */}
         <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80">
           <Signal className="w-3 h-3 text-emerald-400" />
-          <span className="font-mono text-[10px]">1080p 60fps</span>
+          <span className="font-mono text-[10px]">{isVoiceCall ? 'HD Audio' : '1080p 60fps'}</span>
         </div>
       </div>
 
       {/* TOP RIGHT: SELF VIEW / PICTURE-IN-PICTURE (PIP) CAMERA */}
-      <div className="absolute top-16 right-4 z-30 w-28 h-40 bg-[#161722]/90 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300">
-        {isCameraOn ? (
-          <div className="w-full h-full relative group">
-            {/* Simulated Live User Selfie Video */}
-            <img
-              src={CURRENT_USER.avatar}
-              alt="You"
-              className={`w-full h-full object-cover transition-transform duration-300 ${
-                cameraFacing === 'back' ? 'scale-x-[-1]' : ''
-              } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
-            />
+      {!isVoiceCall && (
+        <div className="absolute top-16 right-4 z-30 w-28 h-40 bg-[#161722]/90 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300">
+          {isCameraOn ? (
+            <div className="w-full h-full relative group">
+              {/* Local camera preview (real stream) or simulated selfie fallback */}
+              {localStream ? (
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover transition-transform duration-300 ${
+                    cameraFacing === 'back' ? 'scale-x-[-1]' : ''
+                  } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
+                />
+              ) : (
+                <img
+                  src={CURRENT_USER.avatar}
+                  alt="You"
+                  className={`w-full h-full object-cover transition-transform duration-300 ${
+                    cameraFacing === 'back' ? 'scale-x-[-1]' : ''
+                  } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
+                />
+              )}
 
-            {/* Viewfinder brackets */}
-            <div className="absolute top-1.5 left-1.5 w-2 h-2 border-t-2 border-l-2 border-white/60 pointer-events-none" />
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-white/60 pointer-events-none" />
-            <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-white/60 pointer-events-none" />
-            <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-b-2 border-r-2 border-white/60 pointer-events-none" />
+              {/* Viewfinder brackets */}
+              <div className="absolute top-1.5 left-1.5 w-2 h-2 border-t-2 border-l-2 border-white/60 pointer-events-none" />
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-white/60 pointer-events-none" />
+              <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-white/60 pointer-events-none" />
+              <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-b-2 border-r-2 border-white/60 pointer-events-none" />
 
-            {/* Camera facing label */}
-            <div className="absolute bottom-1 left-1.5 bg-black/60 px-1 py-0.5 rounded text-[8px] font-mono text-white/80">
-              {cameraFacing === 'front' ? 'Front' : 'Back 0.5x'}
+              {/* Camera facing label */}
+              <div className="absolute bottom-1 left-1.5 bg-black/60 px-1 py-0.5 rounded text-[8px] font-mono text-white/80">
+                {cameraFacing === 'front' ? 'Front' : 'Back 0.5x'}
+              </div>
+
+              {/* Quick Flip button on hover/tap */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFlipCamera();
+                }}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90"
+                title="Flip camera"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </button>
             </div>
-
-            {/* Quick Flip button on hover/tap */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFlipCamera();
-              }}
-              className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90"
-              title="Flip camera"
-            >
-              <RefreshCw className="w-3 h-3" />
-            </button>
-          </div>
-        ) : (
-          /* Camera Off State */
-          <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#12131c] text-white/60 text-center">
-            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center mb-1 text-white/40">
-              <VideoOff className="w-4 h-4 text-[var(--nova-accent-color)]" />
+          ) : (
+            /* Camera Off State */
+            <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#12131c] text-white/60 text-center">
+              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center mb-1 text-white/40">
+                <VideoOff className="w-4 h-4 text-[var(--nova-accent-color)]" />
+              </div>
+              <span className="text-[10px] font-semibold text-white/70">Camera Off</span>
+              <span className="text-[8px] text-white/40 mt-0.5">
+                {isMicOn ? 'Mic on' : 'Mic muted'}
+              </span>
             </div>
-            <span className="text-[10px] font-semibold text-white/70">Camera Off</span>
-            <span className="text-[8px] text-white/40 mt-0.5">You are muted</span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* FILTER NOTIFICATION PILL */}
       {activeFilter !== 'none' && (
@@ -393,33 +486,41 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             {name}
           </h2>
           <p className="text-xs text-white/70 font-medium drop-shadow-sm">
-            {callStatus === 'connecting'
-              ? 'Ringing...'
-              : `Connected • HD Audio & Video`}
+            {callStatus === 'failed'
+              ? isVoiceCall
+                ? 'Voice call unavailable'
+                : 'Video call unavailable'
+              : callStatus === 'connecting'
+                ? 'Ringing...'
+                : isVoiceCall
+                  ? 'Connected • HD Audio'
+                  : 'Connected • HD Audio & Video'}
           </p>
         </div>
 
         {/* Floating Action Controls Dock */}
         <div className="bg-[#12131c]/90 border border-white/15 backdrop-blur-xl rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/80">
           {/* 1. Camera Toggle */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggleCamera();
-            }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
-              isCameraOn
-                ? 'bg-white/15 hover:bg-white/25 text-white'
-                : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'
-            }`}
-            title={isCameraOn ? 'Turn camera off' : 'Turn camera on'}
-          >
-            {isCameraOn ? (
-              <Video className="w-5 h-5" />
-            ) : (
-              <VideoOff className="w-5 h-5" />
-            )}
-          </button>
+          {!isVoiceCall && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleCamera();
+              }}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
+                isCameraOn
+                  ? 'bg-white/15 hover:bg-white/25 text-white'
+                  : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'
+              }`}
+              title={isCameraOn ? 'Turn camera off' : 'Turn camera on'}
+            >
+              {isCameraOn ? (
+                <Video className="w-5 h-5" />
+              ) : (
+                <VideoOff className="w-5 h-5" />
+              )}
+            </button>
+          )}
 
           {/* 2. Microphone Toggle */}
           <button
@@ -442,21 +543,23 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           </button>
 
           {/* 3. Flip Camera (Front / Back) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFlipCamera();
-            }}
-            disabled={!isCameraOn}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
-              isCameraOn
-                ? 'bg-white/15 hover:bg-white/25 text-white'
-                : 'bg-white/5 text-white/30 cursor-not-allowed'
-            }`}
-            title="Switch front / rear camera"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
+          {!isVoiceCall && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFlipCamera();
+              }}
+              disabled={!isCameraOn}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
+                isCameraOn
+                  ? 'bg-white/15 hover:bg-white/25 text-white'
+                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+              }`}
+              title="Switch front / rear camera"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          )}
 
           {/* 4. Speaker Audio Output Toggle */}
           <button
@@ -479,20 +582,22 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           </button>
 
           {/* 5. Video Filters / Effects */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCycleFilter();
-            }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
-              activeFilter !== 'none'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/40'
-                : 'bg-white/15 hover:bg-white/25 text-white'
-            }`}
-            title={`Video Filter (Current: ${activeFilter})`}
-          >
-            <Sparkles className="w-5 h-5" />
-          </button>
+          {!isVoiceCall && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCycleFilter();
+              }}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
+                activeFilter !== 'none'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/40'
+                  : 'bg-white/15 hover:bg-white/25 text-white'
+              }`}
+              title={`Video Filter (Current: ${activeFilter})`}
+            >
+              <Sparkles className="w-5 h-5" />
+            </button>
+          )}
 
           {/* 6. Big Red End Call Button */}
           <button
@@ -501,7 +606,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               handleHangUp();
             }}
             className="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white flex items-center justify-center shadow-xl shadow-red-600/40 active:scale-90 transition-all cursor-pointer ml-1"
-            title="End Video Call"
+            title={isVoiceCall ? 'End Voice Call' : 'End Video Call'}
           >
             <PhoneOff className="w-6 h-6 stroke-[2.4]" />
           </button>

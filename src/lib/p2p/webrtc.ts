@@ -28,6 +28,9 @@ export class P2PMessengerChannel {
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private remoteDescriptionSet = false;
   private role: 'initiator' | 'responder' | null = null;
+  private localMediaStream: MediaStream | null = null;
+  private remoteMediaStream: MediaStream | null = null;
+  private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   private readonly iceServers: RTCIceServer[];
   private readonly connectTimeoutMs: number;
 
@@ -65,6 +68,43 @@ export class P2PMessengerChannel {
     cb(this.currentState);
   }
 
+  /**
+   * Attach a local audio/video stream to the peer connection. Safe to call
+   * before or after {@link connectAsInitiator}/{@link connectAsResponder}:
+   * tracks are added as soon as the underlying RTCPeerConnection exists.
+   */
+  public attachLocalStream(stream: MediaStream | null): void {
+    this.localMediaStream = stream;
+    if (!stream) return;
+
+    const pc = this.ensurePeerConnection();
+    const senders = pc.getSenders();
+    const attachedTracks = new Set(
+      senders.map((sender) => sender.track).filter((track): track is MediaStreamTrack => !!track)
+    );
+
+    for (const track of stream.getTracks()) {
+      if (!attachedTracks.has(track)) {
+        pc.addTrack(track, stream);
+      }
+    }
+  }
+
+  public onRemoteStream(cb: (stream: MediaStream) => void): void {
+    this.onRemoteStreamCallback = cb;
+    if (this.remoteMediaStream) {
+      cb(this.remoteMediaStream);
+    }
+  }
+
+  public getLocalStream(): MediaStream | null {
+    return this.localMediaStream;
+  }
+
+  public getRemoteStream(): MediaStream | null {
+    return this.remoteMediaStream;
+  }
+
   private updateState(status: P2PConnectionStatus, isDirectP2P: boolean): void {
     if (
       this.currentState.status === status &&
@@ -81,6 +121,27 @@ export class P2PMessengerChannel {
 
     const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     this.pc = pc;
+
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (stream) {
+        this.remoteMediaStream = stream;
+      } else {
+        if (!this.remoteMediaStream) {
+          this.remoteMediaStream = new MediaStream();
+        }
+        if (!this.remoteMediaStream.getTracks().includes(event.track)) {
+          this.remoteMediaStream.addTrack(event.track);
+        }
+      }
+      this.onRemoteStreamCallback?.(this.remoteMediaStream);
+    };
+
+    if (this.localMediaStream) {
+      for (const track of this.localMediaStream.getTracks()) {
+        pc.addTrack(track, this.localMediaStream);
+      }
+    }
 
     pc.onicecandidate = (event) => {
       if (!event.candidate) return;
@@ -252,6 +313,9 @@ export class P2PMessengerChannel {
     }
     this.remoteDescriptionSet = false;
     this.pendingCandidates = [];
+    this.localMediaStream = null;
+    this.remoteMediaStream = null;
+    this.onRemoteStreamCallback = null;
     this.updateState('disconnected', false);
   }
 }
