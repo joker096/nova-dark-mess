@@ -2481,7 +2481,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           poll={msg.poll}
                           onVote={handleVotePoll}
                           onRetractVote={handleRetractVote}
-                          isMe={true}
                         />
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
                           <span>{msg.time}</span>
@@ -2494,7 +2493,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       </div>
                     ) : msg.location ? (
                       <div className={`bg-[#171824]/95 border ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
-                        <LocationBubble location={msg.location} isMe={true} />
+                        <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
                           <span>{msg.time}</span>
                           {msg.isRead ? (
@@ -2752,7 +2751,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           poll={msg.poll}
                           onVote={handleVotePoll}
                           onRetractVote={handleRetractVote}
-                          isMe={false}
                         />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
                           <span>{msg.time}</span>
@@ -2760,7 +2758,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       </div>
                     ) : msg.location ? (
                       <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
-                        <LocationBubble location={msg.location} isMe={false} />
+                        <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
                           <span>{msg.time}</span>
                         </div>

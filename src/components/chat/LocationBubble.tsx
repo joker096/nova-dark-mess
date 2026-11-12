@@ -5,10 +5,10 @@ import { useLanguage } from '../../context/LanguageContext';
 
 interface LocationBubbleProps {
   location: LocationData;
-  isMe?: boolean;
+
 }
 
-export const LocationBubble: React.FC<LocationBubbleProps> = ({ location, isMe = false }) => {
+export const LocationBubble: React.FC<LocationBubbleProps> = ({ location }) => {
   const { t } = useLanguage();
 
   const mapUrl = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
