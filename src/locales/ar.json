@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "رموز تعبيرية"
   },
   "chats": {
     "title": "المحادثات",
@@ -198,16 +199,29 @@
     "expandPanel": "توسيع اللوحة",
     "searchChannels": "البحث عن قنوات...",
     "popular": "القنوات الشائعة",
-      "addPopular": "إضافة إلى الشائعة",
-      "removePopular": "إزالة من الشائعة"
-    },
-    "location": {
-      "shareTitle": "مشاركة الموقع",
-      "shareDesc": "أنت تكشف عن موقعك الحالي في هذه الدردشة. سيكون موقعك مرئيًا لمشاركين المحادثة.",
-      "shareConfirm": "أفهم، شارك",
-      "cancel": "إلغاء"
-    },
-    "contact": {
+    "addPopular": "إضافة إلى الشائعة",
+    "removePopular": "إزالة من الشائعة"
+  },
+  "location": {
+    "shareTitle": "مشاركة الموقع",
+    "shareDesc": "أنت تكشف عن موقعك الحالي في هذه الدردشة. سيكون موقعك مرئيًا لمشاركين المحادثة.",
+    "shareConfirm": "أفهم، شارك",
+    "cancel": "إلغاء",
+    "sendLocation": "إرسال الموقع",
+    "currentOrPlace": "الموقع الحالي والأماكن",
+    "shareLive": "مشاركة الموقع المباشر",
+    "liveLocationTitle": "الموقع المباشر (بث GPS)",
+    "shareDuration": "مشاركة الموقع المباشر لمدة:",
+    "liveSecurityNote": "سيتمكن المشاركون في هذه المحادثة من رؤية إحداثيات GPS الخاصة بك في الوقت الفعلي حتى انتهاء المؤقت.",
+    "searchNearby": "ابحث عن أماكن قريبة...",
+    "sendLiveButton": "بدء المشاركة المباشرة",
+    "sendLocationButton": "إرسال هذا الموقع",
+    "liveActive": "GPS مباشر",
+    "liveEnded": "انتهت المشاركة",
+    "openInMaps": "فتح في الخرائط",
+    "broadcastDuration": "تتم المشاركة لمدة {{duration}}"
+  },
+  "contact": {
     "shareTitle": "مشاركة جهة الاتصال",
     "idOnly": "المعرف فقط",
     "idOnlyDesc": "يتم مشاركة معرف جهة الاتصال فقط. لا يتم الكشف عن رقم الهاتف أو البريد الإلكتروني أو أي بيانات شخصية أخرى.",
@@ -572,5 +586,42 @@
     "lockedIcon": "أيقونة بريميوم",
     "freeTrial": "تجربة مجانية — يتبقى {{days}} أيام",
     "subscribe": "اشتراك"
+  },
+  "poll": {
+    "title": "استطلاع",
+    "createTitle": "استطلاع جديد",
+    "questionLabel": "السؤال",
+    "questionPlaceholder": "اطرح سؤالاً...",
+    "optionsLabel": "خيارات الاستطلاع",
+    "optionPlaceholder": "الخيار {{count}}",
+    "addOption": "إضافة خيار",
+    "settings": "إعدادات الاستطلاع",
+    "anonymousVoting": "تصويت مجهول",
+    "anonymousDesc": "لا أحد يرى من صوّت ولماذا",
+    "multipleAnswers": "إجابات متعددة",
+    "multipleDesc": "يمكن للمستخدمين اختيار أكثر من خيار",
+    "quizMode": "وضع الاختبار",
+    "quizDesc": "الاستطلاع له إجابة صحيحة واحدة وشرح",
+    "markCorrect": "تعيين كإجابة صحيحة",
+    "explanationLabel": "الشرح (اختياري)",
+    "explanationPlaceholder": "سيرى المستخدمون هذا الشرح بعد اختيار إجابة...",
+    "createButton": "إنشاء استطلاع",
+    "anonymous": "استطلاع مجهول",
+    "public": "استطلاع عام",
+    "quiz": "اختبار",
+    "explanation": "الشرح",
+    "votesCount": "{{count}} أصوات",
+    "retractVote": "سحب التصويت",
+    "pollCreated": "تم إنشاء الاستطلاع!",
+    "votedNotification": "صوّت {{name}} في استطلاعك",
+    "errorQuestionRequired": "يرجى إدخال سؤال الاستطلاع",
+    "errorOptionsRequired": "يرجى تقديم خيارين على الأقل",
+    "errorSelectCorrectOption": "يرجى اختيار الإجابة الصحيحة للاختبار"
+  },
+  "stickers": {
+    "title": "ملصقات",
+    "gifs": "صور متحركة",
+    "tapToInsert": "اضغط على الرمز التعبيري لإدراجه:",
+    "searchGifs": "ابحث عن صور متحركة..."
   }
 }

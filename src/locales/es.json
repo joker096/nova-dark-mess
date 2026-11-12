@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "Emojis"
   },
   "chats": {
     "title": "Chats",
@@ -198,16 +199,29 @@
     "expandPanel": "Expandir panel",
     "searchChannels": "Buscar canales...",
     "popular": "Canales populares",
-      "addPopular": "Añadir a populares",
-      "removePopular": "Eliminar de populares"
-    },
-    "location": {
-      "shareTitle": "Compartir ubicación",
-      "shareDesc": "Estás revelando tu ubicación actual en este chat. Tu ubicación será visible para los participantes de la conversación.",
-      "shareConfirm": "Entiendo, compartir",
-      "cancel": "Cancelar"
-    },
-    "contact": {
+    "addPopular": "Añadir a populares",
+    "removePopular": "Eliminar de populares"
+  },
+  "location": {
+    "shareTitle": "Compartir ubicación",
+    "shareDesc": "Estás revelando tu ubicación actual en este chat. Tu ubicación será visible para los participantes de la conversación.",
+    "shareConfirm": "Entiendo, compartir",
+    "cancel": "Cancelar",
+    "sendLocation": "Enviar ubicación",
+    "currentOrPlace": "Ubicación actual y lugares",
+    "shareLive": "Compartir ubicación en vivo",
+    "liveLocationTitle": "Ubicación en vivo (transmisión GPS)",
+    "shareDuration": "Compartir ubicación en vivo durante:",
+    "liveSecurityNote": "Los participantes de este chat podrán ver tus coordenadas GPS en tiempo real hasta que expire el temporizador.",
+    "searchNearby": "Buscar lugares cercanos...",
+    "sendLiveButton": "Empezar a compartir en vivo",
+    "sendLocationButton": "Enviar esta ubicación",
+    "liveActive": "GPS EN VIVO",
+    "liveEnded": "EN VIVO FINALIZADO",
+    "openInMaps": "Abrir en Mapas",
+    "broadcastDuration": "Compartiendo durante {{duration}}"
+  },
+  "contact": {
     "shareTitle": "Compartir contacto",
     "idOnly": "Solo ID",
     "idOnlyDesc": "Solo se comparte el ID del contacto. No se revela teléfono, correo electrónico ni otros datos personales.",
@@ -572,5 +586,42 @@
     "lockedIcon": "Icono Premium",
     "freeTrial": "Prueba gratuita — {{days}} días restantes",
     "subscribe": "Suscribirse"
+  },
+  "poll": {
+    "title": "Encuesta",
+    "createTitle": "Nueva encuesta",
+    "questionLabel": "Pregunta",
+    "questionPlaceholder": "Escribe una pregunta...",
+    "optionsLabel": "Opciones de la encuesta",
+    "optionPlaceholder": "Opción {{count}}",
+    "addOption": "Añadir una opción",
+    "settings": "Ajustes de la encuesta",
+    "anonymousVoting": "Votación anónima",
+    "anonymousDesc": "Nadie ve quién votó por qué",
+    "multipleAnswers": "Respuestas múltiples",
+    "multipleDesc": "Los usuarios pueden elegir más de una opción",
+    "quizMode": "Modo cuestionario",
+    "quizDesc": "La encuesta tiene una respuesta correcta y una explicación",
+    "markCorrect": "Marcar como respuesta correcta",
+    "explanationLabel": "Explicación (opcional)",
+    "explanationPlaceholder": "Los usuarios verán esta explicación después de elegir una respuesta...",
+    "createButton": "Crear encuesta",
+    "anonymous": "Encuesta anónima",
+    "public": "Encuesta pública",
+    "quiz": "Cuestionario",
+    "explanation": "Explicación",
+    "votesCount": "{{count}} votos",
+    "retractVote": "Retirar voto",
+    "pollCreated": "¡Encuesta creada!",
+    "votedNotification": "{{name}} votó en tu encuesta",
+    "errorQuestionRequired": "Escribe una pregunta para la encuesta",
+    "errorOptionsRequired": "Proporciona al menos 2 opciones",
+    "errorSelectCorrectOption": "Elige la respuesta correcta del cuestionario"
+  },
+  "stickers": {
+    "title": "Stickers",
+    "gifs": "GIFs",
+    "tapToInsert": "Toca un emoji para insertarlo:",
+    "searchGifs": "Buscar GIFs..."
   }
 }

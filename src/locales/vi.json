@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "Biểu tượng cảm xúc"
   },
   "chats": {
     "title": "Trò chuyện",
@@ -198,16 +199,29 @@
     "expandPanel": "Mở rộng bảng",
     "searchChannels": "Tìm kênh...",
     "popular": "Kênh phổ biến",
-      "addPopular": "Thêm vào phổ biến",
-      "removePopular": "Xóa khỏi phổ biến"
-    },
-    "location": {
-      "shareTitle": "Chia sẻ vị trí",
-      "shareDesc": "Bạn đang tiết lộ vị trí hiện tại của mình trong cuộc trò chuyện này. Vị trí của bạn sẽ hiển thị cho các thành viên trong cuộc trò chuyện.",
-      "shareConfirm": "Tôi hiểu, chia sẻ",
-      "cancel": "Hủy"
-    },
-    "contact": {
+    "addPopular": "Thêm vào phổ biến",
+    "removePopular": "Xóa khỏi phổ biến"
+  },
+  "location": {
+    "shareTitle": "Chia sẻ vị trí",
+    "shareDesc": "Bạn đang tiết lộ vị trí hiện tại của mình trong cuộc trò chuyện này. Vị trí của bạn sẽ hiển thị cho các thành viên trong cuộc trò chuyện.",
+    "shareConfirm": "Tôi hiểu, chia sẻ",
+    "cancel": "Hủy",
+    "sendLocation": "Gửi vị trí",
+    "currentOrPlace": "Vị trí hiện tại & Địa điểm",
+    "shareLive": "Chia sẻ vị trí trực tiếp",
+    "liveLocationTitle": "Vị trí trực tiếp (truyền GPS)",
+    "shareDuration": "Chia sẻ vị trí trực tiếp trong:",
+    "liveSecurityNote": "Người tham gia trò chuyện này sẽ thấy tọa độ GPS thời gian thực của bạn cho đến khi hết thời gian.",
+    "searchNearby": "Tìm địa điểm gần đây...",
+    "sendLiveButton": "Bắt đầu chia sẻ trực tiếp",
+    "sendLocationButton": "Gửi vị trí này",
+    "liveActive": "GPS TRỰC TIẾP",
+    "liveEnded": "ĐÃ KẾT THÚC",
+    "openInMaps": "Mở trong Bản đồ",
+    "broadcastDuration": "Đang chia sẻ trong {{duration}}"
+  },
+  "contact": {
     "shareTitle": "Chia sẻ liên hệ",
     "idOnly": "Chỉ ID",
     "idOnlyDesc": "Chỉ chia sẻ ID liên hệ. Không tiết lộ số điện thoại, email hoặc dữ liệu cá nhân khác.",
@@ -572,5 +586,42 @@
     "lockedIcon": "Biểu tượng Premium",
     "freeTrial": "Thử miễn phí — còn {{days}} ngày",
     "subscribe": "Đăng ký"
+  },
+  "poll": {
+    "title": "Bình chọn",
+    "createTitle": "Bình chọn mới",
+    "questionLabel": "Câu hỏi",
+    "questionPlaceholder": "Đặt một câu hỏi...",
+    "optionsLabel": "Lựa chọn bình chọn",
+    "optionPlaceholder": "Lựa chọn {{count}}",
+    "addOption": "Thêm lựa chọn",
+    "settings": "Cài đặt bình chọn",
+    "anonymousVoting": "Bỏ phiếu ẩn danh",
+    "anonymousDesc": "Không ai thấy ai đã bỏ phiếu cho gì",
+    "multipleAnswers": "Nhiều câu trả lời",
+    "multipleDesc": "Người dùng có thể chọn nhiều hơn một lựa chọn",
+    "quizMode": "Chế độ trắc nghiệm",
+    "quizDesc": "Bình chọn có một đáp án đúng và phần giải thích",
+    "markCorrect": "Đánh dấu là đáp án đúng",
+    "explanationLabel": "Giải thích (không bắt buộc)",
+    "explanationPlaceholder": "Người dùng sẽ thấy phần giải thích này sau khi chọn đáp án...",
+    "createButton": "Tạo bình chọn",
+    "anonymous": "Bình chọn ẩn danh",
+    "public": "Bình chọn công khai",
+    "quiz": "Trắc nghiệm",
+    "explanation": "Giải thích",
+    "votesCount": "{{count}} phiếu",
+    "retractVote": "Rút phiếu",
+    "pollCreated": "Đã tạo bình chọn!",
+    "votedNotification": "{{name}} đã bỏ phiếu trong bình chọn của bạn",
+    "errorQuestionRequired": "Vui lòng nhập câu hỏi bình chọn",
+    "errorOptionsRequired": "Vui lòng cung cấp ít nhất 2 lựa chọn",
+    "errorSelectCorrectOption": "Vui lòng chọn đáp án đúng cho trắc nghiệm"
+  },
+  "stickers": {
+    "title": "Nhãn dán",
+    "gifs": "GIF",
+    "tapToInsert": "Chạm vào emoji để chèn:",
+    "searchGifs": "Tìm GIF..."
   }
 }

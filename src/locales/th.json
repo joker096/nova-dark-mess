@@ -108,7 +108,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "emojis": "อีโมจิ"
   },
   "chats": {
     "title": "การสนทนา",
@@ -198,16 +199,29 @@
     "expandPanel": "ขยายแผง",
     "searchChannels": "ค้นหาแชนแนล...",
     "popular": "แชนแนลยอดนิยม",
-      "addPopular": "เพิ่มไปยังยอดนิยม",
-      "removePopular": "ลบออกจากยอดนิยม"
-    },
-    "location": {
-      "shareTitle": "แชร์ตำแหน่งที่ตั้ง",
-      "shareDesc": "คุณกำลังเปิดเผยตำแหน่งที่ตั้งปัจจุบันของคุณในแชทนี้ ตำแหน่งที่ตั้งของคุณจะปรากฏต่อผู้เข้าร่วมการสนทนา",
-      "shareConfirm": "ฉันเข้าใจแล้ว แชร์",
-      "cancel": "ยกเลิก"
-    },
-    "contact": {
+    "addPopular": "เพิ่มไปยังยอดนิยม",
+    "removePopular": "ลบออกจากยอดนิยม"
+  },
+  "location": {
+    "shareTitle": "แชร์ตำแหน่งที่ตั้ง",
+    "shareDesc": "คุณกำลังเปิดเผยตำแหน่งที่ตั้งปัจจุบันของคุณในแชทนี้ ตำแหน่งที่ตั้งของคุณจะปรากฏต่อผู้เข้าร่วมการสนทนา",
+    "shareConfirm": "ฉันเข้าใจแล้ว แชร์",
+    "cancel": "ยกเลิก",
+    "sendLocation": "ส่งตำแหน่ง",
+    "currentOrPlace": "ตำแหน่งปัจจุบันและสถานที่",
+    "shareLive": "แชร์ตำแหน่งแบบเรียลไทม์",
+    "liveLocationTitle": "ตำแหน่งสด (ออกอากาศ GPS)",
+    "shareDuration": "แชร์ตำแหน่งสดเป็นเวลา:",
+    "liveSecurityNote": "ผู้เข้าร่วมแชทนี้จะเห็นพิกัด GPS แบบเรียลไทม์ของคุณจนกว่าจะหมดเวลา",
+    "searchNearby": "ค้นหาสถานที่ใกล้เคียง...",
+    "sendLiveButton": "เริ่มแชร์แบบสด",
+    "sendLocationButton": "ส่งตำแหน่งนี้",
+    "liveActive": "GPS สด",
+    "liveEnded": "สิ้นสุดแล้ว",
+    "openInMaps": "เปิดในแผนที่",
+    "broadcastDuration": "แชร์เป็นเวลา {{duration}}"
+  },
+  "contact": {
     "shareTitle": "แชร์ผู้ติดต่อ",
     "idOnly": "รหัสเท่านั้น",
     "idOnlyDesc": "แชร์เฉพาะรหัสผู้ติดต่อเท่านั้น ไม่เปิดเผยโทรศัพท์ อีเมล หรือข้อมูลส่วนบุคคลอื่นๆ",
@@ -572,5 +586,42 @@
     "lockedIcon": "ไอคอนพรีเมียม",
     "freeTrial": "ทดลองฟรี — เหลือ {{days}} วัน",
     "subscribe": "สมัครสมาชิก"
+  },
+  "poll": {
+    "title": "โพล",
+    "createTitle": "โพลใหม่",
+    "questionLabel": "คำถาม",
+    "questionPlaceholder": "ถามคำถาม...",
+    "optionsLabel": "ตัวเลือกโพล",
+    "optionPlaceholder": "ตัวเลือก {{count}}",
+    "addOption": "เพิ่มตัวเลือก",
+    "settings": "การตั้งค่าโพล",
+    "anonymousVoting": "โหวตไม่ระบุตัวตน",
+    "anonymousDesc": "ไม่มีใครเห็นว่าใครโหวตอะไร",
+    "multipleAnswers": "ตอบได้หลายข้อ",
+    "multipleDesc": "ผู้ใช้เลือกได้มากกว่าหนึ่งตัวเลือก",
+    "quizMode": "โหมดควิซ",
+    "quizDesc": "โพลมีคำตอบที่ถูกต้องหนึ่งข้อพร้อมคำอธิบาย",
+    "markCorrect": "ทำเครื่องหมายเป็นคำตอบที่ถูกต้อง",
+    "explanationLabel": "คำอธิบาย (ไม่บังคับ)",
+    "explanationPlaceholder": "ผู้ใช้จะเห็นคำอธิบายนี้หลังจากเลือกคำตอบ...",
+    "createButton": "สร้างโพล",
+    "anonymous": "โพลไม่ระบุตัวตน",
+    "public": "โพลสาธารณะ",
+    "quiz": "ควิซ",
+    "explanation": "คำอธิบาย",
+    "votesCount": "{{count}} โหวต",
+    "retractVote": "ถอนโหวต",
+    "pollCreated": "สร้างโพลแล้ว!",
+    "votedNotification": "{{name}} โหวตในโพลของคุณ",
+    "errorQuestionRequired": "กรุณากรอกคำถามโพล",
+    "errorOptionsRequired": "กรุณาใส่ตัวเลือกอย่างน้อย 2 ข้อ",
+    "errorSelectCorrectOption": "กรุณาเลือกคำตอบที่ถูกต้องสำหรับควิซ"
+  },
+  "stickers": {
+    "title": "สติกเกอร์",
+    "gifs": "GIF",
+    "tapToInsert": "แตะอีโมจิเพื่อแทรก:",
+    "searchGifs": "ค้นหา GIF..."
   }
 }
