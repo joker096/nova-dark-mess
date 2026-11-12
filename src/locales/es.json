@@ -301,7 +301,10 @@
     "sendAt": "Enviar a",
     "morseEncode": "Mostrar código Morse",
     "morseDecode": "Mostrar texto",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Este mensaje fue eliminado",
+    "edited": "(editado)",
+    "forwardedFrom": "Reenviado desde"
   },
   "stories": {
     "title": "Historias",
@@ -628,6 +631,22 @@
     "title": "Stickers",
     "gifs": "GIFs",
     "tapToInsert": "Toca un emoji para insertarlo:",
-    "searchGifs": "Buscar GIFs..."
+    "searchGifs": "Buscar GIFs...",
+    "searchStickers": "Buscar stickers...",
+    "all": "Todos",
+    "recent": "Recientes",
+    "favorites": "Favoritos",
+    "premium": "Premium",
+    "unlockPremium": "Desbloquear todos los stickers premium",
+    "addFavorite": "Añadir a favoritos",
+    "removeFavorite": "Quitar de favoritos",
+    "emptySearch": "No se encontró nada",
+    "emptyRecent": "Aún no hay stickers recientes",
+    "emptyFavorites": "Aún no hay stickers favoritos",
+    "emptyPack": "No hay stickers en este paquete",
+    "importPack": "Importar paquete de stickers local",
+    "importError": "No se pudo importar este paquete de stickers",
+    "importedPack": "Paquete importado",
+    "removePack": "Eliminar paquete"
   }
 }

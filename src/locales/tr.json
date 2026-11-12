@@ -299,7 +299,10 @@
     "sendAt": "Gönderim saati",
     "morseEncode": "Morse kodunu göster",
     "morseDecode": "Metni göster",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Bu mesaj silindi",
+    "edited": "(düzenlendi)",
+    "forwardedFrom": "Şuradan iletildi:"
   },
   "stories": {
     "title": "Hikayeler",
@@ -625,6 +628,22 @@
     "title": "Çıkartmalar",
     "gifs": "GIF'ler",
     "tapToInsert": "Eklemek için emojiye dokun:",
-    "searchGifs": "GIF ara..."
+    "searchGifs": "GIF ara...",
+    "searchStickers": "Sticker ara...",
+    "all": "Tümü",
+    "recent": "Son kullanılan",
+    "favorites": "Favoriler",
+    "premium": "Premium",
+    "unlockPremium": "Tüm premium çıkartmaların kilidini aç",
+    "addFavorite": "Favorilere ekle",
+    "removeFavorite": "Favorilerden çıkar",
+    "emptySearch": "Hiçbir şey bulunamadı",
+    "emptyRecent": "Henüz son kullanılan çıkartma yok",
+    "emptyFavorites": "Henüz favori çıkartma yok",
+    "emptyPack": "Bu pakette çıkartma yok",
+    "importPack": "Yerel çıkartma paketi içe aktar",
+    "importError": "Bu çıkartma paketi içe aktarılamadı",
+    "importedPack": "İçe aktarılan paket",
+    "removePack": "Paketin kaldır"
   }
 }

@@ -21,6 +21,7 @@ import {
   Search,
   Clock,
   Video,
+  Phone,
   Image as ImageIcon,
   Smile,
   Heart,
@@ -32,8 +33,10 @@ import {
   Forward,
   Lock,
   BarChart2,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { CONVERSATION_HISTORIES, CONTACT_PROFILES, KATIE_SHARED_MEDIA, MOCK_CHATS, CURRENT_USER } from '../data/mockMessengerData';
+import { CONVERSATION_HISTORIES, appendConversationHistory, CONTACT_PROFILES, KATIE_SHARED_MEDIA, MOCK_CHATS } from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
@@ -48,6 +51,7 @@ import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
+import { StickerMedia } from './chat/StickerMedia';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -57,6 +61,20 @@ import {
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
+import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
+
+const DEMO_PEER_BUNDLE_PREFIX = 'nova_demo_peer_bundle_';
+
+function getDemoPeerFingerprint(chatId: string): string | null {
+  try {
+    const raw = localStorage.getItem(`${DEMO_PEER_BUNDLE_PREFIX}${chatId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { fingerprint?: string };
+    return parsed.fingerprint ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface ChatScreenProps {
   chatId: string;
@@ -86,7 +104,7 @@ const CHAT_THEME_KEY = 'nova_chat_theme';
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenProfile }) => {
   const { t } = useLanguage();
-  const { encryptAndSendMessage } = useSecurity();
+  const { encryptAndSendMessage, identity } = useSecurity();
   const { checkout, canUse } = usePremium();
   const profile = CONTACT_PROFILES[chatId] || CONTACT_PROFILES['katie'];
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -125,6 +143,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -191,6 +211,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVideoCallMinimized, setIsVideoCallMinimized] = useState(false);
+  const [callMode, setCallMode] = useState<MediaCallMode>('video');
+  const [isCallMicOn, setIsCallMicOn] = useState(true);
+  const [isCallCameraOn, setIsCallCameraOn] = useState(true);
+  const [localCallStream, setLocalCallStream] = useState<MediaStream | null>(null);
+  const [remoteCallStream, setRemoteCallStream] = useState<MediaStream | null>(null);
+  const [callConnectionStatus, setCallConnectionStatus] = useState<
+    'connecting' | 'connected' | 'failed' | undefined
+  >(undefined);
+  const mediaCallRef = useRef<P2PMediaCall | null>(null);
 
   // Pinned Messages Carousel State
   const [isPinnedCarouselOpen, setIsPinnedCarouselOpen] = useState(false);
@@ -515,28 +544,82 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     handleSelectWallpaper(nextId);
   };
 
-  // Video Call Handlers
-  const handleStartVideoCall = () => {
-    setIsVideoCallOpen(true);
-    setIsVideoCallMinimized(false);
-    triggerPinnedToast(`Starting video call with ${profile.name}...`);
+  // Media Call Handlers (WebRTC audio/video, simulated fallback when no peer)
+  const stopActiveMediaCall = () => {
+    mediaCallRef.current?.end();
+    mediaCallRef.current = null;
+    setLocalCallStream(null);
+    setRemoteCallStream(null);
+    setCallConnectionStatus(undefined);
   };
 
+  const handleStartCall = (mode: MediaCallMode) => {
+    stopActiveMediaCall();
+    setCallMode(mode);
+    setIsVideoCallOpen(true);
+    setIsVideoCallMinimized(false);
+    setIsCallMicOn(true);
+    setIsCallCameraOn(mode === 'video');
+    setCallConnectionStatus(undefined);
+    triggerPinnedToast(`Starting ${mode} call with ${profile.name}...`);
+
+    const peerFingerprint = getDemoPeerFingerprint(chatId);
+    const localFingerprint = identity?.fingerprint;
+    const canUseRealMedia =
+      Boolean(peerFingerprint && localFingerprint) &&
+      typeof navigator !== 'undefined' &&
+      Boolean(navigator.mediaDevices?.getUserMedia);
+
+    if (!canUseRealMedia || !peerFingerprint || !localFingerprint) {
+      return;
+    }
+
+    const call = new P2PMediaCall({ localFingerprint, peerFingerprint, mode });
+    mediaCallRef.current = call;
+    setCallConnectionStatus('connecting');
+
+    call.onLocalStream((stream) => setLocalCallStream(stream));
+    call.onRemoteStream((stream) => setRemoteCallStream(stream));
+    call.onStatus((status: MediaCallStatus) => {
+      if (status === 'connecting' || status === 'connected' || status === 'failed') {
+        setCallConnectionStatus(status);
+      }
+      if (status === 'connected') {
+        triggerPinnedToast(`${mode === 'voice' ? 'Voice' : 'Video'} call connected`);
+      }
+    });
+    call.onError(() => setCallConnectionStatus('failed'));
+
+    void call.start();
+  };
+
+  const handleStartVideoCall = () => handleStartCall('video');
+  const handleStartVoiceCall = () => handleStartCall('voice');
+
   const handleEndVideoCall = (durationFormatted: string) => {
+    const mode = callMode;
+    stopActiveMediaCall();
     setIsVideoCallOpen(false);
     setIsVideoCallMinimized(false);
-    triggerPinnedToast(`Video call ended • ${durationFormatted}`);
+    triggerPinnedToast(`${mode === 'voice' ? 'Voice' : 'Video'} call ended • ${durationFormatted}`);
 
     // Add a record to chat history
     const callRecordMsg: ChatMessage = {
       id: 'call-' + Date.now(),
       senderId: 'me',
-      text: `📹 Video call with ${profile.name.split(' ')[0]} • Duration: ${durationFormatted}`,
+      text: `${mode === 'voice' ? '📞 Voice' : '📹 Video'} call with ${profile.name.split(' ')[0]} • Duration: ${durationFormatted}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: true,
     };
     setMessages((prev) => [...prev, callRecordMsg]);
   };
+
+  useEffect(() => {
+    return () => {
+      mediaCallRef.current?.end();
+      mediaCallRef.current = null;
+    };
+  }, [chatId]);
 
   // Pinned Messages Handlers
   const handleTogglePinMessage = (msgId: string) => {
@@ -1010,6 +1093,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     triggerPinnedToast('Selecting messages to forward');
   };
 
+  // Edit / delete handlers
+  const handleStartEdit = (msg: ChatMessage) => {
+    setActiveReactionMsgId(null);
+    setEditingMsgId(msg.id);
+    setEditingText(msg.text || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMsgId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingMsgId) return;
+    const text = editingText.trim();
+    if (!text) return;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === editingMsgId ? { ...m, text, editedAt: Date.now() } : m))
+    );
+    setEditingMsgId(null);
+    setEditingText('');
+  };
+
+  const handleDeleteMessage = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId ? { ...m, deleted: true, text: undefined, editedAt: undefined } : m
+      )
+    );
+    if (editingMsgId === msgId) handleCancelEdit();
+  };
+
   const handleToggleForwardSelect = (msgId: string) => {
     setForwardSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1037,28 +1152,40 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       return;
     }
     setIsForwardModalOpen(true);
-  };
+  };  const handleForwardToChat = (targetChatId: string) => {
+    const selectedMsgs = messages.filter((m) => forwardSelectedIds.has(m.id) && !m.deleted);
 
-  const handleForwardToChat = (targetChatId: string) => {
-    const selectedMsgs = messages.filter((m) => forwardSelectedIds.has(m.id));
-    const senderName = profile.name;
+    if (selectedMsgs.length === 0) {
+      setIsForwardModalOpen(false);
+      setIsForwardSelecting(false);
+      setForwardSelectedIds(new Set());
+      triggerPinnedToast('No messages to forward');
+      return;
+    }
 
     const newMsgs: ChatMessage[] = selectedMsgs.map((m) => ({
       ...m,
       id: 'fwd-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       senderId: 'me' as const,
-      forwardedFrom: senderName,
+      forwardedFrom: m.senderId === 'me' ? 'You' : profile.name,
+      text: m.deleted ? undefined : m.text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      replyTo: undefined,
+      editedAt: undefined,
     }));
 
-    // Add to current chat if forwarding to self, otherwise just simulate
-    if (targetChatId === 'me' || targetChatId === CURRENT_USER.id) {
+    const targetName = MOCK_CHATS.find((c) => c.id === targetChatId)?.name || 'contact';
+
+    // Persist into the target chat history so forwarded messages are there when opened.
+    appendConversationHistory(targetChatId, newMsgs);
+
+    // If forwarding back into the currently open chat, update local state too.
+    if (targetChatId === chatId) {
       setMessages((prev) => [...prev, ...newMsgs]);
-    } else {
-      // Simulate: show toast that messages were forwarded
-      triggerPinnedToast(`Forwarded ${newMsgs.length} message${newMsgs.length > 1 ? 's' : ''} to ${MOCK_CHATS.find((c) => c.id === targetChatId)?.name || 'contact'}`);
     }
+
+    triggerPinnedToast(`Forwarded ${newMsgs.length} message${newMsgs.length > 1 ? 's' : ''} to ${targetName}`);
 
     setIsForwardModalOpen(false);
     setIsForwardSelecting(false);
@@ -1790,15 +1917,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               </div>
 
               <div className="flex items-center gap-1">
+                {/* Voice Call Toggle Button */}
+                <button
+                  onClick={handleStartVoiceCall}
+                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                    isVideoCallOpen && callMode === 'voice'
+                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
+                      : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                  }`}
+                  title={
+                    isVideoCallOpen && callMode === 'voice'
+                      ? 'Voice call in progress (click to view)'
+                      : `Start voice call with ${profile.name}`
+                  }
+                >
+                  <Phone className="w-3 h-3" />
+                </button>
+
                 {/* Video Call Toggle Button */}
                 <button
                   onClick={handleStartVideoCall}
                   className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    isVideoCallOpen
+                    isVideoCallOpen && callMode === 'video'
                       ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
                       : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
                   }`}
-                  title={isVideoCallOpen ? 'Video call in progress (click to view)' : `Start video call with ${profile.name}`}
+                  title={
+                    isVideoCallOpen && callMode === 'video'
+                      ? 'Video call in progress (click to view)'
+                      : `Start video call with ${profile.name}`
+                  }
                 >
                   <Video className="w-3 h-3" />
                 </button>
@@ -2159,6 +2307,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           const currentOffset = isThisSwiping ? swipeOffset : 0;
           const isThresholdReached = currentOffset >= 42;
 
+          if (msg.deleted) {
+            return (
+              <div
+                key={msg.id}
+                id={`msg-${msg.id}`}
+                className={`flex flex-col relative transition-all duration-300 ${
+                  isMine ? 'items-end' : 'items-start'
+                }`}
+              >
+                <div className="px-3.5 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/45 italic text-[13px] max-w-[80%]">
+                  {t('chat.messageDeleted', 'This message was deleted')}
+                  <span className="ml-2 text-[10px] not-italic text-white/30">{msg.time}</span>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={msg.id}
@@ -2370,6 +2535,42 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       <Forward className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
                       <span>Forward</span>
                     </button>
+                    {isMine && msg.text && (
+                      <>
+                        <div className="w-[1px] h-3 bg-white/15" />
+                        <button
+                          type="button"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEdit(msg);
+                          }}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
+                          title="Edit message"
+                        >
+                          <Pencil className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Edit</span>
+                        </button>
+                      </>
+                    )}
+                    {isMine && (
+                      <>
+                        <div className="w-[1px] h-3 bg-white/15" />
+                        <button
+                          type="button"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMessage(msg.id);
+                          }}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-red-500/25 text-red-400 hover:text-red-300 transition active:scale-90 text-[10px] font-semibold cursor-pointer"
+                          title="Delete message"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete</span>
+                        </button>
+                      </>
+                    )}
                     <div className="w-[1px] h-3 bg-white/15" />
                     <button
                       type="button"
@@ -2439,15 +2640,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                         )}
                         <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
-                          {msg.sticker.imageUrl ? (
-                            <img
-                              src={msg.sticker.imageUrl}
-                              alt={msg.sticker.name}
-                              className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            />
-                          ) : (
-                            <span className="text-6xl">{msg.sticker.emoji}</span>
-                          )}
+                          <StickerMedia
+                            sticker={msg.sticker}
+                            className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                            emojiClassName="text-6xl"
+                          />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
                           <span className="font-mono">{msg.time}</span>
@@ -2508,7 +2705,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         {msg.forwardedFrom && (
                           <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-white/70">
                             <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
-                            <span>Forwarded from {msg.forwardedFrom}</span>
+                            <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
                         )}
                         {msg.replyTo && (
@@ -2587,7 +2784,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         {msg.forwardedFrom && (
                           <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/60 text-[10px] text-white/70">
                             <Forward className="w-2.5 h-2.5 text-white/70" />
-                            <span>Forwarded from {msg.forwardedFrom}</span>
+                            <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
                         )}
                         {msg.replyTo && (
@@ -2644,21 +2841,96 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </button>
                           </div>
                         )}
-                        <p>{highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}</p>
+                        {editingMsgId === msg.id ? (
+                          <div className="flex flex-col gap-2 min-w-[220px]">
+                            <input
+                              type="text"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') handleCancelEdit();
+                              }}
+                              className="w-full bg-black/25 text-white text-[14px] rounded-lg px-2 py-1.5 focus:outline-none border border-white/20 focus:border-white/40"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveEdit();
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold transition active:scale-95"
+                              >
+                                {t('common.save')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelEdit();
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-[11px] font-semibold transition active:scale-95"
+                              >
+                                {t('common.cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p>
+                              {highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}
+                              {msg.editedAt && (
+                                <span className="ml-1.5 text-[9px] italic text-white/60">
+                                  {t('chat.edited')}
+                                </span>
+                              )}
+                            </p>
+                          </>
+                        )}
                         <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleReplyMessage(msg);
-                            }}
-                            className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                            title={t('common.reply')}
-                          >
-                            <Reply className="w-2.5 h-2.5" />
-                            <span className="text-[9.5px]">Reply</span>
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReplyMessage(msg);
+                              }}
+                              className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                              title={t('common.reply')}
+                            >
+                              <Reply className="w-2.5 h-2.5" />
+                              <span className="text-[9.5px]">Reply</span>
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(msg);
+                              }}
+                              className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                              title={t('chat.messageActions.edit')}
+                            >
+                              <Pencil className="w-2.5 h-2.5" />
+                              <span className="text-[9.5px]">{t('chat.messageActions.edit')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMessage(msg.id);
+                              }}
+                              className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                              title={t('chat.messageActions.delete')}
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                              <span className="text-[9.5px]">{t('chat.messageActions.delete')}</span>
+                            </button>
+                          </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
                             {msg.isRead ? (
@@ -2714,15 +2986,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                         )}
                         <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
-                          {msg.sticker.imageUrl ? (
-                            <img
-                              src={msg.sticker.imageUrl}
-                              alt={msg.sticker.name}
-                              className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            />
-                          ) : (
-                            <span className="text-6xl">{msg.sticker.emoji}</span>
-                          )}
+                          <StickerMedia
+                            sticker={msg.sticker}
+                            className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                            emojiClassName="text-6xl"
+                          />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
                           <span className="font-mono">{msg.time}</span>
@@ -2768,7 +3036,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       {msg.forwardedFrom && (
                         <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-[#868b98]">
                           <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
-                          <span>Forwarded from {msg.forwardedFrom}</span>
+                          <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                         </div>
                       )}
                       {msg.replyTo && (
@@ -2837,7 +3105,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         </div>
                       )}
 
-                      {msg.text && <p>{highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}</p>}
+                      {msg.text && (
+                        <p>
+                          {highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}
+                          {msg.editedAt && (
+                            <span className="ml-1.5 text-[9px] italic text-[#717682]">{t('chat.edited')}</span>
+                          )}
+                        </p>
+                      )}
 
                       <div className="flex items-center justify-between gap-1 text-[10px] text-[#717682] mt-1.5 font-medium select-none">
                         <div className="flex items-center gap-1">
@@ -3388,7 +3663,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         onClose={() => setIsScheduleModalOpen(false)}
       />
 
-      {/* SIMULATED FULL-SCREEN VIDEO CALL OVERLAY */}
+      {/* FULL-SCREEN MEDIA CALL OVERLAY */}
       <VideoCallOverlay
         isOpen={isVideoCallOpen}
         isMinimized={isVideoCallMinimized}
@@ -3397,6 +3672,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         onMaximize={() => setIsVideoCallMinimized(false)}
         contactName={profile.name}
         contactAvatar={profile.avatar}
+        mode={callMode}
+        localStream={localCallStream}
+        remoteStream={remoteCallStream}
+        connectionStatus={callConnectionStatus}
+        isMicOn={isCallMicOn}
+        isCameraOn={isCallCameraOn}
+        onToggleMic={() => {
+          setIsCallMicOn((prev) => {
+            mediaCallRef.current?.setMicrophoneEnabled(!prev);
+            return !prev;
+          });
+        }}
+        onToggleCamera={() => {
+          setIsCallCameraOn((prev) => {
+            mediaCallRef.current?.setCameraEnabled(!prev);
+            return !prev;
+          });
+        }}
       />
 
       {/* SIMULATED FILE & MEDIA SELECTION MODAL */}

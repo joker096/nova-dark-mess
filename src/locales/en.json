@@ -267,7 +267,23 @@
     "title": "Stickers",
     "gifs": "GIFs",
     "tapToInsert": "Tap emoji to insert:",
-    "searchGifs": "Search GIFs..."
+    "searchGifs": "Search GIFs...",
+    "searchStickers": "Search stickers...",
+    "all": "All",
+    "recent": "Recent",
+    "favorites": "Favorites",
+    "premium": "Premium",
+    "unlockPremium": "Unlock all premium stickers",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites",
+    "emptySearch": "Nothing found",
+    "emptyRecent": "No recent stickers yet",
+    "emptyFavorites": "No favorite stickers yet",
+    "emptyPack": "No stickers in this pack",
+    "importPack": "Import local sticker pack",
+    "importError": "Could not import this sticker pack",
+    "importedPack": "Imported pack",
+    "removePack": "Remove pack"
   },
   "contact": {
     "shareTitle": "Share contact",
@@ -345,7 +361,10 @@
     "sendAt": "Send at",
     "morseEncode": "Show Morse code",
     "morseDecode": "Show text",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "This message was deleted",
+    "edited": "(edited)",
+    "forwardedFrom": "Forwarded from"
   },
   "stories": {
     "title": "Stories",

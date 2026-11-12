@@ -574,3 +574,10 @@ export const CONTACT_PROFILES: Record<string, ContactProfile> = {
   },
 };
 
+
+export function appendConversationHistory(chatId: string, messages: ChatMessage[]): void {
+  if (!CONVERSATION_HISTORIES[chatId]) {
+    CONVERSATION_HISTORIES[chatId] = [];
+  }
+  CONVERSATION_HISTORIES[chatId].push(...messages);
+}

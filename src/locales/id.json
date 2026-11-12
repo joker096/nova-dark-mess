@@ -299,7 +299,10 @@
     "sendAt": "Kirim pada",
     "morseEncode": "Tampilkan kode Morse",
     "morseDecode": "Tampilkan teks",
-    "morseSample": "АБВ"
+    "morseSample": "АБВ",
+    "messageDeleted": "Pesan ini telah dihapus",
+    "edited": "(diedit)",
+    "forwardedFrom": "Diteruskan dari"
   },
   "stories": {
     "title": "Cerita",
@@ -625,6 +628,22 @@
     "title": "Stiker",
     "gifs": "GIF",
     "tapToInsert": "Ketuk emoji untuk menyisipkan:",
-    "searchGifs": "Cari GIF..."
+    "searchGifs": "Cari GIF...",
+    "searchStickers": "Cari stiker...",
+    "all": "Semua",
+    "recent": "Terbaru",
+    "favorites": "Favorit",
+    "premium": "Premium",
+    "unlockPremium": "Buka semua stiker premium",
+    "addFavorite": "Tambahkan ke favorit",
+    "removeFavorite": "Hapus dari favorit",
+    "emptySearch": "Tidak ada hasil",
+    "emptyRecent": "Belum ada stiker terbaru",
+    "emptyFavorites": "Belum ada stiker favorit",
+    "emptyPack": "Tidak ada stiker di paket ini",
+    "importPack": "Impor paket stiker lokal",
+    "importError": "Paket stiker ini tidak dapat diimpor",
+    "importedPack": "Paket diimpor",
+    "removePack": "Hapus paket"
   }
 }
