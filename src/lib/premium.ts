@@ -81,7 +81,15 @@ export function freeDaysRemaining(): number {
   }
 }
 
-export function canUseFeature(_feature: 'chat_themes' | 'wallpaper' | 'date_picker' | 'location_sharing' | 'all'): boolean {
+export function canUseFeature(
+  _feature:
+    | 'chat_themes'
+    | 'wallpaper'
+    | 'date_picker'
+    | 'location_sharing'
+    | 'premium_stickers'
+    | 'all',
+): boolean {
   return isPremium();
 }
 

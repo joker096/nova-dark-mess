@@ -8,7 +8,13 @@ import {
   getMinSubscriptionCost,
 } from '../lib/premium';
 
-export type PremiumFeature = 'chat_themes' | 'wallpaper' | 'date_picker' | 'location_sharing' | 'all';
+export type PremiumFeature =
+  | 'chat_themes'
+  | 'wallpaper'
+  | 'date_picker'
+  | 'location_sharing'
+  | 'premium_stickers'
+  | 'all';
 
 export function usePremium() {
   const [premium, setPremiumState] = useState<boolean>(isPremium());
