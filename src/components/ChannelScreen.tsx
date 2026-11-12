@@ -525,7 +525,10 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 {channel.name}
               </h2>
               <p className="text-[11px] text-[#868b98]">
-                {t('channel.subscribersCompact', { value: subscribersLabel })}
+                {t('channel.subscribersCompact', {
+                  value: subscribersLabel,
+                  count: channel.subscribers,
+                })}
               </p>
             </div>
 

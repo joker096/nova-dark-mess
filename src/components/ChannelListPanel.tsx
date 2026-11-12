@@ -129,6 +129,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                         {channel.description ||
                           t('channel.subscribersCompact', {
                             value: formatSubscribers(channel.subscribers),
+                            count: channel.subscribers,
                           })}
                       </p>
                     </div>
@@ -194,6 +195,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                     {channel.description ||
                       t('channel.subscribersCompact', {
                         value: formatSubscribers(channel.subscribers),
+                        count: channel.subscribers,
                       })}
                   </p>
                 </div>

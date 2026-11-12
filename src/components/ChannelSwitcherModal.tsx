@@ -84,6 +84,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                     {channel.description ||
                       t('channel.subscribersCompact', {
                         value: formatSubscribers(channel.subscribers),
+                        count: channel.subscribers,
                       })}
                   </p>
                 </div>
