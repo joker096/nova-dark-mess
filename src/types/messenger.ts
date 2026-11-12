@@ -49,6 +49,7 @@ export interface ChannelPostDraft {
   text: string;
   image?: string;
   scheduledFor?: number;
+  poll?: PollData;
 }
 
 export interface ChatFolder {
@@ -88,6 +89,47 @@ export interface DocumentAttachment {
   url?: string;
 }
 
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  votedByMe?: boolean;
+}
+
+export interface PollData {
+  id: string;
+  question: string;
+  options: PollOption[];
+  totalVotes: number;
+  isAnonymous?: boolean;
+  allowsMultiple?: boolean;
+  isQuiz?: boolean;
+  correctOptionId?: string;
+  explanation?: string;
+  closed?: boolean;
+}
+
+export interface StickerData {
+  id: string;
+  packId: string;
+  packName: string;
+  name: string;
+  emoji: string;
+  imageUrl?: string;
+  svgBadge?: string;
+  category?: string;
+}
+
+export interface LocationData {
+  latitude: number;
+  longitude: number;
+  title: string;
+  address?: string;
+  isLive?: boolean;
+  liveUntil?: number;
+  duration?: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: 'me' | 'other';
@@ -95,6 +137,9 @@ export interface ChatMessage {
   images?: string[];
   document?: DocumentAttachment;
   voiceNote?: VoiceNoteData;
+  poll?: PollData;
+  sticker?: StickerData;
+  location?: LocationData;
   time: string;
   isRead?: boolean;
   isPinned?: boolean;
@@ -130,6 +175,7 @@ export interface ChannelPost {
   createdAt?: number;
   scheduledFor?: number;
   authorName?: string;
+  poll?: PollData;
 }
 
 export interface SharedMediaItem {

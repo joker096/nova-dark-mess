@@ -31,9 +31,10 @@ import {
   Download,
   Forward,
   Lock,
+  BarChart2,
 } from 'lucide-react';
 import { CONVERSATION_HISTORIES, CONTACT_PROFILES, KATIE_SHARED_MEDIA, MOCK_CHATS, CURRENT_USER } from '../data/mockMessengerData';
-import { ChatMessage, VoiceNoteData, DocumentAttachment } from '../types/messenger';
+import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
@@ -42,6 +43,11 @@ import { ScheduleMessageModal } from './ScheduleMessageModal';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
 import { FileSelectionModal } from './FileSelectionModal';
+import { PollCreateModal } from './PollCreateModal';
+import { PollBubble } from './chat/PollBubble';
+import { LocationPickerModal } from './LocationPickerModal';
+import { LocationBubble } from './chat/LocationBubble';
+import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -194,6 +200,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [stagedAttachment, setStagedAttachment] = useState<{
     images?: string[];
     document?: DocumentAttachment;
@@ -1056,7 +1064,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setForwardSelectedIds(new Set());
   };
 
-  const handleAttachItem = (type: 'photo' | 'location' | 'document' | 'voice') => {
+  const handleAttachItem = (type: 'photo' | 'location' | 'document' | 'voice' | 'poll') => {
     setIsAttachmentMenuOpen(false);
     if (type === 'voice') {
       voiceMemoRef.current?.startRecording();
@@ -1066,42 +1074,31 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       setIsFileModalOpen(true);
       return;
     }
+    if (type === 'poll') {
+      setIsPollModalOpen(true);
+      return;
+    }
+    if (type === 'location') {
+      setIsLocationModalOpen(true);
+      return;
+    }
 
     const messageId = 'm-' + Date.now();
-    let newMsg: ChatMessage;
-
-    if (type === 'location') {
-      newMsg = {
-        id: messageId,
-        senderId: 'me',
-        text: "📍 Harry's Bar & Bistro, Kyiv (Live GPS Location)",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        replyTo: replyingTo
-          ? {
-              id: replyingTo.id,
-              text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
-            }
-          : undefined,
-      };
-    } else {
-      newMsg = {
-        id: messageId,
-        senderId: 'me',
-        text: '📄 Summer_Trip_Schedule.pdf (2.4 MB - Document attached)',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-        replyTo: replyingTo
-          ? {
-              id: replyingTo.id,
-              text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-              senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
-            }
-          : undefined,
-      };
-      triggerPinnedToast('Document attached');
-    }
+    let newMsg: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: '📄 Summer_Trip_Schedule.pdf (2.4 MB - Document attached)',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+          }
+        : undefined,
+    };
+    triggerPinnedToast('Document attached');
 
     setMessages((prev) => [...prev, newMsg]);
     setReplyingTo(null);
@@ -1137,6 +1134,198 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         },
       ]);
     }, 2600);
+  };
+
+  const handleCreatePoll = (poll: PollData) => {
+    const messageId = 'm-' + Date.now();
+    const newMsg: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: `📊 ${poll.question}`,
+      poll,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+          }
+        : undefined,
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+    setReplyingTo(null);
+    triggerPinnedToast(t('poll.pollCreated', 'Poll created!'));
+
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 600);
+
+    // Simulated contact response voting in the poll
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId || !m.poll) return m;
+          const options = m.poll.options.map((opt, idx) => {
+            if (idx === 0) {
+              return { ...opt, votes: opt.votes + 1 };
+            }
+            return opt;
+          });
+          const total = options.reduce((s, o) => s + o.votes, 0);
+          return {
+            ...m,
+            poll: { ...m.poll, options, totalVotes: total },
+          };
+        })
+      );
+      triggerPinnedToast(t('poll.votedNotification', { name: profile.name, defaultValue: `${profile.name} voted in your poll` }));
+    }, 2200);
+  };
+
+  const handleVotePoll = (pollId: string, optionId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (!m.poll || m.poll.id !== pollId) return m;
+        const curPoll = m.poll;
+        const updatedOptions = curPoll.options.map((opt) => {
+          if (opt.id === optionId) {
+            const nowVoted = !opt.votedByMe;
+            return {
+              ...opt,
+              votedByMe: nowVoted,
+              votes: nowVoted ? opt.votes + 1 : Math.max(0, opt.votes - 1),
+            };
+          }
+          if (!curPoll.allowsMultiple && opt.votedByMe) {
+            return {
+              ...opt,
+              votedByMe: false,
+              votes: Math.max(0, opt.votes - 1),
+            };
+          }
+          return opt;
+        });
+        const total = updatedOptions.reduce((s, o) => s + o.votes, 0);
+        return {
+          ...m,
+          poll: {
+            ...curPoll,
+            options: updatedOptions,
+            totalVotes: total,
+          },
+        };
+      })
+    );
+  };
+
+  const handleRetractVote = (pollId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (!m.poll || m.poll.id !== pollId) return m;
+        const updatedOptions = m.poll.options.map((opt) => ({
+          ...opt,
+          votedByMe: false,
+          votes: opt.votedByMe ? Math.max(0, opt.votes - 1) : opt.votes,
+        }));
+        const total = updatedOptions.reduce((s, o) => s + o.votes, 0);
+        return {
+          ...m,
+          poll: {
+            ...m.poll,
+            options: updatedOptions,
+            totalVotes: total,
+          },
+        };
+      })
+    );
+  };
+
+  const handleSendSticker = (sticker: StickerData) => {
+    setIsEmojiPickerOpen(false);
+    const messageId = 'm-' + Date.now();
+    const newMsg: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: `${sticker.emoji} ${sticker.name}`,
+      sticker,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+          }
+        : undefined,
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setReplyingTo(null);
+
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 600);
+  };
+
+  const handleSendGif = (gifUrl: string, title?: string) => {
+    setIsEmojiPickerOpen(false);
+    const messageId = 'm-' + Date.now();
+    const newMsg: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      images: [gifUrl],
+      text: title || 'GIF',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+          }
+        : undefined,
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setReplyingTo(null);
+
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 600);
+  };
+
+  const handleSendLocation = (location: LocationData) => {
+    const messageId = 'm-' + Date.now();
+    const newMsg: ChatMessage = {
+      id: messageId,
+      senderId: 'me',
+      text: `📍 ${location.title}`,
+      location,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
+            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+          }
+        : undefined,
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setReplyingTo(null);
+    triggerPinnedToast(location.isLive ? 'Live location shared' : 'Location sent');
+
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+      );
+    }, 600);
   };
 
   const handleSendAttachmentFromModal = (payload: {
@@ -2224,7 +2413,92 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   )}
 
                   {isMine ? (
-                    msg.voiceNote ? (
+                    msg.sticker ? (
+                      <div className="relative group/sticker flex flex-col items-end my-1">
+                        {msg.replyTo && (
+                          <div
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJumpToMessage(msg.replyTo!.id);
+                            }}
+                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/40 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/60 max-w-[220px]"
+                          >
+                            <div className="font-bold text-[10px] text-white/95 truncate">
+                              {msg.replyTo.senderName}
+                            </div>
+                            <p className="text-[11px] truncate text-white/80 font-normal">
+                              {msg.replyTo.text}
+                            </p>
+                          </div>
+                        )}
+                        <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                          {msg.sticker.imageUrl ? (
+                            <img
+                              src={msg.sticker.imageUrl}
+                              alt={msg.sticker.name}
+                              className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                            />
+                          ) : (
+                            <span className="text-6xl">{msg.sticker.emoji}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
+                          <span className="font-mono">{msg.time}</span>
+                          {msg.isRead ? (
+                            <CheckCheck className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 inline text-white/60 stroke-[2]" />
+                          )}
+                        </div>
+                      </div>
+                    ) : msg.poll ? (
+                      <div className={`bg-[#171824]/95 border ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl ${theme.shadow}`}>
+                        {msg.replyTo && (
+                          <div
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJumpToMessage(msg.replyTo!.id);
+                            }}
+                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/50"
+                          >
+                            <div className="font-bold text-[10.5px] text-white/95">
+                              {msg.replyTo.senderName}
+                            </div>
+                            <p className="text-[11.5px] truncate text-white/85 font-normal">
+                              {msg.replyTo.text}
+                            </p>
+                          </div>
+                        )}
+                        <PollBubble
+                          poll={msg.poll}
+                          onVote={handleVotePoll}
+                          onRetractVote={handleRetractVote}
+                          isMe={true}
+                        />
+                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
+                          <span>{msg.time}</span>
+                          {msg.isRead ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-white/60 stroke-[2]" />
+                          )}
+                        </div>
+                      </div>
+                    ) : msg.location ? (
+                      <div className={`bg-[#171824]/95 border ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
+                        <LocationBubble location={msg.location} isMe={true} />
+                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
+                          <span>{msg.time}</span>
+                          {msg.isRead ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-white/60 stroke-[2]" />
+                          )}
+                        </div>
+                      </div>
+                    ) : msg.voiceNote ? (
                       <div className={`bg-[#1b1c26]/95 ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
                         {msg.forwardedFrom && (
                           <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-white/70">
@@ -2415,7 +2689,78 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       </div>
                     )
                   ) : (
-                    <div className="bg-[#181921]/95 border border-white/5 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
+                    msg.sticker ? (
+                      <div className="relative group/sticker flex flex-col items-start my-1">
+                        {msg.replyTo && (
+                          <div
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJumpToMessage(msg.replyTo!.id);
+                            }}
+                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/10 border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-white/15 max-w-[220px]"
+                          >
+                            <div className="font-bold text-[10px] text-[var(--nova-accent-color)] truncate">
+                              {msg.replyTo.senderName}
+                            </div>
+                            <p className="text-[11px] truncate text-white/80 font-normal">
+                              {msg.replyTo.text}
+                            </p>
+                          </div>
+                        )}
+                        <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                          {msg.sticker.imageUrl ? (
+                            <img
+                              src={msg.sticker.imageUrl}
+                              alt={msg.sticker.name}
+                              className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                            />
+                          ) : (
+                            <span className="text-6xl">{msg.sticker.emoji}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
+                          <span className="font-mono">{msg.time}</span>
+                        </div>
+                      </div>
+                    ) : msg.poll ? (
+                      <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
+                        {msg.replyTo && (
+                          <div
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJumpToMessage(msg.replyTo!.id);
+                            }}
+                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-white/10"
+                          >
+                            <div className="font-bold text-[10.5px] text-[var(--nova-accent-color)]">
+                              {msg.replyTo.senderName}
+                            </div>
+                            <p className="text-[11.5px] truncate text-white/80 font-normal">
+                              {msg.replyTo.text}
+                            </p>
+                          </div>
+                        )}
+                        <PollBubble
+                          poll={msg.poll}
+                          onVote={handleVotePoll}
+                          onRetractVote={handleRetractVote}
+                          isMe={false}
+                        />
+                        <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
+                          <span>{msg.time}</span>
+                        </div>
+                      </div>
+                    ) : msg.location ? (
+                      <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
+                        <LocationBubble location={msg.location} isMe={false} />
+                        <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
+                          <span>{msg.time}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-[#181921]/95 border border-white/5 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
                       {msg.forwardedFrom && (
                         <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-[#868b98]">
                           <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
