@@ -237,6 +237,8 @@ export function buildChannelPost(
     createdAt: publishAt,
     scheduledFor: draft.scheduledFor,
     authorName: CURRENT_USER.name,
+    poll: draft.poll,
+    sticker: draft.sticker,
   };
 }
 
