@@ -610,13 +610,14 @@
     "public": "Öffentliche Umfrage",
     "quiz": "Quiz",
     "explanation": "Erklärung",
-    "votesCount": "{{count}} Stimmen",
     "retractVote": "Stimme zurückziehen",
     "pollCreated": "Umfrage erstellt!",
     "votedNotification": "{{name}} hat in deiner Umfrage abgestimmt",
     "errorQuestionRequired": "Bitte gib eine Frage ein",
     "errorOptionsRequired": "Bitte gib mindestens 2 Optionen an",
-    "errorSelectCorrectOption": "Bitte wähle die richtige Antwort für das Quiz"
+    "errorSelectCorrectOption": "Bitte wähle die richtige Antwort für das Quiz",
+    "votesCount_one": "{{count}} Stimme",
+    "votesCount_other": "{{count}} Stimmen"
   },
   "stickers": {
     "title": "Sticker",

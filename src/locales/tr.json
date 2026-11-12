@@ -610,13 +610,14 @@
     "public": "Herkese Açık Anket",
     "quiz": "Quiz",
     "explanation": "Açıklama",
-    "votesCount": "{{count}} oy",
     "retractVote": "Oyu geri çek",
     "pollCreated": "Anket oluşturuldu!",
     "votedNotification": "{{name}} anketinde oy kullandı",
     "errorQuestionRequired": "Lütfen bir anket sorusu gir",
     "errorOptionsRequired": "Lütfen en az 2 seçenek gir",
-    "errorSelectCorrectOption": "Lütfen quiz için doğru yanıtı seç"
+    "errorSelectCorrectOption": "Lütfen quiz için doğru yanıtı seç",
+    "votesCount_one": "{{count}} oy",
+    "votesCount_other": "{{count}} oy"
   },
   "stickers": {
     "title": "Çıkartmalar",

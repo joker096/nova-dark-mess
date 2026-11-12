@@ -610,13 +610,14 @@
     "public": "Polling Publik",
     "quiz": "Kuis",
     "explanation": "Penjelasan",
-    "votesCount": "{{count}} suara",
     "retractVote": "Tarik suara",
     "pollCreated": "Polling dibuat!",
     "votedNotification": "{{name}} memilih di polling Anda",
     "errorQuestionRequired": "Masukkan pertanyaan polling",
     "errorOptionsRequired": "Berikan minimal 2 opsi",
-    "errorSelectCorrectOption": "Pilih jawaban yang benar untuk kuis"
+    "errorSelectCorrectOption": "Pilih jawaban yang benar untuk kuis",
+    "votesCount_one": "{{count}} suara",
+    "votesCount_other": "{{count}} suara"
   },
   "stickers": {
     "title": "Stiker",

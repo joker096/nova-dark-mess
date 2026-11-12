@@ -610,13 +610,15 @@
     "public": "Encuesta pública",
     "quiz": "Cuestionario",
     "explanation": "Explicación",
-    "votesCount": "{{count}} votos",
     "retractVote": "Retirar voto",
     "pollCreated": "¡Encuesta creada!",
     "votedNotification": "{{name}} votó en tu encuesta",
     "errorQuestionRequired": "Escribe una pregunta para la encuesta",
     "errorOptionsRequired": "Proporciona al menos 2 opciones",
-    "errorSelectCorrectOption": "Elige la respuesta correcta del cuestionario"
+    "errorSelectCorrectOption": "Elige la respuesta correcta del cuestionario",
+    "votesCount_one": "{{count}} voto",
+    "votesCount_many": "{{count}} votos",
+    "votesCount_other": "{{count}} votos"
   },
   "stickers": {
     "title": "Stickers",

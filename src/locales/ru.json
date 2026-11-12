@@ -584,13 +584,16 @@
     "public": "Публичный опрос",
     "quiz": "Викторина",
     "explanation": "Объяснение",
-    "votesCount": "{{count}} голосов",
     "retractVote": "Отменить голос",
     "pollCreated": "Опрос создан!",
     "votedNotification": "{{name}} проголосовал(а) в опросе",
     "errorQuestionRequired": "Пожалуйста, введите вопрос опроса",
     "errorOptionsRequired": "Укажите как минимум 2 варианта ответа",
-    "errorSelectCorrectOption": "Выберите правильный ответ для викторины"
+    "errorSelectCorrectOption": "Выберите правильный ответ для викторины",
+    "votesCount_one": "{{count}} голос",
+    "votesCount_few": "{{count}} голоса",
+    "votesCount_many": "{{count}} голосов",
+    "votesCount_other": "{{count}} голоса"
   },
   "stickers": {
     "title": "Стикеры",

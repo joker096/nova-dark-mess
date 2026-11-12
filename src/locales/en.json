@@ -252,13 +252,14 @@
     "public": "Public Poll",
     "quiz": "Quiz",
     "explanation": "Explanation",
-    "votesCount": "{{count}} votes",
     "retractVote": "Retract vote",
     "pollCreated": "Poll created!",
     "votedNotification": "{{name}} voted in your poll",
     "errorQuestionRequired": "Please enter a poll question",
     "errorOptionsRequired": "Please provide at least 2 options",
-    "errorSelectCorrectOption": "Please choose the correct answer for the quiz"
+    "errorSelectCorrectOption": "Please choose the correct answer for the quiz",
+    "votesCount_one": "{{count}} vote",
+    "votesCount_other": "{{count}} votes"
   },
   "stickers": {
     "title": "Stickers",

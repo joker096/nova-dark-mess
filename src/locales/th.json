@@ -610,13 +610,14 @@
     "public": "โพลสาธารณะ",
     "quiz": "ควิซ",
     "explanation": "คำอธิบาย",
-    "votesCount": "{{count}} โหวต",
     "retractVote": "ถอนโหวต",
     "pollCreated": "สร้างโพลแล้ว!",
     "votedNotification": "{{name}} โหวตในโพลของคุณ",
     "errorQuestionRequired": "กรุณากรอกคำถามโพล",
     "errorOptionsRequired": "กรุณาใส่ตัวเลือกอย่างน้อย 2 ข้อ",
-    "errorSelectCorrectOption": "กรุณาเลือกคำตอบที่ถูกต้องสำหรับควิซ"
+    "errorSelectCorrectOption": "กรุณาเลือกคำตอบที่ถูกต้องสำหรับควิซ",
+    "votesCount_one": "{{count}} เสียง",
+    "votesCount_other": "{{count}} เสียง"
   },
   "stickers": {
     "title": "สติกเกอร์",
