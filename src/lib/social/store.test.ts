@@ -15,6 +15,7 @@ import {
   toggleChannelPopular,
   toggleReactionInPost,
   toggleReactionInStory,
+  voteInChannelPoll,
 } from './store';
 
 const NOW = new Date(2026, 10, 11, 10, 0, 0).getTime();
@@ -158,6 +159,37 @@ describe('social store - channel posts', () => {
 
     expect(post.poll).toEqual(poll);
     expect(post.sticker).toEqual(sticker);
+  });
+
+  it('records a poll vote and clears it on retract', () => {
+    const post = basePost({
+      poll: {
+        id: 'poll-1',
+        question: 'Where to meet?',
+        options: [
+          { id: 'opt-1', text: 'Khreshchatyk', votes: 0, votedByMe: false },
+          { id: 'opt-2', text: 'Podil', votes: 0, votedByMe: false },
+        ],
+        totalVotes: 0,
+        isAnonymous: true,
+        allowsMultiple: false,
+        isQuiz: false,
+      },
+    });
+
+    const voted = voteInChannelPoll([post], 'poll-1', 'opt-1')[0];
+    expect(voted.poll?.options[0]).toEqual({
+      id: 'opt-1',
+      text: 'Khreshchatyk',
+      votes: 1,
+      votedByMe: true,
+    });
+    expect(voted.poll?.totalVotes).toBe(1);
+
+    const retracted = voteInChannelPoll([voted], 'poll-1', '')[0];
+    expect(retracted.poll?.options[0].votes).toBe(0);
+    expect(retracted.poll?.options[0].votedByMe).toBe(false);
+    expect(retracted.poll?.totalVotes).toBe(0);
   });
 
   it('adds, toggles and removes a reaction', () => {

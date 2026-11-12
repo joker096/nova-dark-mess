@@ -19,6 +19,7 @@ import {
   toggleChannelPopular as toggleChannelPopularStore,
   toggleReactionInPost,
   toggleReactionInStory,
+  voteInChannelPoll,
   type SocialState,
 } from '../lib/social/store';
 
@@ -119,6 +120,13 @@ export function useSocialData() {
     [],
   );
 
+  const voteChannelPoll = useCallback((pollId: string, optionId: string): void => {
+    setState((prev) => ({
+      ...prev,
+      posts: voteInChannelPoll(prev.posts, pollId, optionId),
+    }));
+  }, []);
+
   const deleteChannelPost = useCallback((postId: string): void => {
     setState((prev) => ({
       ...prev,
@@ -163,6 +171,7 @@ export function useSocialData() {
     deleteChannel,
     setChannelSound,
     createChannelPost,
+    voteChannelPoll,
     deleteChannelPost,
     togglePostReaction,
     toggleChannelPopular,

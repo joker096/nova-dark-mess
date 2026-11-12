@@ -56,6 +56,7 @@ interface ChannelScreenProps {
   onDeletePost?: (postId: string) => void;
   onToggleReaction?: (postId: string, emoji: string) => void;
   onToggleSound?: (channelId: string, enabled: boolean) => void;
+  onVotePoll?: (pollId: string, optionId: string) => void;
 }
 
 const POST_REACTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉', '😍', '😎', '🙏', '💯', '🤔', '😢', '😡', '🎊', '🍻', '🎁', '👀', '💪'];
@@ -90,6 +91,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onDeletePost,
   onToggleReaction,
   onToggleSound,
+  onVotePoll,
 }) => {
   const { t, language } = useLanguage();
   const { checkout, canUse } = usePremium();
@@ -105,6 +107,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   }, [localPosts, posts, channel?.id]);
 
   const handleChannelPollVote = (pollId: string, optionId: string) => {
+    // Votes go through the store when it is wired up, so they land in
+    // localStorage along with the post instead of dying on reload.
+    if (onVotePoll) {
+      onVotePoll(pollId, optionId);
+      return;
+    }
+
     const updateTarget = (prevList: ChannelPost[]) =>
       prevList.map((p) => {
         if (!p.poll || p.poll.id !== pollId) return p;

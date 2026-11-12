@@ -8,6 +8,7 @@ import type {
   ChannelInfo,
   ChannelPost,
   ChannelPostDraft,
+  PollData,
   Story,
   StoryDraft,
 } from '../../types/messenger';
@@ -278,6 +279,41 @@ export function toggleReactionInPost(post: ChannelPost, emoji: string): ChannelP
     ...post,
     reactions: toggleReactionState(post.reactions, emoji),
   };
+}
+
+export function voteInPoll(poll: PollData, optionId: string): PollData {
+  const options = poll.options.map((option) => {
+    if (option.id === optionId) {
+      const voted = !option.votedByMe;
+      return {
+        ...option,
+        votedByMe: voted,
+        votes: voted ? option.votes + 1 : Math.max(0, option.votes - 1),
+      };
+    }
+    if (!poll.allowsMultiple && option.votedByMe) {
+      return { ...option, votedByMe: false, votes: Math.max(0, option.votes - 1) };
+    }
+    return option;
+  });
+
+  return {
+    ...poll,
+    options,
+    totalVotes: options.reduce((sum, option) => sum + option.votes, 0),
+  };
+}
+
+export function voteInChannelPoll(
+  posts: ChannelPost[],
+  pollId: string,
+  optionId: string,
+): ChannelPost[] {
+  return posts.map((post) =>
+    post.poll && post.poll.id === pollId
+      ? { ...post, poll: voteInPoll(post.poll, optionId) }
+      : post,
+  );
 }
 
 export function toggleReactionInStory(story: Story, emoji: string): Story {
