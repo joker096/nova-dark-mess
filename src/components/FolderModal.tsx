@@ -11,7 +11,6 @@ import {
   Radio,
   Star,
   Users,
-  Layers,
   Shield,
   Crown,
   Gift,

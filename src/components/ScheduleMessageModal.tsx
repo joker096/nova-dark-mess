@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Calendar, X, Check, Sparkles, Send } from 'lucide-react';
+import { Clock, Calendar, X, Check, Send } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ScheduleMessageModalProps {
@@ -29,8 +29,8 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
   if (!isOpen) return null;
 
   const handleConfirmSchedule = () => {
-    let targetDate = new Date();
-    let formattedLabel = '';
+    let targetDate: Date;
+    let formattedLabel: string;
 
     if (selectedPreset === '5s') {
       targetDate = new Date(Date.now() + 5000);

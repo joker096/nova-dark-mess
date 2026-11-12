@@ -41,7 +41,7 @@ describe('i18n - locale key parity', () => {
   });
 
   it('every en key exists in all locales (no missing translations)', () => {
-    for (const [lang, locale] of Object.entries(LOCALES)) {
+    for (const lang of Object.keys(LOCALES)) {
       if (lang === 'en') continue;
       const localeKeys = collectKeys(LOCALES[lang]).sort();
       const missing = enKeys.filter((k) => !localeKeys.includes(k));
@@ -76,7 +76,7 @@ describe('i18n - locale key parity', () => {
       'analytics.title',
       'app.name',
     ];
-    for (const [lang, locale] of Object.entries(LOCALES)) {
+    for (const locale of Object.values(LOCALES)) {
       const localeKeys = collectKeys(locale);
       for (const k of menuKeys) {
         expect(localeKeys).toContain(k);

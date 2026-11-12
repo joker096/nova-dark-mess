@@ -27,7 +27,6 @@ export function sanitizeHtml(html: string, options: SanitizedHtmlOptions = {}): 
     return escapeHtml(html);
   }
   const tagRegex = /<[^>]*>/g;
-  const safeAttrRegex = /^(class|id|data-[a-z][a-z0-9-]*)=["'][^"']*["']$/i;
   return html.replace(tagRegex, (tag) => {
     const isClosing = tag.startsWith('</');
     const tagNameMatch = tag.match(/<\/?(\w+)/);

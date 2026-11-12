@@ -10,10 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  Minimize2,
   Plus,
   Minus,
-  Download,
   Share2,
   Sparkles,
 } from 'lucide-react';

@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MeshRoutingTable, type MeshRoute, type RouteStatus } from './MeshRoutingTable';
+import { MeshRoutingTable, type MeshRoute } from './MeshRoutingTable';
 
 vi.useFakeTimers();
 

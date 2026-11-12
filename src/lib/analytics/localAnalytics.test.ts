@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { localAnalytics, type AnalyticsEvent } from './localAnalytics';
+import { localAnalytics } from './localAnalytics';
 
 describe('localAnalytics', () => {
   beforeEach(() => {

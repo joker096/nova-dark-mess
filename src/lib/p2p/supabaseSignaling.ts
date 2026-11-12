@@ -1,7 +1,6 @@
 import { getSupabaseClient, isSupabaseConfigured } from '../supabase/client';
 import {
   SignalingMessage,
-  SignalingMessageType,
   SignalingStatus,
 } from '../p2p/signaling';
 

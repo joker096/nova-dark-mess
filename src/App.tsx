@@ -58,7 +58,6 @@ export default function App() {
     deleteChannelPost,
     togglePostReaction,
     toggleChannelPopular,
-    searchChannels,
   } = useSocialData();
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
   const [activeChatId, setActiveChatId] = useState<string>('katie');

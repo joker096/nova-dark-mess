@@ -198,7 +198,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.warn('Encrypted local storage is unavailable:', err);
       }
 
-      let secret: string | null = null;
+      let secret: string | null;
       let enabled = false;
 
       if (storageReadyRef.current) {
@@ -233,7 +233,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const storedPinEnabled = localStorage.getItem(PIN_ENABLED_KEY);
           if (storedPinHash) setPinHash(storedPinHash);
           setPinEnabled(storedPinEnabled === 'true');
-        } catch {}
+        } catch { /* ignore */ }
         setIsInitialized(true);
       })
       .catch(() => {
@@ -421,7 +421,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       localStorage.setItem(PIN_HASH_KEY, hash);
       localStorage.setItem(PIN_ENABLED_KEY, 'true');
-    } catch {}
+    } catch { /* ignore */ }
     setPinHash(hash);
     setPinEnabled(true);
   }, [hashPin]);
@@ -436,7 +436,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       localStorage.removeItem(PIN_HASH_KEY);
       localStorage.removeItem(PIN_ENABLED_KEY);
-    } catch {}
+    } catch { /* ignore */ }
     setPinHash(null);
     setPinEnabled(false);
     setIsLocked(false);
