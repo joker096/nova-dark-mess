@@ -202,6 +202,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isStickerDrawerOpen, setIsStickerDrawerOpen] = useState(false);
   const [stagedAttachment, setStagedAttachment] = useState<{
     images?: string[];
     document?: DocumentAttachment;
@@ -1064,7 +1065,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setForwardSelectedIds(new Set());
   };
 
-  const handleAttachItem = (type: 'photo' | 'location' | 'document' | 'voice' | 'poll') => {
+  const handleAttachItem = (type: 'photo' | 'location' | 'document' | 'voice' | 'poll' | 'stickers') => {
     setIsAttachmentMenuOpen(false);
     if (type === 'voice') {
       voiceMemoRef.current?.startRecording();
@@ -1076,6 +1077,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }
     if (type === 'poll') {
       setIsPollModalOpen(true);
+      return;
+    }
+    if (type === 'stickers') {
+      setIsEmojiPickerOpen(false);
+      setIsStickerDrawerOpen(true);
       return;
     }
     if (type === 'location') {
@@ -2866,7 +2872,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         <span>{msg.time}</span>
                       </div>
                     </div>
-                  )}
+                  ))}
 
                   {/* Selected Emoji Reactions Display at Bottom of Bubble */}
                   {msg.reactions && msg.reactions.length > 0 && (
@@ -3120,6 +3126,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             </button>
             <button
               type="button"
+              onClick={() => handleAttachItem('poll')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>{t('attachment.poll', 'Poll')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAttachItem('stickers')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            >
+              <Smile className="w-3.5 h-3.5 text-purple-400" />
+              <span>{t('stickers.title', 'Stickers')}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleAttachItem('voice')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
@@ -3164,6 +3186,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             </button>
           </div>
         )}
+
+        {/* STICKERS / EMOJI / GIF DRAWER */}
+        <StickerPickerDrawer
+          isOpen={isStickerDrawerOpen}
+          onClose={() => setIsStickerDrawerOpen(false)}
+          onSelectEmoji={(emoji) => {
+            setInputText((prev) => prev + emoji);
+            mainInputRef.current?.focus();
+          }}
+          onSendSticker={handleSendSticker}
+          onSendGif={handleSendGif}
+        />
 
         {/* ROW OF SMART REPLY PILL BUTTONS */}
         {shouldShowSmartReplies && (
@@ -3382,6 +3416,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               : 'Attachment added'
           );
         }}
+      />
+
+      {/* POLL CREATE MODAL */}
+      <PollCreateModal
+        isOpen={isPollModalOpen}
+        onClose={() => setIsPollModalOpen(false)}
+        onCreatePoll={handleCreatePoll}
+      />
+
+      {/* LOCATION PICKER MODAL */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSendLocation={handleSendLocation}
       />
 
       {/* FORWARD RECIPIENT MODAL */}

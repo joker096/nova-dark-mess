@@ -43,7 +43,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
 
   return (
     <div
-      data-testid="emoji-bar"
+      data-testid="sticker-drawer"
       className="p-2.5 bg-[#141520]/98 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 select-none overflow-hidden max-w-full no-scrollbar"
     >
       {/* Top Header & Tab Switcher */}
