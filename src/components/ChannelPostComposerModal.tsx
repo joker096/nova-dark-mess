@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
 import { SchedulePicker, type ScheduleSelection } from './SchedulePicker';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
+import { StickerMedia } from './chat/StickerMedia';
 import type { ChannelPostDraft, PollData, StickerData } from '../types/messenger';
 
 const MAX_POLL_OPTIONS = 10;
@@ -228,10 +229,10 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
 
         {sticker && !stickerOpen && (
           <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
-            <img
-              src={sticker.imageUrl}
-              alt={sticker.name}
+            <StickerMedia
+              sticker={sticker}
               className="h-10 w-10 object-contain"
+              emojiClassName="text-3xl"
             />
             <span className="flex-1 truncate text-[11px] text-white/70">{sticker.name}</span>
             <button
