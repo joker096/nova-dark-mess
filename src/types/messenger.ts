@@ -110,6 +110,8 @@ export interface PollData {
   closed?: boolean;
 }
 
+export type StickerAccess = 'free' | 'premium';
+
 export interface StickerData {
   id: string;
   packId: string;
@@ -119,6 +121,12 @@ export interface StickerData {
   imageUrl?: string;
   svgBadge?: string;
   category?: string;
+  access?: StickerAccess;
+  tags?: string[];
+  sortOrder?: number;
+  animated?: boolean;
+  /** Animated/video source (GIF, WebP, MP4 or WebM). original imageUrl stays the static fallback. */
+  animationUrl?: string;
 }
 
 export interface LocationData {
@@ -145,6 +153,8 @@ export interface ChatMessage {
   isRead?: boolean;
   isPinned?: boolean;
   pinnedNote?: string;
+  editedAt?: number;
+  deleted?: boolean;
   reactions?: {
     emoji: string;
     count: number;

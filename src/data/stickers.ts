@@ -1,4 +1,4 @@
-import { StickerData } from '../types/messenger';
+import { StickerAccess, StickerData } from '../types/messenger';
 
 export interface StickerPack {
   id: string;
@@ -6,6 +6,15 @@ export interface StickerPack {
   icon: string;
   description: string;
   stickers: StickerData[];
+  access?: StickerAccess;
+  sortOrder?: number;
+  tags?: string[];
+  category?: string;
+  releaseDate?: string;
+  animated?: boolean;
+  license?: string;
+  attribution?: string;
+  imported?: boolean;
 }
 
 export interface GifItem {
@@ -22,6 +31,11 @@ export const STICKER_PACKS: StickerPack[] = [
     name: 'Nova Cyber',
     icon: '⚡',
     description: 'Futuristic neon stickers for cyber operatives',
+    category: 'cyber',
+    sortOrder: 10,
+    tags: ['cyber', 'neon', 'futuristic', 'tech'],
+    releaseDate: '2026-11-05',
+    license: 'Nova Original',
     stickers: [
       {
         id: 'cyber-cat',
@@ -241,6 +255,10 @@ export const STICKER_PACKS: StickerPack[] = [
     name: 'Pepe & Internet',
     icon: '🐸',
     description: 'Iconic memes for peak group chat culture',
+    category: 'memes',
+    sortOrder: 20,
+    tags: ['memes', 'frog', 'internet', 'reactions'],
+    license: 'Nova Original',
     stickers: [
       {
         id: 'pepe-chill',
@@ -338,6 +356,8 @@ export const STICKER_PACKS: StickerPack[] = [
         name: 'Gigachad',
         emoji: '🗿',
         svgBadge: 'CHAD',
+        access: 'premium',
+        tags: ['chad', 'moai', 'sigma'],
         imageUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
             <circle cx="60" cy="60" r="54" fill="#18181b" stroke="#a1a1aa" stroke-width="2.5"/>
@@ -360,6 +380,12 @@ export const STICKER_PACKS: StickerPack[] = [
     name: 'Vibrant Reactions',
     icon: '✨',
     description: 'High energy animated reaction expressions',
+    category: 'reactions',
+    sortOrder: 30,
+    tags: ['reactions', 'emotions', 'party', 'love'],
+    access: 'premium',
+    animated: true,
+    license: 'Nova Original',
     stickers: [
       {
         id: 'react-party',
@@ -368,15 +394,30 @@ export const STICKER_PACKS: StickerPack[] = [
         name: 'Party Time',
         emoji: '🎉',
         svgBadge: 'CELEBRATE',
+        animated: true,
         imageUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
             <circle cx="60" cy="60" r="54" fill="#1c1626" stroke="#f43f5e" stroke-width="2.5"/>
-            <!-- Confetti dots -->
-            <circle cx="34" cy="30" r="3" fill="#fde047"/>
-            <circle cx="82" cy="24" r="3.5" fill="#38bdf8"/>
-            <circle cx="94" cy="52" r="2.5" fill="#4ade80"/>
-            <circle cx="28" cy="64" r="3" fill="#ec4899"/>
-            <circle cx="70" cy="36" r="2.5" fill="#a855f7"/>
+            <!-- Animated confetti dots -->
+            <g>
+              <circle cx="34" cy="30" r="3" fill="#fde047">
+                <animate attributeName="cy" values="30;24;30" dur="1.4s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="1;0.4;1" dur="1.4s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="82" cy="24" r="3.5" fill="#38bdf8">
+                <animate attributeName="cy" values="24;31;24" dur="1.1s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.1s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="94" cy="52" r="2.5" fill="#4ade80">
+                <animate attributeName="cy" values="52;46;52" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="28" cy="64" r="3" fill="#ec4899">
+                <animate attributeName="cy" values="64;58;64" dur="1.2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="70" cy="36" r="2.5" fill="#a855f7">
+                <animate attributeName="cy" values="36;30;36" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+            </g>
             <!-- Party Horn / Popper -->
             <polygon points="36,88 84,40 76,32 28,80" fill="#f59e0b"/>
             <polygon points="84,40 76,32 88,28" fill="#ef4444"/>
@@ -394,6 +435,7 @@ export const STICKER_PACKS: StickerPack[] = [
         name: 'Absolute Fire',
         emoji: '🔥',
         svgBadge: 'HOT',
+        animated: true,
         imageUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
             <defs>
@@ -407,7 +449,9 @@ export const STICKER_PACKS: StickerPack[] = [
             <!-- Big Flame Outer -->
             <path d="M60,20 C68,36 88,52 88,72 C88,88 75,98 60,98 C45,98 32,88 32,72 C32,54 50,42 54,34 C56,44 64,48 64,48 C64,48 54,30 60,20 Z" fill="url(#fireGrad)"/>
             <!-- Inner Flame -->
-            <path d="M60,54 C65,62 74,70 74,80 C74,88 68,92 60,92 C52,92 46,88 46,80 C46,72 54,64 58,60 Z" fill="#ffffff" opacity="0.9"/>
+            <path d="M60,54 C65,62 74,70 74,80 C74,88 68,92 60,92 C52,92 46,88 46,80 C46,72 54,64 58,60 Z" fill="#ffffff" opacity="0.9">
+              <animate attributeName="opacity" values="0.9;0.45;0.75;0.9" dur="0.8s" repeatCount="indefinite"/>
+            </path>
             <text x="60" y="110" text-anchor="middle" fill="#fb923c" font-family="sans-serif" font-size="9" font-weight="900">STRAIGHT FIRE 🔥</text>
           </svg>
         `)}`,
@@ -419,14 +463,19 @@ export const STICKER_PACKS: StickerPack[] = [
         name: 'Heart Eyes',
         emoji: '😍',
         svgBadge: 'LOVE',
+        animated: true,
         imageUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
             <circle cx="60" cy="60" r="54" fill="#1e131d" stroke="#f43f5e" stroke-width="2.5"/>
             <!-- Yellow face -->
             <circle cx="60" cy="60" r="34" fill="#facc15"/>
             <!-- Heart Eyes -->
-            <path d="M46,54 C46,54 36,44 36,38 C36,33 40,30 44,30 C46,30 47,32 47,32 C47,32 48,30 50,30 C54,30 58,33 58,38 C58,44 46,54 46,54 Z" fill="#ef4444"/>
-            <path d="M74,54 C74,54 64,44 64,38 C64,33 68,30 72,30 C74,30 75,32 75,32 C75,32 76,30 78,30 C82,30 86,33 86,38 C86,44 74,54 74,54 Z" fill="#ef4444"/>
+            <path d="M46,54 C46,54 36,44 36,38 C36,33 40,30 44,30 C46,30 47,32 47,32 C47,32 48,30 50,30 C54,30 58,33 58,38 C58,44 46,54 46,54 Z" fill="#ef4444">
+              <animate attributeName="opacity" values="1;0.55;1" dur="0.9s" repeatCount="indefinite"/>
+            </path>
+            <path d="M74,54 C74,54 64,44 64,38 C64,33 68,30 72,30 C74,30 75,32 75,32 C75,32 76,30 78,30 C82,30 86,33 86,38 C86,44 74,54 74,54 Z" fill="#ef4444">
+              <animate attributeName="opacity" values="0.55;1;0.55" dur="0.9s" repeatCount="indefinite"/>
+            </path>
             <!-- Big open smile -->
             <path d="M46,66 C46,78 74,78 74,66 Z" fill="#854d0e"/>
             <path d="M52,74 C56,76 64,76 68,74 Z" fill="#f87171"/>
