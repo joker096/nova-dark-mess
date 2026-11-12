@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { PenSquare } from 'lucide-react';
+import { BarChart2, PenSquare, Plus, Smile, Trash2, X } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
 import { SchedulePicker, type ScheduleSelection } from './SchedulePicker';
-import type { ChannelPostDraft } from '../types/messenger';
+import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
+import type { ChannelPostDraft, PollData, StickerData } from '../types/messenger';
+
+const MAX_POLL_OPTIONS = 10;
 
 interface ChannelPostComposerModalProps {
   isOpen: boolean;
@@ -34,6 +37,13 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
     mode: 'now',
     date: nextHour(),
   });
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [pollAnonymous, setPollAnonymous] = useState(true);
+  const [pollMultiple, setPollMultiple] = useState(false);
+  const [sticker, setSticker] = useState<StickerData | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,20 +52,73 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
     setText('');
     setImage(null);
     setSchedule({ mode: 'now', date: nextHour() });
+    setPollOpen(false);
+    setPollQuestion('');
+    setPollOptions(['', '']);
+    setPollAnonymous(true);
+    setPollMultiple(false);
+    setSticker(null);
+    setStickerOpen(false);
     setError(null);
   }, [isOpen]);
 
   const scheduleInvalid =
     schedule.mode === 'scheduled' && schedule.date.getTime() <= Date.now();
   const hasContent = title.trim().length > 0 || text.trim().length > 0;
-  const canSubmit = hasContent && !scheduleInvalid;
+  const canSubmit = (hasContent || pollOpen || sticker !== null) && !scheduleInvalid;
+
+  const updatePollOption = (index: number, value: string) => {
+    setPollOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
+    setError(null);
+  };
+
+  const addPollOption = () => {
+    if (pollOptions.length >= MAX_POLL_OPTIONS) return;
+    setPollOptions((prev) => [...prev, '']);
+  };
+
+  const removePollOption = (index: number) => {
+    if (pollOptions.length <= 2) return;
+    setPollOptions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const buildPoll = (): PollData | null | 'invalid' => {
+    if (!pollOpen) return null;
+    const question = pollQuestion.trim();
+    if (!question) {
+      setError(t('poll.errorQuestionRequired', 'Please enter a poll question'));
+      return 'invalid';
+    }
+    const options = pollOptions.map((opt) => opt.trim()).filter(Boolean);
+    if (options.length < 2) {
+      setError(t('poll.errorOptionsRequired', 'Please provide at least 2 options'));
+      return 'invalid';
+    }
+    return {
+      id: `poll-${Date.now()}`,
+      question,
+      options: options.map((optionText, idx) => ({
+        id: `opt-${idx + 1}-${Date.now()}`,
+        text: optionText,
+        votes: 0,
+        votedByMe: false,
+      })),
+      totalVotes: 0,
+      isAnonymous: pollAnonymous,
+      allowsMultiple: pollMultiple,
+      isQuiz: false,
+    };
+  };
 
   const handleSubmit = () => {
-    if (!hasContent) {
+    if (!hasContent && !pollOpen && !sticker) {
       setError(t('channel.postRequired'));
       return;
     }
     if (scheduleInvalid) return;
+
+    const poll = buildPoll();
+    if (poll === 'invalid') return;
 
     onPublish({
       title: title.trim(),
@@ -63,6 +126,8 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
       image: image ?? undefined,
       scheduledFor:
         schedule.mode === 'scheduled' ? schedule.date.getTime() : undefined,
+      poll: poll ?? undefined,
+      sticker: sticker ?? undefined,
     });
     onClose();
   };
@@ -128,6 +193,166 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             className="w-full resize-none rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs leading-relaxed text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPollOpen((prev) => !prev);
+              setError(null);
+            }}
+            aria-pressed={pollOpen}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
+              pollOpen
+                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-white'
+                : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+            }`}
+          >
+            <BarChart2 className="h-3.5 w-3.5" />
+            {t('poll.title', 'Poll')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStickerOpen((prev) => !prev)}
+            aria-pressed={stickerOpen}
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
+              sticker
+                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-white'
+                : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+            }`}
+          >
+            <Smile className="h-3.5 w-3.5" />
+            {t('stickers.title', 'Stickers')}
+          </button>
+        </div>
+
+        {sticker && !stickerOpen && (
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
+            <img
+              src={sticker.imageUrl}
+              alt={sticker.name}
+              className="h-10 w-10 object-contain"
+            />
+            <span className="flex-1 truncate text-[11px] text-white/70">{sticker.name}</span>
+            <button
+              type="button"
+              onClick={() => setSticker(null)}
+              title={t('common.remove', 'Remove')}
+              className="rounded-lg p-1.5 text-white/40 transition hover:bg-red-500/10 hover:text-red-400"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {stickerOpen && (
+          <StickerPickerDrawer
+            isOpen
+            onClose={() => setStickerOpen(false)}
+            onSelectEmoji={(emoji) => {
+              setText((prev) => `${prev}${emoji}`);
+              setStickerOpen(false);
+            }}
+            onSendSticker={(selected) => {
+              setSticker(selected);
+              setStickerOpen(false);
+            }}
+            onSendGif={(gifUrl) => {
+              setImage(gifUrl);
+              setStickerOpen(false);
+            }}
+          />
+        )}
+
+        {pollOpen && (
+          <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#101118] p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[#868b98]">
+                {t('poll.questionLabel', 'Question')}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setPollOpen(false);
+                  setPollQuestion('');
+                  setPollOptions(['', '']);
+                  setError(null);
+                }}
+                className="text-[10px] font-semibold text-white/40 transition hover:text-red-400"
+              >
+                {t('common.remove', 'Remove')}
+              </button>
+            </div>
+            <input
+              value={pollQuestion}
+              onChange={(event) => {
+                setPollQuestion(event.target.value);
+                setError(null);
+              }}
+              maxLength={250}
+              placeholder={t('poll.questionPlaceholder', 'Ask a question...')}
+              className="w-full rounded-xl border border-white/10 bg-[#14151c] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            />
+
+            <div className="space-y-2">
+              {pollOptions.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    value={option}
+                    onChange={(event) => updatePollOption(index, event.target.value)}
+                    maxLength={100}
+                    placeholder={t('poll.optionPlaceholder', {
+                      count: index + 1,
+                      defaultValue: `Option ${index + 1}`,
+                    })}
+                    className="flex-1 rounded-xl border border-white/10 bg-[#14151c] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removePollOption(index)}
+                      title={t('common.remove', 'Remove')}
+                      className="shrink-0 rounded-lg p-1.5 text-white/40 transition hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+              {pollOptions.length < MAX_POLL_OPTIONS && (
+                <button
+                  type="button"
+                  onClick={addPollOption}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[var(--nova-accent-color)] transition hover:brightness-125"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {t('poll.addOption', 'Add option')}
+                </button>
+              )}
+              <label className="flex items-center gap-1.5 text-[11px] text-white/60">
+                <input
+                  type="checkbox"
+                  checked={pollAnonymous}
+                  onChange={(event) => setPollAnonymous(event.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--nova-accent-color)]"
+                />
+                {t('poll.anonymousVoting', 'Anonymous voting')}
+              </label>
+              <label className="flex items-center gap-1.5 text-[11px] text-white/60">
+                <input
+                  type="checkbox"
+                  checked={pollMultiple}
+                  onChange={(event) => setPollMultiple(event.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--nova-accent-color)]"
+                />
+                {t('poll.multipleAnswers', 'Multiple answers')}
+              </label>
+            </div>
+          </div>
+        )}
 
         <ImagePicker
           value={image}

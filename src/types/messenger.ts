@@ -50,6 +50,7 @@ export interface ChannelPostDraft {
   image?: string;
   scheduledFor?: number;
   poll?: PollData;
+  sticker?: StickerData;
 }
 
 export interface ChatFolder {
@@ -176,6 +177,7 @@ export interface ChannelPost {
   scheduledFor?: number;
   authorName?: string;
   poll?: PollData;
+  sticker?: StickerData;
 }
 
 export interface SharedMediaItem {

@@ -899,6 +899,21 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       </p>
                     )}
 
+                    {/* Sticker in Channel Post */}
+                    {post.sticker && (
+                      <div className="flex justify-start pt-1">
+                        {post.sticker.imageUrl ? (
+                          <img
+                            src={post.sticker.imageUrl}
+                            alt={post.sticker.name}
+                            className="h-28 w-28 object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                          />
+                        ) : (
+                          <span className="text-5xl">{post.sticker.emoji}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Interactive Poll in Channel Post */}
                     {post.poll && (
                       <div className="pt-2 pb-1">

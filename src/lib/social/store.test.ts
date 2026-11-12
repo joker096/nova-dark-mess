@@ -129,6 +129,37 @@ describe('social store - channel posts', () => {
     expect(isPostScheduled(post, scheduledFor + 1)).toBe(false);
   });
 
+  it('keeps the poll and sticker attached to a new post', () => {
+    const poll = {
+      id: 'poll-1',
+      question: 'Where to meet?',
+      options: [
+        { id: 'opt-1', text: 'Khreshchatyk', votes: 0, votedByMe: false },
+        { id: 'opt-2', text: 'Podil', votes: 0, votedByMe: false },
+      ],
+      totalVotes: 0,
+      isAnonymous: true,
+      allowsMultiple: false,
+      isQuiz: false,
+    };
+    const sticker = {
+      id: 'cyber-cat',
+      packId: 'cyber',
+      packName: 'Nova Cyber',
+      name: 'Cyber Cat',
+      emoji: '🐱',
+    };
+
+    const post = buildChannelPost(
+      'channel-1',
+      { title: 'Weekend plans', text: '', poll, sticker },
+      NOW,
+    );
+
+    expect(post.poll).toEqual(poll);
+    expect(post.sticker).toEqual(sticker);
+  });
+
   it('adds, toggles and removes a reaction', () => {
     const added = toggleReactionInPost(basePost(), '🔥');
     expect(added.reactions).toEqual([
