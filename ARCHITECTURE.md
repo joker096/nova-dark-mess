@@ -9,7 +9,7 @@ Client-first secure messaging application built with React 19, TypeScript, Vite,
 - **Crypto**: @noble/curves (X25519, Ed25519), @noble/hashes (SHA-256, HKDF, HMAC), @scure/bip39 (mnemonic), Web Crypto API (AES-256-GCM, PBKDF2)
 - **Storage**: IndexedDB (encrypted via AES-256-GCM + PBKDF2), localStorage (settings/PIN hash)
 - **i18n**: i18next + react-i18next (en, ru, uk)
-- **P2P**: WebRTC DataChannel (simulated fallback), BroadcastChannel (local testing), WebSocket signaling client
+- **P2P**: WebRTC DataChannel + audio/video media tracks (simulated call fallback), BroadcastChannel (local testing), WebSocket signaling client
 - **Mobile**: Tauri v2 (planned for Android/iOS)
 
 ## Directory Layout
@@ -42,7 +42,8 @@ src/
     p2p/
       signaling.ts   — WebSocket + BroadcastChannel signaling, PoW challenge
       p2pManager.ts  — Peer connection management
-      webrtc.ts      — WebRTC DataChannel wrapper
+      webrtc.ts      — WebRTC DataChannel wrapper (+ local/remote media tracks)
+      mediaCall.ts   — Voice/video call session (getUserMedia, mute/camera, state)
       relay.ts       — Relay proxy client
       totp.ts        — TOTP (RFC 6238) generation and verification
     storage/
