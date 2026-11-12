@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BarChart3, HelpCircle, Check, X as XIcon, Lightbulb, RotateCcw } from 'lucide-react';
 import { PollData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
@@ -7,17 +7,14 @@ interface PollBubbleProps {
   poll: PollData;
   onVote?: (pollId: string, optionId: string) => void;
   onRetractVote?: (pollId: string) => void;
-  isMe?: boolean;
 }
 
 export const PollBubble: React.FC<PollBubbleProps> = ({
   poll,
   onVote,
   onRetractVote,
-  isMe = false,
 }) => {
   const { t } = useLanguage();
-  const [showExplanation, setShowExplanation] = useState(false);
 
   const hasVoted = poll.options.some((o) => o.votedByMe);
   const totalVotes = Math.max(

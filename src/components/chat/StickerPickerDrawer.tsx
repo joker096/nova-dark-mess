@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smile, Image as ImageIcon, Film, X, Search, Sparkles } from 'lucide-react';
+import { Smile, Film, X, Search, Sparkles } from 'lucide-react';
 import { STICKER_PACKS, MOCK_GIFS } from '../../data/stickers';
 import { StickerData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
