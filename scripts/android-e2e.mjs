@@ -286,22 +286,34 @@ async function main() {
   adb(['forward', `tcp:${devtoolsPort}`, `localabstract:webview_devtools_remote_${pid}`]);
 
   try {
+    // The first target a fresh WebView exposes is often the blank document it
+    // is about to navigate away from; attaching to it fails with
+    // "Inspected target navigated or closed". Wait for the real document.
+    const findTarget = async () => {
+      const response = await fetch(`http://127.0.0.1:${devtoolsPort}/json`);
+      if (!response.ok) return null;
+      const pages = await response.json();
+      return (
+        pages.find(
+          (page) =>
+            page.type === 'page' &&
+            page.webSocketDebuggerUrl &&
+            typeof page.url === 'string' &&
+            page.url !== '' &&
+            !page.url.startsWith('about:'),
+        ) ?? null
+      );
+    };
+
     const targets = await waitFor(
-      async () => {
-        const response = await fetch(`http://127.0.0.1:${devtoolsPort}/json`);
-        if (!response.ok) return '';
-        const pages = await response.json();
-        return pages.find((page) => page.type === 'page' && page.webSocketDebuggerUrl) ?? '';
-      },
+      async () => (await findTarget()) ?? '',
       'WebView devtools target',
       45000,
     );
 
     log(`attached to ${targets.url}`);
 
-    const result = await cdpEvaluate(
-      targets.webSocketDebuggerUrl,
-      `(async () => {
+    const probe = `(async () => {
         const results = {};
         const probes = [
           ['camera', { video: true }],
@@ -326,8 +338,22 @@ async function main() {
           (device) => device.kind + ':' + device.label,
         );
         return JSON.stringify(results);
-      })()`,
-    );
+      })()`;
+
+    // A page that reloads mid-probe kills the session; re-attach to the target
+    // that exists now instead of failing the whole run.
+    let result;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const target = attempt === 1 ? targets : await waitFor(findTarget, 'WebView devtools target', 20000);
+      try {
+        result = await cdpEvaluate(target.webSocketDebuggerUrl, probe);
+        break;
+      } catch (error) {
+        if (attempt === 3) throw error;
+        log(`retrying the media probe after: ${error.message}`);
+        await sleep(2000);
+      }
+    }
 
     const media = JSON.parse(result);
     log(`getUserMedia: ${JSON.stringify(media)}`);
