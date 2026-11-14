@@ -112,7 +112,8 @@
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
-    "emojis": "Emojis"
+    "emojis": "Emojis",
+    "undo": "Deshacer"
   },
   "chats": {
     "joinRequestNotice": "{{who}} quiere unirse",
@@ -367,6 +368,7 @@
     "morseDecode": "Mostrar texto",
     "morseSample": "АБВ",
     "messageDeleted": "Este mensaje fue eliminado",
+    "messageDeletedToast": "Mensaje eliminado",
     "edited": "(editado)",
     "forwardedFrom": "Reenviado desde"
   },

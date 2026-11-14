@@ -112,7 +112,8 @@
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
-    "emojis": "رموز تعبيرية"
+    "emojis": "رموز تعبيرية",
+    "undo": "تراجع"
   },
   "chats": {
     "joinRequestNotice": "{{who}} يريد الانضمام",
@@ -373,6 +374,7 @@
     "morseDecode": "إظهار النص",
     "morseSample": "أبجديات",
     "messageDeleted": "تم حذف هذه الرسالة",
+    "messageDeletedToast": "تم حذف الرسالة",
     "edited": "(تم تعديلها)",
     "forwardedFrom": "أُعيد توجيهه من"
   },

@@ -62,6 +62,7 @@ import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
 import { FileSelectionModal } from './FileSelectionModal';
 import { PollCreateModal } from './PollCreateModal';
+import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
@@ -686,6 +687,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pinnedToast, setPinnedToast] = useState<string | null>(null);
+  const [deletedUndo, setDeletedUndo] = useState<{ message: ChatMessage; index: number } | null>(null);
+  const undoDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [disappearAfter, setDisappearAfter] = useState(0);
@@ -1633,9 +1636,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   // index.css). The bubble stays in the DOM for this long, then is removed
   // from state so nothing — not even the "deleted" placeholder — remains.
   const DELETE_ANIMATION_MS = 300;
+  const DELETE_UNDO_MS = 5000;
 
   const handleDeleteMessage = (msgId: string, forEveryone: boolean = true) => {
     if (editingMsgId === msgId) handleCancelEdit();
+
+    // Keep a copy so the Undo toast can put the message back where it was.
+    // The clone is taken before the secure wipe, which mutates the object.
+    const index = messages.findIndex((m) => m.id === msgId);
+    const removed = index >= 0 ? { ...messages[index] } : undefined;
 
     // Start the collapse animation on the original bubble (it keeps its
     // content while it fades). The message is wiped and physically removed
@@ -1643,11 +1652,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     // is left behind afterwards.
     setDeletingMsgId(msgId);
     window.setTimeout(() => {
+      // "Delete for everyone" scrubs the secure payload; the undo snapshot is
+      // a separate object, so the restored row still carries its text.
       setMessages((prev) =>
         prev.filter((m) => {
           if (m.id !== msgId) return true;
-          // "Delete for everyone" scrubs the secure payload before it leaves
-          // state; "delete for me" just drops it locally.
           if (forEveryone) {
             secureWipeMessage(m as unknown as Parameters<typeof secureWipeMessage>[0]);
           }
@@ -1655,7 +1664,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         }),
       );
       setDeletingMsgId((cur) => (cur === msgId ? null : cur));
+      if (removed) {
+        setDeletedUndo({ message: removed, index });
+        if (undoDeleteTimer.current) clearTimeout(undoDeleteTimer.current);
+        undoDeleteTimer.current = setTimeout(() => setDeletedUndo(null), DELETE_UNDO_MS);
+      }
     }, DELETE_ANIMATION_MS);
+  };
+
+  const handleUndoDelete = () => {
+    const pending = deletedUndo;
+    if (undoDeleteTimer.current) {
+      clearTimeout(undoDeleteTimer.current);
+      undoDeleteTimer.current = null;
+    }
+    setDeletedUndo(null);
+    if (!pending) return;
+    setMessages((prev) => {
+      const next = [...prev];
+      next.splice(Math.min(pending.index, next.length), 0, pending.message);
+      return next;
+    });
   };
 
   const handleToggleForwardSelect = (msgId: string) => {
@@ -2291,9 +2320,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }, 2600);
   };
 
-  // Context-aware Smart Reply suggestions based on the last received message content
+  // Context-aware Smart Reply suggestions based on the last received message content.
+  // They only make sense right after an incoming message: suggesting "For sure!"
+  // under your own message replies to nothing.
   const lastReceivedMessage = useMemo(() => {
-    return [...messages].reverse().find((m) => m.senderId === 'other');
+    // Roster and role changes render as system rows; they are not a message
+    // to reply to, so the last real bubble decides.
+    const lastMessage = [...messages].reverse().find((m) => !m.system);
+    if (!lastMessage || lastMessage.senderId !== 'other') return undefined;
+    return lastMessage;
   }, [messages]);
 
   const smartReplies = useMemo(() => {
@@ -2352,6 +2387,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color, #ff4e18)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
           <span>{pinnedToast}</span>
+        </div>
+      )}
+
+      {/* Undo toast for a deleted message. Deletion is immediate, so an
+          accidental tap is recoverable for five seconds without a dialog. */}
+      {deletedUndo && (
+        <div
+          role="status"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-white/10 bg-[#1e202a]/95 px-3.5 py-2 text-xs text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
+        >
+          <span>{t('chat.messageDeletedToast')}</span>
+          <button
+            type="button"
+            onClick={handleUndoDelete}
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/[0.08] cursor-pointer"
+          >
+            {t('common.undo')}
+          </button>
         </div>
       )}
 
@@ -3286,114 +3339,116 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     onPointerDown={(e) => e.stopPropagation()}
                     className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[#141520]/95 border border-white/20 backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 group-hover:opacity-100 transition-all duration-150 scale-95 group-hover:scale-100 select-none`}
                   >
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReplyMessage(msg);
-                      }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                      title="Reply to message"
-                    >
-                      <Reply className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                      <span>Reply</span>
-                    </button>
-                    <div className="w-[1px] h-3 bg-white/15" />
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartForward(msg.id);
-                      }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                      title="Forward message"
-                    >
-                      <Forward className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                      <span>Forward</span>
-                    </button>
-                    <div className="w-[1px] h-3 bg-white/15" />
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePinMessage(msg.id);
-                      }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                      title={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
-                    >
-                      <Pin className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                      <span>{msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}</span>
-                    </button>
-                    {messages.some((m) => m.replyTo?.id === msg.id) && (
-                      <>
-                        <div className="w-[1px] h-3 bg-white/15" />
-                        <button
-                          type="button"
+                    <NovaTooltip label="Add reaction (emoji popup)">
+                      <NovaIconButton
+                        label="Add reaction (emoji popup)"
+                        icon={<Heart className="fill-rose-400/50" />}
+                        size={32}
+                        className="text-rose-400 hover:bg-rose-500/25"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
+                        }}
+                      />
+                    </NovaTooltip>
+                    <NovaTooltip label="Reply to message">
+                      <NovaIconButton
+                        label="Reply to message"
+                        icon={<Reply />}
+                        size={32}
+                        className="text-[var(--nova-accent-color,#ff4e18)]"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReplyMessage(msg);
+                        }}
+                      />
+                    </NovaTooltip>
+                    <NovaTooltip label="Forward message">
+                      <NovaIconButton
+                        label="Forward message"
+                        icon={<Forward />}
+                        size={32}
+                        className="text-[var(--nova-accent-color,#ff4e18)]"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartForward(msg.id);
+                        }}
+                      />
+                    </NovaTooltip>
+                    <NovaTooltip label={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}>
+                      <NovaIconButton
+                        label={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
+                        icon={<Pin />}
+                        size={32}
+                        active={msg.isPinned}
+                        className="text-[var(--nova-accent-color,#ff4e18)]"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePinMessage(msg.id);
+                        }}
+                      />
+                    </NovaTooltip>
+                    <div className="w-[1px] h-4 bg-white/15" />
+                    <NovaMenu
+                      label={t('common.more')}
+                      trigger={
+                        <NovaIconButton
+                          label={t('common.more')}
+                          icon={<MoreHorizontal />}
+                          size={32}
                           onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setThreadRootId(msg.id);
-                          }}
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                          title="Thread"
-                        >
-                          <Reply className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Thread</span>
-                        </button>
-                      </>
-                    )}
-                    {isMine && msg.text && (
-                      <>
-                        <div className="w-[1px] h-3 bg-white/15" />
-                        <button
-                          type="button"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEdit(msg);
-                          }}
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                          title="Edit message"
-                        >
-                          <Pencil className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Edit</span>
-                        </button>
-                      </>
-                    )}
-                    {isMine && (
-                      <>
-                        <div className="w-[1px] h-3 bg-white/15" />
-                        <button
-                          type="button"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteMessage(msg.id);
-                          }}
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-red-500/25 text-red-400 hover:text-red-300 transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                          title={t('chat.messageActions.delete')}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>{t('chat.messageActions.delete')}</span>
-                        </button>
-                      </>
-                    )}
-                    <div className="w-[1px] h-3 bg-white/15" />
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
-                      }}
-                      className="p-1 rounded-full hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition active:scale-90 cursor-pointer"
-                      title="Add reaction (emoji popup)"
-                    >
-                      <Heart className="w-3 h-3 fill-rose-400/50" />
-                    </button>
+                        />
+                      }
+                      items={[
+                        ...(msg.text
+                          ? [
+                              {
+                                key: 'copy',
+                                label: t('chat.messageActions.copy'),
+                                icon: <Copy />,
+                                shortcut: 'mod+c',
+                                onSelect: () => handleCopyMessage(msg),
+                              },
+                            ]
+                          : []),
+                        ...(isMine && msg.text
+                          ? [
+                              {
+                                key: 'edit',
+                                label: t('chat.messageActions.edit'),
+                                icon: <Pencil />,
+                                onSelect: () => handleStartEdit(msg),
+                              },
+                            ]
+                          : []),
+                        ...(messages.some((m) => m.replyTo?.id === msg.id)
+                          ? [
+                              {
+                                key: 'thread',
+                                label: 'Thread',
+                                icon: <Reply />,
+                                onSelect: () => setThreadRootId(msg.id),
+                              },
+                            ]
+                          : []),
+                        ...(isMine
+                          ? [
+                              {
+                                key: 'delete',
+                                label: t('chat.messageActions.delete'),
+                                icon: <Trash2 />,
+                                danger: true,
+                                separatorBefore: true,
+                                onSelect: () => handleDeleteMessage(msg.id),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
                   </div>
                   {/* Forward Selection Checkmark Overlay */}
                   {isForwardSelecting && (
