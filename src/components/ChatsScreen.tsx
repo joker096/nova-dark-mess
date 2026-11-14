@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
+import { NovaBadge } from '../lib/ui';
 import { useAccount } from '../hooks/useAccount';
 import {
   Search,
@@ -489,9 +490,15 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             <h1 className="text-[17px] font-bold text-white tracking-tight leading-tight">
               Hello, {account.displayName}
             </h1>
-            <p className="text-[11px] text-[#828795] font-normal leading-tight">
-              You&apos;ve got <span className="text-[var(--nova-accent-color)] font-medium">{CURRENT_USER.unreadTotal} unread</span> chats
-            </p>
+            <div
+              className="flex items-center gap-1.5 mt-0.5"
+              aria-label={t('chats.unreadBadge', { count: CURRENT_USER.unreadTotal })}
+            >
+              <span className="text-[11px] text-[#828795] font-normal leading-tight">
+                {t('chats.unreadCount')}
+              </span>
+              <NovaBadge value={CURRENT_USER.unreadTotal} max={99} variant="accent" />
+            </div>
           </div>
         </div>
 
