@@ -1357,9 +1357,20 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
       {/* Bottom Action Bar */}
       <div className="relative z-20 shrink-0 p-3">
-        <div className="flex items-center justify-end gap-2.5">
+        {!channel.isOwned && !subscribed && (
+          <button
+            type="button"
+            onClick={toggleSubscription}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--nova-accent-color)] text-sm font-semibold text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
+            aria-label={t('channel.subscribe')}
+          >
+            <Bell className="h-4 w-4" />
+            {t('channel.subscribe')} · {formatCount(channel.subscribers)}
+          </button>
+        )}
 
-          {channel.isOwned && onCreatePost && (
+        {channel.isOwned && onCreatePost && (
+          <div className="flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={() => setPostComposerOpen(true)}
@@ -1369,8 +1380,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             >
               <Plus className="h-4 w-4" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <ChannelSwitcherModal
