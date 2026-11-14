@@ -209,21 +209,28 @@ async function main() {
   if (!installed) fail(`${PACKAGE} is not installed`);
 
   const manifest = adb(['shell', 'dumpsys', 'package', PACKAGE]);
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
+  // MODIFY_AUDIO_SETTINGS is an install-time permission the generated
+  // WebChromeClient needs for audio capture; only CAMERA and RECORD_AUDIO are
+  // runtime permissions and can be granted from the shell.
+  for (const permission of [
+    'android.permission.CAMERA',
+    'android.permission.RECORD_AUDIO',
+    'android.permission.MODIFY_AUDIO_SETTINGS',
+  ]) {
     if (!manifest.includes(permission)) {
       fail(`${PACKAGE} does not declare ${permission}`);
     }
   }
-  log('manifest declares CAMERA and RECORD_AUDIO');
+  log('manifest declares CAMERA, RECORD_AUDIO and MODIFY_AUDIO_SETTINGS');
 
   // Grant before the WebView is created: Chromium caches the app's capture
   // permissions when the renderer starts, so granting after `am start` leaves
   // getUserMedia reporting NotAllowedError even though dumpsys shows granted.
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
     adb(['shell', 'pm', 'grant', PACKAGE, permission]);
   }
   const granted = adb(['shell', 'dumpsys', 'package', PACKAGE]);
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
     if (!granted.includes(`${permission}: granted=true`)) {
       fail(`runtime grant failed for ${permission}`);
     }
