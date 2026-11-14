@@ -3260,6 +3260,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       return (
                         <button
                           key={emoji}
+                          onMouseDown={(event) => event.preventDefault()}
                           onClick={() => handleSelectReaction(msg.id, emoji)}
                           className={`text-xl p-1.5 rounded-full hover:scale-135 active:scale-95 transition-transform cursor-pointer relative group ${
                             isSelected ? 'bg-white/20 scale-120' : 'hover:bg-white/10'
@@ -3770,7 +3771,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                         )}
                         {editingMsgId === msg.id ? (
-                          <div className="flex flex-col gap-2 min-w-[220px]">
+                          <div className="flex flex-col gap-2 w-full min-w-[260px]">
                             <input
                               type="text"
                               value={editingText}
@@ -4048,6 +4049,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           <button
                             type="button"
                             onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
@@ -4073,6 +4075,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       {msg.reactions.map((r, i) => (
                         <button
                           key={i}
+                          onMouseDown={(event) => event.preventDefault()}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectReaction(msg.id, r.emoji);
