@@ -216,6 +216,20 @@ async function main() {
   }
   log('manifest declares CAMERA and RECORD_AUDIO');
 
+  // Grant before the WebView is created: Chromium caches the app's capture
+  // permissions when the renderer starts, so granting after `am start` leaves
+  // getUserMedia reporting NotAllowedError even though dumpsys shows granted.
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
+    adb(['shell', 'pm', 'grant', PACKAGE, permission]);
+  }
+  const granted = adb(['shell', 'dumpsys', 'package', PACKAGE]);
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
+    if (!granted.includes(`${permission}: granted=true`)) {
+      fail(`runtime grant failed for ${permission}`);
+    }
+  }
+  log('camera and microphone runtime permissions granted');
+
   adb(['logcat', '-c']);
   adb(['shell', 'am', 'force-stop', PACKAGE]);
 
@@ -259,17 +273,6 @@ async function main() {
   assertNoCrashes('deep link startup');
   assertProcessAlive(pid, 'deep link startup');
 
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
-    adb(['shell', 'pm', 'grant', PACKAGE, permission]);
-  }
-  const granted = adb(['shell', 'dumpsys', 'package', PACKAGE]);
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
-    if (!granted.includes(`${permission}: granted=true`)) {
-      fail(`runtime grant failed for ${permission}`);
-    }
-  }
-  log('camera and microphone runtime permissions granted');
-
   const devtoolsPort = 9222;
   adbQuiet(['forward', '--remove', `tcp:${devtoolsPort}`]);
   log(`forwarding webview devtools socket for pid ${pid}`);
@@ -298,12 +301,18 @@ async function main() {
           ['microphone', { audio: true }],
         ];
         for (const [name, constraints] of probes) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            stream.getTracks().forEach((track) => track.stop());
-            results[name] = 'granted';
-          } catch (error) {
-            results[name] = 'error:' + (error && error.name) + ':' + (error && error.message);
+          // The emulator's capture devices can still be initialising right
+          // after boot, so tolerate one transient failure before giving up.
+          for (let attempt = 1; attempt <= 2; attempt += 1) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia(constraints);
+              stream.getTracks().forEach((track) => track.stop());
+              results[name] = 'granted';
+              break;
+            } catch (error) {
+              results[name] = 'error:' + (error && error.name) + ':' + (error && error.message);
+              if (attempt === 1) await new Promise((r) => setTimeout(r, 2000));
+            }
           }
         }
         results.devices = (await navigator.mediaDevices.enumerateDevices()).map(
