@@ -2,6 +2,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { LanguageProvider } from './context/LanguageContext';
 import { SecurityProvider } from './context/SecurityContext';
+import { NovaToastProvider } from './lib/ui';
 import './index.css';
 import i18n, { loadLanguage } from './i18n';
 
@@ -13,7 +14,9 @@ const bootstrap = async () => {
   createRoot(document.getElementById('root')!).render(
     <LanguageProvider>
       <SecurityProvider>
-        <App />
+        <NovaToastProvider>
+          <App />
+        </NovaToastProvider>
       </SecurityProvider>
     </LanguageProvider>
   );

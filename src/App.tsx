@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
+import { NovaIconButton, NovaTooltip } from './lib/ui';
 import { ChannelScreen } from './components/ChannelScreen';
 import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
@@ -404,15 +405,15 @@ export default function App() {
         return (
           <div className="flex h-full w-full flex-col bg-[#090a0e]">
             <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 border-b border-white/[0.06] shrink-0">
-              <button
-                type="button"
-                onClick={() => setCurrentScreen('chats')}
-                className="w-11 h-11 shrink-0 rounded-full bg-[#181921] border border-white/10 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition cursor-pointer"
-                title={t('common.back')}
-                aria-label={t('common.back')}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+              <NovaTooltip label={t('common.back')}>
+                <NovaIconButton
+                  label={t('common.back')}
+                  icon={<ArrowLeft />}
+                  size={44}
+                  variant="subtle"
+                  onClick={() => setCurrentScreen('chats')}
+                />
+              </NovaTooltip>
               <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
               <h1 className="min-w-0 truncate text-[15px] font-bold text-white">
                 {t('meshMap.title')}
