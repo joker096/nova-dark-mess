@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check, ShieldCheck, UserX } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Check, Copy, ShieldCheck } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -21,10 +21,27 @@ export const ContactShareModal: React.FC<ContactShareModalProps> = ({
   const [consentGiven, setConsentGiven] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(contactId);
+  useEffect(() => {
+    if (isOpen) {
+      setConsentGiven(false);
+      setCopied(false);
+    }
+  }, [isOpen]);
+
+  const copyContactId = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(contactId);
+      }
+    } catch {
+      void 0;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  const handleShare = async () => {
+    await copyContactId();
     onShared?.(contactId);
     onClose();
   };
@@ -57,53 +74,49 @@ export const ContactShareModal: React.FC<ContactShareModalProps> = ({
             </span>
             <button
               type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(contactId);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1800);
-              }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 bg-white/5 text-[10px] font-semibold text-white transition hover:bg-white/10 active:scale-95"
+              onClick={() => void copyContactId()}
+              className="w-11 h-11 rounded-lg flex items-center justify-center border border-white/10 bg-white/5 text-[10px] font-semibold text-white transition hover:bg-white/10 active:scale-95 cursor-pointer"
               title={t('common.copy')}
+              aria-label={t('common.copy')}
             >
               {copied ? (
-                <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
+                <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
               ) : (
-                <UserX className="w-3.5 h-3.5" />
+                <Copy className="w-4 h-4" />
               )}
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <label
+          htmlFor="contact-share-consent"
+          className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none"
+        >
           <input
             id="contact-share-consent"
             type="checkbox"
             checked={consentGiven}
             onChange={(e) => setConsentGiven(e.target.checked)}
-            className="w-4 h-4 rounded border border-white/10 bg-[#101118] text-[var(--nova-accent-color)] focus:ring-0 cursor-pointer accent-[var(--nova-accent-color)]"
+            className="w-5 h-5 rounded border border-white/10 bg-[#101118] text-[var(--nova-accent-color)] focus:ring-0 cursor-pointer accent-[var(--nova-accent-color)]"
           />
-          <label
-            htmlFor="contact-share-consent"
-            className="text-[11px] text-white/80 cursor-pointer select-none"
-          >
+          <span className="text-[11px] text-white/80">
             {t('contact.consent', 'I agree to share only this contact ID')}
-          </label>
-        </div>
+          </span>
+        </label>
 
         <div className="flex items-center gap-2 pt-2">
           <button
             type="button"
             onClick={onClose}
-            disabled={!consentGiven}
-            className="flex-1 px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-white/50 disabled:opacity-40 disabled:pointer-events-none transition hover:bg-white/[0.03]"
+            className="flex-1 min-h-[44px] px-4 py-2 rounded-xl border border-white/10 text-xs font-semibold text-white/70 transition hover:bg-white/[0.03] cursor-pointer"
           >
             {t('common.cancel')}
           </button>
           <button
             type="button"
-            onClick={handleShare}
+            onClick={() => void handleShare()}
             disabled={!consentGiven}
-            className="flex-1 px-4 py-2 rounded-xl bg-[var(--nova-accent-color)] text-xs font-semibold text-white disabled:opacity-40 disabled:pointer-events-none transition hover:brightness-110 active:scale-95"
+            className="flex-1 min-h-[44px] px-4 py-2 rounded-xl bg-[var(--nova-accent-color)] text-xs font-semibold text-white disabled:opacity-40 disabled:pointer-events-none transition hover:brightness-110 active:scale-95 cursor-pointer"
           >
             {t('contact.share', 'Share ID')}
           </button>

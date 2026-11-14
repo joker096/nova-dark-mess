@@ -167,6 +167,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
                       : 'w-1.5 h-1 rounded-full bg-white/20 hover:bg-white/40'
                   }`}
                   title={`Go to pinned message ${idx + 1}`}
+                  aria-label={`Go to pinned message ${idx + 1}`}
                 />
               ))}
             </div>

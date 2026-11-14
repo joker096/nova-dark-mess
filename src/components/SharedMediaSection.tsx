@@ -275,6 +275,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
               <button
                 onClick={() => setSearchQuery('')}
                 className="text-white/40 hover:text-white text-xs cursor-pointer"
+                aria-label="Clear media search"
               >
                 ✕
               </button>

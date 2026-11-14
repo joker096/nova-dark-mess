@@ -15,6 +15,12 @@ coverage/
 *.jks
 *.keystore
 
+# PaymentO IPN receipts (server.js) — local audit ledger, never commit
+receipts/
+
+# Auto-downloaded gitleaks binary (scripts/check-secrets.js)
+tools/gitleaks/
+
 # open-mem local memory database (large, machine-local)
 .open-mem/*.db
 .open-mem/*.db-shm

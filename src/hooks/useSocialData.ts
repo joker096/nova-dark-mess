@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type {
   ChannelDraft,
   ChannelInfo,
+  ChannelComment,
   ChannelPost,
   ChannelPostDraft,
   Story,
@@ -134,6 +135,47 @@ export function useSocialData() {
     }));
   }, []);
 
+  const editChannelPost = useCallback((postId: string, draft: ChannelPostDraft): void => {
+    setState((prev) => ({
+      ...prev,
+      posts: prev.posts.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              title: draft.title.trim(),
+              text: draft.text.trim(),
+              image: draft.image,
+              poll: draft.poll ?? post.poll,
+              sticker: draft.sticker ?? post.sticker,
+            }
+          : post,
+      ),
+    }));
+  }, []);
+
+  const addChannelComment = useCallback((postId: string, text: string): void => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setState((prev) => ({
+      ...prev,
+      posts: prev.posts.map((post) => {
+        if (post.id !== postId) return post;
+        const comment: ChannelComment = {
+          id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          postId,
+          text: trimmed,
+          authorName: 'You',
+          createdAt: Date.now(),
+        };
+        return {
+          ...post,
+          comments: [...(post.comments ?? []), comment],
+          commentsCount: (post.comments?.length ?? post.commentsCount ?? 0) + 1,
+        };
+      }),
+    }));
+  }, []);
+
   const togglePostReaction = useCallback((postId: string, emoji: string): void => {
     setState((prev) => ({
       ...prev,
@@ -152,6 +194,15 @@ export function useSocialData() {
     },
     [],
   );
+
+  const toggleChannelSubscriberPrivacy = useCallback((channelId: string, hidden: boolean): void => {
+    setState((prev) => ({
+      ...prev,
+      channels: prev.channels.map((ch) =>
+        ch.id === channelId ? { ...ch, hideSubscriberCount: hidden } : ch,
+      ),
+    }));
+  }, []);
 
   const searchChannelsByQuery = useCallback(
     (query: string): ChannelInfo[] => searchChannels(query, state.channels),
@@ -173,8 +224,11 @@ export function useSocialData() {
     createChannelPost,
     voteChannelPoll,
     deleteChannelPost,
+    editChannelPost,
+    addChannelComment,
     togglePostReaction,
     toggleChannelPopular,
+    toggleChannelSubscriberPrivacy,
     searchChannels: searchChannelsByQuery,
   };
 }

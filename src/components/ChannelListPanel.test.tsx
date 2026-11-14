@@ -154,4 +154,28 @@ describe('ChannelListPanel', () => {
 
     expect(screen.getByText('No matching channels')).toBeInTheDocument();
   });
+
+  it('keeps private channels out of the public list and shows them separately', () => {
+    const privateChannel: ChannelInfo = {
+      id: 'secret-channel',
+      name: 'Secret Club',
+      subscribers: 3,
+      createdAt: 3,
+      isOwned: true,
+      visibility: 'private',
+      inviteCode: 'ABC123',
+    };
+
+    render(
+      <ChannelListPanel
+        channels={[...CHANNELS, privateChannel]}
+        activeChannelId="my-channel"
+        onSelectChannel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('channel.privateChannels')).toBeInTheDocument();
+    expect(screen.getByText('Secret Club')).toBeInTheDocument();
+    expect(screen.queryByText('channel.inviteCode')).toBeInTheDocument();
+  });
 });

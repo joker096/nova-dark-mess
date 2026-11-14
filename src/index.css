@@ -32,6 +32,29 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* ── Message deletion animation ──────────────────────────────────────────────
+   A message bubble "collapses" out when deleted: it fades, scales slightly,
+   and its height shrinks to 0. The handler in ChatScreen keeps the bubble in
+   the DOM for this duration, then removes it from state entirely so the
+   placeholder never remains after the animation finishes.
+   Duration must stay in sync with DELETE_ANIMATION_MS in ChatScreen.tsx.    */
+@keyframes nova-msg-delete {
+  0%   { opacity: 1;    transform: scale(1);    max-height: 480px; }
+  30%  { opacity: 0.5;  transform: scale(0.97); max-height: 480px; }
+  100% { opacity: 0;    transform: scale(0.88); max-height: 0; }
+}
+
+.msg-deleting {
+  animation: nova-msg-delete 300ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Smooth the reflow of the surrounding list once the removed row is gone. */
+.msg-delete-collapse {
+  transition: opacity 160ms ease;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

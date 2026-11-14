@@ -29,6 +29,8 @@ export interface WallpaperOption {
   gradientBg: string;
   accentColor: string;
   badge?: string;
+  /** Locked behind the local premium tier (cosmetic only). */
+  premium?: boolean;
   glowColors?: {
     primary: string;
     secondary?: string;
@@ -94,6 +96,7 @@ export const WALLPAPER_OPTIONS: WallpaperOption[] = [
     name: 'Amethyst Void',
     subtitle: 'Atmospheric dark plum with ethereal glow',
     category: 'gradients',
+    premium: true,
     gradientBg: 'from-[#0e0717] via-[#190d29] to-[#090410]',
     accentColor: '#c084fc',
     glowColors: {
@@ -106,6 +109,7 @@ export const WALLPAPER_OPTIONS: WallpaperOption[] = [
     name: 'Smoked Ember',
     subtitle: 'Warm molten bronze and molten charcoal',
     category: 'gradients',
+    premium: true,
     gradientBg: 'from-[#150a04] via-[#221207] to-[#0c0502]',
     accentColor: '#f59e0b',
     glowColors: {
@@ -157,6 +161,7 @@ export const WALLPAPER_OPTIONS: WallpaperOption[] = [
     name: 'Celestial Starfield',
     subtitle: 'Deep cosmic star maps & orbital nodes',
     category: 'geometric',
+    premium: true,
     gradientBg: 'from-[#090d18] via-[#10172b] to-[#060810]',
     accentColor: '#38bdf8',
   },
@@ -173,6 +178,7 @@ export const WALLPAPER_OPTIONS: WallpaperOption[] = [
     name: 'Carbon Weave',
     subtitle: 'Interlocking diagonal woven fiber texture',
     category: 'geometric',
+    premium: true,
     gradientBg: 'from-[#0a0b0e] via-[#13141a] to-[#08090c]',
     accentColor: '#e2e8f0',
   },

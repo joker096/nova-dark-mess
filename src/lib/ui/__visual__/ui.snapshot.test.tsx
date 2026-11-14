@@ -187,7 +187,7 @@ describe('UI visual snapshot - NovaSelectableButton', () => {
     const { container } = render(
       <NovaSelectableButton selected onSelect={vi.fn()}>Selected</NovaSelectableButton>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="true" class="flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-xl border px-3 py-2 bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 text-white shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25">Selected</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="true" class="flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-lg border px-2 py-1.5 text-xs bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 text-white shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25">Selected</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]/10');
     expect(btn.className).toContain('text-white');
@@ -198,7 +198,7 @@ describe('UI visual snapshot - NovaSelectableButton', () => {
     const { container } = render(
       <NovaSelectableButton selected={false} onSelect={vi.fn()}>Unselected</NovaSelectableButton>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-xl border px-3 py-2 bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]">Unselected</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-lg border px-2 py-1.5 text-xs bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]">Unselected</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-white/[0.03]');
     expect(btn.className).toContain('text-white/60');
@@ -265,7 +265,7 @@ describe('UI visual snapshot - ScrollableRow', () => {
         <div>Item 2</div>
       </ScrollableRow>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex items-center overflow-x-auto no-scrollbar gap-[2]" data-testid="row"><div>Item 1</div><div>Item 2</div></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex items-center overflow-x-auto no-scrollbar gap-2" data-testid="row"><div>Item 1</div><div>Item 2</div></div>"`);
     const row = screen.getByTestId('row');
     expect(row.className).toContain('no-scrollbar');
   });

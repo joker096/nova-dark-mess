@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
+import { useAccount } from '../hooks/useAccount';
 import {
   Search,
   Plus,
@@ -19,17 +20,34 @@ import {
   MOCK_STORIES,
   MOCK_CHATS,
   CONVERSATION_HISTORIES,
+  registerCreatedGroups,
+  loadCreatedGroups,
+  saveCreatedGroups,
+  loadCreatedGroupHistories,
+  saveCreatedGroupHistories,
 } from '../data/mockMessengerData';
 import { ChatItem, Story, MessageSearchResult, ChatFolder, ChannelInfo, StoryDraft } from '../types/messenger';
 import { FolderModal } from './FolderModal';
+import { CommunitiesPanel } from './CommunitiesPanel';
 import { StoryComposerModal } from './StoryComposerModal';
 import { StoryViewer } from './StoryViewer';
 import { getStoryFeed, isStoryScheduled } from '../lib/social/store';
+import {
+  getGroupMembership,
+  getPendingJoinRequests,
+  type GroupJoinRequest,
+  type GroupMembership,
+} from '../lib/social/groupJoinRequests';
+import { isGroupAdmin, loadGroupRoles } from '../lib/social/groupRoles';
+import { decideJoinRequest } from '../lib/social/joinDecisions';
+import { JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
+import { buildGlobalSearchIndex } from '../lib/search/buildSearchIndex';
+import { searchGlobal } from '../lib/search/globalSearch';
 import { useLanguage } from '../context/LanguageContext';
 
 interface ChatsScreenProps {
   onSelectChat: (chatId: string) => void;
-  onOpenChannel: () => void;
+  onOpenChannel: (channelId?: string) => void;
 
   onOpenContacts?: () => void;
   onOpenCalls?: () => void;
@@ -41,6 +59,7 @@ interface ChatsScreenProps {
   onOpenAnalytics?: () => void;
   stories?: Story[];
   channels?: ChannelInfo[];
+  localFingerprint?: string;
   now?: number;
   onCreateStory?: (draft: StoryDraft) => void;
   onDeleteStory?: (storyId: string) => void;
@@ -93,6 +112,8 @@ export const DEFAULT_FOLDERS: ChatFolder[] = [
   },
 ];
 
+registerCreatedGroups();
+
 export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScreenProps>((props, ref) => {
   const {
     onSelectChat,
@@ -105,6 +126,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     activeChatId,
     activeNavTab,
     stories = MOCK_STORIES,
+    channels = [],
+    localFingerprint,
     now = Date.now(),
     onCreateStory,
     onDeleteStory,
@@ -112,6 +135,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onToggleStoryReaction,
   } = props;
   const { t } = useLanguage();
+  const { account } = useAccount();
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [groupVersion, setGroupVersion] = useState(0);
+
+
   // Folders State with localStorage persistence
   const [folders, setFolders] = useState<ChatFolder[]>(() => {
     try {
@@ -202,6 +232,50 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     triggerFolderToast('Folder deleted');
   };
 
+  // Join requests show up in the list, so an admin sees a pending request
+  // without opening every group. Relayed requests arrive while no chat is open.
+  const [joinVersion, setJoinVersion] = useState(0);
+  useEffect(() => {
+    const onChange = () => setJoinVersion((version) => version + 1);
+    window.addEventListener(JOIN_REQUESTS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(JOIN_REQUESTS_CHANGED_EVENT, onChange);
+  }, []);
+
+  const joinIndicators = useMemo(() => {
+    const map: Record<
+      string,
+      { pending: number; requests: GroupJoinRequest[]; membership: GroupMembership | null }
+    > = {};
+    for (const chat of MOCK_CHATS) {
+      if (chat.type !== 'group') continue;
+      const membership = getGroupMembership(chat.id);
+      const isAdmin =
+        !!localFingerprint && isGroupAdmin(loadGroupRoles(chat.id), localFingerprint);
+      const requests = isAdmin
+        ? getPendingJoinRequests(chat.id).filter(
+            (request) => request.fingerprint !== localFingerprint,
+          )
+        : [];
+      map[chat.id] = { pending: requests.length, requests, membership };
+    }
+    return map;
+    // joinVersion refreshes the badges when the relay delivers a request.
+  }, [joinVersion, groupVersion, activeChatId, localFingerprint]);
+
+  const handleJoinDecision = (chatId: string, fingerprint: string, approved: boolean) => {
+    const roles = decideJoinRequest({
+      groupId: chatId,
+      fingerprint,
+      localFingerprint: localFingerprint ?? '',
+      approved,
+    });
+    if (!roles) return;
+    setGroupVersion((version) => version + 1);
+    triggerFolderToast(
+      approved ? t('chat.joinRequestApproved') : t('chat.joinRequestDeclined'),
+    );
+  };
+
   // Active folder object
   const currentFolder = useMemo(() => {
     return folders.find((f) => f.id === activeFolderId) || folders[0];
@@ -222,7 +296,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       return MOCK_CHATS.filter((c) => c.type === 'group');
     }
     return MOCK_CHATS.filter((c) => currentFolder.chatIds.includes(c.id));
-  }, [currentFolder]);
+  }, [currentFolder, groupVersion]);
 
   // Calculate badge (unread or count) for each folder tab
   const getFolderBadge = (folder: ChatFolder) => {
@@ -259,41 +333,92 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       );
       return nameMatch || snippetMatch || historyMatch;
     });
-  }, [searchQuery]);
+  }, [searchQuery, groupVersion]);
+
+  // Local search index across all conversation history (text, documents,
+  // polls, locations, media captions). No server-side index is involved.
+  const searchIndex = useMemo(
+    () => buildGlobalSearchIndex({ chats: MOCK_CHATS, histories: CONVERSATION_HISTORIES }),
+    [groupVersion],
+  );
 
   // Search through deep conversation history across all chats
   const matchedMessages = useMemo<MessageSearchResult[]>(() => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase().trim();
-    const results: MessageSearchResult[] = [];
 
-    Object.entries(CONVERSATION_HISTORIES).forEach(([chatId, messages]) => {
-      const chat = MOCK_CHATS.find((c) => c.id === chatId);
-      const chatName = chat?.name || chatId;
-      const chatAvatar = chat?.avatar || '';
-      const isChannel = chat?.isChannel;
+    return searchGlobal(searchIndex, searchQuery, { kinds: ['message'], limit: 150 }).map((result) => {
+      const chat = MOCK_CHATS.find((c) => c.id === result.chatId);
+      const messagePrefix = `chat:${result.chatId}:`;
+      const messageId = result.id.startsWith(messagePrefix)
+        ? result.id.slice(messagePrefix.length)
+        : result.id;
+      const msg = CONVERSATION_HISTORIES[result.chatId]?.find((m) => m.id === messageId);
 
-      messages.forEach((msg) => {
-        if (msg.text && msg.text.toLowerCase().includes(query)) {
-          results.push({
-            chatId,
-            chatName,
-            chatAvatar,
-            isChannel,
-            messageId: msg.id,
-            text: msg.text,
-            time: msg.time,
-            senderName: msg.senderId === 'me' ? 'You' : chatName,
-          });
-        }
-      });
+      return {
+        chatId: result.chatId,
+        chatName: result.chatName,
+        chatAvatar: result.chatAvatar ?? chat?.avatar ?? '',
+        isChannel: chat?.isChannel,
+        messageId,
+        text: msg?.text ?? result.text,
+        time: result.time ?? msg?.time ?? '',
+        senderName: result.senderName ?? result.chatName,
+      };
     });
-
-    return results;
-  }, [searchQuery]);
+  }, [searchQuery, searchIndex]);
 
   const totalResults = matchedChats.length + matchedMessages.length;
   const isSearching = searchQuery.trim().length > 0;
+
+  const mobileNavItems = [
+    {
+      key: 'chats',
+      label: t('chats.title'),
+      icon: MessageSquare,
+      active: activeNavTab === 'chats',
+      onClick: () => setActiveFolderId('all'),
+    },
+    {
+      key: 'channel',
+      label: t('channels'),
+      icon: MessageCircle,
+      active: activeNavTab === 'channel',
+      onClick: () => onOpenChannel?.(),
+    },
+    {
+      key: 'folders',
+      label: t('folders'),
+      icon: Folder,
+      active: activeNavTab === 'folders',
+      onClick: onOpenFolders
+        ? onOpenFolders
+        : () => {
+            setEditingFolder(null);
+            setIsFolderModalOpen(true);
+          },
+    },
+    {
+      key: 'profile',
+      label: t('profile.title'),
+      icon: Users,
+      active: activeNavTab === 'profile',
+      onClick: onOpenProfile,
+    },
+    {
+      key: 'analytics',
+      label: t('analytics.title'),
+      icon: BarChart3,
+      active: activeNavTab === 'analytics',
+      onClick: onOpenAnalytics,
+    },
+    {
+      key: 'settings',
+      label: t('settings.title'),
+      icon: Settings,
+      active: activeNavTab === 'settings',
+      onClick: onOpenSettings,
+    },
+  ];
 
   const handleChatClick = (chatId: string, isChannel?: boolean) => {
     if (isChannel || chatId === 'kyiv-channel') {
@@ -345,20 +470,20 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             title={t('profile.title')}
           >
             <img
-              src={CURRENT_USER.avatar}
-              alt={CURRENT_USER.name}
+              src={account.avatar}
+              alt={account.displayName}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
             <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
-              JS
+              {account.displayName.slice(0, 2).toUpperCase()}
             </div>
           </button>
           <div>
             <h1 className="text-[17px] font-bold text-white tracking-tight leading-tight">
-              Hello, {CURRENT_USER.name}
+              Hello, {account.displayName}
             </h1>
             <p className="text-[11px] text-[#828795] font-normal leading-tight">
               You&apos;ve got <span className="text-[var(--nova-accent-color)] font-medium">{CURRENT_USER.unreadTotal} unread</span> chats
@@ -802,6 +927,14 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
           {/* Chats List Filtered by Active Folder */}
           <div className="flex-1 overflow-y-auto px-5 pt-2 pb-24 md:pb-6 space-y-2.5">
+            {currentFolder?.filterType === 'channels' && !isSearching && (
+              <CommunitiesPanel
+                channels={channels}
+                localFingerprint={localFingerprint}
+                onOpenChannel={onOpenChannel}
+                onOpenChat={onSelectChat}
+              />
+            )}
             {categoryChats.length === 0 ? (
               /* Empty Folder State */
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in">
@@ -900,6 +1033,28 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                             <Pin className="w-3.5 h-3.5 fill-current rotate-45" />
                           </div>
                         )}
+                        {joinIndicators[chat.id]?.pending > 0 && (
+                          <span
+                            data-testid={`join-pending-${chat.id}`}
+                            title={t('chats.joinRequestsBadge', {
+                              count: joinIndicators[chat.id].pending,
+                            })}
+                            className="min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold flex items-center justify-center gap-1"
+                          >
+                            <Users className="w-3 h-3" />
+                            {joinIndicators[chat.id].pending}
+                          </span>
+                        )}
+                        {joinIndicators[chat.id]?.membership === 'pending' && (
+                          <span
+                            data-testid={`join-waiting-${chat.id}`}
+                            title={t('chats.joinWaiting')}
+                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-[#a9aeba] border border-white/10 flex items-center gap-1"
+                          >
+                            <Clock className="w-3 h-3" />
+                            {t('chats.joinWaiting')}
+                          </span>
+                        )}
                         {chat.unreadCount && (
                           <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
                             {chat.unreadCount}
@@ -907,6 +1062,40 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         )}
                       </div>
                     </div>
+
+                    {/* Pending join requests: an admin can decide without
+                        opening the group; the card click stays untouched. */}
+                    {joinIndicators[chat.id]?.pending > 0 && (
+                      <div
+                        data-testid={`join-actions-${chat.id}`}
+                        className="mt-2 space-y-1"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {joinIndicators[chat.id].requests.slice(0, 3).map((request) => (
+                          <div key={request.fingerprint} className="flex items-center gap-1.5">
+                            <span className="flex-1 min-w-0 truncate text-[10px] font-mono text-amber-200/80">
+                              {request.name || request.fingerprint}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleJoinDecision(chat.id, request.fingerprint, true)}
+                              aria-label={`${t('chat.approveJoinRequest')}: ${request.fingerprint}`}
+                              className="px-2 py-0.5 rounded-md bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[9px] font-semibold text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/30 transition cursor-pointer shrink-0"
+                            >
+                              {t('chat.approveJoinRequest')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleJoinDecision(chat.id, request.fingerprint, false)}
+                              aria-label={`${t('chat.rejectJoinRequest')}: ${request.fingerprint}`}
+                              className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-semibold text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer shrink-0"
+                            >
+                              {t('chat.rejectJoinRequest')}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -917,86 +1106,28 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     )}
 
       {/* Floating Bottom Navigation Bar */}
-      <div className="absolute bottom-5 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden">
-        <div className="bg-[#181921]/90 backdrop-blur-xl border border-white/10 rounded-full px-5 py-2.5 flex items-center gap-7 shadow-2xl shadow-black/80 pointer-events-auto">
-          <button
-            onClick={() => setActiveFolderId('all')}
-            title={t('chats.title')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'chats'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <MessageSquare className={`w-5 h-5 ${activeNavTab === 'chats' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'chats' ? 'bold' : 'normal'}`}>{t('chats.title')}</span>
-          </button>
-
-          <button
-            onClick={onOpenChannel}
-            title={t('channels')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'channel'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <MessageCircle className={`w-5 h-5 ${activeNavTab === 'channel' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'channel' ? 'bold' : 'normal'}`}>{t('channels')}</span>
-          </button>
-
-          <button
-            onClick={onOpenFolders ? onOpenFolders : () => { setEditingFolder(null); setIsFolderModalOpen(true); }}
-            title={t('folders')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'folders'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <Folder className={`w-5 h-5 ${activeNavTab === 'folders' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'folders' ? 'bold' : 'normal'}`}>{t('folders')}</span>
-          </button>
-
-          <button
-            onClick={onOpenProfile}
-            title={t('profile.title')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'profile'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <Users className={`w-5 h-5 ${activeNavTab === 'profile' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'profile' ? 'bold' : 'normal'}`}>{t('profile.title')}</span>
-          </button>
-
-          <button
-            onClick={onOpenAnalytics}
-            title={t('analytics.title')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'analytics'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <BarChart3 className={`w-5 h-5 ${activeNavTab === 'analytics' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'analytics' ? 'bold' : 'normal'}`}>{t('analytics.title')}</span>
-          </button>
-
-          <button
-            onClick={onOpenSettings}
-            title={t('settings.title')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition ${
-              activeNavTab === 'settings'
-                ? 'text-[var(--nova-accent-color)] font-bold'
-                : 'text-white/50 hover:text-white'
-            }`}
-          >
-            <Settings className={`w-5 h-5 ${activeNavTab === 'settings' ? 'fill-current' : 'fill-white/50'}`} />
-            <span className={`text-[9px] font-${activeNavTab === 'settings' ? 'bold' : 'normal'}`}>{t('settings.title')}</span>
-          </button>
-        </div>
+      <div className="absolute bottom-4 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
+        <nav className="bg-[#181921]/92 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-0.5 shadow-2xl shadow-black/80 pointer-events-auto max-w-full">
+          {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
+            <button
+              key={key}
+              onClick={onClick}
+              title={label}
+              aria-label={label}
+              aria-current={active ? 'page' : undefined}
+              className={`h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-90 ${
+                active
+                  ? 'bg-[var(--nova-accent-color)] text-white gap-1.5 px-3.5 shadow-lg shadow-[var(--nova-accent-color)]/30'
+                  : 'w-10 text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}
+            >
+              <Icon className={`w-5 h-5 shrink-0 ${active ? 'fill-current' : ''}`} />
+              {active && (
+                <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{label}</span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Story Viewer Modal */}
@@ -1062,12 +1193,109 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
               </button>
             </div>
             <button
+              onClick={() => {
+                setNewChatModalOpen(false);
+                setGroupModalOpen(true);
+              }}
+              className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+              aria-label="Create group chat"
+            >
+              <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[10px]">
+                <Users className="w-3.5 h-3.5" />
+              </div>
+              <span>Create Group Chat</span>
+            </button>
+            <button
               onClick={() => setNewChatModalOpen(false)}
               className="w-full py-2 bg-white/5 hover:bg-white/10 text-white/70 font-semibold text-xs rounded-xl transition"
               aria-label={t('common.cancel')}
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Group Creation Modal */}
+      {groupModalOpen && (
+        <div
+          onClick={() => setGroupModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4"
+          >
+            <h3 className="font-bold text-base text-white">Create Group Chat</h3>
+            <input
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              placeholder="Group name"
+              className="w-full bg-[#20222b] text-white text-xs rounded-xl px-3 py-2.5 border border-white/10 focus:border-[var(--nova-accent-color)] outline-none"
+            />
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {MOCK_CHATS.filter((chat) => chat.type === 'direct').map((chat) => (
+                <label key={chat.id} className="flex items-center gap-2 text-xs text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={selectedMembers.includes(chat.id)}
+                    onChange={(e) => {
+                      setSelectedMembers((current) =>
+                        e.target.checked
+                          ? [...current, chat.id]
+                          : current.filter((id) => id !== chat.id),
+                      );
+                    }}
+                  />
+                  <span>{chat.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!newGroupName.trim() || selectedMembers.length === 0) return;
+                  const members = MOCK_CHATS.filter((chat) => selectedMembers.includes(chat.id));
+                  const id = `group-${Date.now()}`;
+                  const group: ChatItem = {
+                    id,
+                    name: newGroupName.trim(),
+                    avatar: members[0]?.avatar || '',
+                    groupAvatars: members.map((member) => member.avatar),
+                    snippet: 'Group created',
+                    time: 'now',
+                    type: 'group',
+                    category: 'All',
+                    members: selectedMembers.map((memberId) => memberId),
+                  };
+                  MOCK_CHATS.push(group);
+                  CONVERSATION_HISTORIES[id] = [];
+                  const groups = [...loadCreatedGroups(), group];
+                  saveCreatedGroups(groups);
+                  const histories = loadCreatedGroupHistories();
+                  histories[id] = [];
+                  saveCreatedGroupHistories(histories);
+                  setNewGroupName('');
+                  setSelectedMembers([]);
+                  setGroupModalOpen(false);
+                  setGroupVersion((value) => value + 1);
+                  onSelectChat(id);
+                }}
+                className="flex-1 py-2 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl transition"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setGroupModalOpen(false);
+                  setNewGroupName('');
+                  setSelectedMembers([]);
+                }}
+                className="flex-1 py-2 bg-white/5 text-white/70 font-semibold text-xs rounded-xl transition"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

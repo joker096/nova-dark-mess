@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MeshRadar } from './MeshRadar';
+import { MeshMap } from './MeshMap';
 import {
   Video,
   Search,
@@ -189,6 +190,15 @@ export const UIShowcase = () => {
           Визуализация меш-сети: узлы, соединения, маршрутизация, статус в реальном времени.
         </p>
         <MeshRadar className="h-[400px]" />
+      </section>
+      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">MeshMap (real map)</h2>
+        <p className="text-[#8c919d] text-sm mb-4">
+          Реальная карта меш-сети на базе OpenStreetMap: узлы, связи, статусы.
+        </p>
+        <div className="h-[400px] w-full">
+          <MeshMap />
+        </div>
       </section>
       <NovaButton variant="accent" onClick={() => setModalOpen(true)} title="Open demo modal">
         Open Modal Demo

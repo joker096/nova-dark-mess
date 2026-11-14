@@ -66,6 +66,9 @@ describe('premium lib', () => {
   it('canUseFeature returns true with premium', () => {
     setPremium(true);
     expect(canUseFeature('chat_themes')).toBe(true);
+    expect(canUseFeature('wallpaper')).toBe(true);
+    expect(canUseFeature('premium_stickers')).toBe(true);
+    expect(canUseFeature('date_picker')).toBe(true);
   });
 
   it('checkoutPremium activates premium without paymento', async () => {

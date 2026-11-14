@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { STICKER_PACKS } from '../data/stickers';
+import { StickerPack } from '../data/stickers';
 import {
   allStickerEntries,
   entriesByIds,
@@ -18,8 +18,36 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const FREE_PACK: StickerPack = {
+  id: 'test-free',
+  name: 'Test Free',
+  icon: '🧪',
+  description: 'Free test pack',
+  category: 'test',
+  sortOrder: 10,
+  stickers: [
+    { id: 'free-1', packId: 'test-free', packName: 'Test Free', name: 'Free One', emoji: '🅰️' },
+    { id: 'free-premium', packId: 'test-free', packName: 'Test Free', name: 'Locked In Free', emoji: '🔒', access: 'premium' },
+  ],
+};
+
+const PREMIUM_PACK: StickerPack = {
+  id: 'test-premium',
+  name: 'Test Premium',
+  icon: '💎',
+  description: 'Premium test pack',
+  category: 'premium-test',
+  sortOrder: 20,
+  access: 'premium',
+  stickers: [
+    { id: 'prem-1', packId: 'test-premium', packName: 'Test Premium', name: 'Premium One', emoji: '💠' },
+  ],
+};
+
+const PACKS: StickerPack[] = [FREE_PACK, PREMIUM_PACK];
+
 function findPack(id: string) {
-  const pack = STICKER_PACKS.find((item) => item.id === id);
+  const pack = PACKS.find((item) => item.id === id);
   if (!pack) throw new Error(`Missing pack ${id}`);
   return pack;
 }
@@ -37,29 +65,29 @@ beforeEach(() => {
 
 describe('sticker access gating', () => {
   it('keeps free stickers unlocked for free users', () => {
-    const { sticker, pack } = findSticker('cyber', 'cyber-cat');
+    const { sticker, pack } = findSticker('test-free', 'free-1');
     expect(isStickerPremium(sticker, pack)).toBe(false);
     expect(isStickerLocked(sticker, pack, false)).toBe(false);
   });
 
   it('locks premium packs for free users', () => {
-    const { sticker, pack } = findSticker('reactions', 'react-party');
+    const { sticker, pack } = findSticker('test-premium', 'prem-1');
     expect(isStickerPremium(sticker, pack)).toBe(true);
     expect(isStickerLocked(sticker, pack, false)).toBe(true);
     expect(isStickerLocked(sticker, pack, true)).toBe(false);
   });
 
   it('locks individual premium stickers inside free packs', () => {
-    const { sticker, pack } = findSticker('memes', 'meme-chad');
+    const { sticker, pack } = findSticker('test-free', 'free-premium');
     expect(isStickerLocked(sticker, pack, false)).toBe(true);
     expect(isStickerLocked(sticker, pack, true)).toBe(false);
 
-    const { sticker: freeSticker } = findSticker('memes', 'pepe-chill');
+    const { sticker: freeSticker } = findSticker('test-free', 'free-1');
     expect(isStickerLocked(freeSticker, pack, false)).toBe(false);
   });
 
   it('defaults to free when no access is declared', () => {
-    const { sticker, pack } = findSticker('cyber', 'cyber-cat');
+    const { sticker, pack } = findSticker('test-free', 'free-1');
     const barePack = { ...pack, access: undefined };
     expect(isStickerPremium(sticker, barePack)).toBe(false);
   });
@@ -67,22 +95,20 @@ describe('sticker access gating', () => {
 
 describe('sticker pack sorting', () => {
   it('puts free packs before premium packs', () => {
-    const sorted = sortStickerPacks(STICKER_PACKS);
-    const firstPremiumIndex = sorted.findIndex((pack) => pack.access === 'premium');
-    const lastFreeIndex = sorted.map((pack) => pack.access === 'premium').lastIndexOf(false);
-
-    expect(firstPremiumIndex).toBeGreaterThan(lastFreeIndex);
+    const sorted = sortStickerPacks(PACKS);
+    expect(sorted[0].id).toBe('test-free');
+    expect(sorted[1].id).toBe('test-premium');
   });
 
   it('does not mutate the source array', () => {
-    const original = [...STICKER_PACKS];
-    sortStickerPacks(STICKER_PACKS);
-    expect(STICKER_PACKS).toEqual(original);
+    const original = [...PACKS];
+    sortStickerPacks(PACKS);
+    expect(PACKS).toEqual(original);
   });
 
   it('uses sortOrder before pack name for free packs', () => {
-    const sorted = sortStickerPacks(STICKER_PACKS).filter((pack) => pack.access !== 'premium');
-    expect(sorted.map((pack) => pack.id)).toEqual(['cyber', 'memes']);
+    const sorted = sortStickerPacks(PACKS).filter((pack) => pack.access !== 'premium');
+    expect(sorted.map((pack) => pack.id)).toEqual(['test-free']);
   });
 });
 
@@ -101,42 +127,41 @@ describe('recent stickers', () => {
   });
 
   it('resolves entries in recent order', () => {
-    const entries = allStickerEntries(STICKER_PACKS);
-    const resolved = entriesByIds(entries, ['cyber-cat', 'meme-chad']);
-    expect(resolved.map((entry) => entry.sticker.id)).toEqual(['cyber-cat', 'meme-chad']);
+    const entries = allStickerEntries(PACKS);
+    const resolved = entriesByIds(entries, ['free-1', 'prem-1']);
+    expect(resolved.map((entry) => entry.sticker.id)).toEqual(['free-1', 'prem-1']);
   });
 
   it('ignores unknown ids', () => {
-    const entries = allStickerEntries(STICKER_PACKS);
+    const entries = allStickerEntries(PACKS);
     expect(entriesByIds(entries, ['missing'])).toEqual([]);
   });
 });
 
 describe('favorite stickers', () => {
   it('toggles favorites on and off', () => {
-    expect(toggleStickerFavorite('cyber-cat')).toEqual(['cyber-cat']);
-    expect(getFavoriteStickerIds()).toEqual(['cyber-cat']);
-    expect(toggleStickerFavorite('cyber-cat')).toEqual([]);
+    expect(toggleStickerFavorite('free-1')).toEqual(['free-1']);
+    expect(getFavoriteStickerIds()).toEqual(['free-1']);
+    expect(toggleStickerFavorite('free-1')).toEqual([]);
     expect(getFavoriteStickerIds()).toEqual([]);
   });
 });
 
 describe('sticker search', () => {
   it('matches sticker and pack metadata', () => {
-    const entries = allStickerEntries(STICKER_PACKS);
-    const pepe = entries.find((entry) => entry.sticker.id === 'pepe-chill');
-    const cyber = entries.find((entry) => entry.sticker.id === 'cyber-cat');
-    if (!pepe || !cyber) throw new Error('Missing test stickers');
+    const entries = allStickerEntries(PACKS);
+    const freeOne = entries.find((entry) => entry.sticker.id === 'free-1');
+    const premiumOne = entries.find((entry) => entry.sticker.id === 'prem-1');
+    if (!freeOne || !premiumOne) throw new Error('Missing test stickers');
 
-    expect(matchesStickerQuery(pepe, 'frog')).toBe(true);
-    expect(matchesStickerQuery(cyber, 'neon')).toBe(true);
-    expect(matchesStickerQuery(pepe, 'cyber')).toBe(false);
-    expect(matchesStickerQuery(pepe, '  ')).toBe(true);
+    expect(matchesStickerQuery(freeOne, 'test')).toBe(true);
+    expect(matchesStickerQuery(freeOne, 'premium-test')).toBe(false);
+    expect(matchesStickerQuery(freeOne, '  ')).toBe(true);
   });
 });
 
 describe('new pack badge', () => {
-  const pack = findPack('cyber');
+  const pack = findPack('test-free');
 
   it('marks recently released packs as new', () => {
     const fresh = { ...pack, releaseDate: new Date(Date.now() - DAY_MS).toISOString() };
@@ -156,6 +181,6 @@ describe('new pack badge', () => {
 
 describe('sticker categories', () => {
   it('returns unique pack categories', () => {
-    expect(getStickerCategories(STICKER_PACKS)).toEqual(['cyber', 'memes', 'reactions']);
+    expect(getStickerCategories(PACKS)).toEqual(['test', 'premium-test']);
   });
 });

@@ -1,0 +1,31 @@
+import { StickerPack } from '../stickers';
+
+export const BASIC_EMOTIONS_PACK: StickerPack = {
+  id: 'basic-emotions',
+  name: 'Basic Emotions',
+  icon: '😀',
+  description: 'Essential face emotions',
+  category: 'emotions',
+  sortOrder: 10,
+  license: 'CC0',
+  stickers: [
+  { id: 'angry', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Angry', emoji: '😠', imageUrl: '/stickers/angry/full.webp', thumbUrl: '/stickers/angry/thumb.webp' },
+  { id: 'cool', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Cool', emoji: '😎', imageUrl: '/stickers/cool/full.webp', thumbUrl: '/stickers/cool/thumb.webp' },
+  { id: 'facepalm', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Facepalm', emoji: '🤦', imageUrl: '/stickers/facepalm/full.webp', thumbUrl: '/stickers/facepalm/thumb.webp' },
+  { id: 'heart-eyes', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Heart Eyes', emoji: '😍', imageUrl: '/stickers/heart-eyes/full.webp', thumbUrl: '/stickers/heart-eyes/thumb.webp' },
+  { id: 'kiss', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Kiss', emoji: '😘', imageUrl: '/stickers/kiss/full.webp', thumbUrl: '/stickers/kiss/thumb.webp' },
+  { id: 'laugh', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Laugh', emoji: '😂', imageUrl: '/stickers/laugh/full.webp', thumbUrl: '/stickers/laugh/thumb.webp' },
+  { id: 'money', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Money', emoji: '🤑', imageUrl: '/stickers/money/full.webp', thumbUrl: '/stickers/money/thumb.webp' },
+  { id: 'nerd', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Nerd', emoji: '🤓', imageUrl: '/stickers/nerd/full.webp', thumbUrl: '/stickers/nerd/thumb.webp' },
+  { id: 'party', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Party', emoji: '🥳', imageUrl: '/stickers/party/full.webp', thumbUrl: '/stickers/party/thumb.webp' },
+  { id: 'sad', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Sad', emoji: '😢', imageUrl: '/stickers/sad/full.webp', thumbUrl: '/stickers/sad/thumb.webp' },
+  { id: 'shocked', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Shocked', emoji: '😱', imageUrl: '/stickers/shocked/full.webp', thumbUrl: '/stickers/shocked/thumb.webp' },
+  { id: 'silly', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Silly', emoji: '🤪', imageUrl: '/stickers/silly/full.webp', thumbUrl: '/stickers/silly/thumb.webp' },
+  { id: 'sleepy', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Sleepy', emoji: '🥱', imageUrl: '/stickers/sleepy/full.webp', thumbUrl: '/stickers/sleepy/thumb.webp' },
+  { id: 'smile', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Smile', emoji: '😊', imageUrl: '/stickers/smile/full.webp', thumbUrl: '/stickers/smile/thumb.webp' },
+  { id: 'smirk', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Smirk', emoji: '😏', imageUrl: '/stickers/smirk/full.webp', thumbUrl: '/stickers/smirk/thumb.webp' },
+  { id: 'surprised', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Surprised', emoji: '😮', imageUrl: '/stickers/surprised/full.webp', thumbUrl: '/stickers/surprised/thumb.webp' },
+  { id: 'thinking', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Thinking', emoji: '🤔', imageUrl: '/stickers/thinking/full.webp', thumbUrl: '/stickers/thinking/thumb.webp' },
+  { id: 'wink', packId: 'basic-emotions', packName: 'Basic Emotions', name: 'Wink', emoji: '😉', imageUrl: '/stickers/wink/full.webp', thumbUrl: '/stickers/wink/thumb.webp' },
+  ],
+};

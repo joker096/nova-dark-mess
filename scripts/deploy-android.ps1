@@ -12,9 +12,12 @@ param(
   [string]$Channel = 'release',
 
   [string]$KeystorePath = "$PSScriptRoot\..\messandanger-keystore.jks",
-  [string]$KeystorePassword = 'vUdF8QeNGVrqiMbYu2Bogtfsp7WLhIm5',
+  # ВАЖНО: пароли берутся ТОЛЬКО из переменных окружения (или GitHub Secrets в CI).
+  # Локально: задайте их в .env (см. .env.example) и подгрузите через $env:KEYSTORE_PASSWORD / $env:KEY_PASSWORD.
+  # В CI: задаются в Settings → Secrets и передаются через $env:KEYSTORE_PASSWORD / $env:KEY_PASSWORD (см. android.yml).
+  [string]$KeystorePassword = $env:KEYSTORE_PASSWORD,
   [string]$KeyAlias = 'messandanger',
-  [string]$KeyPassword = 'lbyTC9Bm5G2PexFjJLk4WU8SD6rfVdRc',
+  [string]$KeyPassword = $env:KEY_PASSWORD,
 
   [switch]$SkipTests,
   [switch]$SkipLint
@@ -116,6 +119,10 @@ $srcAab = Join-Path $ROOT 'src-tauri\gen\android\app\build\outputs\bundle\releas
 $srcApk = Join-Path $ROOT 'src-tauri\gen\android\app\build\outputs\apk\release\app-release.apk'
 
 if ($Channel -eq 'release') {
+  if (-not $KeystorePath -or -not $KeystorePassword -or -not $KeyPassword) {
+    Write-Error "Release-сборка требует подписи. Убедитесь, что заданы KeystorePath, KeystorePassword и KeyPassword (env: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_PASSWORD). Неподписанный AAB не будет создан."
+    exit 1
+  }
   if (-not $KeystorePath) {
     Write-Warning "Keystore не указан — AAB не будет подписан. Найдите unsigned AAB в gen\android."
     Copy-Item $srcAab -Destination (Join-Path $ARTIFACTS "NovaDarkMessenger-$Version-unsigned.aab") -Force

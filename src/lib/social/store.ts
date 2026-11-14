@@ -1,8 +1,8 @@
 import {
-  CURRENT_USER,
   MOCK_CHANNEL_POSTS,
   MOCK_STORIES,
 } from '../../data/mockMessengerData';
+import { loadAccount } from '../account/account';
 import type {
   ChannelDraft,
   ChannelInfo,
@@ -18,6 +18,22 @@ export const CHANNELS_STORAGE_KEY = 'nova_channels_v1';
 export const CHANNEL_POSTS_STORAGE_KEY = 'nova_channel_posts_v1';
 export const STORY_TTL_MS = 24 * 60 * 60 * 1000;
 export const KYIV_CHANNEL_ID = 'kyiv-channel';
+
+function createInviteCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function normalizeChannel(channel: ChannelInfo): ChannelInfo {
+  const visibility = channel.visibility === 'private' ? 'private' : 'public';
+  return {
+    ...channel,
+    visibility,
+    inviteCode:
+      visibility === 'private'
+        ? channel.inviteCode ?? createInviteCode()
+        : undefined,
+  };
+}
 
 export interface SocialState {
   stories: Story[];
@@ -56,6 +72,7 @@ export function createDefaultChannel(): ChannelInfo {
     isOwned: false,
     isPopular: true,
     soundEnabled: false,
+    visibility: 'public',
   };
 }
 
@@ -127,6 +144,7 @@ export function loadSocialState(): SocialState {
     channels = [createDefaultChannel(), ...channels];
     writeJson(CHANNELS_STORAGE_KEY, channels);
   }
+  channels = channels.map(normalizeChannel);
 
   let posts = readJson<ChannelPost[]>(CHANNEL_POSTS_STORAGE_KEY);
   if (!Array.isArray(posts)) {
@@ -188,10 +206,11 @@ export function getStoryFeed(stories: Story[], now: number): Story[] {
 
 export function buildStory(draft: StoryDraft, now = Date.now()): Story {
   const publishAt = draft.scheduledFor ?? now;
+  const account = loadAccount();
   return {
     id: `story-${now}-${Math.random().toString(36).slice(2, 8)}`,
-    name: CURRENT_USER.name,
-    avatar: CURRENT_USER.avatar,
+    name: account.displayName,
+    avatar: account.avatar,
     coverImage: draft.coverImage,
     unreadCount: 0,
     caption: draft.caption?.trim() || undefined,
@@ -204,6 +223,7 @@ export function buildStory(draft: StoryDraft, now = Date.now()): Story {
 }
 
 export function buildChannel(draft: ChannelDraft, now = Date.now()): ChannelInfo {
+  const visibility = draft.visibility === 'private' ? 'private' : 'public';
   return {
     id: `channel-${now}-${Math.random().toString(36).slice(2, 8)}`,
     name: draft.name.trim(),
@@ -215,6 +235,8 @@ export function buildChannel(draft: ChannelDraft, now = Date.now()): ChannelInfo
     createdAt: now,
     isOwned: true,
     soundEnabled: true,
+    visibility,
+    inviteCode: visibility === 'private' ? createInviteCode() : undefined,
   };
 }
 
@@ -225,6 +247,7 @@ export function buildChannelPost(
 ): ChannelPost {
   const publishAt = draft.scheduledFor ?? now;
   const publishDate = new Date(publishAt);
+  const account = loadAccount();
   return {
     id: `post-${now}-${Math.random().toString(36).slice(2, 8)}`,
     channelId,
@@ -234,10 +257,11 @@ export function buildChannelPost(
     text: draft.text.trim(),
     image: draft.image,
     commentsCount: 0,
+    comments: [],
     reactions: [],
     createdAt: publishAt,
     scheduledFor: draft.scheduledFor,
-    authorName: CURRENT_USER.name,
+    authorName: account.displayName,
     poll: draft.poll,
     sticker: draft.sticker,
   };

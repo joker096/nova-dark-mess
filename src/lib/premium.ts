@@ -81,15 +81,26 @@ export function freeDaysRemaining(): number {
   }
 }
 
-export function canUseFeature(
-  _feature:
-    | 'chat_themes'
-    | 'wallpaper'
-    | 'date_picker'
-    | 'location_sharing'
-    | 'premium_stickers'
-    | 'all',
-): boolean {
+/**
+ * Features sold with the local premium tier. Everything else stays free on
+ * purpose: safety features (live location, disappearing messages, calls) are
+ * never locked behind a subscription.
+ */
+export type PremiumFeature =
+  | 'chat_themes'
+  | 'wallpaper'
+  | 'date_picker'
+  | 'premium_stickers';
+
+export const PREMIUM_FEATURES: readonly PremiumFeature[] = [
+  'chat_themes',
+  'wallpaper',
+  'date_picker',
+  'premium_stickers',
+];
+
+export function canUseFeature(feature: PremiumFeature): boolean {
+  if (!PREMIUM_FEATURES.includes(feature)) return false;
   return isPremium();
 }
 

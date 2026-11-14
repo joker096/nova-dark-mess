@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import { ChatScreen } from './ChatScreen';
 
 vi.mock('../context/LanguageContext', () => ({
@@ -361,13 +361,264 @@ describe('ChatScreen - message edit', () => {
 describe('ChatScreen - message delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
   });
 
-  it('deletes an own message and shows a tombstone', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('deletes an own message and removes it entirely after the animation', () => {
     renderChat();
     const bubble = getBubble('m3');
     fireEvent.click(within(bubble).getByTitle('chat.messageActions.delete'));
-    expect(screen.getByText('chat.messageDeleted')).toBeTruthy();
+
+    // The bubble is marked for deletion (animation) but is still in the DOM
+    // until the timer fires.
+    expect(screen.queryByText('Yeah, good times. For sure...')).not.toBeNull();
+
+    // Once the delete animation completes, the message is gone for good —
+    // no "deleted" tombstone remains.
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.queryByText('chat.messageDeleted')).toBeNull();
     expect(screen.queryByText('Yeah, good times. For sure...')).toBeNull();
+  });
+});
+
+describe('ChatScreen - group chat and P2P wiring', () => {
+  it('renders a group chat profile when chatId is a group', () => {
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+    expect(screen.getByText('Thailand Trip')).toBeTruthy();
+    expect(screen.getByText(/Group/i)).toBeTruthy();
+  });
+
+  it('sends group messages through the sender-key group manager', () => {
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+    const input = screen.getByPlaceholderText('chat.typeMessage');
+    fireEvent.change(input, { target: { value: 'Group hello' } });
+    fireEvent.click(screen.getByTitle('common.send'), { detail: 0 });
+
+    expect(screen.getByText('Group hello')).toBeTruthy();
+    expect((input as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText(/chat\.groupMessageFailed/)).toBeNull();
+  });
+
+  it('manages group members from the header dialog', async () => {
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    expect(screen.getByTestId('group-members-dialog')).toBeTruthy();
+    expect(screen.getByText('chat.noMembers')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
+      target: { value: 'nova_pk_bob' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'chat.addMember' }));
+    await waitFor(() => expect(screen.getByText('nova_pk_bob')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.removeMember: nova_pk_bob' }));
+    await waitFor(() => expect(screen.queryByText('nova_pk_bob')).toBeNull());
+    expect(screen.getByText('chat.noMembers')).toBeTruthy();
+  });
+
+  it('promotes and demotes group members', async () => {
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
+      target: { value: 'nova_pk_bob' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'chat.addMember' }));
+    await waitFor(() => expect(screen.getByText('nova_pk_bob')).toBeTruthy());
+    expect(screen.getByTestId('group-role-nova_pk_bob').textContent).toBe('chat.roleMember');
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.makeAdmin: nova_pk_bob' }));
+    expect(screen.getByTestId('group-role-nova_pk_bob').textContent).toBe('chat.roleAdmin');
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.makeMember: nova_pk_bob' }));
+    expect(screen.getByTestId('group-role-nova_pk_bob').textContent).toBe('chat.roleMember');
+  });
+
+  it('adds system messages for roster and role changes', async () => {
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
+      target: { value: 'nova_pk_bob' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'chat.addMember' }));
+    await waitFor(() =>
+      expect(screen.getAllByText('chat.systemMemberAdded').length).toBeGreaterThan(0),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.makeAdmin: nova_pk_bob' }));
+    expect(screen.getAllByText('chat.systemMemberPromoted').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.removeMember: nova_pk_bob' }));
+    await waitFor(() =>
+      expect(screen.getAllByText('chat.systemMemberRemoved').length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByTestId('system-message').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps an invitee pending instead of making them an admin', () => {
+    localStorage.removeItem('nova_group_roles_thailand');
+    localStorage.setItem('nova_group_membership_thailand', 'pending');
+
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    expect(screen.queryByRole('button', { name: 'chat.addMember' })).toBeNull();
+    expect(screen.queryByLabelText('chat.memberFingerprint')).toBeNull();
+    expect(screen.getByText('chat.adminOnly')).toBeTruthy();
+    expect(screen.getByTestId('join-request-status').textContent).toContain(
+      'chat.joinRequestWaiting',
+    );
+
+    localStorage.removeItem('nova_group_membership_thailand');
+    localStorage.removeItem('nova_group_join_requests_thailand');
+  });
+
+  it('badges pending join requests and approves them', async () => {
+    localStorage.setItem(
+      'nova_group_roles_thailand',
+      JSON.stringify({ nova_pk_test1234567890: 'admin' }),
+    );
+    localStorage.setItem(
+      'nova_group_join_requests_thailand',
+      JSON.stringify([{ fingerprint: 'nova_pk_bob', status: 'pending', createdAt: 1 }]),
+    );
+
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    expect(screen.getByTestId('join-request-badge').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    expect(screen.getByTestId('join-requests').textContent).toContain('nova_pk_bob');
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.approveJoinRequest: nova_pk_bob' }));
+    await waitFor(() => expect(screen.queryByTestId('join-request-badge')).toBeNull());
+    expect(screen.queryByTestId('join-requests')).toBeNull();
+    expect(screen.getByTestId('group-role-nova_pk_bob').textContent).toBe('chat.roleMember');
+
+    localStorage.removeItem('nova_group_roles_thailand');
+    localStorage.removeItem('nova_group_join_requests_thailand');
+  });
+
+  it('lets a declined invitee ask again', () => {
+    localStorage.setItem(
+      'nova_group_roles_thailand',
+      JSON.stringify({ nova_pk_other: 'admin' }),
+    );
+    localStorage.setItem('nova_group_membership_thailand', 'rejected');
+
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    expect(screen.getByTestId('join-request-status').textContent).toContain(
+      'chat.joinRequestDeclined',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'chat.joinRequestRetry' }));
+    expect(screen.getByTestId('join-request-status').textContent).toContain(
+      'chat.joinRequestWaiting',
+    );
+
+    localStorage.removeItem('nova_group_roles_thailand');
+    localStorage.removeItem('nova_group_membership_thailand');
+    localStorage.removeItem('nova_group_join_requests_thailand');
+  });
+
+  it('blocks roster edits for members who are not admins', () => {
+    localStorage.setItem('nova_group_roles_thailand', JSON.stringify({ nova_pk_other: 'admin' }));
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    expect(screen.getByText('chat.adminOnly')).toBeTruthy();
+    expect(screen.queryByLabelText('chat.memberFingerprint')).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: 'chat.inviteRegenerate' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    localStorage.removeItem('nova_group_roles_thailand');
+  });
+
+  it('generates and copies a group invite link', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    const linkInput = screen.getByLabelText('chat.inviteTitle') as HTMLInputElement;
+    expect(linkInput.value).toMatch(/^nova:\/\/chat\/thailand\?invite=[a-f0-9]{24}$/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'chat.inviteCopy' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(linkInput.value));
+
+    const previous = linkInput.value;
+    fireEvent.click(screen.getByRole('button', { name: 'chat.inviteRegenerate' }));
+    const next = (screen.getByLabelText('chat.inviteTitle') as HTMLInputElement).value;
+    expect(next).not.toBe(previous);
+    expect(next).toMatch(/^nova:\/\/chat\/thailand\?invite=[a-f0-9]{24}$/);
+  });
+
+  it('toggles view-once mode', () => {
+    renderChat();
+    const viewOnceBtn = screen.getByTitle('View once off');
+    expect(viewOnceBtn).toBeTruthy();
+    fireEvent.click(viewOnceBtn);
+    expect(screen.getByTitle('View once on')).toBeTruthy();
+  });
+
+  it('toggles disappearing messages menu', () => {
+    renderChat();
+    const timerBtn = screen.getByTitle('Disappearing messages off');
+    expect(timerBtn).toBeTruthy();
+    fireEvent.click(timerBtn);
+    expect(screen.getByText('Disappear after')).toBeTruthy();
+    fireEvent.click(screen.getByText('5 seconds'));
+    expect(screen.getByTitle('Disappearing in 5s')).toBeTruthy();
   });
 });

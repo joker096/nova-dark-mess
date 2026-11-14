@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import {
   ArrowLeft,
@@ -31,12 +31,25 @@ import {
   Camera,
   Download,
   Forward,
+  Eye,
   Lock,
   BarChart2,
   Pencil,
   Trash2,
+  Users,
+  UserMinus,
+  ShieldCheck,
 } from 'lucide-react';
-import { CONVERSATION_HISTORIES, appendConversationHistory, CONTACT_PROFILES, KATIE_SHARED_MEDIA, MOCK_CHATS } from '../data/mockMessengerData';
+import {
+  CONVERSATION_HISTORIES,
+  appendConversationHistory,
+  CONTACT_PROFILES,
+  KATIE_SHARED_MEDIA,
+  MOCK_CHATS,
+  loadCreatedGroups,
+  registerCreatedGroups,
+  saveCreatedGroups,
+} from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
@@ -52,6 +65,7 @@ import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
+import { secureWipeMessage } from '../lib/security/secureWipe';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -62,6 +76,34 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
+import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
+import { RoomDataChannel, isRoomChannelSupported } from '../lib/p2p/roomChannel';
+import type { FileTransferMessage } from '../lib/p2p/fileTransfer';
+import { getOrCreateGroupInvite, regenerateGroupInviteToken, buildGroupInviteLink } from '../lib/social/groupInvites';
+import {
+  getGroupMembership,
+  loadJoinRequests,
+  setGroupMembership,
+  setJoinRequestStatus,
+  upsertJoinRequest,
+  type GroupJoinRequest,
+  type GroupMembership,
+} from '../lib/social/groupJoinRequests';
+import {
+  ensureGroupRoles,
+  getMemberRole,
+  isGroupAdmin,
+  loadGroupRoles,
+  mergeGroupRoles,
+  removeMemberRole,
+  setMemberRole,
+  type GroupRoles,
+} from '../lib/social/groupRoles';
+import { FileTransferManager } from '../lib/p2p/fileTransfer';
+import { ReceiptManager } from '../lib/p2p/receipts';
+import { enqueueJoinPayload, JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
+import { getThreadMessages } from '../lib/messaging/threads';
+import { editMessage } from '../lib/messaging/messageLifecycle';
 
 const DEMO_PEER_BUNDLE_PREFIX = 'nova_demo_peer_bundle_';
 
@@ -102,11 +144,410 @@ const PREMIUM_THEMES: Record<string, { label: string; grad: string; shadow: stri
 };
 const CHAT_THEME_KEY = 'nova_chat_theme';
 
+/** Wire format for everything that travels over the chat's DataChannel. */
+type RoomEnvelope =
+  | { v: 1; kind: 'group'; payload: GroupPayload }
+  | { v: 1; kind: 'file'; message: FileTransferMessage };
+
 export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenProfile }) => {
   const { t } = useLanguage();
   const { encryptAndSendMessage, identity } = useSecurity();
   const { checkout, canUse } = usePremium();
-  const profile = CONTACT_PROFILES[chatId] || CONTACT_PROFILES['katie'];
+  const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
+  const isGroupChat = chatItem?.type === 'group';
+  const localFingerprint = identity?.fingerprint ?? 'nova_pk_local_group';
+  const [fileTransfer, setFileTransfer] = useState<{
+    id: string;
+    fileName: string;
+    bytes: number;
+    total: number;
+    direction: 'send' | 'receive';
+  } | null>(null);
+  const completedTransfersRef = useRef<Set<string>>(new Set());
+  const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<string[]>(
+    chatItem?.type === 'group' ? chatItem.members ?? [] : [],
+  );
+  const [newMemberFingerprint, setNewMemberFingerprint] = useState('');
+  const [groupInvite, setGroupInvite] = useState<{ token: string; link: string } | null>(null);
+  const [groupRoles, setGroupRoles] = useState<GroupRoles>({});
+  const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>(() =>
+    chatItem?.type === 'group' ? loadJoinRequests(chatId) : [],
+  );
+  const [membershipStatus, setMembershipStatus] = useState<GroupMembership | null>(() =>
+    chatItem?.type === 'group' ? getGroupMembership(chatId) : null,
+  );
+  const joinRequestSentRef = useRef<string | null>(null);
+  const pendingJoinRequests = joinRequests.filter((request) => request.status === 'pending');
+  const updateMembership = (status: GroupMembership) => {
+    setGroupMembership(chatId, status);
+    setMembershipStatus(status);
+  };
+  const currentUserIsGroupAdmin = isGroupAdmin(groupRoles, localFingerprint);
+  const roomChannelRef = useRef<RoomDataChannel | null>(null);
+  const groupManagerRef = useRef<GroupChatManager | null>(null);
+  const fileManagerRef = useRef<FileTransferManager | null>(null);
+  const [roomPeerCount, setRoomPeerCount] = useState(0);
+
+  const appendSystemMessage = (text: string) => {
+    const message = {
+      id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      senderId: 'other' as const,
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      system: true,
+    };
+    setMessages((prev) => [...prev, message]);
+    appendConversationHistory(chatId, [message]);
+  };
+
+  const sendEnvelope = useCallback((envelope: RoomEnvelope): boolean => {
+    const channel = roomChannelRef.current;
+    if (!channel?.isConnected()) return false;
+    return channel.send(JSON.stringify(envelope)) > 0;
+  }, []);
+
+  const groupManager = useMemo(
+    () =>
+      new GroupChatManager({
+        groupId: chatId,
+        localFingerprint,
+        members: chatItem?.type === 'group' ? chatItem.members ?? [] : [],
+        sendToPeer: async (_peer, payload) => {
+          if (sendEnvelope({ v: 1, kind: 'group', payload })) return;
+          // Join traffic must survive a closed group: park it in the on-device
+          // outbox so the session relay delivers it once a peer is around.
+          if (enqueueJoinPayload(payload)) return;
+          // No DataChannel peer yet: keep the local pipeline exercised.
+          await groupManagerRef.current?.handleIncoming(localFingerprint, payload);
+        },
+        onMessage: (sender, text) => {
+          // Skip the local echo: the UI appends our own messages immediately.
+          if (sender === localFingerprint) return;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: 'm-' + Date.now(),
+              senderId: 'other',
+              text,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isRead: true,
+            },
+          ]);
+        },
+        onRoles: (_sender, roles) => {
+          setGroupRoles((current) => mergeGroupRoles(chatId, current, roles));
+        },
+        onJoinRequest: (_sender, request) => {
+          if (request.fingerprint === localFingerprint) return;
+          setJoinRequests(upsertJoinRequest(chatId, request));
+          const who = request.name || request.fingerprint;
+          appendSystemMessage(t('chat.systemJoinRequested', { member: who }));
+          triggerPinnedToast(t('chat.joinRequestReceived', { member: who }));
+        },
+        onJoinResponse: (_sender, response) => {
+          if (response.fingerprint !== localFingerprint) return;
+          if (response.approved) {
+            updateMembership('member');
+            setGroupRoles(setMemberRole(chatId, localFingerprint, 'member'));
+            setJoinRequests(setJoinRequestStatus(chatId, localFingerprint, 'approved'));
+            appendSystemMessage(t('chat.systemJoinApprovedMe'));
+            triggerPinnedToast(t('chat.joinRequestApproved'));
+            return;
+          }
+          updateMembership('rejected');
+          setJoinRequests(setJoinRequestStatus(chatId, localFingerprint, 'rejected'));
+          appendSystemMessage(t('chat.systemJoinRejectedMe'));
+          triggerPinnedToast(t('chat.joinRequestDeclined'));
+        },
+        onError: (error) => {
+          triggerPinnedToast(`${t('chat.groupMessageFailed')}: ${error.message}`);
+        },
+      }),
+    [chatId, chatItem, localFingerprint, sendEnvelope, t],
+  );
+  groupManagerRef.current = groupManager;
+
+  // The demo shell has no remote transport, so files travel through a local
+  // loopback that still runs the real chunking, acknowledgement and SHA-256
+  // verification pipeline. Progress and completion feed the chat UI.
+  const fileTransferManager = useMemo(() => {
+    const manager: FileTransferManager = new FileTransferManager({
+      sendToPeer: async (_peer, message) => {
+        if (sendEnvelope({ v: 1, kind: 'file', message })) return;
+        await manager.handleIncoming('nova_local_delivery', message);
+      },
+      onProgress: (progress) => {
+        setFileTransfer({
+          id: progress.transferId,
+          fileName: progress.fileName,
+          bytes: progress.bytesTransferred,
+          total: progress.totalBytes,
+          direction: manager.getOutgoing(progress.transferId) ? 'send' : 'receive',
+        });
+      },
+      onComplete: (result) => {
+        if (completedTransfersRef.current.has(result.transferId)) return;
+        completedTransfersRef.current.add(result.transferId);
+        setFileTransfer((current) =>
+          current?.id === result.transferId ? null : current,
+        );
+        triggerPinnedToast(`${t('chat.fileVerified')} · ${result.fileName}`);
+      },
+      onError: (error, transferId) => {
+        setFileTransfer((current) =>
+          !transferId || current?.id === transferId ? null : current,
+        );
+        triggerPinnedToast(`${t('chat.fileTransferFailed')}: ${error.message}`);
+      },
+    });
+    return manager;
+  }, [sendEnvelope, t]);
+  fileManagerRef.current = fileTransferManager;
+
+  useEffect(() => {
+    if (!isRoomChannelSupported()) return;
+
+    const channel = new RoomDataChannel({
+      room: `chat_${chatId}`,
+      selfId: `${localFingerprint}:${crypto.randomUUID()}`,
+      onMessage: (peerId, data) => {
+        if (typeof data !== 'string') return;
+        try {
+          const envelope = JSON.parse(data) as RoomEnvelope;
+          if (envelope?.v !== 1) return;
+          if (envelope.kind === 'file') {
+            void fileManagerRef.current?.handleIncoming(peerId, envelope.message);
+          } else if (envelope.kind === 'group') {
+            void groupManagerRef.current?.handleIncoming(peerId, envelope.payload);
+          }
+        } catch {
+          /* malformed peer payload: ignore */
+        }
+      },
+      onPeerCountChange: setRoomPeerCount,
+    });
+
+    roomChannelRef.current = channel;
+    channel.start();
+
+    return () => {
+      channel.dispose();
+      if (roomChannelRef.current === channel) roomChannelRef.current = null;
+      setRoomPeerCount(0);
+    };
+  }, [chatId, localFingerprint]);
+  useEffect(() => {
+    const item = MOCK_CHATS.find((chat) => chat.id === chatId);
+    setGroupMembers(item?.type === 'group' ? item.members ?? [] : []);
+    setIsGroupMembersOpen(false);
+    setGroupInvite(item?.type === 'group' ? getOrCreateGroupInvite(chatId) : null);
+    setJoinRequests(item?.type === 'group' ? loadJoinRequests(chatId) : []);
+    if (item?.type !== 'group') {
+      setGroupRoles({});
+      return;
+    }
+    const stored = loadGroupRoles(chatId);
+    if (stored[localFingerprint]) {
+      // Already a known member on this device: whatever the invite flow thought, the roster wins.
+      setGroupMembership(chatId, 'member');
+      setMembershipStatus('member');
+      setGroupRoles(stored);
+      return;
+    }
+    // A device that arrived through an invite link has no role until an admin approves it:
+    // never seed it as admin, or every invitee could edit the roster.
+    setMembershipStatus(getGroupMembership(chatId));
+    setGroupRoles(getGroupMembership(chatId) ? stored : ensureGroupRoles(chatId, localFingerprint));
+  }, [chatId, localFingerprint]);
+
+  // Ask the admins for membership. With a peer in the room the request rides
+  // the DataChannel; otherwise it waits in the relay outbox, so closing the
+  // group right after accepting the invite does not lose the request.
+  useEffect(() => {
+    if (chatItem?.type !== 'group') return;
+    if (membershipStatus !== 'pending') return;
+    if (joinRequestSentRef.current === chatId) return;
+    joinRequestSentRef.current = chatId;
+    setJoinRequests(upsertJoinRequest(chatId, { fingerprint: localFingerprint }));
+    void groupManager.requestToJoin();
+    appendSystemMessage(t('chat.joinRequestWaiting'));
+    triggerPinnedToast(t('chat.joinRequestSent'));
+  }, [appendSystemMessage, chatId, chatItem, groupManager, localFingerprint, membershipStatus, roomPeerCount, t]);
+
+  // Relay traffic applied while this chat was closed (or in another tab) can
+  // land here too: keep the request book and membership in sync.
+  useEffect(() => {
+    if (chatItem?.type !== 'group') return;
+    const onJoinTraffic = (event: Event) => {
+      const detail = (event as CustomEvent<{ groupId?: string }>).detail;
+      if (detail?.groupId && detail.groupId !== chatId) return;
+      setJoinRequests(loadJoinRequests(chatId));
+      const membership = getGroupMembership(chatId);
+      if (!membership) return;
+      setMembershipStatus(membership);
+      if (membership === 'member') {
+        setGroupRoles(setMemberRole(chatId, localFingerprint, 'member'));
+      }
+    };
+    window.addEventListener(JOIN_REQUESTS_CHANGED_EVENT, onJoinTraffic);
+    return () => window.removeEventListener(JOIN_REQUESTS_CHANGED_EVENT, onJoinTraffic);
+  }, [chatId, chatItem, localFingerprint]);
+
+  const handleAskToJoinAgain = () => {
+    updateMembership('pending');
+    setJoinRequests(upsertJoinRequest(chatId, { fingerprint: localFingerprint }));
+    joinRequestSentRef.current = null;
+  };
+
+  const handleCopyGroupInvite = async () => {
+    if (!groupInvite) return;
+    try {
+      await navigator.clipboard?.writeText(groupInvite.link);
+      triggerPinnedToast(t('chat.inviteCopied'));
+    } catch {
+      triggerPinnedToast(t('chat.inviteCopyFailed'));
+    }
+  };
+
+  const handleRegenerateGroupInvite = () => {
+    if (!currentUserIsGroupAdmin) {
+      triggerPinnedToast(t('chat.adminOnly'));
+      return;
+    }
+    const token = regenerateGroupInviteToken(chatId);
+    setGroupInvite({ token, link: buildGroupInviteLink(chatId, token) });
+    triggerPinnedToast(t('chat.inviteRegenerated'));
+  };
+
+  const persistGroupMembers = (members: string[]) => {
+    const item = MOCK_CHATS.find((chat) => chat.id === chatId);
+    if (item?.type === 'group') item.members = members;
+
+    const created = loadCreatedGroups();
+    if (created.some((group) => group.id === chatId)) {
+      saveCreatedGroups(
+        created.map((group) => (group.id === chatId ? { ...group, members } : group)),
+      );
+    }
+  };
+
+  const handleAddGroupMember = async () => {
+    if (!currentUserIsGroupAdmin) {
+      triggerPinnedToast(t('chat.adminOnly'));
+      return;
+    }
+    const member = newMemberFingerprint.trim();
+    if (!member || groupMembers.includes(member)) return;
+    await groupManager.addMember(member);
+    const nextRoles = setMemberRole(chatId, member, 'member');
+    setGroupRoles(nextRoles);
+    void groupManager.broadcastRoles(nextRoles);
+    appendSystemMessage(t('chat.systemMemberAdded', { member }));
+    const members = groupManager.getMembers();
+    setGroupMembers(members);
+    persistGroupMembers(members);
+    setNewMemberFingerprint('');
+    triggerPinnedToast(t('chat.memberAdded'));
+  };
+
+  const handleApproveJoinRequest = async (member: string) => {
+    if (!currentUserIsGroupAdmin) {
+      triggerPinnedToast(t('chat.adminOnly'));
+      return;
+    }
+    await groupManager.addMember(member);
+    const nextRoles = setMemberRole(chatId, member, 'member');
+    setGroupRoles(nextRoles);
+    void groupManager.broadcastRoles(nextRoles);
+    void groupManager.respondToJoin(member, true);
+    setJoinRequests(setJoinRequestStatus(chatId, member, 'approved'));
+    appendSystemMessage(t('chat.systemJoinApproved', { member }));
+    const members = groupManager.getMembers();
+    setGroupMembers(members);
+    persistGroupMembers(members);
+    triggerPinnedToast(t('chat.joinRequestApproved'));
+  };
+
+  const handleRejectJoinRequest = (member: string) => {
+    if (!currentUserIsGroupAdmin) {
+      triggerPinnedToast(t('chat.adminOnly'));
+      return;
+    }
+    void groupManager.respondToJoin(member, false);
+    setJoinRequests(setJoinRequestStatus(chatId, member, 'rejected'));
+    appendSystemMessage(t('chat.systemJoinRejected', { member }));
+  };
+
+  const handleRemoveGroupMember = async (member: string) => {
+    if (!currentUserIsGroupAdmin) {
+      triggerPinnedToast(t('chat.adminOnly'));
+      return;
+    }
+    await groupManager.removeMember(member);
+    const members = groupManager.getMembers();
+    setGroupMembers(members);
+    persistGroupMembers(members);
+    const nextRoles = removeMemberRole(chatId, member);
+    setGroupRoles(nextRoles);
+    void groupManager.broadcastRoles(nextRoles);
+    appendSystemMessage(t('chat.systemMemberRemoved', { member }));
+  };
+
+  const handleToggleGroupRole = (member: string) => {
+    if (!currentUserIsGroupAdmin || member === localFingerprint) return;
+    const currentRole = getMemberRole(groupRoles, member);
+    const nextRole = currentRole === 'admin' ? 'member' : 'admin';
+    if (nextRole === 'member' && Object.values(groupRoles).filter((role) => role === 'admin').length <= 1) {
+      triggerPinnedToast(t('chat.lastAdmin'));
+      return;
+    }
+    const nextRoles = setMemberRole(chatId, member, nextRole);
+    setGroupRoles(nextRoles);
+    void groupManager.broadcastRoles(nextRoles);
+    appendSystemMessage(
+      t(nextRole === 'admin' ? 'chat.systemMemberPromoted' : 'chat.systemMemberDemoted', {
+        member,
+      }),
+    );
+    triggerPinnedToast(t(nextRole === 'admin' ? 'chat.memberPromoted' : 'chat.memberDemoted'));
+  };
+
+  const receiptManager = useMemo(
+    () =>
+      new ReceiptManager({
+        localFingerprint: identity?.fingerprint ?? 'nova_pk_local',
+        sendToPeer: async () => undefined,
+        onSignal: (signal) => {
+          if (signal.type === 'typing') {
+            setIsTyping(true);
+          } else if (signal.type === 'typing_stop') {
+            setIsTyping(false);
+          } else if (signal.type === 'read' && signal.messageId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === signal.messageId ? { ...m, isRead: true } : m)),
+            );
+          }
+        },
+      }),
+    [identity],
+  );
+  const profile =
+    CONTACT_PROFILES[chatId] ||
+    (chatItem?.type === 'group'
+      ? {
+          name: chatItem.name,
+          avatar: chatItem.avatar,
+          status: 'Group',
+          phone: '—',
+          nickname: '',
+          mediaCount: 0,
+          filesCount: 0,
+          linksCount: 0,
+          voiceCount: 0,
+          mediaItems: [],
+        }
+      : CONTACT_PROFILES['katie']);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
@@ -123,6 +564,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   });
 
   useEffect(() => {
+    registerCreatedGroups();
     setMessages((CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
         return {
@@ -136,6 +578,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       return msg;
     }));
   }, [chatId]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setMessages((prev) => {
+        prev.forEach((m) => {
+          if (m.expiresAt && m.expiresAt <= now) secureWipeMessage(m);
+        });
+        const next = prev.filter((m) => !m.expiresAt || m.expiresAt > now);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -228,6 +684,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [pinnedToast, setPinnedToast] = useState<string | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [disappearAfter, setDisappearAfter] = useState(0);
+  const [isDisappearMenuOpen, setIsDisappearMenuOpen] = useState(false);
+  const [viewOnceMode, setViewOnceMode] = useState(false);
+  const [threadRootId, setThreadRootId] = useState<string | null>(null);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -243,6 +703,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [isForwardSelecting, setIsForwardSelecting] = useState(false);
   const [forwardSelectedIds, setForwardSelectedIds] = useState<Set<string>>(new Set());
   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
+
+  // Message deletion animation: the id of the bubble currently collapsing.
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
 
   // Scheduled Messages State
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessageItem[]>([]);
@@ -304,6 +767,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             voiceNote: item.voiceNote,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             isRead: false,
+            expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
           };
 
           setMessages((msgs) => [...msgs, newMsg]);
@@ -724,6 +1189,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       voiceNote: noteToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -736,6 +1203,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setMessages((prev) => [...prev, newMessage]);
     setRecordedVoiceNote(null);
     setReplyingTo(null);
+
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 500);
+      appendConversationHistory(chatId, [newMessage]);
+      return;
+    }
 
     // Transition read status after 1.8s
     setTimeout(() => {
@@ -1109,20 +1586,44 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     if (!editingMsgId) return;
     const text = editingText.trim();
     if (!text) return;
-    setMessages((prev) =>
-      prev.map((m) => (m.id === editingMsgId ? { ...m, text, editedAt: Date.now() } : m))
-    );
+    setMessages((prev) => editMessage(prev, editingMsgId, text, Date.now()));
     setEditingMsgId(null);
     setEditingText('');
   };
 
-  const handleDeleteMessage = (msgId: string) => {
+  const handlePinMessage = (msgId: string) => {
     setMessages((prev) =>
-      prev.map((m) =>
-        m.id === msgId ? { ...m, deleted: true, text: undefined, editedAt: undefined } : m
-      )
+      prev.map((m) => (m.id === msgId ? { ...m, pinned: !m.pinned } : m))
     );
+  };
+
+  // Duration of the bubble-collapse animation (must match .msg-deleting in
+  // index.css). The bubble stays in the DOM for this long, then is removed
+  // from state so nothing — not even the "deleted" placeholder — remains.
+  const DELETE_ANIMATION_MS = 300;
+
+  const handleDeleteMessage = (msgId: string, forEveryone: boolean = true) => {
     if (editingMsgId === msgId) handleCancelEdit();
+
+    // Start the collapse animation on the original bubble (it keeps its
+    // content while it fades). The message is wiped and physically removed
+    // from state once the animation finishes, so no "deleted" placeholder
+    // is left behind afterwards.
+    setDeletingMsgId(msgId);
+    window.setTimeout(() => {
+      setMessages((prev) =>
+        prev.filter((m) => {
+          if (m.id !== msgId) return true;
+          // "Delete for everyone" scrubs the secure payload before it leaves
+          // state; "delete for me" just drops it locally.
+          if (forEveryone) {
+            secureWipeMessage(m as unknown as Parameters<typeof secureWipeMessage>[0]);
+          }
+          return false;
+        }),
+      );
+      setDeletingMsgId((cur) => (cur === msgId ? null : cur));
+    }, DELETE_ANIMATION_MS);
   };
 
   const handleToggleForwardSelect = (msgId: string) => {
@@ -1171,6 +1672,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       text: m.deleted ? undefined : m.text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: undefined,
       editedAt: undefined,
     }));
@@ -1223,6 +1726,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       text: '📄 Summer_Trip_Schedule.pdf (2.4 MB - Document attached)',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1278,6 +1783,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       poll,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1290,6 +1797,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setMessages((prev) => [...prev, newMsg]);
     setReplyingTo(null);
     triggerPinnedToast(t('poll.pollCreated', 'Poll created!'));
+
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 600);
+      appendConversationHistory(chatId, [newMsg]);
+      return;
+    }
 
     setTimeout(() => {
       setMessages((prev) =>
@@ -1387,6 +1904,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       sticker,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1397,6 +1916,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     };
     setMessages((prev) => [...prev, newMsg]);
     setReplyingTo(null);
+
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 600);
+      appendConversationHistory(chatId, [newMsg]);
+      return;
+    }
 
     setTimeout(() => {
       setMessages((prev) =>
@@ -1415,6 +1944,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       text: title || 'GIF',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1442,6 +1973,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       location,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1454,6 +1987,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setReplyingTo(null);
     triggerPinnedToast(location.isLive ? 'Live location shared' : 'Location sent');
 
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 600);
+      appendConversationHistory(chatId, [newMsg]);
+      return;
+    }
+
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
@@ -1461,11 +2004,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }, 600);
   };
 
+  const startLocalFileTransfer = (fileName: string, data: Uint8Array) => {
+    void fileTransferManager.startTransfer(chatId, fileName, data).catch((error: unknown) => {
+      triggerPinnedToast(
+        `${t('chat.fileTransferFailed')}: ${error instanceof Error ? error.message : fileName}`,
+      );
+    });
+  };
+
+  const handleDownloadDocument = (docName: string) => {
+    startLocalFileTransfer(
+      docName,
+      new TextEncoder().encode(`P2P File Transfer Payload for ${docName}`),
+    );
+  };
+
   const handleSendAttachmentFromModal = (payload: {
     text?: string;
     images?: string[];
     document?: DocumentAttachment;
   }) => {
+    if (payload.document) {
+      startLocalFileTransfer(
+        payload.document.name,
+        new TextEncoder().encode(`P2P File Transfer Payload for ${payload.document.name}`),
+      );
+    }
     const messageId = 'm-' + Date.now();
     const newMessage: ChatMessage = {
       id: messageId,
@@ -1475,6 +2039,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       document: payload.document,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
@@ -1494,6 +2060,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         ? `Sent ${payload.document.name}`
         : 'Attachment sent'
     );
+
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 500);
+      appendConversationHistory(chatId, [newMessage]);
+      return;
+    }
 
     // Transition read status after 500ms
     setTimeout(() => {
@@ -1568,6 +2144,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       document: currentAttachment?.document,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
+      expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
+            viewOnce: viewOnceMode || undefined,
       replyTo: activeReply
         ? {
             id: activeReply.id,
@@ -1579,15 +2157,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
     setMessages((prev) => [...prev, newMessage]);
     if (text) {
-      void encryptAndSendMessage(chatId, text).catch((err) => {
-        console.warn('Message encryption failed:', err);
-      });
+      if (isGroupChat) {
+        void groupManager.sendText(text).catch((err) => {
+          console.warn('Group message encryption failed:', err);
+        });
+      } else {
+        void encryptAndSendMessage(chatId, text).catch((err) => {
+          console.warn('Message encryption failed:', err);
+        });
+      }
     }
+    if (currentAttachment?.document) {
+      startLocalFileTransfer(
+        currentAttachment.document.name,
+        new TextEncoder().encode(`P2P File Transfer Payload for ${currentAttachment.document.name}`),
+      );
+    }
+    void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
     if (!customText) {
       setInputText('');
     }
     setReplyingTo(null);
     setStagedAttachment(null);
+
+    if (isGroupChat) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
+        );
+      }, 500);
+      appendConversationHistory(chatId, [newMessage]);
+      return;
+    }
 
     // Transition read status after 500ms
     setTimeout(() => {
@@ -1917,6 +2518,41 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               </div>
 
               <div className="flex items-center gap-1">
+                {roomPeerCount > 0 && (
+                  <span
+                    data-testid="p2p-peer-count"
+                    title={`P2P · ${roomPeerCount}`}
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                  >
+                    P2P · {roomPeerCount}
+                  </span>
+                )}
+
+                {/* Group Members Button */}
+                {isGroupChat && (
+                  <button
+                    onClick={() => setIsGroupMembersOpen(true)}
+                    title={t('chat.groupMembers')}
+                    aria-label={t('chat.groupMembers')}
+                    data-pending-requests={pendingJoinRequests.length || undefined}
+                    className={`relative w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                      isGroupMembersOpen
+                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
+                        : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                    }`}
+                  >
+                    <Users className="w-3 h-3" />
+                    {currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
+                      <span
+                        data-testid="join-request-badge"
+                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
+                      >
+                        {pendingJoinRequests.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+
                 {/* Voice Call Toggle Button */}
                 <button
                   onClick={handleStartVoiceCall}
@@ -2290,6 +2926,54 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           </div>
         )}
 
+        {messages.some((m) => m.pinned) && (
+          <div className="mb-2 px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 text-xs text-white/90 flex items-center gap-2">
+            <Pin className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+            <span className="truncate flex-1">
+              {messages.find((m) => m.pinned)?.text || t('chat.messageDeleted', 'Pinned message')}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const pinned = messages.find((m) => m.pinned);
+                if (pinned) {
+                  const el = document.getElementById(`msg-${pinned.id}`);
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer"
+            >
+              {t('chat.messageActions.pin')}
+            </button>
+          </div>
+        )}
+
+        {isGroupChat && membershipStatus === 'pending' && (
+          <div
+            data-testid="join-request-status"
+            className="mb-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-center gap-2"
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span className="flex-1">{t('chat.joinRequestWaiting')}</span>
+          </div>
+        )}
+        {isGroupChat && membershipStatus === 'rejected' && (
+          <div
+            data-testid="join-request-status"
+            className="mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] text-red-200 flex items-center gap-2"
+          >
+            <span className="flex-1">{t('chat.joinRequestDeclined')}</span>
+            <button
+              type="button"
+              onClick={handleAskToJoinAgain}
+              aria-label={t('chat.joinRequestRetry')}
+              className="px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold transition cursor-pointer shrink-0"
+            >
+              {t('chat.joinRequestRetry')}
+            </button>
+          </div>
+        )}
+
         {displayedMessages.map((msg) => {
           const isMine = msg.senderId === 'me';
           const isPickerOpen = activeReactionMsgId === msg.id;
@@ -2306,6 +2990,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           const isThisSwiping = swipingMsgId === msg.id;
           const currentOffset = isThisSwiping ? swipeOffset : 0;
           const isThresholdReached = currentOffset >= 42;
+          const isDeleting = deletingMsgId === msg.id;
+
+          if (msg.system) {
+            return (
+              <div
+                key={msg.id}
+                id={`msg-${msg.id}`}
+                data-testid="system-message"
+                className={`flex justify-center my-1 ${isDeleting ? 'msg-deleting' : ''}`}
+              >
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10.5px] text-white/50 text-center max-w-[85%]">
+                  {msg.text}
+                </span>
+              </div>
+            );
+          }
 
           if (msg.deleted) {
             return (
@@ -2314,7 +3014,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 id={`msg-${msg.id}`}
                 className={`flex flex-col relative transition-all duration-300 ${
                   isMine ? 'items-end' : 'items-start'
-                }`}
+                } ${isDeleting ? 'msg-deleting' : ''}`}
               >
                 <div className="px-3.5 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/45 italic text-[13px] max-w-[80%]">
                   {t('chat.messageDeleted', 'This message was deleted')}
@@ -2330,7 +3030,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               id={`msg-${msg.id}`}
               className={`flex flex-col relative transition-all duration-300 ${
                 isMine ? 'items-end' : 'items-start'
-              }`}
+              } ${isDeleting ? 'msg-deleting' : ''}`}
             >
               {/* Swipe-to-reply background indicator icon */}
               {isThisSwiping && currentOffset > 4 && (
@@ -2471,6 +3171,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 </div>
               )}
 
+              {msg.expiresAt && (
+                <div className={`text-[9px] text-amber-400/80 mb-0.5 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
+                  ⏱ disappears in {Math.max(0, Math.ceil((msg.expiresAt - Date.now()) / 1000))}s
+                </div>
+              )}
+              {msg.viewOnce && (
+                <div className={`text-[9px] text-fuchsia-400/90 mb-0.5 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
+                  👁 view once
+                </div>
+              )}
               <div className={`flex items-center max-w-full group/row relative ${isMine ? 'justify-end' : 'justify-start'}`}>
                 {/* Message Bubble Container with Touch and Pointer Handlers */}
                 <div
@@ -2535,6 +3245,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       <Forward className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
                       <span>Forward</span>
                     </button>
+                    <div className="w-[1px] h-3 bg-white/15" />
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePinMessage(msg.id);
+                      }}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
+                      title={msg.pinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
+                    >
+                      <Pin className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
+                      <span>{msg.pinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}</span>
+                    </button>
+                    {messages.some((m) => m.replyTo?.id === msg.id) && (
+                      <>
+                        <div className="w-[1px] h-3 bg-white/15" />
+                        <button
+                          type="button"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setThreadRootId(msg.id);
+                          }}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
+                          title="Thread"
+                        >
+                          <Reply className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Thread</span>
+                        </button>
+                      </>
+                    )}
                     {isMine && msg.text && (
                       <>
                         <div className="w-[1px] h-3 bg-white/15" />
@@ -2647,6 +3389,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('chat.messageActions.delete')}
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                           <span className="font-mono">{msg.time}</span>
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
@@ -2680,6 +3434,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           onRetractVote={handleRetractVote}
                         />
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('chat.messageActions.delete')}
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                           <span>{msg.time}</span>
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
@@ -2833,7 +3599,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </div>
                             <button
                               type="button"
-                              onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                              onClick={() => handleDownloadDocument(msg.document!.name)}
                               className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer active:scale-95"
                               title="Download document"
                             >
@@ -2993,6 +3759,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('chat.messageActions.delete')}
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                           <span className="font-mono">{msg.time}</span>
                         </div>
                       </div>
@@ -3021,6 +3799,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           onRetractVote={handleRetractVote}
                         />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg.id);
+                            }}
+                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            title={t('chat.messageActions.delete')}
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                           <span>{msg.time}</span>
                         </div>
                       </div>
@@ -3096,7 +3886,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                           <button
                             type="button"
-                            onClick={() => triggerPinnedToast(`Downloaded ${msg.document?.name}`)}
+                            onClick={() => handleDownloadDocument(msg.document!.name)}
                             className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer active:scale-95"
                             title="Download document"
                           >
@@ -3454,6 +4244,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               type="button"
               onClick={() => setIsEmojiPickerOpen(false)}
               className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition ml-auto shrink-0"
+              aria-label="Close emoji picker"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -3555,6 +4346,68 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         )}
 
         <div className="flex items-center gap-2">
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsDisappearMenuOpen((prev) => !prev)}
+              className={`h-11 rounded-full border flex items-center gap-1.5 active:scale-95 transition cursor-pointer shadow-md ${
+                disappearAfter > 0
+                  ? 'px-3.5 bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-[var(--nova-accent-color, #ff4e18)]/30'
+                  : 'w-11 justify-center bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
+              }`}
+              title={disappearAfter > 0 ? `Disappearing in ${disappearAfter}s` : 'Disappearing messages off'}
+            >
+              <Clock className="w-4 h-4" />
+              {disappearAfter > 0 && <span className="text-[11px] font-semibold tabular-nums">{disappearAfter}s</span>}
+            </button>
+            {isDisappearMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsDisappearMenuOpen(false)} />
+                <div className="absolute bottom-full mb-2 left-0 z-50 w-44 bg-[#151621]/98 border border-white/15 rounded-2xl shadow-2xl shadow-black/80 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
+                  <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                    Disappear after
+                  </div>
+                  {[
+                    { label: 'Off', value: 0 },
+                    { label: '5 seconds', value: 5 },
+                    { label: '10 seconds', value: 10 },
+                    { label: '30 seconds', value: 30 },
+                    { label: '1 minute', value: 60 },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setDisappearAfter(option.value);
+                        setIsDisappearMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs transition cursor-pointer ${
+                        disappearAfter === option.value
+                          ? 'bg-[var(--nova-accent-color, #ff4e18)]/15 text-[var(--nova-accent-color, #ff4e18)]'
+                          : 'text-white/80 hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {disappearAfter === option.value && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setViewOnceMode((prev) => !prev)}
+            className={`h-11 px-3.5 rounded-full border flex items-center gap-1.5 active:scale-95 transition cursor-pointer shadow-md ${
+              viewOnceMode
+                ? 'bg-fuchsia-500 text-white border-fuchsia-500 shadow-fuchsia-500/30'
+                : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={viewOnceMode ? 'View once on' : 'View once off'}
+          >
+            <Eye className="w-4 h-4" />
+            {viewOnceMode && <span className="text-[11px] font-semibold">1x</span>}
+          </button>
           {/* Paperclip Button opening Simulated File Selection Menu */}
           <button
             type="button"
@@ -3578,7 +4431,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               ref={mainInputRef}
               type="text"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInputText(val);
+                if (val) {
+                  void receiptManager.sendReceipt(chatId, chatId, 'typing');
+                } else {
+                  void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSendMessage();
               }}
@@ -3643,6 +4504,258 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       </div>
         </>
       )}
+
+      {/* GROUP MEMBERS DIALOG */}
+      {isGroupChat && isGroupMembersOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsGroupMembersOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('chat.groupMembers')}
+            data-testid="group-members-dialog"
+            className="w-full max-w-sm mx-4 bg-[#151621]/98 border border-white/15 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <h3 className="font-bold text-base text-white">
+                {t('chat.groupMembers')}
+                <span className="ml-1.5 text-xs font-normal text-[#8c919d]">
+                  ({groupMembers.length})
+                </span>
+              </h3>
+              <button
+                onClick={() => setIsGroupMembersOpen(false)}
+                className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
+              <div
+                data-testid="join-requests"
+                className="border-b border-white/10 px-4 py-3 space-y-2"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8c919d]">
+                  {t('chat.joinRequests')}
+                </span>
+                {pendingJoinRequests.map((request) => (
+                  <div key={request.fingerprint} className="flex items-center gap-2">
+                    <span className="flex-1 min-w-0 truncate text-xs text-white/90 font-mono">
+                      {request.name || request.fingerprint}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleApproveJoinRequest(request.fingerprint);
+                      }}
+                      aria-label={`${t('chat.approveJoinRequest')}: ${request.fingerprint}`}
+                      className="px-2.5 py-1 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/40 text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer shrink-0"
+                    >
+                      {t('chat.approveJoinRequest')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectJoinRequest(request.fingerprint)}
+                      aria-label={`${t('chat.rejectJoinRequest')}: ${request.fingerprint}`}
+                      className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-semibold text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer shrink-0"
+                    >
+                      {t('chat.rejectJoinRequest')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="max-h-[260px] overflow-y-auto">
+              {groupMembers.length === 0 ? (
+                <p className="px-4 py-6 text-center text-xs text-[#8c919d]">
+                  {t('chat.noMembers')}
+                </p>
+              ) : (
+                groupMembers.map((member) => (
+                  <div
+                    key={member}
+                    className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 last:border-0"
+                  >
+                    <span className="flex-1 min-w-0 truncate text-xs text-white/90 font-mono">
+                      {member}
+                    </span>
+                    <span
+                      data-testid={`group-role-${member}`}
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide ${
+                        getMemberRole(groupRoles, member) === 'admin'
+                          ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 text-[var(--nova-accent-color, #ff4e18)] border border-[var(--nova-accent-color, #ff4e18)]/40'
+                          : 'bg-white/5 text-white/50 border border-white/10'
+                      }`}
+                    >
+                      {t(
+                        getMemberRole(groupRoles, member) === 'admin'
+                          ? 'chat.roleAdmin'
+                          : 'chat.roleMember',
+                      )}
+                    </span>
+                    {currentUserIsGroupAdmin && member !== localFingerprint && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleGroupRole(member)}
+                        aria-label={`${t(
+                          getMemberRole(groupRoles, member) === 'admin'
+                            ? 'chat.makeMember'
+                            : 'chat.makeAdmin',
+                        )}: ${member}`}
+                        className="w-7 h-7 rounded-full text-white/40 hover:text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
+                      >
+                        <ShieldCheck
+                          className={`w-3.5 h-3.5 ${
+                            getMemberRole(groupRoles, member) === 'admin' ? 'text-current' : 'opacity-40'
+                          }`}
+                        />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleRemoveGroupMember(member);
+                      }}
+                      disabled={!currentUserIsGroupAdmin}
+                      aria-label={`${t('chat.removeMember')}: ${member}`}
+                      title={currentUserIsGroupAdmin ? undefined : t('chat.adminOnly')}
+                      className="w-7 h-7 rounded-full text-white/40 hover:text-red-400 hover:bg-white/10 flex items-center justify-center transition cursor-pointer disabled:opacity-30 disabled:hover:text-white/40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {groupInvite && (
+              <div className="px-4 py-3 border-t border-white/10 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8c919d]">
+                    {t('chat.inviteTitle')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRegenerateGroupInvite}
+                    disabled={!currentUserIsGroupAdmin}
+                    title={currentUserIsGroupAdmin ? undefined : t('chat.adminOnly')}
+                    className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] hover:underline transition cursor-pointer disabled:text-white/30 disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    {t('chat.inviteRegenerate')}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={groupInvite.link}
+                    aria-label={t('chat.inviteTitle')}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/80 font-mono outline-none focus:border-[var(--nova-accent-color, #ff4e18)]/60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleCopyGroupInvite();
+                    }}
+                    aria-label={t('chat.inviteCopy')}
+                    className="px-3 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition cursor-pointer shrink-0"
+                  >
+                    {t('chat.inviteCopy')}
+                  </button>
+                </div>
+                <p className="text-[10px] leading-snug text-[#8c919d]">{t('chat.inviteHint')}</p>
+              </div>
+            )}
+
+            <div className="p-3 border-t border-white/10 flex items-center gap-2">
+              {currentUserIsGroupAdmin ? (
+                <>
+                  <input
+                    value={newMemberFingerprint}
+                    onChange={(event) => setNewMemberFingerprint(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void handleAddGroupMember();
+                    }}
+                    placeholder={t('chat.memberFingerprint')}
+                    aria-label={t('chat.memberFingerprint')}
+                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--nova-accent-color, #ff4e18)]/60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleAddGroupMember();
+                    }}
+                    disabled={!newMemberFingerprint.trim()}
+                    className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color, #ff4e18)] text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--nova-accent-color, #ff5d2b)] transition cursor-pointer shrink-0"
+                  >
+                    {t('chat.addMember')}
+                  </button>
+                </>
+              ) : (
+                <p className="text-[11px] text-[#8c919d]">{t('chat.adminOnly')}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FILE TRANSFER PROGRESS */}
+      {fileTransfer &&
+        (() => {
+          const percent =
+            fileTransfer.total > 0
+              ? Math.min(100, Math.round((fileTransfer.bytes / fileTransfer.total) * 100))
+              : 0;
+          const label =
+            fileTransfer.direction === 'send'
+              ? t('chat.fileSending')
+              : t('chat.fileReceiving');
+          return (
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="file-transfer-progress"
+              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-[#151621]/97 backdrop-blur-xl px-3 py-2.5 shadow-2xl shadow-black/60"
+            >
+              <div className="flex items-center justify-between gap-2 text-[11px] text-white">
+                <span className="truncate">{fileTransfer.fileName}</span>
+                <span className="tabular-nums text-[#8c919d]">{percent}%</span>
+              </div>
+              <div
+                className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+                aria-label={t('chat.fileTransfer')}
+              >
+                <div
+                  className="h-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] transition-[width] duration-150"
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[10px] text-[#8c919d]">
+                <span>{label}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void fileTransferManager.cancelTransfer(fileTransfer.id);
+                    setFileTransfer(null);
+                  }}
+                  className="text-[var(--nova-accent-color, #ff4e18)] hover:underline cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Wallpaper Settings Modal */}
       <WallpaperSettingsModal
@@ -3735,6 +4848,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               <button
                 onClick={() => setIsForwardModalOpen(false)}
                 className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                aria-label="Close forward dialog"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -3760,6 +4874,33 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   <Forward className="w-4 h-4 text-[var(--nova-accent-color, #ff4e18)] shrink-0" />
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {threadRootId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
+        >
+          <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white">Thread</h3>
+              <button
+                onClick={() => setThreadRootId(null)}
+                className="p-1.5 text-white/50 hover:text-white transition cursor-pointer"
+                aria-label="Close thread"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {getThreadMessages(messages, threadRootId).map((m) => (
+                  <div key={m.id} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/90">
+                    {m.text || (m.deleted ? t('chat.messageDeleted') : '…')}
+                  </div>
+                ))}
             </div>
           </div>
         </div>

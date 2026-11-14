@@ -24,6 +24,8 @@ export interface X3DHHeader {
   ephemeralKey: string;
   signedPreKeyId: number;
   oneTimePreKeyId?: number;
+  /** Session generation for coordinated re-keying; absent/0 is the first session. */
+  generation?: number;
   signature: string;
 }
 
@@ -52,6 +54,8 @@ export interface RatchetState {
   skippedMessageKeys: Record<string, string>;
   peerIdentityKey: string | null;
   peerFingerprint: string | null;
+  /** Generation of the session keys, incremented by coordinated re-keying. */
+  sessionGeneration?: number;
 }
 
 const encoder = new TextEncoder();
@@ -100,7 +104,7 @@ async function importMessageKey(messageKey: Uint8Array, usage: KeyUsage): Promis
 }
 
 function x3dhSigningData(header: Omit<X3DHHeader, 'signature'>): string {
-  return [
+  const parts = [
     'nova-x3dh-v2',
     header.senderFingerprint,
     header.senderIdentityKey,
@@ -108,7 +112,13 @@ function x3dhSigningData(header: Omit<X3DHHeader, 'signature'>): string {
     header.ephemeralKey,
     String(header.signedPreKeyId),
     String(header.oneTimePreKeyId ?? ''),
-  ].join('|');
+  ];
+  // Re-keyed sessions bind the generation to the signature so a stale reset
+  // header cannot be replayed to roll the peer's keys backwards.
+  if (header.generation !== undefined) {
+    parts.push(`gen:${header.generation}`);
+  }
+  return parts.join('|');
 }
 
 async function initiatorSharedSecret(
@@ -175,7 +185,8 @@ async function responderSharedSecret(
 
 export async function createOutboundRatchetSession(
   identity: UserIdentity,
-  bundle: PreKeyBundle
+  bundle: PreKeyBundle,
+  options: { generation?: number } = {}
 ): Promise<{ state: RatchetState; header: X3DHHeader }> {
   const { sharedSecret, ephemeralPublic } = await initiatorSharedSecret(identity, bundle);
   const ratchetSecret = x25519.utils.randomSecretKey();
@@ -196,6 +207,7 @@ export async function createOutboundRatchetSession(
     skippedMessageKeys: {},
     peerIdentityKey: bundle.identityKey,
     peerFingerprint: bundle.fingerprint,
+    sessionGeneration: options.generation ?? 0,
   };
 
   const unsignedHeader: Omit<X3DHHeader, 'signature'> = {
@@ -205,6 +217,7 @@ export async function createOutboundRatchetSession(
     ephemeralKey: bufferToBase64(ephemeralPublic),
     signedPreKeyId: bundle.signedPreKey.keyId,
     oneTimePreKeyId: bundle.oneTimePreKey?.keyId,
+    generation: options.generation,
   };
 
   const header: X3DHHeader = {
@@ -237,6 +250,7 @@ export async function createInboundRatchetSession(
     skippedMessageKeys: {},
     peerIdentityKey: header.senderIdentityKey,
     peerFingerprint: header.senderFingerprint,
+    sessionGeneration: header.generation ?? 0,
   };
 }
 
@@ -385,3 +399,10 @@ export async function ratchetDecryptMessage(
 
   return { plaintext, updatedState: nextState };
 }
+
+/**
+ * Peers re-key by starting a new X3DH session (see `createOutboundRatchetSession`
+ * with a `generation`), not by advancing one side of an existing ratchet: the
+ * responder only ratchets on a fresh remote key, so a unilateral sender advance
+ * would make subsequent messages undecryptable for the peer.
+ */

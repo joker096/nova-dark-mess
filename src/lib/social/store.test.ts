@@ -144,10 +144,10 @@ describe('social store - channel posts', () => {
       isQuiz: false,
     };
     const sticker = {
-      id: 'cyber-cat',
-      packId: 'cyber',
-      packName: 'Nova Cyber',
-      name: 'Cyber Cat',
+      id: 'test-sticker',
+      packId: 'test',
+      packName: 'Test Pack',
+      name: 'Test Sticker',
       emoji: '🐱',
     };
 
@@ -288,5 +288,20 @@ describe('social store - channel popular & search', () => {
 
     const notPopular = buildChannel({ name: 'Normal Channel' }, 2000);
     expect(notPopular.isPopular).toBe(false);
+  });
+
+  it('buildChannel creates a public channel by default', () => {
+    const channel = buildChannel({ name: 'Public Channel' }, 3000);
+    expect(channel.visibility).toBe('public');
+    expect(channel.inviteCode).toBeUndefined();
+  });
+
+  it('buildChannel generates an invite code for private channels', () => {
+    const channel = buildChannel(
+      { name: 'Secret Channel', visibility: 'private' },
+      4000,
+    );
+    expect(channel.visibility).toBe('private');
+    expect(channel.inviteCode).toMatch(/^[A-Z0-9]{6}$/);
   });
 });

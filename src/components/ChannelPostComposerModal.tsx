@@ -15,6 +15,7 @@ interface ChannelPostComposerModalProps {
   onClose: () => void;
   onPublish: (draft: ChannelPostDraft) => void;
   channelName?: string;
+  initialDraft?: ChannelPostDraft | null;
 }
 
 const nextHour = (): Date => {
@@ -29,6 +30,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
   onClose,
   onPublish,
   channelName,
+  initialDraft = null,
 }) => {
   const { t } = useLanguage();
   const [title, setTitle] = useState('');
@@ -49,6 +51,33 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
 
   useEffect(() => {
     if (!isOpen) return;
+    if (initialDraft) {
+      setTitle(initialDraft.title || '');
+      setText(initialDraft.text || '');
+      setImage(initialDraft.image ?? null);
+      setSchedule(
+        initialDraft.scheduledFor
+          ? { mode: 'scheduled', date: new Date(initialDraft.scheduledFor) }
+          : { mode: 'now', date: nextHour() },
+      );
+      if (initialDraft.poll) {
+        setPollOpen(true);
+        setPollQuestion(initialDraft.poll.question);
+        setPollOptions(initialDraft.poll.options.map((o) => o.text));
+        setPollAnonymous(initialDraft.poll.isAnonymous);
+        setPollMultiple(initialDraft.poll.allowsMultiple);
+      } else {
+        setPollOpen(false);
+        setPollQuestion('');
+        setPollOptions(['', '']);
+        setPollAnonymous(true);
+        setPollMultiple(false);
+      }
+      setSticker(initialDraft.sticker ?? null);
+      setStickerOpen(false);
+      setError(null);
+      return;
+    }
     setTitle('');
     setText('');
     setImage(null);
@@ -61,7 +90,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
     setSticker(null);
     setStickerOpen(false);
     setError(null);
-  }, [isOpen]);
+  }, [isOpen, initialDraft]);
 
   const scheduleInvalid =
     schedule.mode === 'scheduled' && schedule.date.getTime() <= Date.now();

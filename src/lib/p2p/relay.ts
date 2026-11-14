@@ -12,6 +12,12 @@ export interface RelayEnvelope {
 export type RelaySender = (envelope: RelayEnvelope) => boolean;
 export type RelayDeliveryHandler = (envelope: RelayEnvelope) => void;
 
+/**
+ * Destination used for payloads that any relay node should accept, e.g. a
+ * group join request whose author does not know the admins' fingerprints yet.
+ */
+export const RELAY_BROADCAST = '*';
+
 const DEFAULT_TTL = 3;
 const MAX_SEEN_ENVELOPES = 5000;
 
@@ -113,6 +119,12 @@ export class MeshRelay {
     if (envelope.destination === this.localFingerprint) {
       this.deliveryHandler?.(envelope);
       return;
+    }
+
+    // Broadcast envelopes are handed to the local handler and still forwarded,
+    // so every device in the mesh gets a chance to see them.
+    if (envelope.destination === RELAY_BROADCAST) {
+      this.deliveryHandler?.(envelope);
     }
 
     if (envelope.ttl <= 1 || envelope.hops.length >= 8) return;

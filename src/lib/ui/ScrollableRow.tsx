@@ -7,8 +7,24 @@ interface ScrollableRowProps {
   wheelScroll?: boolean;
 }
 
+const GAP_CLASS: Record<string, string> = {
+  '0': 'gap-0',
+  '0.5': 'gap-0.5',
+  '1': 'gap-1',
+  '1.5': 'gap-1.5',
+  '2': 'gap-2',
+  '2.5': 'gap-2.5',
+  '3': 'gap-3',
+  '3.5': 'gap-3.5',
+  '4': 'gap-4',
+  '5': 'gap-5',
+  '6': 'gap-6',
+  '8': 'gap-8',
+};
+
 export const ScrollableRow = forwardRef<HTMLDivElement, ScrollableRowProps>(
   ({ children, className, gap = '2', wheelScroll = false, ...rest }, ref) => {
+    const gapClass = GAP_CLASS[gap] ?? 'gap-2';
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -34,7 +50,7 @@ export const ScrollableRow = forwardRef<HTMLDivElement, ScrollableRowProps>(
     return (
       <div
         ref={mergedRef}
-        className={`flex items-center overflow-x-auto no-scrollbar gap-[${gap}] ${className ?? ''}`.trim()}
+        className={`flex items-center overflow-x-auto no-scrollbar ${gapClass} ${className ?? ''}`.trim()}
         {...rest}
       >
         {children}

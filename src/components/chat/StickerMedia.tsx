@@ -38,7 +38,7 @@ export const StickerMedia: React.FC<StickerMediaProps> = ({
     );
   }
 
-  const source = sticker.animationUrl || sticker.imageUrl;
+  const source = sticker.animationUrl || sticker.imageUrl || sticker.thumbUrl;
   if (source) {
     return (
       <img
