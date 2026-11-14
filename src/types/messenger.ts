@@ -212,6 +212,7 @@ export interface ChannelPost {
   title: string;
   text: string;
   image?: string;
+  images?: string[];
   imageBadge?: string;
   commentsCount: number;
   /** View counter; absent until the post has been measured. */
