@@ -390,7 +390,8 @@
       "off": "Kapalı",
       "seconds": "{{count}} sn",
       "minute": "1 dk"
-    }
+    },
+    "chatActions": "Sohbet eylemleri"
   },
   "stories": {
     "title": "Hikayeler",

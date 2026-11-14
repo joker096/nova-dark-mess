@@ -390,7 +390,8 @@
       "off": "Mati",
       "seconds": "{{count}} dtk",
       "minute": "1 mnt"
-    }
+    },
+    "chatActions": "Tindakan obrolan"
   },
   "stories": {
     "title": "Cerita",

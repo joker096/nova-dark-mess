@@ -390,7 +390,8 @@
       "off": "Tắt",
       "seconds": "{{count}} giây",
       "minute": "1 phút"
-    }
+    },
+    "chatActions": "Hành động trò chuyện"
   },
   "stories": {
     "title": "Truyện",

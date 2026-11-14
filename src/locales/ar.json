@@ -398,7 +398,8 @@
       "off": "إيقاف",
       "seconds": "{{count}} ث",
       "minute": "دقيقة واحدة"
-    }
+    },
+    "chatActions": "إجراءات المحادثة"
   },
   "stories": {
     "title": "القصص",
