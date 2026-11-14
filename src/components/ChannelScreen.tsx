@@ -25,6 +25,9 @@ import {
   Eye,
   EyeOff,
   Lock,
+  Bookmark,
+  Languages,
+  Flag,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu } from '../lib/ui';
@@ -1117,7 +1120,64 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
                             >
                               <Copy className="h-3.5 w-3.5" />
-                              {t('common.copy')}
+                              {t('channel.copyLink', 'Copy link')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSharePost(post.id);
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                              {t('channel.sharePost')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                showToast(t('channel.postSaved', 'Saved'));
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                            >
+                              <Bookmark className="h-3.5 w-3.5" />
+                              {t('channel.savePost', 'Save')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(post.text).catch(() => undefined);
+                                showToast(t('channel.textCopied', 'Text copied'));
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {t('channel.copyText', 'Copy text')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                showToast(t('channel.translateUnavailable', 'Translation unavailable'));
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                            >
+                              <Languages className="h-3.5 w-3.5" />
+                              {t('channel.translate', 'Translate')}
+                            </button>
+                            <div className="my-1 h-px bg-white/5" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                showToast(t('channel.reported', 'Reported'));
+                                setPostMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/10"
+                            >
+                              <Flag className="h-3.5 w-3.5" />
+                              {t('channel.report', 'Report')}
                             </button>
                             {channel.isOwned && onEditPost && (
                               <button
