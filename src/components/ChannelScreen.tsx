@@ -217,6 +217,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilter, setSearchFilter] = useState<'all' | 'photos' | 'videos' | 'links' | 'files'>('all');
+  const [searchDateFrom, setSearchDateFrom] = useState('');
+  const [searchDateTo, setSearchDateTo] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -310,6 +312,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     setSearchOpen(false);
     setSearchQuery('');
     setSearchFilter('all');
+    setSearchDateFrom('');
+    setSearchDateTo('');
   };
 
   useEffect(() => {
@@ -520,6 +524,19 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     ? channelPosts
         .filter((post) => Boolean(channel?.isOwned) || !isPostScheduled(post, now))
         .filter(matchesSearchFilter)
+        .filter((post) => {
+          const created = postCreatedAt(post);
+          if (searchDateFrom) {
+            const from = new Date(`${searchDateFrom}T00:00:00`).getTime();
+            if (created < from) return false;
+          }
+          if (searchDateTo) {
+            const to = new Date(`${searchDateTo}T00:00:00`);
+            to.setDate(to.getDate() + 1);
+            if (created >= to.getTime()) return false;
+          }
+          return true;
+        })
         .filter(
           (post) =>
             post.title.toLowerCase().includes(query) ||
@@ -1088,7 +1105,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             </span>
           </div>
           {searchOpen && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {(['all', 'photos', 'videos', 'links', 'files'] as const).map((filter) => (
                 <button
                   key={filter}
@@ -1103,6 +1120,20 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   {t(`channel.searchFilter.${filter}`, filter)}
                 </button>
               ))}
+              <input
+                type="date"
+                value={searchDateFrom}
+                onChange={(event) => setSearchDateFrom(event.target.value)}
+                aria-label={t('channel.searchDateFrom', 'From date')}
+                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70 outline-none"
+              />
+              <input
+                type="date"
+                value={searchDateTo}
+                onChange={(event) => setSearchDateTo(event.target.value)}
+                aria-label={t('channel.searchDateTo', 'To date')}
+                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70 outline-none"
+              />
             </div>
           )}
         </div>
