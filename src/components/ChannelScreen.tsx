@@ -243,6 +243,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const commentTriggerRef = useRef<HTMLElement | null>(null);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
   const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   // A deep link can point at one post's comments; jump to its day and open it.
   useEffect(() => {
@@ -355,6 +356,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   const handlePostsScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = event.currentTarget.scrollTop;
+    setShowJumpToLatest(scrollTop > 300);
     const delta = scrollTop - lastScrollTopRef.current;
     lastScrollTopRef.current = scrollTop;
 
@@ -1618,6 +1620,18 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           </div>
         )}
       </div>
+
+      {showJumpToLatest && (
+        <button
+          type="button"
+          onClick={() => postsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
+          aria-label={t('channel.jumpToLatest', 'Jump to latest')}
+          title={t('channel.jumpToLatest', 'Jump to latest')}
+        >
+          <ChevronUp className="h-4 w-4" />
+        </button>
+      )}
 
       <ChannelSwitcherModal
         isOpen={switcherOpen}
