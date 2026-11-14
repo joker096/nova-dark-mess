@@ -29,6 +29,7 @@ import {
   Languages,
   Flag,
   Calendar,
+  Pin,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
@@ -239,6 +240,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [commentDraft, setCommentDraft] = useState('');
   const commentTriggerRef = useRef<HTMLElement | null>(null);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
+  const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
 
   // A deep link can point at one post's comments; jump to its day and open it.
   useEffect(() => {
@@ -1224,9 +1226,31 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
                     {/* Title & menu */}
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-[14.5px] font-bold leading-snug text-white">
-                        {post.title}
-                      </h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-[14.5px] font-bold leading-snug text-white">
+                          {post.title}
+                        </h3>
+                        {(post.isPinned || post.editedAt || post.forwardedFrom) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-white/50">
+                            {post.isPinned && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-semibold text-white/70">
+                                <Pin className="h-3 w-3" />
+                                {t('channel.pinned', 'Pinned')}
+                              </span>
+                            )}
+                            {post.forwardedFrom && (
+                              <span className="inline-flex items-center gap-1">
+                                {t('channel.forwardedFrom', 'Forwarded from')} {post.forwardedFrom}
+                              </span>
+                            )}
+                            {post.editedAt && (
+                              <span className="italic text-white/40">
+                                {t('channel.edited', '(edited)')}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="relative shrink-0">
                         <button
                           type="button"
@@ -1349,9 +1373,33 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
                     {/* Body Text */}
                     {post.text && (
-                      <p className="text-[13px] font-normal leading-relaxed text-[#a0a5b2]">
-                        {post.text}
-                      </p>
+                      <div>
+                        <p
+                          className={`text-[13px] font-normal leading-relaxed text-[#a0a5b2] ${
+                            expandedPostIds.has(post.id) ? '' : 'line-clamp-4'
+                          }`}
+                        >
+                          {post.text}
+                        </p>
+                        {post.text.length > 260 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedPostIds((current) => {
+                                const next = new Set(current);
+                                if (next.has(post.id)) next.delete(post.id);
+                                else next.add(post.id);
+                                return next;
+                              })
+                            }
+                            className="mt-1 text-[11px] font-semibold text-[var(--nova-accent-color)] hover:underline"
+                          >
+                            {expandedPostIds.has(post.id)
+                              ? t('channel.showLess', 'Show less')
+                              : t('channel.readMore', 'Read more')}
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     {/* Sticker in Channel Post */}
