@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
-import { NovaIconButton, NovaTooltip } from './lib/ui';
+import { NovaIconButton, NovaTooltip, NovaBadge } from './lib/ui';
 import { ChannelScreen } from './components/ChannelScreen';
 import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
@@ -46,6 +46,7 @@ import { KYIV_CHANNEL_ID } from './lib/social/store';
 import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/ui/appearance';
 import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
+import { playSound } from './lib/notifications/sounds';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -195,6 +196,7 @@ export default function App() {
         const view = viewRef.current;
         // Inside that very group the chat itself already shows the request.
         if (view.screen === 'chat-katie' && view.chatId === applied.groupId) return;
+        playSound('notification');
         setJoinNotice({
           groupId: applied.groupId,
           groupName:
@@ -436,10 +438,10 @@ export default function App() {
       default:
         return null;
     }
-  };
-
-  const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat-katie';
-  const isDesktopChannelActive = currentScreen === 'channel-kyiv';
+  };   const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat-katie';
+   const isDesktopChannelActive = currentScreen === 'channel-kyiv';
+   const totalUnreadChats = MOCK_CHATS.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0);
+   const totalUnreadChannels = channels.reduce((acc, channel) => acc + (channel.unreadCount || 0), 0);
 
 
   return (
@@ -470,6 +472,9 @@ export default function App() {
             title={t('common.chats')}
           >
             <MessageSquare className="w-5 h-5 fill-[var(--nova-accent-color)]" />
+            {totalUnreadChats > 0 && (
+              <NovaBadge value={totalUnreadChats} max={99} variant="danger" className="absolute -top-0.5 -right-0.5" />
+            )}
             {/* Active Pill Indicator on left edge */}
             {isDesktopChatActive && (
               <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
@@ -490,6 +495,9 @@ export default function App() {
             title={t('common.channels')}
           >
             <Radio className={`w-5 h-5 ${isDesktopChannelActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+            {totalUnreadChannels > 0 && (
+              <NovaBadge value={totalUnreadChannels} max={99} variant="danger" className="absolute -top-0.5 -right-0.5" />
+            )}
             {isDesktopChannelActive && (
               <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
