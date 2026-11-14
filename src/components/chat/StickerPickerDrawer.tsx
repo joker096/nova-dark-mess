@@ -285,6 +285,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 type="button"
                 onClick={() => setStickerSearch('')}
                 className="text-white/40 hover:text-white text-xs cursor-pointer"
+                aria-label="Clear sticker search"
               >
                 ✕
               </button>
@@ -518,6 +519,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                   type="button"
                   onClick={() => setGifSearch('')}
                   className="text-white/40 hover:text-white text-xs"
+                  aria-label="Clear GIF search"
                 >
                   ✕
                 </button>

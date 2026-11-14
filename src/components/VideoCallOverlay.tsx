@@ -15,7 +15,7 @@ import {
   Signal,
   Radio,
 } from 'lucide-react';
-import { CURRENT_USER } from '../data/mockMessengerData';
+import { useAccount } from '../hooks/useAccount';
 
 interface VideoCallOverlayProps {
   isOpen: boolean;
@@ -54,6 +54,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   onToggleMic,
   onToggleCamera,
 }) => {
+  const { account } = useAccount();
   const name = contactName || 'Contact';
   const avatar = contactAvatar || '';
   const isVoiceCall = mode === 'voice';
@@ -420,7 +421,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                 />
               ) : (
                 <img
-                  src={CURRENT_USER.avatar}
+                  src={account.avatar}
                   alt="You"
                   className={`w-full h-full object-cover transition-transform duration-300 ${
                     cameraFacing === 'back' ? 'scale-x-[-1]' : ''

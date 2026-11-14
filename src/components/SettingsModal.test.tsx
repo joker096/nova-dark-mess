@@ -30,6 +30,11 @@ const securityMock = vi.hoisted(() => ({
   clearLocalEncryptedData: vi.fn(async () => {}),
 }));
 
+const cloudMock = vi.hoisted(() => ({
+  uploadEncryptedBackup: vi.fn(async () => {}),
+  downloadEncryptedBackup: vi.fn(async () => new Blob(['cloud-backup'])),
+}));
+
 const premiumMock = vi.hoisted(() => ({
   premium: false,
   canUseThemes: false,
@@ -45,6 +50,7 @@ vi.mock('../context/LanguageContext', () => ({
     languages: languageMock.languages,
   }),
 }));
+vi.mock('../lib/storage/cloudBackup', () => cloudMock);
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => securityMock,
 }));
@@ -284,6 +290,97 @@ describe('SettingsModal', () => {
     clickSpy.mockRestore();
   });
 
+  it('persists the metadata minimization opt-in and reports cover traffic state', async () => {
+    Object.defineProperty(navigator, 'getBattery', {
+      configurable: true,
+      value: async () => ({ level: 0.1, charging: false }),
+    });
+
+    renderSettings();
+    expect(screen.queryByText(/settings.metadataMinimizationHint/)).toBeNull();
+
+    fireEvent.click(screen.getByText('settings.metadataMinimization'));
+
+    await waitFor(() => expect(screen.getByText(/Cover traffic paused/)).toBeTruthy());
+    expect(JSON.parse(localStorage.getItem('nova_privacy_mode') ?? '{}')).toEqual({
+      metadataMinimization: true,
+    });
+    delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
+  });
+
+  it('keeps cover traffic on when charging on a low battery', async () => {
+    Object.defineProperty(navigator, 'getBattery', {
+      configurable: true,
+      value: async () => ({ level: 0.1, charging: true }),
+    });
+    localStorage.setItem('nova_privacy_mode', JSON.stringify({ metadataMinimization: true }));
+
+    renderSettings();
+    await waitFor(() => expect(screen.getByText(/Cover traffic active/)).toBeTruthy());
+    delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
+  });
+
+  it('uploads the encrypted backup to a cloud endpoint instead of saving locally', async () => {
+    securityMock.identity = { mnemonic: 'alpha beta gamma delta' };
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: /settings.exportBackup/ }));
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'long-enough-pass' } });
+
+    const downloadButton = screen.getByRole('button', { name: 'Export' });
+    fireEvent.change(screen.getByPlaceholderText(/webdav/i), {
+      target: { value: 'https://dav.example/nova.nova-backup' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/bearer token/i), { target: { value: 'secret-token' } });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Upload' })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    await waitFor(() => expect(cloudMock.uploadEncryptedBackup).toHaveBeenCalledTimes(1));
+    expect(cloudMock.uploadEncryptedBackup).toHaveBeenCalledWith(
+      { url: 'https://dav.example/nova.nova-backup', headers: { Authorization: 'Bearer secret-token' } },
+      expect.anything(),
+    );
+    expect(clickSpy).not.toHaveBeenCalled();
+    clickSpy.mockRestore();
+    void downloadButton;
+  });
+
+  it('rejects a cloud endpoint without an http scheme', async () => {
+    securityMock.identity = { mnemonic: 'alpha beta gamma delta' };
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: /settings.exportBackup/ }));
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'long-enough-pass' } });
+    fireEvent.change(screen.getByPlaceholderText(/webdav/i), { target: { value: 'dav.example/nova' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/must start with http/i)).toBeTruthy(),
+    );
+    expect(cloudMock.uploadEncryptedBackup).not.toHaveBeenCalled();
+  });
+
+  it('restores a backup downloaded from the cloud', async () => {
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: /settings.importBackup/ }));
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'restore-pass' } });
+    fireEvent.change(screen.getByPlaceholderText(/webdav/i), {
+      target: { value: 'https://dav.example/nova.nova-backup' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Download from cloud/i }));
+    await waitFor(() => expect(cloudMock.downloadEncryptedBackup).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/Cloud blob ready/)).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+    await waitFor(() =>
+      expect(securityMock.importEncryptedBackup).toHaveBeenCalledWith('cloud-backup', 'restore-pass'),
+    );
+  });
+
   it('copies the recovery phrase and shows confirmation', async () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, 'clipboard', {
@@ -300,5 +397,36 @@ describe('SettingsModal', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('alpha beta gamma delta'));
     expect(screen.getByRole('button', { name: /common.copied/ })).toBeTruthy();
+  });
+
+  it('reports an empty join request outbox', () => {
+    renderSettings();
+
+    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxEmpty');
+    expect(screen.queryByRole('button', { name: 'settings.joinOutboxRetry' })).toBeNull();
+  });
+
+  it('surfaces undelivered join requests with a manual retry', () => {
+    localStorage.setItem(
+      'nova_group_join_outbox',
+      JSON.stringify([
+        {
+          id: 'job-1',
+          groupId: 'thailand',
+          kind: 'request',
+          fingerprint: 'nova_pk_peer',
+          createdAt: 1,
+          attempts: 2,
+          nextAttemptAt: Date.now() + 60_000,
+        },
+      ]),
+    );
+
+    renderSettings();
+
+    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxPending');
+    // No session relay is running in isolation: the job stays queued after retry.
+    fireEvent.click(screen.getByRole('button', { name: 'settings.joinOutboxRetry' }));
+    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxPending');
   });
 });

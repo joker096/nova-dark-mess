@@ -206,7 +206,7 @@ export const INITIAL_KATIE_MESSAGES: ChatMessage[] = [
     senderId: 'other',
     text: '🐱 Cyber Cat',
     time: '19:43',
-    sticker: STICKER_PACKS[0].stickers[0],
+    sticker: STICKER_PACKS[0]?.stickers?.[0],
   },
   {
     id: 'm11',
@@ -575,9 +575,75 @@ export const CONTACT_PROFILES: Record<string, ContactProfile> = {
 };
 
 
+const CREATED_GROUPS_KEY = 'nova_created_groups';
+const CREATED_GROUP_HISTORIES_KEY = 'nova_created_group_histories';
+
+export function loadCreatedGroups(): ChatItem[] {
+  try {
+    const raw = localStorage.getItem(CREATED_GROUPS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is ChatItem =>
+      typeof item === 'object' && item !== null && typeof (item as ChatItem).id === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveCreatedGroups(groups: ChatItem[]): void {
+  try {
+    localStorage.setItem(CREATED_GROUPS_KEY, JSON.stringify(groups));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadCreatedGroupHistories(): Record<string, ChatMessage[]> {
+  try {
+    const raw = localStorage.getItem(CREATED_GROUP_HISTORIES_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return parsed as Record<string, ChatMessage[]>;
+  } catch {
+    return {};
+  }
+}
+
+export function saveCreatedGroupHistories(histories: Record<string, ChatMessage[]>): void {
+  try {
+    localStorage.setItem(CREATED_GROUP_HISTORIES_KEY, JSON.stringify(histories));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function registerCreatedGroups(): void {
+  for (const group of loadCreatedGroups()) {
+    if (!MOCK_CHATS.some((chat) => chat.id === group.id)) {
+      MOCK_CHATS.push(group);
+    }
+  }
+  const histories = loadCreatedGroupHistories();
+  for (const [chatId, messages] of Object.entries(histories)) {
+    if (!CONVERSATION_HISTORIES[chatId]) {
+      CONVERSATION_HISTORIES[chatId] = messages;
+    }
+  }
+}
+
 export function appendConversationHistory(chatId: string, messages: ChatMessage[]): void {
   if (!CONVERSATION_HISTORIES[chatId]) {
     CONVERSATION_HISTORIES[chatId] = [];
   }
   CONVERSATION_HISTORIES[chatId].push(...messages);
+
+  const groups = loadCreatedGroups();
+  if (groups.some((group) => group.id === chatId)) {
+    const histories = loadCreatedGroupHistories();
+    histories[chatId] = CONVERSATION_HISTORIES[chatId];
+    saveCreatedGroupHistories(histories);
+  }
 }

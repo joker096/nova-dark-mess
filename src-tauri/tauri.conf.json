@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "react-example",
+  "productName": "Nova Dark Messenger",
   "version": "1.0.48",
   "identifier": "com.messanger.e2e",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "react-example",
+        "title": "Nova Dark Messenger",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -21,6 +21,19 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["nova"]
+      },
+      "mobile": [
+        {
+          "scheme": ["nova"],
+          "appLink": false
+        }
+      ]
     }
   },
   "bundle": {
@@ -34,7 +47,11 @@
       "icons/icon.ico"
     ],
     "android": {
+      "minSdkVersion": 24,
       "debugApplicationIdSuffix": ".debug"
+    },
+    "iOS": {
+      "minimumSystemVersion": "15.0"
     }
   }
 }

@@ -10,7 +10,7 @@ interface NovaSelectableButtonProps extends HTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  'flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-xl border px-3 py-2';
+  'flex-1 flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition rounded-lg border px-2 py-1.5 text-xs';
 
 const VARIANT_CONFIG: Record<string, string> = {
   selected: 'bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 text-white shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25',

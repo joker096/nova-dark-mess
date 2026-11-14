@@ -8,6 +8,7 @@ import {
   Sparkles,
   Sliders,
   CheckCheck,
+  Lock,
 } from 'lucide-react';
 import {
   WALLPAPER_OPTIONS,
@@ -16,6 +17,7 @@ import {
   WallpaperCategory,
 } from '../data/wallpapers';
 import { DoodleBackground } from './DoodleBackground';
+import { usePremium } from '../hooks/usePremium';
 
 interface WallpaperSettingsModalProps {
   isOpen: boolean;
@@ -38,6 +40,8 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<WallpaperCategory>('all');
   const [localIntensity, setLocalIntensity] = useState<number>(intensity);
+  const { canUse, checkout } = usePremium();
+  const premiumWallpapers = canUse('wallpaper');
 
   if (!isOpen) return null;
 
@@ -180,11 +184,34 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
         <div className="grid grid-cols-2 gap-2.5 overflow-y-auto no-scrollbar py-1 pr-0.5 flex-1 max-h-[38vh]">
           {filteredWallpapers.map((item: WallpaperOption) => {
             const isSelected = item.id === currentWallpaper;
+            const isLocked = item.premium === true && !premiumWallpapers;
 
             return (
               <div
                 key={item.id}
-                onClick={() => onSelect(item.id)}
+                data-testid={`wallpaper-${item.id}`}
+                data-premium-locked={isLocked ? 'true' : undefined}
+                role="button"
+                tabIndex={0}
+                aria-label={`${item.name}${isLocked ? ' (Premium)' : ''}`}
+                aria-disabled={isLocked || undefined}
+                onClick={() => {
+                  // Premium wallpapers open the local checkout instead of applying.
+                  if (isLocked) {
+                    void checkout();
+                    return;
+                  }
+                  onSelect(item.id);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  if (isLocked) {
+                    void checkout();
+                    return;
+                  }
+                  onSelect(item.id);
+                }}
                 className={`relative rounded-2xl overflow-hidden border p-3 cursor-pointer transition-all duration-200 flex flex-col justify-between min-h-[104px] group active:scale-[0.98] ${
                   isSelected
                     ? 'border-[var(--nova-accent-color)] ring-2 ring-[var(--nova-accent-color)]/40 shadow-lg shadow-[var(--nova-accent-color)]/15 bg-[#1b1d28]'
@@ -209,10 +236,17 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
                     </span>
                   )}
 
-                  {isSelected && (
-                    <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-md shadow-[var(--nova-accent-color)]/50 animate-in zoom-in-75 duration-150">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
+                  {isLocked ? (
+                    <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-black/45 backdrop-blur-md text-amber-300 border border-amber-400/40 font-semibold">
+                      <Lock className="w-2.5 h-2.5" />
+                      Premium
+                    </span>
+                  ) : (
+                    isSelected && (
+                      <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white shadow-md shadow-[var(--nova-accent-color)]/50 animate-in zoom-in-75 duration-150">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </div>
+                    )
                   )}
                 </div>
 

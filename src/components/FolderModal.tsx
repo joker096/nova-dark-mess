@@ -20,6 +20,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { usePremium } from '../hooks/usePremium';
+import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { ChatFolder, ChatItem } from '../types/messenger';
 
 interface FolderModalProps {
@@ -76,6 +77,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
     editingFolder?.chatIds || []
   );
   const [errorMsg, setErrorMsg] = useState('');
+  const iconRowRef = useWheelScroll();
 
   if (!isOpen) return null;
 
@@ -210,7 +212,17 @@ export const FolderModal: React.FC<FolderModalProps> = ({
               <label className="block text-[11px] font-semibold text-[#868b98] mb-1.5">
                 {t('folders.iconLabel')}
               </label>
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              <div
+                ref={iconRowRef}
+                data-testid="folder-icon-list"
+                className="w-full min-w-0 max-w-full flex flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain no-scrollbar pb-1 touch-pan-x"
+                onWheel={(e) => {
+                  if (e.deltaX === 0 && e.deltaY !== 0) {
+                    e.preventDefault();
+                    iconRowRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
+                  }
+                }}
+              >
                 {FOLDER_ICONS.map((item) => {
                   const IconComp = item.icon;
                   const isSelected = selectedIcon === item.id;

@@ -149,6 +149,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             type="button"
           onClick={() => setIsEmojiPickerOpen(false)}
           className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition ml-auto shrink-0"
+          aria-label="Close emoji picker"
         >
             <X className="w-3.5 h-3.5" />
           </button>

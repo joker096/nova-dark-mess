@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Radio,
   BarChart3,
   Settings,
   Folder,
+  Users,
+  MapPin,
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
 import { ChannelScreen } from './components/ChannelScreen';
 import { ChannelListPanel } from './components/ChannelListPanel';
+import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 
 // Secondary screens and the settings modal are loaded on demand, so their code
@@ -21,6 +24,9 @@ const ProfileScreen = lazy(() =>
 const AnalyticsScreen = lazy(() =>
   import('./components/AnalyticsScreen').then((m) => ({ default: m.AnalyticsScreen })),
 );
+const MeshMapScreen = lazy(() =>
+  import('./components/MeshMap').then((m) => ({ default: m.MeshMap })),
+);
 const SettingsModal = lazy(() =>
   import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal })),
 );
@@ -30,18 +36,30 @@ const ScreenFallback: React.FC = () => (
     <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/15 border-t-[var(--nova-accent-color)]" />
   </div>
 );
-import { CURRENT_USER } from './data/mockMessengerData';
 import { useLanguage } from './context/LanguageContext';
+import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
 import { useSocialData } from './hooks/useSocialData';
 import { KYIV_CHANNEL_ID } from './lib/social/store';
 import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/ui/appearance';
+import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
+import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
+import { markJoinPending } from './lib/social/groupJoinRequests';
+import { applyContactOverrides } from './lib/contacts/contactOverrides';
+import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
+import {
+  JOIN_RETRY_MAX_MS,
+  JoinRequestRelay,
+  nextJoinOutboxDelay,
+} from './lib/social/joinRequestRelay';
+import { MOCK_CHATS } from './data/mockMessengerData';
 
-type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics';
+type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map';
 
 export default function App() {
   const { t } = useLanguage();
-  const { isLocked, pinHash, unlock } = useSecurity();
+  const { account } = useAccount();
+  const { isLocked, pinHash, unlock, identity } = useSecurity();
   const {
     stories,
     channels,
@@ -57,8 +75,11 @@ export default function App() {
     createChannelPost,
     voteChannelPoll,
     deleteChannelPost,
+    editChannelPost,
+    addChannelComment,
     togglePostReaction,
     toggleChannelPopular,
+    toggleChannelSubscriberPrivacy,
   } = useSocialData();
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
   const [activeChatId, setActiveChatId] = useState<string>('katie');
@@ -66,8 +87,142 @@ export default function App() {
   const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
+    null,
+  );
 
   const foldersRef = useRef<{ openFolderModal: () => void } | null>(null);
+  const handledDeepLinkRef = useRef<string | null>(null);
+
+  const [joinNotice, setJoinNotice] = useState<JoinRequestNoticeData | null>(null);
+  // The relay effect outlives screen switches, so it reads the current view
+  // from a ref instead of restarting on every navigation.
+  const viewRef = useRef({ screen: currentScreen, chatId: activeChatId });
+  useEffect(() => {
+    viewRef.current = { screen: currentScreen, chatId: activeChatId };
+  }, [currentScreen, activeChatId]);
+
+  useEffect(() => {
+    if (!joinNotice) return;
+    const timer = window.setTimeout(() => setJoinNotice(null), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [joinNotice]);
+
+  // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
+  // stay offline: they carry an id, not an account lookup.
+  const handleTarget = useCallback(
+    (target: DeepLinkTarget, link: string) => {
+      if (!target || target.type === 'device-link') return;
+
+      if (target.type === 'chat') {
+        // An invite link asks first: joining a group is never silent.
+        if (/(?:\?|&)invite=([a-f0-9]+)/i.test(link)) {
+          const groupName =
+            MOCK_CHATS.find((chat) => chat.id === target.id)?.name ?? target.id;
+          setPendingInvite({ chatId: target.id, groupName });
+          return;
+        }
+        setActiveChatId(target.id);
+        setCurrentScreen('chat-katie');
+        return;
+      }
+      if (target.type === 'profile') {
+        setActiveProfileId(target.id);
+        setCurrentScreen('profile-katie');
+        return;
+      }
+      if (channels.some((channel) => channel.id === target.id)) {
+        setActiveChannelId(target.id);
+        setCurrentScreen('channel-kyiv');
+      }
+    },
+    [channels],
+  );
+
+  useEffect(() => {
+    const applyDeepLink = () => {
+      const hash = window.location.hash;
+      if (!hash || hash === handledDeepLinkRef.current) return;
+      handledDeepLinkRef.current = hash;
+      const target = parseDeepLinkFromHash(hash);
+      if (!target) return;
+      handleTarget(target, hash);
+    };
+
+    applyDeepLink();
+    window.addEventListener('hashchange', applyDeepLink);
+    return () => window.removeEventListener('hashchange', applyDeepLink);
+  }, [handleTarget]);
+
+  // The Tauri shells hand links to the webview instead of using a hash.
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    let lastLink: string | null = null;
+    void subscribeTauriDeepLinks((target, link) => {
+      if (link === lastLink) return;
+      lastLink = link;
+      handleTarget(target, link);
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unsubscribe = fn;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [handleTarget]);
+
+  // Join requests and admin decisions travel through a session-wide mesh relay,
+  // so a request survives closing the group (or the app) before an admin sees it.
+  useEffect(() => {
+    const fingerprint = identity?.fingerprint;
+    if (!fingerprint) return;
+    const relay = new JoinRequestRelay({
+      localFingerprint: fingerprint,
+      // Only admins of a group record incoming requests for it.
+      isAdminOf: (groupId) => isGroupAdmin(loadGroupRoles(groupId), fingerprint),
+      onApplied: (applied) => {
+        if (applied.kind !== 'request') return;
+        const view = viewRef.current;
+        // Inside that very group the chat itself already shows the request.
+        if (view.screen === 'chat-katie' && view.chatId === applied.groupId) return;
+        setJoinNotice({
+          groupId: applied.groupId,
+          groupName:
+            MOCK_CHATS.find((chat) => chat.id === applied.groupId)?.name ?? applied.groupId,
+          who: applied.name || applied.fingerprint,
+        });
+      },
+    });
+    relay.start();
+
+    // Wake up when the earliest queued job is due (its backoff expiry), not on
+    // a fixed tick; an idle outbox is only polled occasionally for new work.
+    let timer: number | undefined;
+    let stopped = false;
+    const schedule = () => {
+      if (stopped) return;
+      const delay = nextJoinOutboxDelay();
+      const wait = delay === null ? 15_000 : Math.min(Math.max(delay, 1_000), JOIN_RETRY_MAX_MS);
+      timer = window.setTimeout(() => {
+        relay.flush();
+        schedule();
+      }, wait);
+    };
+    schedule();
+
+    const flush = () => relay.flush();
+    window.addEventListener('online', flush);
+    window.addEventListener('focus', flush);
+    return () => {
+      stopped = true;
+      if (timer) window.clearTimeout(timer);
+      window.removeEventListener('online', flush);
+      window.removeEventListener('focus', flush);
+      relay.stop();
+    };
+  }, [identity?.fingerprint]);
 
   useEffect(() => {
     try {
@@ -82,6 +237,7 @@ export default function App() {
       }
     applyAppTheme(readAppTheme());
     applyFontSize(readFontSize());
+    applyContactOverrides();
   }, []);
 
   const openProfile = (profileId: string) => {
@@ -99,6 +255,13 @@ export default function App() {
   const handleDeleteChannel = (channelId: string) => {
     deleteChannel(channelId);
     if (channelId === activeChannelId) {
+      setActiveChannelId(KYIV_CHANNEL_ID);
+    }
+  };
+
+  const handleDeleteChannels = (channelIds: string[]) => {
+    channelIds.forEach((channelId) => deleteChannel(channelId));
+    if (channelIds.includes(activeChannelId)) {
       setActiveChannelId(KYIV_CHANNEL_ID);
     }
   };
@@ -121,11 +284,15 @@ export default function App() {
     onCreateChannel: handleCreateChannel,
     onSelectChannel: setActiveChannelId,
     onDeleteChannel: handleDeleteChannel,
+    onDeleteChannels: handleDeleteChannels,
     onCreatePost: createChannelPost,
     onVotePoll: voteChannelPoll,
     onDeletePost: deleteChannelPost,
+    onEditPost: editChannelPost,
+    onAddComment: addChannelComment,
     onToggleReaction: togglePostReaction,
     onToggleSound: setChannelSound,
+    onToggleSubscriberPrivacy: toggleChannelSubscriberPrivacy,
   };
 
   // Desktop Main Panel renderer
@@ -152,10 +319,17 @@ export default function App() {
             onOpenChat={() => {
               setCurrentScreen('chat-katie');
             }}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
       case 'analytics':
         return <AnalyticsScreen />;
+      case 'mesh-map':
+        return (
+          <div className="w-full h-full p-4">
+            <MeshMapScreen />
+          </div>
+        );
       case 'chat-katie':
       case 'chats':
       default:
@@ -182,12 +356,14 @@ export default function App() {
               setCurrentScreen('chat-katie');
             }}
             onOpenChannel={openChannel}
-            onOpenProfile={() => openProfile(CURRENT_USER.id)}
+            onOpenProfile={() => openProfile(account.id)}
             onOpenAnalytics={() => setCurrentScreen('analytics')}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             activeChatId={activeChatId}
             activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
             stories={stories}
             channels={channels}
+            localFingerprint={identity?.fingerprint}
             now={now}
             onCreateStory={createStory}
             onDeleteStory={deleteStory}
@@ -217,10 +393,17 @@ export default function App() {
             profileId={activeProfileId}
             onBack={() => setCurrentScreen('chat-katie')}
             onOpenChat={() => setCurrentScreen('chat-katie')}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
       case 'analytics':
         return <AnalyticsScreen onBack={() => setCurrentScreen('chats')} />;
+      case 'mesh-map':
+        return (
+          <div className="w-full h-full p-4">
+            <MeshMapScreen />
+          </div>
+        );
       default:
         return null;
     }
@@ -310,6 +493,22 @@ export default function App() {
           )}
         </button>
 
+          {/* Mesh Map tab */}
+          <button
+            onClick={() => setCurrentScreen('mesh-map')}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
+              currentScreen === 'mesh-map'
+                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
+                : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
+            }`}
+            title="Mesh Map"
+          >
+            <MapPin className={`w-5 h-5 ${currentScreen === 'mesh-map' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+          {currentScreen === 'mesh-map' && (
+            <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
+          )}
+        </button>
+
         </nav>
 
         <div className="flex flex-col items-center gap-2">
@@ -324,20 +523,20 @@ export default function App() {
 
           {/* User Avatar with Status indicator */}
           <button
-            onClick={() => openProfile(CURRENT_USER.id)}
+            onClick={() => openProfile(account.id)}
             className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
-            title={`${CURRENT_USER.name} (Online)`}
+            title={`${account.displayName} (Online)`}
           >
             <img
-              src={CURRENT_USER.avatar}
-              alt={CURRENT_USER.name}
+              src={account.avatar}
+              alt={account.displayName}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
             <div className="w-full h-full bg-[var(--nova-accent-color)] text-white font-bold text-xs flex items-center justify-center">
-              ME
+              {account.displayName.slice(0, 2).toUpperCase()}
             </div>
             {/* Online Green Beacon */}
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0b0c11]" />
@@ -346,34 +545,40 @@ export default function App() {
       </aside>
 
       {/* Left Column (Desktop Only) */}
-      <section className="hidden md:flex w-[340px] lg:w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden">
-        {isDesktopChannelActive ? (
-          <ChannelListPanel
-            channels={channels}
-            activeChannelId={activeChannelId}
-            onSelectChannel={openChannel}
-            onCreateChannel={handleCreateChannel}
-            onTogglePopular={handleToggleChannelPopular}
-          />
-        ) : (
-          <ChatsScreen
-            ref={foldersRef}
-            onSelectChat={(id) => {
-              setActiveChatId(id);
-              setCurrentScreen('chat-katie');
-            }}
-            onOpenChannel={openChannel}
-            onOpenProfile={() => openProfile(CURRENT_USER.id)}
-            activeChatId={activeChatId}
-            activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
-            stories={stories}
-            channels={channels}
-            now={now}
-            onCreateStory={createStory}
-            onDeleteStory={deleteStory}
-            onViewStory={viewStory}
-            onToggleStoryReaction={toggleStoryReaction}
-          />
+      <section className="hidden md:flex w-[340px] lg:w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden relative">
+        {/* ChatsScreen stays mounted so the Folders button in the rail always
+            has a live ref (it used to go dead on the Channels screen). */}
+        <ChatsScreen
+          ref={foldersRef}
+          onSelectChat={(id) => {
+            setActiveChatId(id);
+            setCurrentScreen('chat-katie');
+          }}
+          onOpenChannel={openChannel}
+          onOpenProfile={() => openProfile(account.id)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          activeChatId={activeChatId}
+          activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
+          stories={stories}
+          channels={channels}
+          localFingerprint={identity?.fingerprint}
+          now={now}
+          onCreateStory={createStory}
+          onDeleteStory={deleteStory}
+          onViewStory={viewStory}
+          onToggleStoryReaction={toggleStoryReaction}
+        />
+        {isDesktopChannelActive && (
+          <div className="absolute inset-0 z-20 flex flex-col bg-[#0c0d11]">
+            <ChannelListPanel
+              channels={channels}
+              activeChannelId={activeChannelId}
+              onSelectChannel={openChannel}
+              onCreateChannel={handleCreateChannel}
+              onTogglePopular={handleToggleChannelPopular}
+              onDeleteChannels={handleDeleteChannels}
+            />
+          </div>
         )}
       </section>
 
@@ -390,6 +595,69 @@ export default function App() {
       </div>
 
 
+
+      <JoinRequestNotice
+        notice={joinNotice}
+        onDismiss={() => setJoinNotice(null)}
+        onOpen={(groupId) => {
+          setActiveChatId(groupId);
+          setCurrentScreen('chat-katie');
+          setJoinNotice(null);
+        }}
+      />
+
+      {pendingInvite && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setPendingInvite(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('chat.joinTitle')}
+            data-testid="join-group-dialog"
+            className="w-full max-w-sm bg-[#151621] border border-white/15 rounded-3xl shadow-2xl shadow-black/80 p-5 space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)]">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm text-white truncate">
+                  {pendingInvite.groupName}
+                </h3>
+                <p className="text-[11px] text-[#8c919d]">{t('chat.joinTitle')}</p>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-white/70">
+              {t('chat.joinPrompt', { group: pendingInvite.groupName })}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingInvite(null)}
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/70 transition cursor-pointer"
+              >
+                {t('chat.joinDecline')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Joining is a request, not membership: an admin has to approve it.
+                  markJoinPending(pendingInvite.chatId);
+                  setActiveChatId(pendingInvite.chatId);
+                  setCurrentScreen('chat-katie');
+                  setPendingInvite(null);
+                }}
+                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-xs font-semibold text-white transition cursor-pointer"
+              >
+                {t('chat.joinAccept')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* App Settings Modal (language switch lives here) */}
       <Suspense fallback={null}>

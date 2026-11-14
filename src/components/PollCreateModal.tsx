@@ -139,6 +139,7 @@ export const PollCreateModal: React.FC<PollCreateModalProps> = ({
               type="button"
               onClick={() => setError(null)}
               className="text-rose-400 hover:text-white"
+              aria-label="Dismiss error"
             >
               ✕
             </button>

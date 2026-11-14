@@ -1,6 +1,14 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .on_permission_request(|_, kind| match kind {
+      tauri::webview::PermissionKind::Camera
+      | tauri::webview::PermissionKind::Microphone => {
+        tauri::webview::PermissionResponse::Allow
+      }
+      _ => tauri::webview::PermissionResponse::Default,
+    })
+    .plugin(tauri_plugin_deep_link::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -9,6 +17,17 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      // Desktop deep links (`nova://chat/<id>`) are only registered by the
+      // installed bundle, so register the configured schemes during dev too.
+      #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+      {
+        use tauri_plugin_deep_link::DeepLinkExt;
+        if let Err(err) = app.deep_link().register_all() {
+          log::warn!("deep link registration failed: {err}");
+        }
+      }
+
       Ok(())
     })
     .run(tauri::generate_context!())

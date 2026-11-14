@@ -23,6 +23,8 @@ export interface StoryDraft {
   scheduledFor?: number;
 }
 
+export type ChannelVisibility = 'public' | 'private';
+
 export interface ChannelInfo {
   id: string;
   name: string;
@@ -34,6 +36,9 @@ export interface ChannelInfo {
   isOwned?: boolean;
   isPopular?: boolean;
   soundEnabled?: boolean;
+  hideSubscriberCount?: boolean;
+  visibility?: ChannelVisibility;
+  inviteCode?: string;
 }
 
 export interface ChannelDraft {
@@ -42,6 +47,7 @@ export interface ChannelDraft {
   avatar?: string;
   coverImage?: string;
   isPopular?: boolean;
+  visibility?: ChannelVisibility;
 }
 
 export interface ChannelPostDraft {
@@ -74,6 +80,7 @@ export interface ChatItem {
   isChannel?: boolean;
   type: 'direct' | 'group' | 'channel';
   category?: string;
+  members?: string[];
 }
 
 export interface VoiceNoteData {
@@ -119,6 +126,7 @@ export interface StickerData {
   name: string;
   emoji: string;
   imageUrl?: string;
+  thumbUrl?: string;
   svgBadge?: string;
   category?: string;
   access?: StickerAccess;
@@ -154,7 +162,15 @@ export interface ChatMessage {
   isPinned?: boolean;
   pinnedNote?: string;
   editedAt?: number;
+  expiresAt?: number;
   deleted?: boolean;
+  deletedForEveryone?: boolean;
+  /** System event row (member added/removed, role change). */
+  system?: boolean;
+  viewOnce?: boolean;
+  pinned?: boolean;
+  viewed?: boolean;
+  wiped?: boolean;
   reactions?: {
     emoji: string;
     count: number;
@@ -166,6 +182,14 @@ export interface ChatMessage {
     senderName: string;
   };
   forwardedFrom?: string;
+}
+
+export interface ChannelComment {
+  id: string;
+  postId: string;
+  text: string;
+  authorName: string;
+  createdAt: number;
 }
 
 export interface ChannelPost {
@@ -188,6 +212,7 @@ export interface ChannelPost {
   authorName?: string;
   poll?: PollData;
   sticker?: StickerData;
+  comments?: ChannelComment[];
 }
 
 export interface SharedMediaItem {

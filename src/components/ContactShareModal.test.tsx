@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ContactShareModal } from './ContactShareModal';
 
 vi.mock('../context/LanguageContext', () => ({
@@ -25,47 +25,54 @@ vi.mock('../context/LanguageContext', () => ({
   }),
 }));
 
-const renderModal = () =>
+const renderModal = (overrides: { onClose?: () => void; onShared?: (id: string) => void } = {}) =>
   render(
     <ContactShareModal
       isOpen
-      onClose={vi.fn()}
+      onClose={overrides.onClose ?? vi.fn()}
       contactName="Katie Rogers"
       contactId="katie"
-      onShared={vi.fn()}
+      onShared={overrides.onShared ?? vi.fn()}
     />,
   );
 
-describe('ContactShareModal - privacy & consent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+beforeEach(() => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn(async () => undefined) },
+    configurable: true,
   });
+});
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('ContactShareModal - privacy & consent', () => {
   it('renders contact ID only, not phone or email', () => {
     renderModal();
     expect(screen.getByText('katie')).toBeInTheDocument();
     expect(screen.getByText('ID only')).toBeInTheDocument();
-    // No phone/email should appear
     expect(screen.queryByText(/^\+/)).toBeNull();
     expect(screen.queryByText(/@/)).toBeNull();
   });
 
-  it('shows consent checkbox that must be checked before sharing', () => {
-    renderModal();
-    const consent = screen.getByLabelText(
-      /I agree to share only this contact ID/,
-    );
-    expect(consent).not.toBeChecked();
+  it('requires consent before sharing but always allows cancelling', () => {
+    const onClose = vi.fn();
+    renderModal({ onClose });
 
-    const shareBtn = screen.getByRole('button', { name: /Share ID/ });
-    expect(shareBtn).toBeDisabled();
+    const consent = screen.getByLabelText(/I agree to share only this contact ID/);
+    expect(consent).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /Share ID/ })).toBeDisabled();
+
+    const cancel = screen.getByRole('button', { name: /Cancel/ });
+    expect(cancel).not.toBeDisabled();
+    fireEvent.click(cancel);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('enables share button only after consent is given', () => {
+  it('enables sharing only after consent is given', () => {
     renderModal();
-    const consent = screen.getByLabelText(
-      /I agree to share only this contact ID/,
-    );
+    const consent = screen.getByLabelText(/I agree to share only this contact ID/);
     const shareBtn = screen.getByRole('button', { name: /Share ID/ });
 
     fireEvent.click(consent);
@@ -73,51 +80,70 @@ describe('ContactShareModal - privacy & consent', () => {
     expect(shareBtn).not.toBeDisabled();
   });
 
-  it('copies only the contact ID to clipboard on share', async () => {
-    const writeText = vi.fn();
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
-      configurable: true,
-    });
-
+  it('copies only the contact ID on share and notifies the parent', async () => {
+    const onClose = vi.fn();
     const onShared = vi.fn();
-    render(
-      <ContactShareModal
-        isOpen
-        onClose={vi.fn()}
-        contactName="Katie Rogers"
-        contactId="katie-id-123"
-        onShared={onShared}
-      />,
-    );
+    renderModal({ onClose, onShared });
 
-    const consent = screen.getByLabelText(/I agree to share/);
-    fireEvent.click(consent);
+    fireEvent.click(screen.getByLabelText(/I agree to share/));
+    fireEvent.click(screen.getByRole('button', { name: /Share ID/ }));
 
-    const shareBtn = screen.getByRole('button', { name: /Share ID/ });
-    fireEvent.click(shareBtn);
-
-    expect(writeText).toHaveBeenCalledWith('katie-id-123');
-    expect(onShared).toHaveBeenCalledWith('katie-id-123');
-    expect(writeText).not.toHaveBeenCalledWith(
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('katie');
+      expect(onShared).toHaveBeenCalledWith('katie');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
       expect.stringContaining('+'),
     );
   });
 
-  it('shows checkmark after copying ID', () => {
-    const writeText = vi.fn();
+  it('copies the ID from the inline copy button without consent', async () => {
+    const onShared = vi.fn();
+    renderModal({ onShared });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('katie');
+    });
+    expect(onShared).not.toHaveBeenCalled();
+  });
+
+  it('does not crash when the clipboard is unavailable', async () => {
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
+      value: undefined,
       configurable: true,
     });
+    const onShared = vi.fn();
+    renderModal({ onShared });
 
-    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByLabelText(/I agree to share/));
+    fireEvent.click(screen.getByRole('button', { name: /Share ID/ }));
+    await waitFor(() => {
+      expect(onShared).toHaveBeenCalledWith('katie');
+    });
+  });
+
+  it('resets consent every time the modal is reopened', () => {
+    const { rerender } = render(
+      <ContactShareModal isOpen onClose={vi.fn()} contactName="Katie" contactId="katie" />,
+    );
     const consent = screen.getByLabelText(/I agree to share/);
     fireEvent.click(consent);
+    expect(consent).toBeChecked();
 
-    const shareBtn = screen.getByRole('button', { name: /Share ID/ });
-    fireEvent.click(shareBtn);
-
-    expect(writeText).toHaveBeenCalledWith('katie');
+    rerender(
+      <ContactShareModal isOpen={false} onClose={vi.fn()} contactName="Katie" contactId="katie" />,
+    );
+    rerender(
+      <ContactShareModal isOpen onClose={vi.fn()} contactName="Katie" contactId="katie" />,
+    );
+    expect(screen.getByLabelText(/I agree to share/)).not.toBeChecked();
   });
 });

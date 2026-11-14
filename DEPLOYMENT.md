@@ -11,10 +11,11 @@
 2. [Виртуальные устройства для превью](#виртуальные-устройства)
 3. [Подпись приложений](#подпись-приложений)
 4. [Порядок деплоя (скрипты)](#порядок-деплоя)
-5. [Требования Google Play](#требования-google-play)
-6. [Требования Apple App Store](#требования-apple-app-store)
-7. [CI/CD (GitHub Actions)](#cicd-github-actions)
-8. [Чек-лист перед релизом](#чек-лист-перед-релизом)
+5. [Защита секретов (защита от утечек)](#защита-секретов)
+6. [Требования Google Play](#требования-google-play)
+7. [Требования Apple App Store](#требования-apple-app-store)
+8. [CI/CD (GitHub Actions)](#cicd-github-actions)
+9. [Чек-лист перед релизом](#чек-лист-перед-релизом)
 
 ---
 
@@ -130,6 +131,18 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 | `deploy-android.ps1` | Сборка Android AAB/APK + ченджлог |
 | `deploy-ios.ps1` | Сборка iOS IPA (macOS) + ченджлог |
 | `release-notes.ps1` | Запись changelog в `RELEASE_NOTES.md` |
+| `publish-landing.js` | Пакет + деплой промо-лендинга на корень сайта (`mess.cvr.name`) |
+
+### Промо-лендинг (корень сайта)
+
+`npm run deploy:landing` → `node scripts/publish-landing.js`
+
+1. **Проверка** — все локальные asset-ссылки в `index.html` существуют, все `lang/*.json` и `releases/releases.json` валидный JSON.
+2. **Стадируем** `landing-deploy/` — копия `landing/` + `server.js` + `package.json` (отдельный пакет `mess-anger-landing`) + `.env.example`.
+3. **Деплой** (`--deploy user@host` или `LANDING_HOST` env): scp бандла на хост, `npm install --production` + `pm2 restart mess-landing` (или `npm start` в фоне).
+4. **Проверка** — `GET /` (index.html), `GET /releases/releases.json`, `GET /api/health`, `POST /api/paymento/ipn`.
+
+Требования на хосте: Node.js 18+, `PORT` (по дефолту 8080), `PAYMENTO_SECRET` (HMAC-секрет от PaymentO для подписи IPN), Nginx/reverse-proxy с TLS до `mess.cvr.name`.
 
 **Пример релиза Android:**
 ```powershell
@@ -149,7 +162,33 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 
 ---
 
-## 5. Требования Google Play
+## 5. Защита секретов (защита от утечек)
+
+Пароли и ключи **никогда не должны попадать в репозиторий**. Защита в 4 слоя:
+
+| Слой | Механизм | Где |
+|---|---|---|
+| 1. Git-игнорирование | `.env*` (кроме `!.env.example`), `*.jks`, `*.keystore`, `receipts/` | `.gitignore` |
+| 2. Локальный pre-commit | `scripts/check-secrets.js` сканирует staged-файлы на секреты; блокирует commit | `scripts/setup-git-hooks.js` (авто через `npm install` → `prepare`) |
+| 3. CI-сканер | `gitleaks` в `ci.yml` — блокирует PR при секрете в diff | `.github/workflows/ci.yml`, `.gitleaks.toml` |
+| 4. Push Protection (GitHub) | Блокирует push на стороне GitHub (включить вручную) | Settings → Security → Push protection |
+
+**Куда кладутся секреты:**
+
+| Секрет | Локально | В CI |
+|---|---|---|
+| Android keystore (path, store/key password, alias) | `.env` (не коммитится) + env для `deploy-android.ps1` | GitHub Secrets: `ANDROID_KEYSTORE_PATH/PASSWORD/ALIAS/KEY_PASSWORD` |
+| PaymentO (API key, secret, IPN HMAC) | `.env` (не коммитится) | GitHub Secrets (серверный деплой) |
+| Cloudflare (account id, API token) | `.env` (не коммитится) | GitHub Secrets (CF Pages/Workers) |
+| Apple (team id, certs, provisioning) | macOS Keychain | GitHub Secrets: `TEAM_ID`, `APPLE_ID` (+ P12) |
+
+**Локально секреты берутся из env** — скрипты **не содержат** паролей в коде. `deploy-android.ps1` читает `$env:KEYSTORE_PASSWORD` / `$env:KEY_PASSWORD`; `deploy-ios.ps1` — параметры из CI.
+
+> ⚠️ **Если секрет уже закоммичен** — считать его **утёкшим** и **перевыпустить** (rotate), даже если затем удалить из git.
+
+---
+
+## 6. Требования Google Play
 
 | Элемент | Требование |
 |---------|------------|
@@ -171,7 +210,7 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 
 ---
 
-## 6. Требования Apple App Store
+## 7. Требования Apple App Store
 
 | Элемент | Требование |
 |---------|------------|
@@ -193,7 +232,7 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 
 ---
 
-## 7. CI/CD (GitHub Actions)
+## 8. CI/CD (GitHub Actions)
 
 Для iOS-сборки на Windows используется **macOS runner** в GitHub Actions.
 
@@ -267,13 +306,16 @@ jobs:
 
 ---
 
-## 8. Чек-лист перед релизом
+## 9. Чек-лист перед релизом
 
 - [ ] `npm run lint` проходит без ошибок
 - [ ] `npm test -- --run` все тесты зелёные
 - [ ] `npm run build` собирает `dist/` без предупреждений критичных
 - [ ] Версия в `tauri.conf.json` и `Cargo.toml` совпадает
 - [ ] Ченджлог записан в `RELEASE_NOTES.md`
+- [ ] **Никаких секретов в репозитории**: `.env`, `*.jks`/`*.keystore`, `receipts/` не в `git status` (см. §5)
+- [ ] `gitleaks` / pre-commit хук прошли без находок (см. §5)
+- [ ] Все секреты, которые были в коде ранее, перевыпущены (rotate)
 - [ ] Android: AAB подписан own keystore (не debug)
 - [ ] iOS: Provisioning Profile активен, сертификат Distribution установлен
 - [ ] Политика конфиденциальности опубликована (ссылка в консоли маркета)
@@ -284,7 +326,7 @@ jobs:
 
 ---
 
-## 9. Файлы артефактов
+## 10. Файлы артефактов
 
 После успешного деплоя в `dist/`:
 

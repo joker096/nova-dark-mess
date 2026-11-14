@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
+import { downloadEncryptedBackup, uploadEncryptedBackup } from '../lib/storage/cloudBackup';
+import {
+  loadPrivacyPrefs,
+  readBatteryStatus,
+  savePrivacyPrefs,
+  shouldEmitCoverTraffic,
+  type BatteryStatus,
+  type PrivacyPrefs,
+} from '../lib/network/privacyMode';
+import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import {
@@ -125,6 +135,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [exportPassphrase, setExportPassphrase] = useState('');
   const [importPassphrase, setImportPassphrase] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importCloudBlob, setImportCloudBlob] = useState<Blob | null>(null);
+  const [cloudUrl, setCloudUrl] = useState('');
+  const [cloudToken, setCloudToken] = useState('');
+  const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
+  const [joinOutboxCount, setJoinOutboxCount] = useState<number>(() => loadJoinOutbox().length);
+
+  // Relay queue length can change while the modal is closed.
+  useEffect(() => {
+    if (isOpen) setJoinOutboxCount(loadJoinOutbox().length);
+  }, [isOpen]);
+  const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const [show2FASetup, setShow2FASetup] = useState(false);
@@ -171,12 +192,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   }, [isOpen, backupModal, showSeedPhraseModal, onClose]);
 
   useEffect(() => {
+    if (!isOpen || !privacyPrefs.metadataMinimization) return;
+    let cancelled = false;
+    void readBatteryStatus().then((status) => {
+      if (!cancelled) setBattery(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, privacyPrefs.metadataMinimization]);
+
+  useEffect(() => {
     if (!cacheMsg) return;
     const timer = setTimeout(() => setCacheMsg(null), 2000);
     return () => clearTimeout(timer);
   }, [cacheMsg]);
 
   if (!isOpen) return null;
+
+  const updatePrivacyPref = (metadataMinimization: boolean) => {
+    const next = { ...privacyPrefs, metadataMinimization };
+    setPrivacyPrefs(next);
+    savePrivacyPrefs(next);
+  };
+
+  const coverTrafficActive = shouldEmitCoverTraffic(privacyPrefs, battery);
 
   const updatePref = <K extends keyof Prefs>(key: K, value: Prefs[K]) => {
     setPrefs((prev) => {
@@ -195,6 +235,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setCacheMsg(t('settings.cacheCleared'));
   };
 
+  const cloudTarget = () => ({
+    url: cloudUrl.trim(),
+    headers: cloudToken.trim() ? { Authorization: `Bearer ${cloudToken.trim()}` } : undefined,
+  });
+
   const handleExportBackup = async () => {
     if (!identity) {
       setBackupMsg(t('settings.identityNotReady'));
@@ -204,11 +249,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setBackupMsg(t('settings.passphraseTooShort'));
       return;
     }
+    if (cloudUrl.trim() && !/^https?:\/\//i.test(cloudUrl.trim())) {
+      setBackupMsg('Cloud URL must start with http:// or https://');
+      return;
+    }
     setBackupBusy(true);
     setBackupMsg(null);
     try {
       const chatList = [] as Array<{ id: string; name: string; isEncrypted: boolean }>;
       const blob = await exportEncryptedBackup(exportPassphrase, chatList);
+      if (cloudUrl.trim()) {
+        await uploadEncryptedBackup(cloudTarget(), blob);
+        setBackupMsg('Encrypted backup uploaded to cloud');
+        setBackupModal(null);
+        setExportPassphrase('');
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -227,19 +283,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
+  const handleDownloadFromCloud = async () => {
+    if (!cloudUrl.trim()) {
+      setBackupMsg('Enter the cloud backup URL first');
+      return;
+    }
+    if (!/^https?:\/\//i.test(cloudUrl.trim())) {
+      setBackupMsg('Cloud URL must start with http:// or https://');
+      return;
+    }
+    setBackupBusy(true);
+    setBackupMsg(null);
+    try {
+      const blob = await downloadEncryptedBackup(cloudTarget());
+      setImportCloudBlob(blob);
+      setImportFile(null);
+      setBackupMsg(`Downloaded ${Math.max(1, Math.round(blob.size / 1024))} KB from cloud`);
+    } catch (err) {
+      setBackupMsg(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
   const handleImportBackup = async () => {
-    if (!importFile) {
+    const source = importFile ?? importCloudBlob;
+    if (!source) {
       setBackupMsg('Choose a .nova-backup file');
       return;
     }
     setBackupBusy(true);
     setBackupMsg(null);
     try {
-      const text = await importFile.text();
+      const text = await source.text();
       await importEncryptedBackup(text, importPassphrase || 'nova_backup');
       setBackupMsg('Backup imported');
       setBackupModal(null);
       setImportFile(null);
+      setImportCloudBlob(null);
       setImportPassphrase('');
     } catch (err) {
       setBackupMsg(err instanceof Error ? err.message : 'Import failed');
@@ -597,6 +678,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             onToggle={() => updatePref('previewMessages', !prefs.previewMessages)}
           />
 
+          <SectionHeader icon={<Lock className="w-3.5 h-3.5" />} title={t('settings.privacy')} />
+          <ToggleRow
+            label={t('settings.metadataMinimization')}
+            enabled={privacyPrefs.metadataMinimization}
+            onToggle={() => updatePrivacyPref(!privacyPrefs.metadataMinimization)}
+          />
+          {privacyPrefs.metadataMinimization && (
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+              {t('settings.metadataMinimizationHint')}
+              {battery.level !== null &&
+                ' ' +
+                  (coverTrafficActive
+                    ? `Cover traffic active (battery ${Math.round(battery.level * 100)}%${battery.charging ? ', charging' : ''}).`
+                    : `Cover traffic paused to save battery (${Math.round(battery.level * 100)}%).`)}
+            </p>
+          )}
+
+          <SectionHeader icon={<Send className="w-3.5 h-3.5" />} title={t('settings.joinOutbox')} />
+          <div className="px-1 pb-2 space-y-2" data-testid="join-outbox">
+            <p className="text-[11px] text-[#8c919d]">
+              {joinOutboxCount > 0
+                ? t('settings.joinOutboxPending', { count: joinOutboxCount })
+                : t('settings.joinOutboxEmpty')}
+            </p>
+            {joinOutboxCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setJoinOutboxCount(retryJoinOutboxNow())}
+                className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98]"
+              >
+                {t('settings.joinOutboxRetry')}
+              </button>
+            )}
+          </div>
+
           <SectionHeader icon={<Lock className="w-3.5 h-3.5" />} title={t('settings.security')} />
           <ToggleRow
             label={t('settings.passcodeLock')}
@@ -826,6 +942,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <button
                 onClick={() => setBackupModal(null)}
                 className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -873,9 +990,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
                       setImportFile(file);
+                      setImportCloudBlob(null);
                     }}
                   />
+                  {!importFile && importCloudBlob && (
+                    <p className="text-[11px] text-[#8c919d]">
+                      Cloud blob ready ({Math.max(1, Math.round(importCloudBlob.size / 1024))} KB)
+                    </p>
+                  )}
                 </div>
+              )}
+              <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <label className="block text-[11px] font-medium text-white/70">
+                  Cloud endpoint (optional)
+                </label>
+                <input
+                  type="url"
+                  value={cloudUrl}
+                  onChange={(e) => setCloudUrl(e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  placeholder="https://your-webdav.example/nova-latest.nova-backup"
+                />
+                <input
+                  type="password"
+                  value={cloudToken}
+                  onChange={(e) => setCloudToken(e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  placeholder="Bearer token (optional, kept in memory)"
+                />
+                <p className="text-[10px] text-[#8c919d]">
+                  Only the encrypted .nova-backup blob is uploaded. Keys stay on this device.
+                </p>
+                {backupModal.mode === 'import' && (
+                  <button
+                    onClick={handleDownloadFromCloud}
+                    disabled={backupBusy || !cloudUrl.trim()}
+                    className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-[12px] font-medium transition cursor-pointer ${
+                      backupBusy || !cloudUrl.trim()
+                        ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
+                        : 'bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border-white/10 text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{backupBusy ? 'Downloading...' : 'Download from cloud'}</span>
+                  </button>
+                )}
+              </div>
+              {backupModal.mode === 'export' && cloudUrl.trim() && (
+                <p className="text-[11px] text-[var(--nova-accent-color)]">
+                  The backup will be uploaded instead of saved locally.
+                </p>
               )}
               {backupMsg && (
                 <div className={`rounded-xl px-3 py-2 text-[11px] text-white ${
@@ -898,18 +1062,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 onClick={backupModal.mode === 'export' ? handleExportBackup : handleImportBackup}
                 disabled={
                   backupBusy ||
-                  (backupModal.mode === 'import' && !importFile) ||
+                  (backupModal.mode === 'import' && !importFile && !importCloudBlob) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
                 }
                 className={`flex-1 py-2 rounded-xl text-[12px] font-medium text-white transition cursor-pointer ${
                   backupBusy ||
-                  (backupModal.mode === 'import' && !importFile) ||
+                  (backupModal.mode === 'import' && !importFile && !importCloudBlob) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
                     ? 'bg-white/[0.05] border border-white/10 text-white/40 cursor-not-allowed'
                     : 'bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2e)] border border-[var(--nova-accent-color)]/30 shadow-md shadow-[var(--nova-accent-color)]/25'
                 }`}
               >
-                {backupBusy ? 'Processing...' : backupModal.mode === 'export' ? 'Export' : 'Import'}
+                {backupBusy
+                  ? 'Processing...'
+                  : backupModal.mode === 'export'
+                    ? cloudUrl.trim()
+                      ? 'Upload'
+                      : 'Export'
+                    : 'Import'}
               </button>
             </div>
           </div>
@@ -928,6 +1098,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <button
                 onClick={() => setShowSeedPhraseModal(false)}
                 className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>

@@ -1,6 +1,26 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-12
+Last updated: 2026-11-14
+
+## Release & CI (GitHub Actions)
+
+Android and iOS are built and published through GitHub Actions, triggered by a
+`v*` tag or a manual dispatch (both also accept a version input).
+
+- `ci.yml` — on every push/PR: `tsc`, `eslint`, `vitest`, `npm run build`, and a
+  gitleaks secret scan.
+- `android.yml` — `windows-latest`: lint + test, then `scripts/deploy-android.ps1`
+  runs `tauri android build` (AAB + APK) against a keystore from
+  `ANDROID_KEYSTORE_*` secrets; artifacts uploaded to `dist/android/*`.
+- `ios.yml` — `macos-latest`: lint + test, CocoaPods, `scripts/deploy-ios.ps1`
+  runs `tauri ios build` for a signed IPA using `APPLE_ID` / `APPLE_TEAM_ID`;
+  artifacts uploaded to `dist/ios/*`.
+
+Note: the Tauri `nova://` deep-link Activity and iOS `URL Types` must be
+regenerated with `tauri android init` / `tauri ios init` (see
+`docs/android-ios-verification-plan.md`) before the CI artifacts will honor deep
+links on-device — the generated shell in `src-tauri/gen/` is currently a bare
+`AppCompatActivity`.
 
 ## Guiding constraints (non-negotiable)
 
@@ -27,7 +47,9 @@ Already shipped (see `ARCHITECTURE.md`): 1:1 encrypted chats, channels & channel
 posts, stories, folders, reactions, replies, voice memos, stickers & emoji, polls,
 location sharing, message scheduling, search, themes, PIN lock, TOTP 2FA, seed-phrase
 recovery, encrypted `.nova-backup` export/import, local analytics, WebRTC P2P messaging and
-audio/video calls with signaling fallback, Tauri mobile builds (in progress).
+audio/video calls with signaling fallback, animated message deletion, an online/offline
+mesh map (OSM tiles when connected, dark map + markers/links offline), and Tauri
+v2 desktop/Android/iOS shells with `nova://` deep links built by GitHub Actions.
 
 ## Comparison: Telegram / WhatsApp vs Nova Dark Messenger
 
@@ -38,72 +60,107 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 | Registration | phone number | phone number | cryptographic identity (mnemonic) | Nova requires no PII |
 | Contact discovery | phone book / username | phone book | QR code / fingerprint / invite link | No server-side lookup |
 | 1:1 messaging | ✅ cloud | ✅ E2EE | ✅ E2EE | Nova is E2EE by default |
-| Group chats | ✅ up to 200k | ✅ up to 1024 | ❌ missing | P2P group ratchet needed |
+| Group chats | ✅ up to 200k | ✅ up to 1024 | ✅ E2EE Sender Keys | Group creation, member selection, local history, Sender Keys crypto with re-keying and `GroupChatManager` UI wiring in ChatScreen shipped |
 | Channels / broadcast | ✅ | ✅ (Channels) | ✅ (channels + posts) | Already shipped |
 | Stories / status | ✅ | ✅ (Status) | ✅ (stories) | Already shipped |
 | Reactions | ✅ | ✅ | ✅ | |
-| Replies / threads | ✅ | ✅ | ✅ (reply) | Full threads missing |
+| Replies / threads | ✅ | ✅ | ✅ full thread view | Thread helpers and modal view dialog shipped |
 | Polls | ✅ | ✅ | ✅ | Just shipped |
-| Stickers | ✅ (packs, animated) | ✅ | ✅ (static packs) | Animated/video stickers missing |
+| Stickers | ✅ (packs, animated) | ✅ | ✅ (static + animated/video packs, import) | On-device packs and local import shipped |
 | Location (live) | ✅ | ✅ | ✅ (static + live GPS) | |
 | Voice messages | ✅ | ✅ | ✅ | |
-| Voice / video calls | ✅ | ✅ | 🟡 WebRTC media wired | Audio/video UI, mute/camera, history; simulated fallback until peer fingerprint is available |
-| File sharing | ✅ (up to 2 GB) | ✅ (up to 2 GB) | ❌ missing | P2P chunked transfer needed |
-| Message edit / delete | ✅ | ✅ (delete for everyone) | ❌ missing | |
-| Disappearing messages | ✅ (secret chats) | ✅ (view once, timer) | ❌ missing | |
-| Read receipts / typing | ✅ | ✅ | 🟡 local only | Need P2P delivery receipts |
-| Multi-device | ✅ (cloud) | ✅ (phone primary) | 🟡 single device | Device linking via QR |
-| Cloud backup | ✅ | ✅ (Google/Apple) | ✅ (encrypted file export) | No cloud by design |
-| Search (global) | ✅ | ✅ | 🟡 local chat search | |
+| Voice / video calls | ✅ | ✅ | ✅ WebRTC media wired | Audio/video UI, mute/camera, history; simulated fallback until peer fingerprint is available |
+| File sharing | ✅ (up to 2 GB) | ✅ (up to 2 GB) | ✅ P2P chunked + SHA-256 | Local attachments, chunked transfer with 100 MB cap, resume, SHA-256 verification and ChatScreen download/send wiring shipped |
+| Message edit / delete | ✅ | ✅ (delete for everyone) | ✅ with re-keying | Edit/delete for own messages, polls and stickers with tombstones; coordinated ratchet re-keying after mutations shipped |
+| Disappearing messages | ✅ (secret chats) | ✅ (view once, timer) | ✅ view-once + timer | Local expiry timers, view-once mode and secure memory wipe shipped in chat UI |
+| Read receipts / typing | ✅ | ✅ | ✅ ephemeral P2P | Ephemeral typing indicators and delivery/read receipts wired via ReceiptManager |
+| Multi-device | ✅ (cloud) | ✅ (phone primary) | ✅ two-device sync | Device linking via QR/camera scanner, X25519 handshake and live encrypted history transfer shipped |
+| Cloud backup | ✅ | ✅ (Google/Apple) | ✅ encrypted file & cloud | Encrypted `.nova-backup` export plus opt-in WebDAV/S3 upload/restore without leaving keys |
+| Search (global) | ✅ | ✅ | ✅ (local chat/channel/media search) | No server index by design |
 | Folders / labels | ✅ | ❌ | ✅ | |
 | Scheduled messages | ✅ | ❌ | ✅ | |
 | Bots / API | ✅ | ✅ (Business API) | ➖ out of scope | No centralized bot platform |
-| Payments | ❌ (P2P crypto) | ✅ | ➖ out of scope | Not a payments app |
-| Usernames | ✅ | ❌ | 🟡 fingerprint only | Human-readable handles without server |
-| Premium tier | ✅ | ✅ (Meta Verified) | 🟡 `usePremium` gating | |
+| Payments | ❌ (P2P crypto) | ✅ | 🟡 Premium micro-subscription | PaymentO checkout + server-side IPN receipt ledger (no PII, no crypto wallets) |
+| Usernames | ✅ | ❌ | ✅ deterministic handles | Human-readable handles derived from public key (`nova://<short-id>`); no central registry |
+| Premium tier | ✅ | ✅ (Meta Verified) | ✅ local `usePremium` gating | Themes, premium wallpapers, premium sticker packs and channel publish-time picking gated locally; safety features (calls, live location, disappearing messages) stay free on purpose |
 
 ## Roadmap
 
-### Phase 0 — Finish in-flight (1–2 sprints)
+### Phase 0 — Finish in-flight (1–2 sprints) — ✅ Completed
 
-- Merge PR #1 (polls/stickers/location in chats & channels) and the pluralization follow-up.
-- ✅ Wire media calls (voice/video) into `ChatScreen` using the existing WebRTC layer: real
+- [x] Merged PR #1 (polls/stickers/location in chats & channels) and the pluralization follow-up.
+- [x] Wire media calls (voice/video) into `ChatScreen` using the existing WebRTC layer: real
   local/remote streams, mute/camera toggles, voice-call button and call history in chat
   (`src/lib/p2p/mediaCall.ts`); simulated fallback keeps the demo usable without a peer.
-- Ship animated/video stickers and a sticker-pack import (local file), keeping packs on-device.
-- Add message edit & delete (for everyone / for me) with tombstone markers and ratchet re-keying.
+- [x] Ship animated/video stickers and a sticker-pack import (local file), keeping packs on-device.
+- [x] Add message edit & delete (for me / for everyone) with tombstone markers for text, polls and stickers.
+- [x] Allow changing and removing the user avatar from the profile screen.
+- [x] Ratchet re-keying for edit/delete flows: `P2PManager.rekeySession` / `rekeyAllSessions` start a fresh X3DH session (generation-tagged, signed header) so message keys from before the mutation are never reused; the peer accepts the reset only when the generation moves forward, which rejects replayed reset headers. Before re-keying, a stale peer prekey bundle is refreshed (`refreshPeerBundle`) so a rotated signed prekey from the peer is picked up instead of being rejected as unknown; the previous two signed prekeys stay usable for a grace window, so a reset built on an outdated cached bundle still decrypts. Tests in `src/lib/p2p/p2pManager.rekey.test.ts` and `src/lib/p2p/p2pManager.bundles.test.ts`.
 
-### Phase 1 — Core messaging parity (P2P) (2–3 sprints)
+### Phase 1 — Core messaging parity (P2P) (2–3 sprints) — ✅ Completed
 
-- **Group chats (small, ≤ 50 members)** via Sender Keys + pairwise ratchets; group metadata stored locally and synced P2P. No server-side group state.
-- **File sharing** over WebRTC DataChannel with chunking, resume, and SHA-256 integrity; size cap configurable (default 100 MB to stay device-friendly).
-- **Disappearing messages & view-once media** with local timers and secure deletion of ciphertext + keys.
-- **Delivery & read receipts + typing indicators** as ephemeral P2P signals (no persistence).
-- **Message threads / replies view** and pinned messages per chat.
-- **Global search** across chats, channels and media (local index, no server).
+- [x] **Group chats (small, ≤ 50 members)**: creation, member selection and local history shipped; Sender Keys crypto + group P2P sync manager shipped in `src/lib/crypto/senderKeys.ts` and `src/lib/p2p/groupManager.ts`; out-of-order message keys, sender-key rotation on member removal, and `ChatScreen` UI integration shipped — group sends go through `GroupChatManager.sendText`, decrypted incoming group messages are appended to the transcript, sender-key failures surface as an in-chat toast, and a members dialog (header → Group members) lists the roster, adds members, and removes them with automatic sender-key rotation; roster edits persist for created groups. Join traffic does not depend on an open group: `src/lib/social/joinRequestRelay.ts` keeps an on-device outbox and a session-wide mesh relay (broadcast envelopes) so a request or an admin decision survives closing the chat or the app and is replayed until the relay hands it off; only a group's admins record a relayed request, and a decision only applies to a device that actually asked. Pending requests are counted on the group row in the chats list (with an "awaiting approval" marker for the invitee), so an admin does not have to open every group to notice them. The same dialog mints a shareable deep-link invite (`nova://chat/<id>?invite=<token>` via `src/lib/social/groupInvites.ts`), copies it to the clipboard and can rotate the token; the link carries no message keys, and opening one asks for confirmation before joining (`join-group-dialog` in `App.tsx`). Accepting the invite is only a request to join: `src/lib/social/groupJoinRequests.ts` records the pending membership locally and the device sends `group_join_request` over the room transport, the members dialog lists pending requests for admins with Approve/Reject, and the admin's `group_join_response` either adds the device as a plain member (roles, roster, sender key) or marks it declined — an invitee never seeds itself as admin. While a request is open the invitee sees a waiting banner in the chat, a decline offers "Ask again" (which re-queues the request), and admins get a counter badge on the group-members button until every request is decided. Roster roles are local (`src/lib/social/groupRoles.ts`): the device that opens a group becomes its first admin, admins can promote/demote others, and only admins may add/remove members or rotate the invite token — the last admin cannot be demoted. Role changes sync between devices as `group_roles` payloads over the group transport (remote map wins, local-only members kept), and every add/remove/role change appends an in-chat system event.
 
-### Phase 2 — Multi-device & identity (2 sprints)
+- [x] **Real WebRTC DataChannel transport**: `src/lib/p2p/roomChannel.ts` runs a serverless mesh per chat room — peers announce over a same-origin `BroadcastChannel`, exchange SDP/ICE there, and then send group payloads and file chunks over real `RTCPeerConnection` DataChannels with host-only ICE (no STUN/TURN). `ChatScreen` routes group messages and file transfers through it whenever a peer is connected, shows a `P2P · N` badge, and falls back to the local pipeline when WebRTC is unavailable.
+- [x] **File sharing** over WebRTC DataChannel with chunking, resume, and SHA-256 integrity; size cap configurable (default 100 MB to stay device-friendly). (Chunked transfer manager shipped in `src/lib/p2p/fileTransfer.ts`; 100 MB cap, incoming metadata/chunk validation, cancel, resume-index hardening and `ChatScreen` send/download UI wiring shipped — attachments and document downloads run through the real chunking/ack/SHA-256 pipeline with a floating progress card, cancel button and a verified-delivery toast.)
+- [x] **Disappearing messages & view-once media**: local timers (5s, 10s, 30s, 60s), view-once mode toggle and secure memory wipe shipped in `ChatScreen`.
+- [x] **Delivery & read receipts + typing indicators** as ephemeral P2P signals (no persistence). (Signal manager shipped in `src/lib/p2p/receipts.ts`; typing and read signals wired into `ChatScreen` input and lifecycle.)
+- [x] **Message threads / replies view** and pinned messages per chat. (Thread dialog now renders full nested thread via `getThreadMessages`.)
+- [x] **Global search** across chats, channels and media (local index, no server). (Search helpers shipped in `src/lib/search/globalSearch.ts`; ChatsScreen now searches the local index across text, documents, polls, locations and media.)
 
-- **Device linking** via QR code + X3DH, so a second device can decrypt new messages; old history synced encrypted over the local network or a user-chosen relay.
-- **Human-readable handles** derived from the public key (e.g. `nova://<short-id>`) plus optional self-asserted display name; no central registry.
-- **Encrypted cloud backup (opt-in)** to a user-selected WebDAV/S3-compatible endpoint, keys never leave the device.
-- **Offline message queue** with store-and-forward through a user-chosen (or default public) stateless relay that only sees ciphertext.
+### Phase 2 — Multi-device & identity (2 sprints) — ✅ Completed
 
-### Phase 3 — Channels & communities (1–2 sprints)
+- [x] **Device linking core & handshake**: X25519 offer + encrypted history sync shipped in `src/lib/p2p/deviceLinking.ts`; profile modal renders a real signed offer QR/code and completes the two-device handshake — paste the link on the new device, hand the reply code back, session completes with zero servers.
+- [x] **Device linking live sync**: QR camera scanning, camera viewfinder preview and live encrypted history stream transfer over the active session shipped.
+- [x] **Human-readable handles** derived from public key (e.g. `nova://<short-id>`) plus optional self-asserted display name; no central registry. (Derivation shipped in `src/lib/crypto/handles.ts`; profile screen shows deterministic handle instead of fingerprint slice.)
+- [x] **Encrypted cloud backup (opt-in)** to a user-selected WebDAV/S3-compatible endpoint, keys never leave device. (Transport shipped in `src/lib/storage/cloudBackup.ts`; settings backup dialog uploads encrypted blob to chosen endpoint and restores from it. Credentials stay in memory for session.)
+- [x] **Offline message queue & relay**: localStorage-backed queue utility shipped in `src/lib/network/offlineQueue.ts`; store-and-forward relay integration shipped in `src/lib/network/offlineRelay.ts`; queue/flush tests added. Group join requests and decisions use the same store-and-forward idea through `JoinRequestRelay`, which keeps working while the group is closed.
 
-- **Channel admin tools**: scheduled posts (already), edit/delete, reactions, comments, subscriber count privacy (hide exact count).
-- **Communities**: a channel + linked discussion group, moderated locally by admins.
-- **Live location sharing in groups** with expiry and geofencing (already in 1:1).
-- **Broadcast lists** (WhatsApp-style) implemented as fan-out over P2P connections.
+### Phase 3 — Channels & communities (1–2 sprints) — ✅ Completed
+
+- [x] **Channel admin tools**: scheduled posts, edit/delete, reactions, comments, subscriber count privacy shipped.
+- [x] **Communities**: a channel + linked discussion group, moderated locally by admins. (Model/store in `src/lib/social/communities.ts`; UI in `src/components/CommunitiesPanel.tsx` — the Channels folder lists communities with a local admin badge, opens the linked channel or discussion group, a create dialog pairs a channel with a group, and every community can be renamed, re-pointed at another channel/discussion group, or deleted with an inline confirmation. Stored on-device only.)
+- [x] **Live location sharing in groups** with expiry and geofencing (fan-out manager shipped in `src/lib/p2p/liveLocation.ts`).
+- [x] **Broadcast lists** (WhatsApp-style) implemented as fan-out over P2P connections. (Fan-out manager shipped in `src/lib/p2p/broadcastManager.ts`.)
 
 ### Phase 4 — Hardening & UX polish (ongoing)
 
-- **Metadata minimization**: padding, cover traffic, randomized message timing to resist traffic analysis (opt-in, battery-aware).
-- **Sealed sender** for 1:1 messages where feasible.
-- **Safety numbers / key verification** UI with QR and emoji fingerprints.
-- **Accessibility & i18n**: finish the remaining 7 locales (de, es, tr, id, vi, ar, th) beyond the channel/chat core strings; RTL audit for ar.
-- **Performance**: virtualized message lists, lazy media loading, bundle splitting.
-- **Desktop & mobile parity**: Tauri v2 release builds, deep links for invite URLs, OS keychain integration for the master key.
+- [x] **Metadata minimization**: padding, cover traffic, randomized message timing to resist traffic analysis (opt-in, battery-aware). (Helpers shipped in `src/lib/network/metadataMinimization.ts`; `src/lib/network/privacyMode.ts` adds persisted opt-in plus battery-aware cover-traffic decisions, with a toggle in Settings → Privacy.)
+- [x] **Sealed sender** for 1:1 messages where feasible. (X25519 sealed box shipped in `src/lib/messaging/sealedSender.ts`.)
+- [x] **Safety numbers / key verification**: safety number + QR modal shipped; emoji fingerprint comparison and deterministic safety-number derivation shipped in `src/lib/crypto/safetyNumbers.ts`.
+- [x] **Accessibility & i18n**: audit script covers all 10 locales (`scripts/audit-i18n.ts`); zero empty keys; RTL audit for ar.
+- [x] **Performance**: virtualized message lists (`src/components/VirtualizedList.tsx`), lazy media loading (`src/components/LazyMedia.tsx`).
+- [x] **Premium tier hardening**: one entitlement list in `src/lib/premium.ts` (`PremiumFeature` + `PREMIUM_FEATURES`), so a feature name either is sold or is not — the dead feature argument is gone. Premium wallpapers are flagged in `src/data/wallpapers.ts` and locked in the wallpaper modal (click opens the local checkout, with a Premium badge and keyboard support), while chat themes, premium sticker packs and channel publish-time picking keep their existing gates. Safety features are never gated.
+- [x] **Desktop & mobile parity**: deep links for invite URLs (`src/lib/network/deepLinks.ts`), OS keychain abstraction for master key (`src/lib/storage/keychain.ts`), Tauri v2 integration: the `deep-link` plugin (Rust + JS) is registered, `nova://` is declared for desktop and the Android/iOS shells, the webview replays the launching link through `src/lib/network/tauriDeepLinks.ts` (hash links keep working in the browser), and the bundle carries explicit mobile settings (Android min SDK 24 plus optional camera/microphone features, iOS 15 minimum).
+
+### Phase 5 — Next up
+
+- [x] Retry join-request relay traffic with backoff instead of a fixed 10 s tick, and surface undelivered jobs in Settings. (`joinRetryDelay` doubles 5 s → 5 min per failed attempt and is stored on each outbox job as `nextAttemptAt`, so a failed flush no longer retries on every tick; the app session schedules its next wake from `nextJoinOutboxDelay()` and only polls every 15 s when the outbox is idle. Settings → Join request delivery shows the queued count and a "Retry now" button that clears the backoff and flushes through the live session relay.)
+- [x] One-tap approve/decline for pending join requests from the chats list, without opening the group. (`src/lib/social/joinDecisions.ts` checks the admin role, adds an approved peer to the local roster, records the decision and hands the answer to the session relay outbox; the chat row renders the pending requesters with Approve/Reject buttons that do not open the chat.)
+- [x] In-app notice for new join requests on any screen (not only inside the group chat). (`JoinRequestNotice` overlay is mounted in `App.tsx`; a relayed request that is not aimed at the group already on screen shows the requester and group with an "Open" action, auto-dismissing after 8 s.)
+- [ ] Verify the Android bundle end to end (`nova://` link opens the app, camera + mic permissions).
+  - **Status (2026-11-14):** Regenerated `src-tauri/gen/android/` with `tauri android init` (Android SDK 34, NDK 27.0.12077973); `MainActivity.kt` now extends `TauriActivity()` and the `nova://` scheme is declared in `tauri.conf.json` plugins.deep-link (mobile), so the merged manifest gains the `nova://` intent-filter at build time. Local verification: `tauri android build --apk --debug --target x86_64` compiles the Rust side and the project is committed for CI to finish the APK/AAB. See `docs/android-ios-verification-plan.md`.
+  - **Remaining:** run the full flow on an emulator/device to confirm `nova://` opens the app and camera/mic permissions prompt; CI `android.yml` builds the release artifacts.
+- [x] Production relay transport for store-and-forward when none of the peers' devices is online. (Thin, stateless: `server.js` exposes `POST /api/relay` (store encrypted envelope) and `GET /api/relay/:destination` (fetch + delete pending); storage is opaque encrypted blobs with a 7-day TTL and a per-destination cap, no PII. Client: `src/lib/p2p/httpRelay.ts` (`pushRelayEnvelope` / `pullRelayEnvelopes` / `HttpRelayTransport`). `server.js` converted to ESM so it actually runs under the project's `"type": "module"`.)
+- [x] **Premium payments via PaymentO** (in scope: flat $0.49/mo micro-subscription, no PII, no crypto). Frontend checkout in `src/lib/premium.ts` (`checkoutPremium()`) and the promo landing (`landing/paymento.js` + `#paymento-checkout` buttons). Backend receipt ledger: `server.js` serves the landing at the site root and exposes `POST /api/paymento/ipn` (HMAC-SHA256 verified, PII-stripped receipt in `receipts/`, `GET /api/paymento/receipts` audit list, `GET /api/health`). Deploy: `npm run deploy:landing` → `scripts/publish-landing.js` stages `landing-deploy/` + `server.js` for the host.
+- [x] Wire the in-app `CryptoCheckoutModal.tsx` to `checkoutPremium()` so the desktop/mobile app opens the real PaymentO checkout instead of the fake crypto addresses. (The modal no longer shows fake currency addresses; it presents the $0.49/mo amount and a single Pay button that calls `checkoutPremium()`, which invokes the PaymentO widget when present and falls back to a 30-day local activation in dev.)
+- [x] Local/dev secrets filled in `.env` (keystore passwords rotated, `messandanger-keystore.jks` regenerated with a fresh RSA key; PaymentO/Cloudflare/Supabase placeholders replaced with generated values). Production values still require creating the PaymentO store "Mess&Anger user" (plan `premium`, amount=49, currency=usd) and pasting the real API key / IPN HMAC secret.
+- [x] Landing bundle staged (`npm run deploy:landing` → `landing-deploy/`, 19 entries, build OK). Actual upload to `https://mess.cvr.name/` requires SSH host access (run `node scripts/publish-landing.js --deploy <user@host>` or scp manually) and registering the IPN URL in PaymentO store settings.
+
+## Recent changes (2026-11-13)
+
+- **Animated message deletion with full removal.** Deleting a message plays a
+  bubble collapse animation (`msg-deleting`, 300 ms in `src/index.css`) and then
+  physically removes the message from state — no leftover "This message was
+  deleted" tombstone. "Delete for everyone" still runs `secureWipeMessage`;
+  "delete for me" is a plain drop. See `handleDeleteMessage` in
+  `src/components/ChatScreen.tsx` and `src/components/ChatScreen.test.tsx`.
+- **Mesh map online/offline.** `src/components/MeshMap.tsx` gates the OSM
+  `TileLayer` behind a `useOnline()` hook (`navigator.onLine` + `online`/`offline`
+  events). With a connection the map renders normal OSM tiles; offline the tile
+  layer is not mounted (no tile requests) and the dark `#151722` canvas shows
+  mesh nodes and links only. Leaflet dark theming lives in
+  `src/components/mesh-map.css`.
 
 ## Explicitly out of scope
 
@@ -111,7 +168,7 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - Centralized cloud storage of plaintext or ciphertext messages.
 - Push notifications via third-party services (FCM/APNs) — replaced by in-app polling over P2P or user-opt-in self-hosted gateways.
 - A bot/API platform requiring a central server (a local webhook/plugin model may be explored later).
-- Payments, crypto wallets, or in-app purchases.
+- Crypto wallets, on-chain payments, or blockchain in-app purchases. (A single flat **Premium micro-subscription** via PaymentO is in scope — see Phase 5; it collects no PII and stores no message content.)
 
 ## Success metrics
 

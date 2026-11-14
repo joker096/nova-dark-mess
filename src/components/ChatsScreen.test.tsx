@@ -99,6 +99,98 @@ describe('ChatsScreen - default folders render', () => {
   });
 });
 
+describe('ChatsScreen - join request indicators', () => {
+  const LOCAL = 'nova_pk_test1234567890';
+
+  beforeEach(() => {
+    localStorage.removeItem('nova_group_roles_thailand');
+    localStorage.removeItem('nova_group_membership_thailand');
+    localStorage.removeItem('nova_group_join_requests_thailand');
+    localStorage.removeItem('nova_group_join_outbox');
+  });
+
+  it('shows the pending join request count on a group an admin owns', () => {
+    localStorage.setItem('nova_group_roles_thailand', JSON.stringify({ [LOCAL]: 'admin' }));
+    localStorage.setItem(
+      'nova_group_join_requests_thailand',
+      JSON.stringify([
+        { fingerprint: 'nova_pk_peer', name: 'Bob', status: 'pending', createdAt: 1 },
+      ]),
+    );
+
+    renderChats({ localFingerprint: LOCAL });
+
+    const badge = screen.getByTestId('join-pending-thailand');
+    expect(badge.textContent).toContain('1');
+  });
+
+  it('hides requests from plain members and the invitee\'s own request', () => {
+    localStorage.setItem('nova_group_roles_thailand', JSON.stringify({ [LOCAL]: 'member' }));
+    localStorage.setItem(
+      'nova_group_join_requests_thailand',
+      JSON.stringify([
+        { fingerprint: 'nova_pk_peer', status: 'pending', createdAt: 1 },
+      ]),
+    );
+    const { unmount } = renderChats({ localFingerprint: LOCAL });
+    expect(screen.queryByTestId('join-pending-thailand')).toBeNull();
+    unmount();
+
+    localStorage.setItem('nova_group_roles_thailand', JSON.stringify({ [LOCAL]: 'admin' }));
+    localStorage.setItem(
+      'nova_group_join_requests_thailand',
+      JSON.stringify([{ fingerprint: LOCAL, status: 'pending', createdAt: 1 }]),
+    );
+    renderChats({ localFingerprint: LOCAL });
+    expect(screen.queryByTestId('join-pending-thailand')).toBeNull();
+  });
+
+  it('lets an admin approve and decline requests straight from the list', () => {
+    localStorage.setItem('nova_group_roles_thailand', JSON.stringify({ [LOCAL]: 'admin' }));
+    localStorage.setItem(
+      'nova_group_join_requests_thailand',
+      JSON.stringify([
+        { fingerprint: 'nova_pk_peer', name: 'Bob', status: 'pending', createdAt: 1 },
+        { fingerprint: 'nova_pk_eve', name: 'Eve', status: 'pending', createdAt: 2 },
+      ]),
+    );
+
+    renderChats({ localFingerprint: LOCAL });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'chat.approveJoinRequest: nova_pk_peer' }),
+    );
+    expect(screen.queryByRole('button', { name: 'chat.approveJoinRequest: nova_pk_peer' })).toBeNull();
+
+    const requests = JSON.parse(
+      localStorage.getItem('nova_group_join_requests_thailand') || '[]',
+    ) as Array<{ fingerprint: string; status: string }>;
+    expect(requests.find((entry) => entry.fingerprint === 'nova_pk_peer')?.status).toBe('approved');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'chat.rejectJoinRequest: nova_pk_eve' }),
+    );
+    expect(screen.queryByTestId('join-actions-thailand')).toBeNull();
+
+    const stored = JSON.parse(
+      localStorage.getItem('nova_group_join_requests_thailand') || '[]',
+    ) as Array<{ fingerprint: string; status: string }>;
+    expect(stored.find((entry) => entry.fingerprint === 'nova_pk_eve')?.status).toBe('rejected');
+    // Both decisions wait for the session relay, and the approved peer joins
+    // the local roster.
+    expect(localStorage.getItem('nova_group_join_outbox')).toContain('nova_pk_peer');
+    expect(localStorage.getItem('nova_group_roles_thailand')).toContain('nova_pk_peer');
+  });
+
+  it('marks a group whose join request is still waiting for approval', () => {
+    localStorage.setItem('nova_group_membership_thailand', 'pending');
+
+    renderChats({ localFingerprint: LOCAL });
+
+    expect(screen.getByTestId('join-waiting-thailand').textContent).toContain('chats.joinWaiting');
+  });
+});
+
 describe('ChatsScreen - horizontal lists hide scrollbar', () => {
   it('quick search chips list uses no-scrollbar (no visible slider)', () => {
     renderChats();

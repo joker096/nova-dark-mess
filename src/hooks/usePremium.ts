@@ -6,15 +6,10 @@ import {
   ensureFirstMonthFree,
   freeDaysRemaining,
   getMinSubscriptionCost,
+  type PremiumFeature,
 } from '../lib/premium';
 
-export type PremiumFeature =
-  | 'chat_themes'
-  | 'wallpaper'
-  | 'date_picker'
-  | 'location_sharing'
-  | 'premium_stickers'
-  | 'all';
+export type { PremiumFeature };
 
 export function usePremium() {
   const [premium, setPremiumState] = useState<boolean>(isPremium());

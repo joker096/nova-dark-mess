@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Search,
-  Paperclip,
+  Share2,
   Volume2,
   VolumeX,
   MessageCircle,
@@ -19,6 +19,11 @@ import {
   Radio,
   MoreVertical,
   SmilePlus,
+  PenSquare,
+  X,
+  Eye,
+  EyeOff,
+  Lock,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import type {
@@ -53,10 +58,14 @@ interface ChannelScreenProps {
   onCreateChannel?: (draft: ChannelDraft) => ChannelInfo | void;
   onSelectChannel?: (channelId: string) => void;
   onDeleteChannel?: (channelId: string) => void;
+  onDeleteChannels?: (channelIds: string[]) => void;
   onCreatePost?: (channelId: string, draft: ChannelPostDraft) => ChannelPost | void;
   onDeletePost?: (postId: string) => void;
+  onEditPost?: (postId: string, draft: ChannelPostDraft) => void;
+  onAddComment?: (postId: string, text: string) => void;
   onToggleReaction?: (postId: string, emoji: string) => void;
   onToggleSound?: (channelId: string, enabled: boolean) => void;
+  onToggleSubscriberPrivacy?: (channelId: string, hidden: boolean) => void;
   onVotePoll?: (pollId: string, optionId: string) => void;
 }
 
@@ -88,10 +97,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onCreateChannel,
   onSelectChannel,
   onDeleteChannel,
+  onDeleteChannels,
   onCreatePost,
   onDeletePost,
+  onEditPost,
+  onAddComment,
   onToggleReaction,
   onToggleSound,
+  onToggleSubscriberPrivacy,
   onVotePoll,
 }) => {
   const { t, language } = useLanguage();
@@ -186,10 +199,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [localSoundEnabled, setLocalSoundEnabled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [postComposerOpen, setPostComposerOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<ChannelPost | null>(null);
+  const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
   const [reactionPickerPostId, setReactionPickerPostId] = useState<string | null>(null);
   const [customReactionEmoji, setCustomReactionEmoji] = useState('');
@@ -227,6 +244,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   useEffect(() => {
     setReactionPickerPostId(null);
   }, [selectedDay]);
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   useEffect(() => {
     const scrollNode = postsScrollRef.current;
@@ -304,6 +332,32 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     toastTimer.current = window.setTimeout(() => setToastMessage(null), 2200);
   };
 
+  const handleShareChannel = async () => {
+    if (!channel) return;
+    const url =
+      channel.visibility === 'private' && channel.inviteCode
+        ? `${window.location.origin}/join/${channel.inviteCode}`
+        : `${window.location.origin}/channel/${channel.id}`;
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({
+          title: channel.name,
+          text: channel.description ?? '',
+          url,
+        });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+    }
+    try {
+      await navigator.clipboard?.writeText(url);
+      showToast(t('channel.linkCopied'));
+    } catch {
+      // Clipboard unavailable in this browser context.
+    }
+  };
+
   const weekDays = useMemo(() => {
     const focus = new Date(focusDate);
     const year = focus.getFullYear();
@@ -349,12 +403,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   );
 
   const query = searchQuery.trim().toLowerCase();
-  const displayPosts = dayPosts.filter(
-    (post) =>
-      !query ||
-      post.title.toLowerCase().includes(query) ||
-      post.text.toLowerCase().includes(query),
-  );
+  const displayPosts = query
+    ? channelPosts
+        .filter((post) => Boolean(channel?.isOwned) || !isPostScheduled(post, now))
+        .filter(
+          (post) =>
+            post.title.toLowerCase().includes(query) ||
+            post.text.toLowerCase().includes(query),
+        )
+        .slice()
+        .sort((a, b) => postCreatedAt(b) - postCreatedAt(a))
+    : dayPosts;
 
   const monthLabel = new Intl.DateTimeFormat(language, {
     month: 'long',
@@ -425,6 +484,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   const handlePublishPost = (draft: ChannelPostDraft) => {
     if (!channel) return;
+    if (editingPost) {
+      onEditPost?.(editingPost.id, draft);
+      setEditingPost(null);
+      showToast(t('channel.postUpdated', 'Post updated'));
+      return;
+    }
     onCreatePost?.(channel.id, draft);
     const target = draft.scheduledFor ?? Date.now();
     setSelectedDay(dayKey(target));
@@ -504,13 +569,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       <div className="relative z-20 shrink-0 p-3">
           <div
             className={`relative overflow-hidden rounded-3xl border border-white/10 shadow-xl shadow-black/70 backdrop-blur-xl transition-all duration-300 ${
-              headerCollapsed ? 'p-2' : 'p-3 min-h-[200px]'
+              headerCollapsed || searchOpen ? 'p-2' : 'p-3 min-h-[200px]'
             } bg-[#14151c]/70`}
           >
           {/* Channel Top row */}
           <div
             className={`flex items-center justify-between gap-2 ${
-              headerCollapsed ? '' : 'mb-2'
+              headerCollapsed || searchOpen ? '' : 'mb-2'
             }`}
           >
             <button
@@ -521,80 +586,153 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               <ArrowLeft className="h-4 w-4" />
             </button>
 
-            <div className="min-w-0 flex-1 text-center">
-              <h2 className="truncate text-[16px] font-bold tracking-tight text-white">
-                {channel.name}
-              </h2>
-              <p className="text-[11px] text-[#868b98]">
-                {t('channel.subscribersCompact', {
-                  value: subscribersLabel,
-                  count: channel.subscribers,
-                })}
-              </p>
-            </div>
+            {searchOpen ? (
+              <>
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--nova-accent-color)]/40 bg-[#101118] px-3 py-1.5">
+                  <Search className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') closeSearch();
+                    }}
+                    placeholder={t('channel.searchFeedPlaceholder')}
+                    aria-label={t('channel.searchFeedPlaceholder')}
+                    className="min-w-0 flex-1 bg-transparent text-xs text-white placeholder-white/35 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white"
+                      aria-label={t('common.reset')}
+                      title={t('common.reset')}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
 
-            <button
-              type="button"
-              onClick={toggleSound}
-              aria-pressed={soundEnabled}
-              aria-label={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
-              title={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
-                soundEnabled
-                  ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
-                  : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              {soundEnabled ? (
-                <Volume2 className="h-4 w-4" />
-              ) : (
-                <VolumeX className="h-4 w-4" />
-              )}
-            </button>
+                <button
+                  type="button"
+                  onClick={closeSearch}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+                  aria-label={t('common.close')}
+                  title={t('common.close')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="min-w-0 flex-1 text-center">
+                  <h2 className="flex items-center justify-center gap-1.5 truncate text-[16px] font-bold tracking-tight text-white">
+                    {channel.visibility === 'private' && (
+                      <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--nova-accent-color)]" />
+                    )}
+                    <span className="truncate">{channel.name}</span>
+                  </h2>
+                  <p className="text-[11px] text-[#868b98]">
+                    {channel.hideSubscriberCount
+                      ? t('channel.subscribersHidden', 'Subscribers hidden')
+                      : t('channel.subscribersCompact', {
+                          value: subscribersLabel,
+                          count: channel.subscribers,
+                        })}
+                  </p>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => setSwitcherOpen(true)}
-              className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 pr-1.5 transition hover:bg-white/10 active:scale-95"
-              aria-label={t('channel.switchChannel')}
-              title={t('channel.switchChannel')}
-            >
-              <ChannelAvatar
-                avatar={channel.avatar}
-                name={channel.name}
-                size="sm"
-                className="opacity-80"
-              />
-              <ChevronsUpDown className="h-3.5 w-3.5 text-white/45" />
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+                  title={t('common.search')}
+                  aria-label={t('common.search')}
+                >
+                  <Search className="h-4 w-4" />
+                </button>
 
-            <button
-              type="button"
-              onClick={toggleHeader}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
-              aria-label={
-                headerCollapsed
-                  ? t('channel.expandPanel')
-                  : t('channel.collapsePanel')
-              }
-              title={
-                headerCollapsed
-                  ? t('channel.expandPanel')
-                  : t('channel.collapsePanel')
-              }
-              aria-expanded={!headerCollapsed}
-              aria-controls="channel-date-scrubber"
-            >
-              {headerCollapsed ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronUp className="h-4 w-4" />
-              )}
-            </button>
+                <button
+                  type="button"
+                  onClick={toggleSound}
+                  aria-pressed={soundEnabled}
+                  aria-label={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
+                  title={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+                    soundEnabled
+                      ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
+                      : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="h-4 w-4" />
+                  ) : (
+                    <VolumeX className="h-4 w-4" />
+                  )}
+                </button>
+
+                {channel.isOwned && onToggleSubscriberPrivacy && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleSubscriberPrivacy(channel.id, !channel.hideSubscriberCount)}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+                      channel.hideSubscriberCount
+                        ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
+                        : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
+                    }`}
+                    title={channel.hideSubscriberCount ? 'Show subscriber count' : 'Hide subscriber count'}
+                  >
+                    {channel.hideSubscriberCount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSwitcherOpen(true)}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 pr-1.5 transition hover:bg-white/10 active:scale-95"
+                  aria-label={t('channel.switchChannel')}
+                  title={t('channel.switchChannel')}
+                >
+                  <ChannelAvatar
+                    avatar={channel.avatar}
+                    name={channel.name}
+                    size="sm"
+                    className="opacity-80"
+                  />
+                  <ChevronsUpDown className="h-3.5 w-3.5 text-white/45" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleHeader}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+                  aria-label={
+                    headerCollapsed
+                      ? t('channel.expandPanel')
+                      : t('channel.collapsePanel')
+                  }
+                  title={
+                    headerCollapsed
+                      ? t('channel.expandPanel')
+                      : t('channel.collapsePanel')
+                  }
+                  aria-expanded={!headerCollapsed}
+                  aria-controls="channel-date-scrubber"
+                >
+                  {headerCollapsed ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Date Scrubber / Timeline Ruler */}
-          {!headerCollapsed && (
+          {!headerCollapsed && !searchOpen && (
             <div id="channel-date-scrubber" className="w-full px-1">
               <div className="mb-1 flex items-center justify-between px-1">
                 <button
@@ -746,19 +884,6 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         </div>
       </div>
 
-      {/* Search Bar when toggled */}
-      {searchOpen && (
-        <div className="relative z-20 px-4 pb-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t('channel.searchFeedPlaceholder')}
-            className="w-full rounded-2xl border border-white/10 bg-[#171820] px-4 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
-          />
-        </div>
-      )}
-
       {/* Posts Stream */}
       <div
         ref={postsScrollRef}
@@ -768,7 +893,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       >
         <div className="mb-2 flex items-center justify-between px-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#868b98]">
-            {dateLabel}
+            {query ? t('common.search') : dateLabel}
           </span>
           <span className="text-[10px] text-[#636875]">
             {t('channel.postsCount', { count: displayPosts.length })}
@@ -886,6 +1011,19 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                               <Copy className="h-3.5 w-3.5" />
                               {t('common.copy')}
                             </button>
+                            {channel.isOwned && onEditPost && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPost(post);
+                                  setPostMenuId(null);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                              >
+                                <PenSquare className="h-3.5 w-3.5" />
+                                {t('channel.editPost', 'Edit post')}
+                              </button>
+                            )}
                             {channel.isOwned && onDeletePost && (
                               <button
                                 type="button"
@@ -936,10 +1074,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
                     {/* Reactions & Comments Row */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-xs font-medium text-[#8c919d]">
+                      <button
+                        type="button"
+                        onClick={() => setCommentingPostId(post.id)}
+                        className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-xs font-medium text-[#8c919d] transition hover:bg-white/5 hover:text-white active:scale-95"
+                      >
                         <MessageCircle className="h-3.5 w-3.5 text-[#8c919d]" />
                         <span>{post.commentsCount}</span>
-                      </div>
+                      </button>
 
                       {post.reactions.map((reaction, index) => (
                         <button
@@ -1074,24 +1216,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => showToast(t('channel.linkCopied'))}
+            onClick={handleShareChannel}
             className="mr-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#181920]/95 text-white/70 shadow-md transition hover:bg-[#20222a] hover:text-white active:scale-95"
             title={t('common.share')}
+            aria-label={t('common.share')}
           >
-            <Paperclip className="h-4 w-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSearchOpen((current) => !current)}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 shadow-md transition active:scale-95 ${
-              searchOpen
-                ? 'bg-[var(--nova-accent-color)] text-white'
-                : 'bg-[#181920]/95 text-white/70 hover:bg-[#20222a] hover:text-white'
-            }`}
-            title={t('common.search')}
-          >
-            <Search className="h-4 w-4" />
+            <Share2 className="h-4 w-4" />
           </button>
 
           {channel.isOwned && onCreatePost && (
@@ -1122,6 +1252,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           onDeleteChannel?.(id);
           showToast(t('channel.channelDeleted'));
         }}
+        onDeleteMany={onDeleteChannels}
       />
 
       <ChannelCreateModal
@@ -1131,11 +1262,85 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       />
 
       <ChannelPostComposerModal
-        isOpen={postComposerOpen}
-        onClose={() => setPostComposerOpen(false)}
+        isOpen={postComposerOpen || !!editingPost}
+        onClose={() => {
+          setPostComposerOpen(false);
+          setEditingPost(null);
+        }}
         channelName={channel.name}
         onPublish={handlePublishPost}
+        initialDraft={
+          editingPost
+            ? {
+                title: editingPost.title,
+                text: editingPost.text,
+                image: editingPost.image,
+                poll: editingPost.poll,
+                sticker: editingPost.sticker,
+              }
+            : null
+        }
       />
+
+      {commentingPostId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
+        >
+          <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white">Comments</h3>
+              <button
+                onClick={() => {
+                  setCommentingPostId(null);
+                  setCommentDraft('');
+                }}
+                className="p-1.5 text-white/50 hover:text-white transition cursor-pointer"
+                aria-label="Close comments"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {(sourcePosts.find((p) => p.id === commentingPostId)?.comments ?? []).map((c) => (
+                <div key={c.id} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/90">
+                  <div className="font-semibold text-[10px] text-white/60 mb-0.5">{c.authorName}</div>
+                  {c.text}
+                </div>
+              ))}
+              {!(sourcePosts.find((p) => p.id === commentingPostId)?.comments?.length) && (
+                <p className="text-xs text-white/40 text-center py-4">No comments yet</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Write a comment..."
+                className="flex-1 rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && commentDraft.trim()) {
+                    onAddComment?.(commentingPostId, commentDraft);
+                    setCommentDraft('');
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!commentDraft.trim()) return;
+                  onAddComment?.(commentingPostId, commentDraft);
+                  setCommentDraft('');
+                }}
+                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color)] text-white text-xs font-semibold hover:brightness-110 active:scale-95"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -61,6 +61,14 @@ describe('FolderModal - open/close', () => {
     fireEvent.click(screen.getByLabelText('common.close'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the icon picker as a horizontally scrollable list', () => {
+    renderModal();
+    const list = screen.getByTestId('folder-icon-list');
+    expect(list.className).toContain('overflow-x-auto');
+    expect(list.className).toContain('touch-pan-x');
+    expect(list.className).toContain('no-scrollbar');
+  });
 });
 
 describe('FolderModal - create folder save', () => {

@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { forwardRef, useEffect, useRef } from 'react';
+import { getGroupMembership } from './lib/social/groupJoinRequests';
 
 vi.mock('./context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -46,6 +47,10 @@ vi.mock('./components/ProfileScreen', () => ({
 vi.mock('./components/AnalyticsScreen', () => ({
   AnalyticsScreen: vi.fn(() => <div data-testid="analytics-screen" />),
 }));
+vi.mock('./components/MeshMap', () => ({
+  default: vi.fn(() => <div data-testid="mesh-map-screen" />),
+  MeshMap: vi.fn(() => <div data-testid="mesh-map-screen" />),
+}));
 vi.mock('./components/SettingsModal', () => ({
   SettingsModal: vi.fn(({ isOpen }: { isOpen: boolean }) => (
     <div data-testid="settings-modal" data-isopen={String(isOpen)} />
@@ -81,16 +86,69 @@ describe('App - desktop navigation rail', () => {
     expect(settingsModal.getAttribute('data-isopen')).toBe('false');
   });
 
+  it('opens a channel from a deep link hash', async () => {
+    window.location.hash = '#nova://channel/kyiv-channel';
+    render(<App />);
+    expect((await screen.findAllByTestId('channel-screen')).length).toBeGreaterThan(0);
+    window.location.hash = '';
+  });
+
+  it('opens a profile from a universal deep link hash', async () => {
+    window.location.hash = '#https://nova.app/profile/katie';
+    render(<App />);
+    expect((await screen.findAllByTestId('profile-screen')).length).toBeGreaterThan(0);
+    window.location.hash = '';
+  });
+
+  it('asks before joining a group from an invite link', async () => {
+    window.location.hash = '#nova://chat/thailand?invite=abcdef123456';
+    render(<App />);
+
+    const dialog = await screen.findByTestId('join-group-dialog');
+    expect(dialog.textContent).toContain('Thailand Trip');
+    fireEvent.click(screen.getByRole('button', { name: 'chat.joinDecline' }));
+    expect(screen.queryByTestId('join-group-dialog')).toBeNull();
+    window.location.hash = '';
+  });
+
+  it('opens the group after the invite is accepted', async () => {
+    window.location.hash = '#nova://chat/thailand?invite=abcdef123456';
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'chat.joinAccept' }));
+    expect((await screen.findAllByTestId('chat-screen')).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('join-group-dialog')).toBeNull();
+    // Accepting an invite only sends a request; an admin still has to approve it.
+    expect(getGroupMembership('thailand')).toBe('pending');
+    window.location.hash = '';
+    localStorage.removeItem('nova_group_membership_thailand');
+  });
+
+  it('ignores a deep link to an unknown channel', () => {
+    window.location.hash = '#nova://channel/does-not-exist';
+    render(<App />);
+    expect(screen.queryByTestId('channel-screen')).toBeNull();
+    window.location.hash = '';
+  });
+
   it('does not render the app icon in the desktop rail', () => {
     render(<App />);
     expect(screen.queryByTestId('app-icon')).toBeNull();
   });
 
-  it('replaces the chat list with the channel list on the Channels screen', () => {
+  it('keeps the chat list mounted under the channel list on the Channels screen', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'common.channels' }));
 
-    expect(screen.queryByTestId('chats-screen')).toBeNull();
+    expect(screen.getByTestId('chats-screen')).toBeInTheDocument();
     expect(screen.getByText('Real Kyiv Life')).toBeInTheDocument();
+  });
+
+  it('desktop Folders button still opens the folder modal from the Channels screen', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'common.channels' }));
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'folders' })[0]);
+    expect(capturedRef.current?.openFolderModal).toHaveBeenCalledTimes(1);
   });
 });

@@ -21,6 +21,7 @@ export const NovaToggle = forwardRef<HTMLButtonElement, NovaToggleProps>(
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         onClick={handleClick}
         className={`w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className ?? ''}`.trim()}
         {...props}

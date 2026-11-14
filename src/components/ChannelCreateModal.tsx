@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Radio } from 'lucide-react';
+import { Globe, Lock, Plus, Radio } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
-import type { ChannelDraft } from '../types/messenger';
+import type { ChannelDraft, ChannelVisibility } from '../types/messenger';
 
 interface ChannelCreateModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
   const [description, setDescription] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState<ChannelVisibility>('public');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
     setDescription('');
     setAvatar(null);
     setCoverImage(null);
+    setVisibility('public');
     setError(null);
   }, [isOpen]);
 
@@ -44,6 +46,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
       description: description.trim() || undefined,
       avatar: avatar ?? undefined,
       coverImage: coverImage ?? undefined,
+      visibility,
     });
     onClose();
   };
@@ -95,6 +98,45 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
             rows={2}
             className="w-full resize-none rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="px-1 text-[11px] font-semibold text-[#868b98]">
+            {t('channel.visibility')}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setVisibility('public')}
+              aria-pressed={visibility === 'public'}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
+                visibility === 'public'
+                  ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/10 text-white'
+                  : 'border-white/10 bg-[#101118] text-white/60 hover:text-white'
+              }`}
+            >
+              <Globe className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" />
+              <span className="text-xs font-semibold">{t('channel.public')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility('private')}
+              aria-pressed={visibility === 'private'}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition cursor-pointer ${
+                visibility === 'private'
+                  ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/10 text-white'
+                  : 'border-white/10 bg-[#101118] text-white/60 hover:text-white'
+              }`}
+            >
+              <Lock className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" />
+              <span className="text-xs font-semibold">{t('channel.private')}</span>
+            </button>
+          </div>
+          <p className="px-1 text-[10px] leading-relaxed text-white/45">
+            {visibility === 'private'
+              ? t('channel.privateHint')
+              : t('channel.publicHint')}
+          </p>
         </div>
 
         <ImagePicker
