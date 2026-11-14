@@ -7,6 +7,7 @@ import {
   Folder,
   Users,
   MapPin,
+  ArrowLeft,
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
@@ -358,6 +359,7 @@ export default function App() {
             onOpenChannel={openChannel}
             onOpenProfile={() => openProfile(account.id)}
             onOpenAnalytics={() => setCurrentScreen('analytics')}
+            onOpenMeshMap={() => setCurrentScreen('mesh-map')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             activeChatId={activeChatId}
             activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
@@ -400,8 +402,25 @@ export default function App() {
         return <AnalyticsScreen onBack={() => setCurrentScreen('chats')} />;
       case 'mesh-map':
         return (
-          <div className="w-full h-full p-4">
-            <MeshMapScreen />
+          <div className="flex h-full w-full flex-col bg-[#090a0e]">
+            <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 border-b border-white/[0.06] shrink-0">
+              <button
+                type="button"
+                onClick={() => setCurrentScreen('chats')}
+                className="w-11 h-11 shrink-0 rounded-full bg-[#181921] border border-white/10 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition cursor-pointer"
+                title={t('common.back')}
+                aria-label={t('common.back')}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
+              <h1 className="min-w-0 truncate text-[15px] font-bold text-white">
+                {t('meshMap.title')}
+              </h1>
+            </header>
+            <div className="flex-1 min-h-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <MeshMapScreen />
+            </div>
           </div>
         );
       default:
@@ -501,7 +520,8 @@ export default function App() {
                 ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
                 : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
             }`}
-            title="Mesh Map"
+            title={t('meshMap.title')}
+            aria-label={t('meshMap.title')}
           >
             <MapPin className={`w-5 h-5 ${currentScreen === 'mesh-map' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
           {currentScreen === 'mesh-map' && (
@@ -556,6 +576,7 @@ export default function App() {
           }}
           onOpenChannel={openChannel}
           onOpenProfile={() => openProfile(account.id)}
+          onOpenMeshMap={() => setCurrentScreen('mesh-map')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           activeChatId={activeChatId}
           activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}

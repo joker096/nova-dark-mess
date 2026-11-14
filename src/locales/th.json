@@ -3,6 +3,9 @@
     "name": "Nova Messenger",
     "tagline": "การส่งข้อความที่ปลอดภัยและสวยงาม"
   },
+  "meshMap": {
+    "title": "แผนที่เมช"
+  },
   "common": {
     "search": "ค้นหา",
     "searchChats": "ค้นหาการสนทนา",

@@ -3,6 +3,9 @@
     "name": "Nova Messenger",
     "tagline": "Pesan aman dan indah"
   },
+  "meshMap": {
+    "title": "Peta Mesh"
+  },
   "common": {
     "search": "Cari",
     "searchChats": "Cari obrolan",

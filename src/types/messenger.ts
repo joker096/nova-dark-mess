@@ -158,6 +158,10 @@ export interface ChatMessage {
   sticker?: StickerData;
   location?: LocationData;
   time: string;
+  /** Optional ISO/epoch timestamp used for smart-reply recency and date grouping. */
+  createdAt?: number;
+  /** Delivery lifecycle: queued → sent → delivered → read, or error with retry. */
+  deliveryStatus?: 'queued' | 'sent' | 'delivered' | 'read' | 'error';
   isRead?: boolean;
   isPinned?: boolean;
   pinnedNote?: string;
@@ -168,7 +172,6 @@ export interface ChatMessage {
   /** System event row (member added/removed, role change). */
   system?: boolean;
   viewOnce?: boolean;
-  pinned?: boolean;
   viewed?: boolean;
   wiped?: boolean;
   reactions?: {

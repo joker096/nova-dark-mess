@@ -136,6 +136,16 @@ describe('App - desktop navigation rail', () => {
     expect(screen.queryByTestId('app-icon')).toBeNull();
   });
 
+  it('opens the mesh map from the desktop rail and closes it from the mobile header', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
+
+    expect((await screen.findAllByTestId('mesh-map-screen')).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.back' }));
+    expect(screen.queryByTestId('mesh-map-screen')).toBeNull();
+  });
+
   it('keeps the chat list mounted under the channel list on the Channels screen', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'common.channels' }));

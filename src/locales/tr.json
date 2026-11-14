@@ -3,6 +3,9 @@
     "name": "Nova Messenger",
     "tagline": "Güvenli ve güzel mesajlaşma"
   },
+  "meshMap": {
+    "title": "Mesh Haritası"
+  },
   "common": {
     "search": "Ara",
     "searchChats": "Sohbetleri ara",
