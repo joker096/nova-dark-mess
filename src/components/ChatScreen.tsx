@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import {
   ArrowLeft,
@@ -720,6 +721,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const sendLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSendLongPressTriggeredRef = useRef(false);
   const [isSendOptionsOpen, setIsSendOptionsOpen] = useState(false);
+  const sendOptionsAnchorRef = useRef<HTMLElement | null>(null);
+  const [sendOptionsPosition, setSendOptionsPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  } | null>(null);
+  const sendOptionsPanelRef = useRef<HTMLDivElement | null>(null);
+  const openSendOptions = (anchor: HTMLElement | null) => {
+    sendOptionsAnchorRef.current = anchor;
+    setIsSendOptionsOpen(true);
+  };
   const [sendSilently, setSendSilently] = useState(false);
 
   // Voice recording & waveform staging states
@@ -864,6 +876,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setPinnedToast(text);
     setTimeout(() => setPinnedToast(null), 2200);
   };
+
+  // The send-options sheet belongs next to the button that opened it, not to
+  // the whole composer block, so anchor it to the trigger box.
+  useLayoutEffect(() => {
+    if (!isSendOptionsOpen) {
+      setSendOptionsPosition(null);
+      return;
+    }
+    const anchor = sendOptionsAnchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const panelWidth = sendOptionsPanelRef.current?.offsetWidth ?? 256;
+    const panelHeight = sendOptionsPanelRef.current?.offsetHeight ?? 0;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const left = Math.min(
+      Math.max(rect.right - panelWidth, 8),
+      Math.max(8, viewportWidth - panelWidth - 8),
+    );
+    const openDownwards = rect.top - panelHeight - 8 < 8;
+    const next = openDownwards
+      ? { top: rect.bottom + 8, left }
+      : { bottom: viewportHeight - rect.top + 8, left };
+    setSendOptionsPosition((current) =>
+      current &&
+      current.left === next.left &&
+      current.top === next.top &&
+      current.bottom === next.bottom
+        ? current
+        : next,
+    );
+  }, [isSendOptionsOpen, sendOptionsPosition?.left, sendOptionsPosition?.top, sendOptionsPosition?.bottom]);
 
   // Matching messages based on search query
   const matchingMessages = messages.filter((msg) => {
@@ -1574,7 +1618,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const handleCopyMessage = (msg: ChatMessage) => {
     if (msg.text) {
-      navigator.clipboard.writeText(msg.text);
+      void navigator.clipboard
+        ?.writeText(msg.text)
+        .then(() => triggerPinnedToast(t('common.copied')))
+        .catch(() => triggerPinnedToast(t('common.copyFailed', 'Could not copy')));
       setCopiedMsgId(msg.id);
       setTimeout(() => setCopiedMsgId(null), 1800);
     }
@@ -4401,7 +4448,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               messages and view-once live in the send options menu. */}
           <button
             type="button"
-            onClick={() => setIsSendOptionsOpen(true)}
+            onClick={(event) => openSendOptions(event.currentTarget)}
             className={`relative w-11 h-11 shrink-0 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
               disappearAfter > 0 || viewOnceMode
                 ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)]'
@@ -4492,7 +4539,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 onPointerCancel={handleSendPointerCancel}
                 onClick={(e) => {
                   if (e.detail === 0) handleSendMessage();
-                  else setIsSendOptionsOpen(true);
+                  else openSendOptions(e.currentTarget);
                 }}
                 style={{ touchAction: 'manipulation' }}
                 className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
@@ -4523,13 +4570,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
         {/* One send-options sheet for both the clock button and the send
             button, so the composer row only carries the mic/send switch. */}
-        {isSendOptionsOpen && (
+        {isSendOptionsOpen &&
+          createPortal(
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsSendOptionsOpen(false)} />
+            <div className="fixed inset-0 z-[70]" onClick={() => setIsSendOptionsOpen(false)} />
             <div
+              ref={sendOptionsPanelRef}
               role="menu"
               aria-label={t('chat.sendOptions.title')}
-              className="absolute bottom-full right-0 z-50 mb-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-1 duration-150"
+              style={{
+                top: sendOptionsPosition?.top,
+                bottom: sendOptionsPosition?.bottom,
+                left: sendOptionsPosition?.left ?? 8,
+              }}
+              className="fixed z-[75] w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-1 duration-150"
             >
               <div className="border-b border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/50">
                 {t('chat.sendOptions.title')}
@@ -4605,8 +4659,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 ))}
               </div>
             </div>
-          </>
-        )}
+          </>,
+          document.body,
+          )}
       </div>
         </>
       )}

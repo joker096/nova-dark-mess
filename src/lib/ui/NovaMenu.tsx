@@ -34,7 +34,11 @@ export interface NovaMenuProps {
  */
 export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const [position, setPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
@@ -45,14 +49,30 @@ export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
+  // First pass uses the trigger box only; once the popup is mounted a second
+  // pass measures it so it can flip above a trigger near the bottom edge.
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setPosition({
-      top: rect.bottom + 6,
-      left: align === 'end' ? rect.right : rect.left,
-    });
-  }, [open, align]);
+    const menuWidth = menuRef.current?.offsetWidth ?? 200;
+    const menuHeight = menuRef.current?.offsetHeight ?? 0;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const anchorLeft = align === 'end' ? rect.right - menuWidth : rect.left;
+    const left = Math.min(Math.max(anchorLeft, 8), Math.max(8, viewportWidth - menuWidth - 8));
+    const openUpwards = rect.bottom + 6 + menuHeight > viewportHeight - 8;
+    const next = openUpwards
+      ? { bottom: viewportHeight - rect.top + 6, left }
+      : { top: rect.bottom + 6, left };
+    setPosition((current) =>
+      current &&
+      current.left === next.left &&
+      current.top === next.top &&
+      current.bottom === next.bottom
+        ? current
+        : next,
+    );
+  }, [open, align, position?.left, position?.top, position?.bottom]);
 
   useEffect(() => {
     if (!open) return;
@@ -113,6 +133,8 @@ export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps
     onClick: (event: React.MouseEvent) => {
       event.stopPropagation();
       (trigger.props as { onClick?: (event: React.MouseEvent) => void }).onClick?.(event);
+      // A menu without rows keeps the trigger a plain button.
+      if (items.length === 0) return;
       setOpen((current) => !current);
     },
     'aria-haspopup': 'menu',
@@ -135,8 +157,11 @@ export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps
             className="fixed z-[80] min-w-[180px] max-w-[260px] rounded-xl border border-white/10 bg-[#141520] p-1 shadow-2xl shadow-black/80"
             style={{
               top: position.top,
+              bottom: position.bottom,
+              // `left` is already anchored (rect.right - menuWidth for 'end'),
+              // so no translateX here — that would shift the menu a second
+              // full menu-width away from the trigger.
               left: position.left,
-              transform: align === 'end' ? 'translateX(-100%)' : undefined,
             }}
           >
             {items.map((item) => (

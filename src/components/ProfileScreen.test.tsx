@@ -265,13 +265,13 @@ describe('ProfileScreen - inline field editing', () => {
 });
 
 describe('ProfileScreen - contact options', () => {
-  it('opens a bottom sheet with working contact actions', () => {
+  it('opens an anchored menu with working contact actions', () => {
     renderProfile('katie');
     fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
 
-    expect(screen.getByTestId('profile-more-menu')).toBeTruthy();
-    expect(screen.getByText('profile.editContact')).toBeTruthy();
-    expect(screen.getByText('profile.copyId')).toBeTruthy();
+    const menu = screen.getByRole('menu', { name: 'profile.contactOptions' });
+    expect(within(menu).getByText('profile.editContact')).toBeTruthy();
+    expect(within(menu).getByText('profile.copyId')).toBeTruthy();
   });
 
   it('edits a contact through the modal and persists every field', () => {
@@ -326,33 +326,36 @@ describe('ProfileScreen - contact options', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
     fireEvent.click(screen.getByText('profile.copyId'));
 
-    expect(screen.queryByTestId('profile-more-menu')).toBeNull();
+    expect(screen.queryByRole('menu', { name: 'profile.contactOptions' })).toBeNull();
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('katie');
       expect(screen.getByText('profile.contactIdCopied')).toBeTruthy();
     });
   });
 
-  it('opens the share modal from the sheet', () => {
+  it('opens the share modal from the menu', () => {
     renderProfile('katie');
     fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
     fireEvent.click(
-      within(screen.getByTestId('profile-more-menu')).getByRole('button', {
-        name: 'common.share',
-      }),
+      within(screen.getByRole('menu', { name: 'profile.contactOptions' })).getByRole(
+        'menuitem',
+        { name: 'common.share' },
+      ),
     );
     expect(screen.getByText('contact.shareTitle')).toBeTruthy();
   });
 
-  it('closes the sheet with Escape and with the backdrop', () => {
+  it('closes the menu with Escape and with an outside click', () => {
     renderProfile('katie');
     fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
-    fireEvent.keyDown(document.documentElement, { key: 'Escape' });
-    expect(screen.queryByTestId('profile-more-menu')).toBeNull();
+    fireEvent.keyDown(screen.getByRole('menu', { name: 'profile.contactOptions' }), {
+      key: 'Escape',
+    });
+    expect(screen.queryByRole('menu', { name: 'profile.contactOptions' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
-    fireEvent.click(screen.getByTestId('profile-more-menu'));
-    expect(screen.queryByTestId('profile-more-menu')).toBeNull();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('menu', { name: 'profile.contactOptions' })).toBeNull();
   });
 
   it('applies a stored contact override on mount', () => {
