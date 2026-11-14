@@ -83,7 +83,8 @@ ok(`Checked ${refs.size} local asset references`);
 
 // ── 2. Stage the bundle ──────────────────────────────────────────────
 fs.rmSync(OUT, { recursive: true, force: true });
-fs.cpSync(LANDING, OUT, { recursive: true });
+fs.mkdirSync(OUT, { recursive: true });
+fs.cpSync(LANDING, path.join(OUT, 'landing'), { recursive: true });
 fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(OUT, 'server.js'));
 fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(OUT, 'package.json'));
 fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(OUT, '.env.example'));
