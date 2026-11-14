@@ -30,7 +30,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
-import { NovaIconButton, NovaMenu } from '../lib/ui';
+import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
 import { isSubscribed, setSubscribed } from '../lib/social/channelSubscriptions';
 import { formatCount } from '../lib/ui';
 import type {
@@ -229,8 +229,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
-  const [reactionPickerPostId, setReactionPickerPostId] = useState<string | null>(null);
-  const [customReactionEmoji, setCustomReactionEmoji] = useState('');
+
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -266,17 +265,6 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   }, [postMenuId]);
 
   useEffect(() => {
-    if (!reactionPickerPostId) return undefined;
-    const closePicker = () => setReactionPickerPostId(null);
-    document.addEventListener('click', closePicker);
-    return () => document.removeEventListener('click', closePicker);
-  }, [reactionPickerPostId]);
-
-  useEffect(() => {
-    setReactionPickerPostId(null);
-  }, [selectedDay]);
-
-  useEffect(() => {
     if (searchOpen) {
       searchInputRef.current?.focus();
     }
@@ -308,7 +296,6 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     scrollAccumulatorRef.current = 0;
     setHeaderCollapsed(nextCollapsed);
     setPostMenuId(null);
-    setReactionPickerPostId(null);
   };
 
   const handlePostsScroll = (event: React.UIEvent<HTMLDivElement>) => {
@@ -428,12 +415,6 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       container.scrollBy({ left: offset, behavior: 'smooth' });
     }
   }, [selectedDay, weekDays]);
-
-  const daysWithPosts = useMemo(
-    () => new Set(channelPosts.map((post) => dayKey(postCreatedAt(post)))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [channelPosts, now],
-  );
 
   const dayPostCounts = useMemo(() => {
     const counts = new Map<number, number>();
@@ -917,7 +898,6 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 const isSelected = selectedDay === key;
                 const isToday = dayKey(now) === key;
                 const count = dayPostCounts.get(key) ?? 0;
-                const hasPosts = count > 0;
                 const isFuture = key > dayKey(now);
                 const weekday = new Intl.DateTimeFormat(language, {
                   weekday: 'short',
@@ -1277,110 +1257,35 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                         reacting and commenting are different actions and used
                         to look identical in one row. */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {post.reactions.map((reaction, index) => (
-                        <button
-                          key={`${reaction.emoji}-${index}`}
-                          type="button"
+                      {post.reactions.map((reaction) => (
+                        <NovaReactionPill
+                          key={reaction.emoji}
+                          emoji={reaction.emoji}
+                          count={reaction.count}
+                          selected={reaction.userReacted}
                           onClick={() => handleToggleReaction(post.id, reaction.emoji)}
-                          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition active:scale-90 ${
-                            reaction.userReacted
-                              ? 'border border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 font-semibold text-white'
-                              : 'border border-white/5 bg-[#1e2028] text-[#a6abb8] hover:bg-[#252834]'
-                          }`}
-                        >
-                          <span className="text-[13px]">{reaction.emoji}</span>
-                          <span className="text-[11px] font-medium tabular-nums">
-                            {reaction.count}
-                          </span>
-                        </button>
+                        />
                       ))}
 
                       {onToggleReaction && (
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setReactionPickerPostId((current) =>
-                                current === post.id ? null : post.id,
-                              );
-                            }}
-                            className={`flex h-7 w-7 items-center justify-center rounded-full border transition active:scale-90 ${
-                              reactionPickerPostId === post.id
-                                ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]'
-                                : 'border-white/5 bg-[#1e2028] text-[#8c919d] hover:bg-[#252834] hover:text-white'
-                            }`}
-                            aria-label={t('common.react')}
-                            title={t('common.react')}
-                            aria-expanded={reactionPickerPostId === post.id}
-                          >
-                            <SmilePlus className="h-3.5 w-3.5" />
-                          </button>
-
-                          {reactionPickerPostId === post.id && (
-                            <div
-                              className="absolute bottom-9 left-0 z-30 grid w-[152px] grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-[#1b1c28] p-1.5 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {POST_REACTIONS.map((emoji) => {
-                                const reacted = post.reactions.some(
-                                  (reaction) =>
-                                    reaction.emoji === emoji && reaction.userReacted,
-                                );
-                                return (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                      handleToggleReaction(post.id, emoji);
-                                      setReactionPickerPostId(null);
-                                    }}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-sm transition active:scale-90 ${
-                                      reacted
-                                        ? 'bg-[var(--nova-accent-color)]/20 ring-1 ring-[var(--nova-accent-color)]/50'
-                                        : 'hover:bg-white/10'
-                                    }`}
-                                    aria-label={`${t('common.react')} ${emoji}`}
-                                    aria-pressed={reacted}
-                                  >
-                                    {emoji}
-                                  </button>
-                                );
-                              })}
-                              {/* Custom reaction input */}
-                              <div className="col-span-4 flex items-center gap-1 pt-1">
-                                <input
-                                  type="text"
-                                  value={customReactionEmoji}
-                                  onChange={(e) => setCustomReactionEmoji(e.target.value)}
-                                  maxLength={2}
-                                  className="flex-1 bg-[#1e2028] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder-[#6e727e] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
-                                  placeholder="❤️"
-                                  title="Свой эмодзи"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const emoji = customReactionEmoji.trim();
-                                    if (!emoji) return;
-                                    handleToggleReaction(post.id, emoji);
-                                    setCustomReactionEmoji('');
-                                    setReactionPickerPostId(null);
-                                  }}
-                                  disabled={!customReactionEmoji.trim()}
-                                  className="flex h-8 w-8 items-center justify-center rounded-xl text-sm transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    customReactionEmoji.trim()
-                                      ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] ring-1 ring-[var(--nova-accent-color)]/50'
-                                      : 'hover:bg-white/10 text-white/60'
-                                  }"
-                                  aria-label="Добавить свой эмодзи"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <NovaReactionPicker
+                          label={t('common.react')}
+                          emojis={POST_REACTIONS}
+                          selectedEmojis={post.reactions
+                            .filter((r) => r.userReacted)
+                            .map((r) => r.emoji)}
+                          onSelect={(emoji) => handleToggleReaction(post.id, emoji)}
+                          allowCustom={true}
+                          customLabel={t('common.customReaction')}
+                          trigger={
+                            <NovaIconButton
+                              icon={<SmilePlus className="h-3.5 w-3.5" />}
+                              label={t('common.react')}
+                              size={32}
+                              className="border border-white/5 bg-[#1e2028] text-[#8c919d] hover:bg-[#252834] hover:text-white"
+                            />
+                          }
+                        />
                       )}
 
                       {post.reactions.some((reaction) => reaction.userReacted) && (

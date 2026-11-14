@@ -30,3 +30,5 @@ export type { NovaTooltipProps } from './NovaTooltip';
 export type { NovaMenuProps, NovaMenuItemDef } from './NovaMenu';
 export type { ToastApi, ToastOptions, ToastUndo } from './NovaToast';
 export type { NovaBadgeProps } from './NovaBadge';
+export { NovaReactionPill } from './NovaReactionPill';
+export { NovaReactionPicker } from './NovaReactionPicker';
