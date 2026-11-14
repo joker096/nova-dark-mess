@@ -8,7 +8,7 @@ Last updated: 2026-11-14
 - **Project generated:** `src-tauri/gen/android/` exists and is tracked.
 - **Activity:** `MainActivity.kt` extends `TauriActivity()`.
 - **Deep link:** `nova://` is declared in `tauri.conf.json` (`plugins.deep-link.mobile`) and present in the merged manifest.
-- **Permissions:** `AndroidManifest.xml` declares `CAMERA`, `RECORD_AUDIO`, and optional `camera` / `microphone` features.
+- **Permissions:** `AndroidManifest.xml` declares `CAMERA`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, and optional `camera` / `microphone` features.
 - **Runtime permission handler:** `src-tauri/src/lib.rs` answers Tauri permission requests for Camera and Microphone with `Allow`.
 - **Verified locally (2026-11-14):** a debug APK installed on an x86_64 emulator, `am start -a android.intent.action.VIEW -d "nova://chat/ci-smoke-test"` resumed `com.messanger.e2e.debug` with the link intact, and `pm grant` succeeded for both permissions.
 - **Not yet verified on CI:** the WebView `getUserMedia` probe still needs a green run of `.github/workflows/android-e2e.yml` on GitHub-hosted infrastructure. The local API 37 (16 KB page size) image crashes `surfaceflinger` and system services, so it is not a reliable target.
