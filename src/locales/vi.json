@@ -377,7 +377,20 @@
     "messageDeleted": "Tin nhắn này đã bị xóa",
     "messageDeletedToast": "Đã xóa tin nhắn",
     "edited": "(đã chỉnh sửa)",
-    "forwardedFrom": "Chuyển tiếp từ"
+    "forwardedFrom": "Chuyển tiếp từ",
+    "sendOptions": {
+      "title": "Tùy chọn gửi",
+      "hold": "Giữ để xem tùy chọn",
+      "silent": "Gửi im lặng",
+      "silentOn": "Đã bật gửi im lặng",
+      "silentOff": "Đã tắt gửi im lặng",
+      "schedule": "Hẹn giờ gửi…",
+      "viewOnce": "Gửi xem một lần",
+      "disappearing": "Tin nhắn tự hủy",
+      "off": "Tắt",
+      "seconds": "{{count}} giây",
+      "minute": "1 phút"
+    }
   },
   "stories": {
     "title": "Truyện",

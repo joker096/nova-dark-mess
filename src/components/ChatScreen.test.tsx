@@ -641,21 +641,25 @@ describe('ChatScreen - group chat and P2P wiring', () => {
     expect(next).toMatch(/^nova:\/\/chat\/thailand\?invite=[a-f0-9]{24}$/);
   });
 
-  it('toggles view-once mode', () => {
+  it('toggles view-once mode from the send options', () => {
     renderChat();
-    const viewOnceBtn = screen.getByTitle('View once off');
-    expect(viewOnceBtn).toBeTruthy();
-    fireEvent.click(viewOnceBtn);
-    expect(screen.getByTitle('View once on')).toBeTruthy();
+    // Both ephemeral modes live behind the single composer clock button.
+    fireEvent.click(screen.getByTitle('chat.sendOptions.title'));
+    const viewOnceItem = screen.getByText('chat.sendOptions.viewOnce');
+    expect(viewOnceItem).toBeTruthy();
+    fireEvent.click(viewOnceItem);
+    // The clock button marks an active send option.
+    const clock = screen.getByTitle('chat.sendOptions.title');
+    expect(clock.textContent).toBe('');
   });
 
-  it('toggles disappearing messages menu', () => {
+  it('sets a disappearing timer from the send options', () => {
     renderChat();
-    const timerBtn = screen.getByTitle('Disappearing messages off');
-    expect(timerBtn).toBeTruthy();
-    fireEvent.click(timerBtn);
-    expect(screen.getByText('Disappear after')).toBeTruthy();
-    fireEvent.click(screen.getByText('5 seconds'));
-    expect(screen.getByTitle('Disappearing in 5s')).toBeTruthy();
+    fireEvent.click(screen.getByTitle('chat.sendOptions.title'));
+    expect(screen.getByText('chat.sendOptions.disappearing')).toBeTruthy();
+    // Three durations share the same label template, so click the first.
+    fireEvent.click(screen.getAllByText('chat.sendOptions.seconds')[0]);
+    expect(screen.queryByText('chat.sendOptions.disappearing')).toBeNull();
+    expect(screen.getByTitle('chat.sendOptions.title').querySelector('span')).toBeTruthy();
   });
 });

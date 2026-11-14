@@ -385,7 +385,20 @@
     "messageDeleted": "تم حذف هذه الرسالة",
     "messageDeletedToast": "تم حذف الرسالة",
     "edited": "(تم تعديلها)",
-    "forwardedFrom": "أُعيد توجيهه من"
+    "forwardedFrom": "أُعيد توجيهه من",
+    "sendOptions": {
+      "title": "خيارات الإرسال",
+      "hold": "اضغط مطولاً للخيارات",
+      "silent": "إرسال بصمت",
+      "silentOn": "الإرسال الصامت مفعل",
+      "silentOff": "الإرسال الصامت معطل",
+      "schedule": "جدولة الإرسال…",
+      "viewOnce": "إرسال للعرض مرة واحدة",
+      "disappearing": "رسائل تختفي",
+      "off": "إيقاف",
+      "seconds": "{{count}} ث",
+      "minute": "دقيقة واحدة"
+    }
   },
   "stories": {
     "title": "القصص",

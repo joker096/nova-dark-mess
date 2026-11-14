@@ -377,7 +377,20 @@
     "messageDeleted": "Pesan ini telah dihapus",
     "messageDeletedToast": "Pesan dihapus",
     "edited": "(diedit)",
-    "forwardedFrom": "Diteruskan dari"
+    "forwardedFrom": "Diteruskan dari",
+    "sendOptions": {
+      "title": "Opsi kirim",
+      "hold": "Tahan untuk opsi",
+      "silent": "Kirim tanpa suara",
+      "silentOn": "Kirim tanpa suara aktif",
+      "silentOff": "Kirim tanpa suara nonaktif",
+      "schedule": "Jadwalkan kirim…",
+      "viewOnce": "Kirim sekali lihat",
+      "disappearing": "Pesan menghilang",
+      "off": "Mati",
+      "seconds": "{{count}} dtk",
+      "minute": "1 mnt"
+    }
   },
   "stories": {
     "title": "Cerita",

@@ -237,7 +237,20 @@
     "messageDeleted": "Сообщение удалено",
     "messageDeletedToast": "Сообщение удалено",
     "edited": "(изменено)",
-    "forwardedFrom": "Переслано от"
+    "forwardedFrom": "Переслано от",
+    "sendOptions": {
+      "title": "Опции отправки",
+      "hold": "Удерживайте для опций",
+      "silent": "Отправить без звука",
+      "silentOn": "Беззвучная отправка вкл.",
+      "silentOff": "Беззвучная отправка выкл.",
+      "schedule": "Отправить позже…",
+      "viewOnce": "Отправить одноразово",
+      "disappearing": "Исчезающие сообщения",
+      "off": "Выкл.",
+      "seconds": "{{count}} с",
+      "minute": "1 мин"
+    }
   },
   "stories": {
     "title": "Истории",

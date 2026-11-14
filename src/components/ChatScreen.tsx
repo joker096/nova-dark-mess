@@ -692,7 +692,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [disappearAfter, setDisappearAfter] = useState(0);
-  const [isDisappearMenuOpen, setIsDisappearMenuOpen] = useState(false);
+
   const [viewOnceMode, setViewOnceMode] = useState(false);
   const [threadRootId, setThreadRootId] = useState<string | null>(null);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
@@ -4409,68 +4409,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsDisappearMenuOpen((prev) => !prev)}
-              className={`h-11 rounded-full border flex items-center gap-1.5 active:scale-95 transition cursor-pointer shadow-md ${
-                disappearAfter > 0
-                  ? 'px-3.5 bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                  : 'w-11 justify-center bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
-              }`}
-              title={disappearAfter > 0 ? `Disappearing in ${disappearAfter}s` : 'Disappearing messages off'}
-            >
-              <Clock className="w-4 h-4" />
-              {disappearAfter > 0 && <span className="text-[11px] font-semibold tabular-nums">{disappearAfter}s</span>}
-            </button>
-            {isDisappearMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsDisappearMenuOpen(false)} />
-                <div className="absolute bottom-full mb-2 left-0 z-50 w-44 bg-[#151621]/98 border border-white/15 rounded-2xl shadow-2xl shadow-black/80 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
-                  <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                    Disappear after
-                  </div>
-                  {[
-                    { label: 'Off', value: 0 },
-                    { label: '5 seconds', value: 5 },
-                    { label: '10 seconds', value: 10 },
-                    { label: '30 seconds', value: 30 },
-                    { label: '1 minute', value: 60 },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setDisappearAfter(option.value);
-                        setIsDisappearMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-xs transition cursor-pointer ${
-                        disappearAfter === option.value
-                          ? 'bg-[var(--nova-accent-color, #ff4e18)]/15 text-[var(--nova-accent-color, #ff4e18)]'
-                          : 'text-white/80 hover:bg-white/5'
-                      }`}
-                    >
-                      <span>{option.label}</span>
-                      {disappearAfter === option.value && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        <div className="relative flex items-center gap-2">
+          {/* The row keeps a single left control: attachments. Disappearing
+              messages and view-once live in the send options menu. */}
           <button
             type="button"
-            onClick={() => setViewOnceMode((prev) => !prev)}
-            className={`h-11 px-3.5 rounded-full border flex items-center gap-1.5 active:scale-95 transition cursor-pointer shadow-md ${
-              viewOnceMode
-                ? 'bg-fuchsia-500 text-white border-fuchsia-500 shadow-fuchsia-500/30'
+            onClick={() => setIsSendOptionsOpen(true)}
+            className={`relative w-11 h-11 shrink-0 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
+              disappearAfter > 0 || viewOnceMode
+                ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)]'
                 : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
             }`}
-            title={viewOnceMode ? 'View once on' : 'View once off'}
+            title={t('chat.sendOptions.title')}
+            aria-label={t('chat.sendOptions.title')}
+            aria-haspopup="menu"
+            aria-expanded={isSendOptionsOpen}
           >
-            <Eye className="w-4 h-4" />
-            {viewOnceMode && <span className="text-[11px] font-semibold">1x</span>}
+            <Clock className="w-4 h-4" />
+            {(disappearAfter > 0 || viewOnceMode) && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] shadow" />
+            )}
           </button>
           {/* Paperclip Button opening Simulated File Selection Menu */}
           <button
@@ -4547,13 +4505,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 onPointerCancel={handleSendPointerCancel}
                 onClick={(e) => {
                   if (e.detail === 0) handleSendMessage();
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setIsSendOptionsOpen((prev) => !prev);
+                  else setIsSendOptionsOpen(true);
                 }}
                 style={{ touchAction: 'manipulation' }}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
                 title={t('common.send')}
                 aria-haspopup="menu"
                 aria-expanded={isSendOptionsOpen}
@@ -4561,64 +4516,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <Send className="w-4 h-4 ml-0.5" />
                 {/* Hold hint badge */}
                 <div className="absolute -top-7 right-0 bg-[#1e202a] text-white text-[9px] px-2 py-0.5 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md">
-                  Hold for send options
+                  {t('chat.sendOptions.hold')}
                 </div>
               </button>
 
-              {isSendOptionsOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsSendOptionsOpen(false)}
-                  />
-                  <div
-                    role="menu"
-                    className="absolute bottom-full right-0 mb-2 w-56 z-50 bg-[#151621]/98 border border-white/10 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
-                  >
-                    <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                      Send options
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSendSilently((prev) => !prev);
-                        triggerPinnedToast(sendSilently ? 'Silent send off' : 'Silent send on');
-                        setIsSendOptionsOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <VolumeX className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                        <span>Send silently</span>
-                      </span>
-                      {sendSilently && <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsSendOptionsOpen(false);
-                        setIsScheduleModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                    >
-                      <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                      <span>Schedule send…</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewOnceMode((prev) => !prev);
-                        triggerPinnedToast(viewOnceMode ? 'View-once off' : 'View-once on');
-                        setIsSendOptionsOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <Eye className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                        <span>Send as view-once</span>
-                      </span>
-                      {viewOnceMode && <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />}
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
           ) : (
             <VoiceMemoInput
@@ -4632,6 +4533,93 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             />
           )}
         </div>
+
+        {/* One send-options sheet for both the clock button and the send
+            button, so the composer row only carries the mic/send switch. */}
+        {isSendOptionsOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsSendOptionsOpen(false)} />
+            <div
+              role="menu"
+              aria-label={t('chat.sendOptions.title')}
+              className="absolute bottom-full right-0 z-50 mb-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-1 duration-150"
+            >
+              <div className="border-b border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                {t('chat.sendOptions.title')}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendSilently((prev) => !prev);
+                  triggerPinnedToast(sendSilently ? t('chat.sendOptions.silentOff') : t('chat.sendOptions.silentOn'));
+                  setIsSendOptionsOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <VolumeX className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
+                  <span>{t('chat.sendOptions.silent')}</span>
+                </span>
+                {sendSilently && <Check className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSendOptionsOpen(false);
+                  setIsScheduleModalOpen(true);
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+              >
+                <Clock className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
+                <span>{t('chat.sendOptions.schedule')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewOnceMode((prev) => !prev);
+                  setIsSendOptionsOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Eye className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
+                  <span>{t('chat.sendOptions.viewOnce')}</span>
+                </span>
+                {viewOnceMode && <Check className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />}
+              </button>
+              <div className="my-1 h-px bg-white/10" role="separator" />
+              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                {t('chat.sendOptions.disappearing')}
+              </div>
+              <div className="flex flex-wrap gap-1.5 px-3 pb-2.5 pt-1">
+                {[
+                  { value: 0, label: t('chat.sendOptions.off') },
+                  { value: 5, label: t('chat.sendOptions.seconds', { count: 5 }) },
+                  { value: 10, label: t('chat.sendOptions.seconds', { count: 10 }) },
+                  { value: 30, label: t('chat.sendOptions.seconds', { count: 30 }) },
+                  { value: 60, label: t('chat.sendOptions.minute') },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      setDisappearAfter(option.value);
+                      setIsSendOptionsOpen(false);
+                    }}
+                    aria-pressed={disappearAfter === option.value}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
+                      disappearAfter === option.value
+                        ? 'bg-[var(--nova-accent-color)] text-white'
+                        : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
         </>
       )}

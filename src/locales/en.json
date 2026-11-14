@@ -439,7 +439,20 @@
     "messageDeleted": "This message was deleted",
     "messageDeletedToast": "Message deleted",
     "edited": "(edited)",
-    "forwardedFrom": "Forwarded from"
+    "forwardedFrom": "Forwarded from",
+    "sendOptions": {
+      "title": "Send options",
+      "hold": "Hold for send options",
+      "silent": "Send silently",
+      "silentOn": "Silent send on",
+      "silentOff": "Silent send off",
+      "schedule": "Schedule send…",
+      "viewOnce": "Send as view-once",
+      "disappearing": "Disappearing messages",
+      "off": "Off",
+      "seconds": "{{count}} s",
+      "minute": "1 min"
+    }
   },
   "stories": {
     "title": "Stories",

@@ -377,7 +377,20 @@
     "messageDeleted": "Diese Nachricht wurde gelöscht",
     "messageDeletedToast": "Nachricht gelöscht",
     "edited": "(bearbeitet)",
-    "forwardedFrom": "Weitergeleitet von"
+    "forwardedFrom": "Weitergeleitet von",
+    "sendOptions": {
+      "title": "Sendeoptionen",
+      "hold": "Halten für Optionen",
+      "silent": "Lautlos senden",
+      "silentOn": "Lautlos senden an",
+      "silentOff": "Lautlos senden aus",
+      "schedule": "Später senden…",
+      "viewOnce": "Einmalig ansehen",
+      "disappearing": "Selbstlöschende Nachrichten",
+      "off": "Aus",
+      "seconds": "{{count}} s",
+      "minute": "1 Min."
+    }
   },
   "stories": {
     "title": "Stories",

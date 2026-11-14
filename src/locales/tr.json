@@ -377,7 +377,20 @@
     "messageDeleted": "Bu mesaj silindi",
     "messageDeletedToast": "Mesaj silindi",
     "edited": "(düzenlendi)",
-    "forwardedFrom": "Şuradan iletildi:"
+    "forwardedFrom": "Şuradan iletildi:",
+    "sendOptions": {
+      "title": "Gönderme seçenekleri",
+      "hold": "Seçenekler için basılı tut",
+      "silent": "Sessiz gönder",
+      "silentOn": "Sessiz gönderim açık",
+      "silentOff": "Sessiz gönderim kapalı",
+      "schedule": "Zamanlanmış gönder…",
+      "viewOnce": "Bir kez görüntüle",
+      "disappearing": "Kaybolan mesajlar",
+      "off": "Kapalı",
+      "seconds": "{{count}} sn",
+      "minute": "1 dk"
+    }
   },
   "stories": {
     "title": "Hikayeler",
