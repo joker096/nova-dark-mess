@@ -658,7 +658,16 @@
     "searchChannels": "Пошук каналів...",
     "popular": "Популярні канали",
     "addPopular": "Додати до популярних",
-    "removePopular": "Прибрати з популярних"
+    "removePopular": "Прибрати з популярних",
+    "subscribe": "Підписатися",
+    "subscribed": "Ви підписані",
+    "unsubscribe": "Відписатися",
+    "channelInfo": "Про канал",
+    "hideSubscriberCount": "Приховати кількість підписників",
+    "showSubscriberCount": "Показати кількість підписників",
+    "unsubscribed": "Ви відписалися",
+    "commentsCount": "{{count}} коментарів",
+    "sharePost": "Поділитися постом"
   },
   "location": {
     "shareTitle": "Поділитися місцезнаходженням",

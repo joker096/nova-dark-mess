@@ -226,7 +226,16 @@
     "searchChannels": "Search channels...",
     "popular": "Popular channels",
     "addPopular": "Add to popular",
-    "removePopular": "Remove from popular"
+    "removePopular": "Remove from popular",
+    "subscribe": "Subscribe",
+    "subscribed": "Subscribed",
+    "unsubscribe": "Unsubscribe",
+    "channelInfo": "Channel info",
+    "hideSubscriberCount": "Hide subscriber count",
+    "showSubscriberCount": "Show subscriber count",
+    "unsubscribed": "Unsubscribed",
+    "commentsCount": "{{count}} comments",
+    "sharePost": "Share post"
   },
   "location": {
     "shareTitle": "Share Location",

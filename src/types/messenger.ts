@@ -204,6 +204,8 @@ export interface ChannelPost {
   image?: string;
   imageBadge?: string;
   commentsCount: number;
+  /** View counter; absent until the post has been measured. */
+  views?: number;
   reactions: {
     emoji: string;
     count: number;

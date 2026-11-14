@@ -218,7 +218,16 @@
     "searchChannels": "Cari saluran...",
     "popular": "Saluran Populer",
     "addPopular": "Tambahkan ke populer",
-    "removePopular": "Hapus dari populer"
+    "removePopular": "Hapus dari populer",
+    "subscribe": "Berlangganan",
+    "subscribed": "Berlangganan",
+    "unsubscribe": "Berhenti berlangganan",
+    "channelInfo": "Info saluran",
+    "hideSubscriberCount": "Sembunyikan jumlah pelanggan",
+    "showSubscriberCount": "Tampilkan jumlah pelanggan",
+    "unsubscribed": "Berhenti berlangganan",
+    "commentsCount": "{{count}} komentar",
+    "sharePost": "Bagikan postingan"
   },
   "location": {
     "shareTitle": "Bagikan Lokasi",

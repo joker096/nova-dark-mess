@@ -220,7 +220,16 @@
     "searchChannels": "Buscar canales...",
     "popular": "Canales populares",
     "addPopular": "Añadir a populares",
-    "removePopular": "Eliminar de populares"
+    "removePopular": "Eliminar de populares",
+    "subscribe": "Suscribirse",
+    "subscribed": "Suscrito",
+    "unsubscribe": "Cancelar suscripción",
+    "channelInfo": "Información del canal",
+    "hideSubscriberCount": "Ocultar número de suscriptores",
+    "showSubscriberCount": "Mostrar número de suscriptores",
+    "unsubscribed": "Suscripción cancelada",
+    "commentsCount": "{{count}} comentarios",
+    "sharePost": "Compartir publicación"
   },
   "location": {
     "shareTitle": "Compartir ubicación",

@@ -218,7 +218,16 @@
     "searchChannels": "Kanäle suchen...",
     "popular": "Beliebte Kanäle",
     "addPopular": "Zu Favoriten hinzufügen",
-    "removePopular": "Aus Favoriten entfernen"
+    "removePopular": "Aus Favoriten entfernen",
+    "subscribe": "Abonnieren",
+    "subscribed": "Abonniert",
+    "unsubscribe": "Abbestellen",
+    "channelInfo": "Kanaldetails",
+    "hideSubscriberCount": "Abonnentenzahl ausblenden",
+    "showSubscriberCount": "Abonnentenzahl anzeigen",
+    "unsubscribed": "Abbestellt",
+    "commentsCount": "{{count}} Kommentare",
+    "sharePost": "Beitrag teilen"
   },
   "location": {
     "shareTitle": "Standort teilen",
