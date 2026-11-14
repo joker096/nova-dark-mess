@@ -228,6 +228,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [reactionPickerPostId, setReactionPickerPostId] = useState<string | null>(null);
   const [customReactionEmoji, setCustomReactionEmoji] = useState('');
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const postsScrollRef = useRef<HTMLDivElement | null>(null);
   const lastScrollTopRef = useRef(0);
@@ -243,6 +244,15 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!lightboxImage) return undefined;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxImage(null);
+    };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [lightboxImage]);
 
   useEffect(() => {
     if (!postMenuId) return undefined;
@@ -973,7 +983,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="mx-auto w-full max-w-[840px] space-y-4">
             {displayPosts.map((post) => {
               const scheduled = isPostScheduled(post, now);
               const postCardClassName = scheduled
@@ -1002,7 +1012,18 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
                     {/* Media Image Banner if present */}
                     {post.image && (
-                      <div className="group relative aspect-[16/9] overflow-hidden rounded-[18px] bg-[#22242e]">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setLightboxImage(post.image ?? null)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setLightboxImage(post.image ?? null);
+                          }
+                        }}
+                        className="group relative aspect-[16/9] max-h-[min(560px,70vh)] overflow-hidden rounded-[18px] bg-[#22242e] cursor-zoom-in"
+                      >
                         <img
                           src={post.image}
                           alt={post.title}
@@ -1268,6 +1289,30 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       </div>
 
       {/* Toast Notification */}
+      {lightboxImage && (
+        <div
+          data-testid="media-lightbox"
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-xl animate-in fade-in"
+        >
+          <img
+            src={lightboxImage}
+            alt={t('common.photo')}
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[90vh] max-w-full rounded-2xl object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label={t('common.close')}
+            title={t('common.close')}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       {toastMessage && (
         <div className="fixed left-1/2 top-14 z-50 -translate-x-1/2 rounded-full border border-[var(--nova-accent-color)]/50 bg-[#1e202a]/95 px-3.5 py-1.5 text-xs text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
           {toastMessage}
