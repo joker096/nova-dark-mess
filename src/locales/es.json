@@ -379,7 +379,20 @@
     "messageDeleted": "Este mensaje fue eliminado",
     "messageDeletedToast": "Mensaje eliminado",
     "edited": "(editado)",
-    "forwardedFrom": "Reenviado desde"
+    "forwardedFrom": "Reenviado desde",
+    "sendOptions": {
+      "title": "Opciones de envío",
+      "hold": "Mantén para opciones",
+      "silent": "Enviar en silencio",
+      "silentOn": "Envío silencioso activado",
+      "silentOff": "Envío silencioso desactivado",
+      "schedule": "Programar envío…",
+      "viewOnce": "Enviar como ver una vez",
+      "disappearing": "Mensajes efímeros",
+      "off": "Off",
+      "seconds": "{{count}} s",
+      "minute": "1 min"
+    }
   },
   "stories": {
     "title": "Historias",

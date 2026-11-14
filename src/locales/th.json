@@ -377,7 +377,20 @@
     "messageDeleted": "ข้อความนี้ถูกลบ",
     "messageDeletedToast": "ลบข้อความแล้ว",
     "edited": "(แก้ไขแล้ว)",
-    "forwardedFrom": "ส่งต่อจาก"
+    "forwardedFrom": "ส่งต่อจาก",
+    "sendOptions": {
+      "title": "ตัวเลือกการส่ง",
+      "hold": "กดค้างเพื่อตัวเลือก",
+      "silent": "ส่งแบบเงียบ",
+      "silentOn": "เปิดส่งแบบเงียบ",
+      "silentOff": "ปิดส่งแบบเงียบ",
+      "schedule": "กำหนดเวลาส่ง…",
+      "viewOnce": "ส่งแบบดูครั้งเดียว",
+      "disappearing": "ข้อความที่หายไป",
+      "off": "ปิด",
+      "seconds": "{{count}} วิ",
+      "minute": "1 นาที"
+    }
   },
   "stories": {
     "title": "สตอรี่",
