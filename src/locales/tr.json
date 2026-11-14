@@ -218,7 +218,16 @@
     "searchChannels": "Kanalları ara...",
     "popular": "Popüler Kanallar",
     "addPopular": "Popülerlere ekle",
-    "removePopular": "Popülerlerden kaldır"
+    "removePopular": "Popülerlerden kaldır",
+    "subscribe": "Abone ol",
+    "subscribed": "Abone olundu",
+    "unsubscribe": "Abonelikten çık",
+    "channelInfo": "Kanal bilgisi",
+    "hideSubscriberCount": "Abone sayısını gizle",
+    "showSubscriberCount": "Abone sayısını göster",
+    "unsubscribed": "Abonelikten çıkıldı",
+    "commentsCount": "{{count}} yorum",
+    "sharePost": "Gönderiyi paylaş"
   },
   "location": {
     "shareTitle": "Konumu paylaş",

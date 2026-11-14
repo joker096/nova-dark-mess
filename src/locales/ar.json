@@ -226,7 +226,16 @@
     "searchChannels": "البحث عن قنوات...",
     "popular": "القنوات الشائعة",
     "addPopular": "إضافة إلى الشائعة",
-    "removePopular": "إزالة من الشائعة"
+    "removePopular": "إزالة من الشائعة",
+    "subscribe": "اشتراك",
+    "subscribed": "مشترك",
+    "unsubscribe": "إلغاء الاشتراك",
+    "channelInfo": "معلومات القناة",
+    "hideSubscriberCount": "إخفاء عدد المشتركين",
+    "showSubscriberCount": "إظهار عدد المشتركين",
+    "unsubscribed": "تم إلغاء الاشتراك",
+    "commentsCount": "{{count}} تعليقات",
+    "sharePost": "مشاركة المنشور"
   },
   "location": {
     "shareTitle": "مشاركة الموقع",

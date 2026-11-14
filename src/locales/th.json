@@ -218,7 +218,16 @@
     "searchChannels": "ค้นหาแชนแนล...",
     "popular": "แชนแนลยอดนิยม",
     "addPopular": "เพิ่มไปยังยอดนิยม",
-    "removePopular": "ลบออกจากยอดนิยม"
+    "removePopular": "ลบออกจากยอดนิยม",
+    "subscribe": "ติดตาม",
+    "subscribed": "ติดตามอยู่",
+    "unsubscribe": "เลิกติดตาม",
+    "channelInfo": "ข้อมูลช่อง",
+    "hideSubscriberCount": "ซ่อนจำนวนผู้ติดตาม",
+    "showSubscriberCount": "แสดงจำนวนผู้ติดตาม",
+    "unsubscribed": "เลิกติดตามแล้ว",
+    "commentsCount": "{{count}} ความคิดเห็น",
+    "sharePost": "แชร์โพสต์"
   },
   "location": {
     "shareTitle": "แชร์ตำแหน่งที่ตั้ง",

@@ -218,7 +218,16 @@
     "searchChannels": "Tìm kênh...",
     "popular": "Kênh phổ biến",
     "addPopular": "Thêm vào phổ biến",
-    "removePopular": "Xóa khỏi phổ biến"
+    "removePopular": "Xóa khỏi phổ biến",
+    "subscribe": "Theo dõi",
+    "subscribed": "Đang theo dõi",
+    "unsubscribe": "Bỏ theo dõi",
+    "channelInfo": "Thông tin kênh",
+    "hideSubscriberCount": "Ẩn số người theo dõi",
+    "showSubscriberCount": "Hiện số người theo dõi",
+    "unsubscribed": "Đã bỏ theo dõi",
+    "commentsCount": "{{count}} bình luận",
+    "sharePost": "Chia sẻ bài viết"
   },
   "location": {
     "shareTitle": "Chia sẻ vị trí",

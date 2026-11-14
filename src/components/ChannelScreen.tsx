@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  Bell,
   Clock,
   Trash2,
   Copy,
@@ -26,6 +27,9 @@ import {
   Lock,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
+import { NovaIconButton, NovaMenu } from '../lib/ui';
+import { isSubscribed, setSubscribed } from '../lib/social/channelSubscriptions';
+import { formatCount } from '../lib/ui';
 import type {
   ChannelDraft,
   ChannelInfo,
@@ -202,6 +206,19 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [subscribed, setSubscribedState] = useState(() => isSubscribed(channelId));
+
+  // The channel can change without unmounting this screen.
+  useEffect(() => {
+    setSubscribedState(isSubscribed(channelId));
+  }, [channelId]);
+
+  const toggleSubscription = () => {
+    const next = !subscribed;
+    setSubscribedState(next);
+    setSubscribed(channelId, next);
+    showToast(next ? t('channel.subscribed') : t('channel.unsubscribed'));
+  };
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [postComposerOpen, setPostComposerOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<ChannelPost | null>(null);
@@ -330,6 +347,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       window.clearTimeout(toastTimer.current);
     }
     toastTimer.current = window.setTimeout(() => setToastMessage(null), 2200);
+  };
+
+  const handleSharePost = async (postId: string) => {
+    if (!channel) return;
+    const url = `${window.location.origin}/channel/${channel.id}#post-${postId}`;
+    try {
+      await navigator.clipboard?.writeText(url);
+      showToast(t('channel.linkCopied'));
+    } catch {
+      // Clipboard unavailable in this browser context.
+    }
   };
 
   const handleShareChannel = async () => {
@@ -627,106 +655,124 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               </>
             ) : (
               <>
-                <div className="min-w-0 flex-1 text-center">
-                  <h2 className="flex items-center justify-center gap-1.5 truncate text-[16px] font-bold tracking-tight text-white">
-                    {channel.visibility === 'private' && (
-                      <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--nova-accent-color)]" />
-                    )}
-                    <span className="truncate">{channel.name}</span>
-                  </h2>
-                  <p className="text-[11px] text-[#868b98]">
-                    {channel.hideSubscriberCount
-                      ? t('channel.subscribersHidden', 'Subscribers hidden')
-                      : t('channel.subscribersCompact', {
-                          value: subscribersLabel,
-                          count: channel.subscribers,
-                        })}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSearchOpen(true)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
-                  title={t('common.search')}
-                  aria-label={t('common.search')}
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleSound}
-                  aria-pressed={soundEnabled}
-                  aria-label={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
-                  title={soundEnabled ? t('channel.soundOn') : t('channel.soundOff')}
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
-                    soundEnabled
-                      ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
-                      : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="h-4 w-4" />
-                  ) : (
-                    <VolumeX className="h-4 w-4" />
-                  )}
-                </button>
-
-                {channel.isOwned && onToggleSubscriberPrivacy && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleSubscriberPrivacy(channel.id, !channel.hideSubscriberCount)}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
-                      channel.hideSubscriberCount
-                        ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
-                        : 'border-white/5 bg-[#1e2029]/80 text-white/70 hover:bg-white/10 hover:text-white'
-                    }`}
-                    title={channel.hideSubscriberCount ? 'Show subscriber count' : 'Hide subscriber count'}
-                  >
-                    {channel.hideSubscriberCount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                )}
-
+                {/* Same layout as the chat header: avatar, name, actions. */}
                 <button
                   type="button"
                   onClick={() => setSwitcherOpen(true)}
-                  className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 pr-1.5 transition hover:bg-white/10 active:scale-95"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer"
                   aria-label={t('channel.switchChannel')}
                   title={t('channel.switchChannel')}
                 >
-                  <ChannelAvatar
-                    avatar={channel.avatar}
-                    name={channel.name}
-                    size="sm"
-                    className="opacity-80"
-                  />
-                  <ChevronsUpDown className="h-3.5 w-3.5 text-white/45" />
+                  <ChannelAvatar avatar={channel.avatar} name={channel.name} size="sm" />
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1 truncate text-[14px] font-bold tracking-tight text-white">
+                      {channel.visibility === 'private' && (
+                        <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--nova-accent-color)]" />
+                      )}
+                      <span className="truncate">{channel.name}</span>
+                    </span>
+                    <span className="block truncate text-[10.5px] text-[#868b98]">
+                      {channel.hideSubscriberCount
+                        ? t('channel.subscribersHidden', 'Subscribers hidden')
+                        : t('channel.subscribersCompact', {
+                            value: subscribersLabel,
+                            count: channel.subscribers,
+                          })}
+                    </span>
+                  </span>
                 </button>
+
+                <NovaIconButton
+                  label={t('common.search')}
+                  icon={<Search />}
+                  size={36}
+                  variant="subtle"
+                  className="border-white/5 bg-[#1e2029]/80"
+                  onClick={() => setSearchOpen(true)}
+                />
 
                 <button
                   type="button"
-                  onClick={toggleHeader}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
-                  aria-label={
-                    headerCollapsed
-                      ? t('channel.expandPanel')
-                      : t('channel.collapsePanel')
+                  onClick={toggleSubscription}
+                  aria-pressed={subscribed}
+                  className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition active:scale-95 cursor-pointer ${
+                    subscribed
+                      ? 'border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10'
+                      : 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
+                  }`}
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  <span>{subscribed ? t('channel.subscribed') : t('channel.subscribe')}</span>
+                </button>
+
+                <NovaMenu
+                  label={t('common.more')}
+                  trigger={
+                    <NovaIconButton
+                      label={t('common.more')}
+                      icon={<MoreVertical />}
+                      size={36}
+                      variant="subtle"
+                      className="border-white/5 bg-[#1e2029]/80"
+                    />
                   }
-                  title={
-                    headerCollapsed
-                      ? t('channel.expandPanel')
-                      : t('channel.collapsePanel')
-                  }
+                  items={[
+                    {
+                      key: 'share',
+                      label: t('common.share'),
+                      icon: <Share2 />,
+                      onSelect: handleShareChannel,
+                    },
+                    {
+                      key: 'switch',
+                      label: t('channel.switchChannel'),
+                      icon: <ChevronsUpDown />,
+                      onSelect: () => setSwitcherOpen(true),
+                    },
+                    ...(onToggleSound
+                      ? [
+                          {
+                            key: 'sound',
+                            label: soundEnabled ? t('channel.soundOff') : t('channel.soundOn'),
+                            icon: soundEnabled ? <VolumeX /> : <Volume2 />,
+                            onSelect: toggleSound,
+                          },
+                        ]
+                      : []),
+                    ...(channel.isOwned && onToggleSubscriberPrivacy
+                      ? [
+                          {
+                            key: 'privacy',
+                            label: channel.hideSubscriberCount
+                              ? t('channel.showSubscriberCount')
+                              : t('channel.hideSubscriberCount'),
+                            icon: channel.hideSubscriberCount ? <Eye /> : <EyeOff />,
+                            onSelect: () =>
+                              onToggleSubscriberPrivacy(channel.id, !channel.hideSubscriberCount),
+                          },
+                        ]
+                      : []),
+                    {
+                      key: 'unsubscribe',
+                      label: subscribed ? t('channel.unsubscribe') : t('channel.subscribe'),
+                      icon: <Bell />,
+                      danger: subscribed,
+                      separatorBefore: true,
+                      onSelect: toggleSubscription,
+                    },
+                  ]}
+                />
+
+                <NovaIconButton
+                  label={headerCollapsed ? t('channel.expandPanel') : t('channel.collapsePanel')}
+                  icon={headerCollapsed ? <ChevronDown /> : <ChevronUp />}
+                  size={36}
+                  variant="subtle"
+                  className="border-white/5 bg-[#1e2029]/80"
                   aria-expanded={!headerCollapsed}
                   aria-controls="channel-date-scrubber"
-                >
-                  {headerCollapsed ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4" />
-                  )}
-                </button>
+                  onClick={toggleHeader}
+                />
               </>
             )}
           </div>
@@ -1072,17 +1118,10 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       </div>
                     )}
 
-                    {/* Reactions & Comments Row */}
+                    {/* Reactions on the left, engagement actions on the right:
+                        reacting and commenting are different actions and used
+                        to look identical in one row. */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setCommentingPostId(post.id)}
-                        className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-xs font-medium text-[#8c919d] transition hover:bg-white/5 hover:text-white active:scale-95"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5 text-[#8c919d]" />
-                        <span>{post.commentsCount}</span>
-                      </button>
-
                       {post.reactions.map((reaction, index) => (
                         <button
                           key={`${reaction.emoji}-${index}`}
@@ -1195,6 +1234,30 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                           {t('channel.youReacted')}
                         </span>
                       )}
+
+                      <div className="ml-auto flex items-center gap-1.5">
+                        {typeof post.views === 'number' && (
+                          <span className="flex items-center gap-1 px-1 text-[11px] tabular-nums text-white/40">
+                            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                            {formatCount(post.views)}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCommentingPostId(post.id)}
+                          className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-[11px] font-medium text-[#8c919d] transition hover:bg-white/5 hover:text-white active:scale-95"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5 text-[#8c919d]" />
+                          <span>{t('channel.commentsCount', { count: post.commentsCount })}</span>
+                        </button>
+                        <NovaIconButton
+                          label={t('channel.sharePost')}
+                          icon={<Share2 />}
+                          size={32}
+                          className="border border-white/5 bg-[#1e2028] text-[#8c919d] hover:bg-[#252834] hover:text-white"
+                          onClick={() => handleSharePost(post.id)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1213,16 +1276,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
       {/* Bottom Action Bar */}
       <div className="relative z-20 shrink-0 p-3">
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleShareChannel}
-            className="mr-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#181920]/95 text-white/70 shadow-md transition hover:bg-[#20222a] hover:text-white active:scale-95"
-            title={t('common.share')}
-            aria-label={t('common.share')}
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
+        <div className="flex items-center justify-end gap-2.5">
 
           {channel.isOwned && onCreatePost && (
             <button
