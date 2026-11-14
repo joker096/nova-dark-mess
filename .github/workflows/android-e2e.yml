@@ -32,12 +32,33 @@ jobs:
           cache: 'npm'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        # The runner image already ships the Android SDK and cmdline-tools.
+        # android-actions/setup-android@v3 currently fails on the image because
+        # it asks sdkmanager for the removed legacy `tools` package, so use the
+        # preinstalled SDK directly.
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ ! -d "$SDK_ROOT" ]; then
+            echo "Android SDK not found at $SDK_ROOT" >&2
+            exit 1
+          fi
+          SDKMANAGER=$(command -v sdkmanager || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -maxdepth 4 -type f -name sdkmanager 2>/dev/null | head -n 1)
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found under $SDK_ROOT" >&2
+            exit 1
+          fi
+          "$SDKMANAGER" --version
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
 
       - name: Install Android platform, build-tools and NDK
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.0.12077973" "platform-tools"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.0.12077973" "platform-tools"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
 
