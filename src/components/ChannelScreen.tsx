@@ -206,6 +206,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [localSoundEnabled, setLocalSoundEnabled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilter, setSearchFilter] = useState<'all' | 'photos' | 'videos' | 'links' | 'files'>('all');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -284,6 +285,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const closeSearch = () => {
     setSearchOpen(false);
     setSearchQuery('');
+    setSearchFilter('all');
   };
 
   useEffect(() => {
@@ -453,9 +455,18 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   );
 
   const query = searchQuery.trim().toLowerCase();
+  const matchesSearchFilter = (post: ChannelPost) => {
+    if (searchFilter === 'photos') return Boolean(post.image);
+    if (searchFilter === 'videos') return false;
+    if (searchFilter === 'links')
+      return /https?:\/\//i.test(`${post.title} ${post.text}`);
+    if (searchFilter === 'files') return false;
+    return true;
+  };
   const displayPosts = query
     ? channelPosts
         .filter((post) => Boolean(channel?.isOwned) || !isPostScheduled(post, now))
+        .filter(matchesSearchFilter)
         .filter(
           (post) =>
             post.title.toLowerCase().includes(query) ||
@@ -991,10 +1002,32 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         data-testid="channel-posts-scroll"
         className="relative z-10 flex-1 overflow-y-auto px-4 py-1 pb-20"
       >
-        <div className="sticky top-0 z-10 mb-2 flex items-center justify-between bg-[#0b0c10]/80 px-1 py-1 backdrop-blur-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#868b98]">
-            {query ? t('common.search') : dateLabel}
-          </span>
+        <div className="sticky top-0 z-10 mb-2 flex flex-col gap-1 bg-[#0b0c10]/80 px-1 py-1 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#868b98]">
+              {query ? t('common.search') : dateLabel}
+            </span>
+          </div>
+          {searchOpen && (
+            <div className="flex flex-wrap gap-1.5">
+              {(['all', 'photos', 'videos', 'links', 'files'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setSearchFilter(filter)}
+                  className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                    searchFilter === filter
+                      ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
+                      : 'border-white/10 bg-white/5 text-white/55 hover:text-white'
+                  }`}
+                >
+                  {t(`channel.searchFilter.${filter}`, filter)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-end px-1">
           <span className="text-[10px] text-[#636875]">
             {t('channel.postsCount', { count: displayPosts.length })}
           </span>
