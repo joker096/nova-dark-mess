@@ -269,7 +269,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         : null,
     [commentingPostId, sourcePosts],
   );
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const toastTimer = useRef<number | null>(null);
   const postsScrollRef = useRef<HTMLDivElement | null>(null);
   const dayHeaderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -288,13 +288,25 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!lightboxImage) return undefined;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setLightboxImage(null);
+    if (!lightbox) return undefined;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightbox(null);
+      if (event.key === 'ArrowRight') {
+        setLightbox((current) =>
+          current && current.index < current.images.length - 1
+            ? { ...current, index: current.index + 1 }
+            : current,
+        );
+      }
+      if (event.key === 'ArrowLeft') {
+        setLightbox((current) =>
+          current && current.index > 0 ? { ...current, index: current.index - 1 } : current,
+        );
+      }
     };
-    document.addEventListener('keydown', close);
-    return () => document.removeEventListener('keydown', close);
-  }, [lightboxImage]);
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [lightbox]);
 
   useEffect(() => {
     if (!postMenuId) return undefined;
@@ -1249,37 +1261,66 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       </div>
                     )}
 
-                    {/* Media Image Banner if present */}
-                    {post.image && (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setLightboxImage(post.image ?? null)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            setLightboxImage(post.image ?? null);
-                          }
-                        }}
-                        className="group relative aspect-[16/9] max-h-[min(560px,70vh)] overflow-hidden rounded-[18px] bg-[#22242e] cursor-zoom-in"
-                      >
-                        <img
-                          src={post.image}
-                          alt={post.title}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        />
-                        {post.imageBadge && (
-                          <div className="absolute bottom-2.5 left-2.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
-                            {post.imageBadge}
-                          </div>
-                        )}
-                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                    {/* Media grid if present */}
+                    {(() => {
+                      const mediaImages =
+                        post.images && post.images.length > 0
+                          ? post.images
+                          : post.image
+                            ? [post.image]
+                            : [];
+                      if (mediaImages.length === 0) return null;
+                      const openLightbox = (index: number) =>
+                        setLightbox({ images: mediaImages, index });
+                      const gridClass =
+                        mediaImages.length === 1
+                          ? 'grid-cols-1'
+                          : mediaImages.length === 2
+                            ? 'grid-cols-2'
+                            : mediaImages.length === 3
+                              ? 'grid-cols-2 grid-rows-2'
+                              : 'grid-cols-2 grid-rows-2';
+                      return (
+                        <div className={`grid gap-2 ${gridClass}`}>
+                          {mediaImages.slice(0, 4).map((src, index) => {
+                            const isLastVisible =
+                              index === 3 && mediaImages.length > 4;
+                            const spanClass =
+                              mediaImages.length === 3 && index === 0
+                                ? 'row-span-2'
+                                : '';
+                            return (
+                              <button
+                                key={`${post.id}-media-${index}`}
+                                type="button"
+                                onClick={() => openLightbox(index)}
+                                className={`group relative overflow-hidden rounded-[18px] bg-[#22242e] cursor-zoom-in ${spanClass} ${
+                                  mediaImages.length === 1
+                                    ? 'aspect-[16/9] max-h-[min(560px,70vh)]'
+                                    : 'aspect-square'
+                                }`}
+                              >
+                                <img
+                                  src={src}
+                                  alt={post.title}
+                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                />
+                                {isLastVisible && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-bold text-white">
+                                    +{mediaImages.length - 4}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                          {post.imageBadge && mediaImages.length === 1 && (
+                            <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+                              {post.imageBadge}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Title & menu */}
                     <div className="flex items-start justify-between gap-2">
@@ -1562,21 +1603,58 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       </div>
 
       {/* Toast Notification */}
-      {lightboxImage && (
+      {lightbox && (
         <div
           data-testid="media-lightbox"
-          onClick={() => setLightboxImage(null)}
+          onClick={() => setLightbox(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-xl animate-in fade-in"
         >
           <img
-            src={lightboxImage}
+            src={lightbox.images[lightbox.index]}
             alt={t('common.photo')}
             onClick={(event) => event.stopPropagation()}
             className="max-h-[90vh] max-w-full rounded-2xl object-contain"
           />
+          {lightbox.images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setLightbox((current) =>
+                    current && current.index > 0
+                      ? { ...current, index: current.index - 1 }
+                      : current,
+                  );
+                }}
+                className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                aria-label={t('common.previous')}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setLightbox((current) =>
+                    current && current.index < current.images.length - 1
+                      ? { ...current, index: current.index + 1 }
+                      : current,
+                  );
+                }}
+                className="absolute right-16 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                aria-label={t('common.next')}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+                {lightbox.index + 1} / {lightbox.images.length}
+              </div>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => setLightboxImage(null)}
+            onClick={() => setLightbox(null)}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
             aria-label={t('common.close')}
             title={t('common.close')}
