@@ -53,6 +53,12 @@ vi.mock('./DoodleBackground', () => ({
   DoodleBackground: vi.fn(() => null),
 }));
 
+// Group members moved into the chat "..." menu.
+const openGroupMembers = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'chat.chatActions' }));
+  fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+};
+
 const baseProps = {
   chatId: 'katie',
   onBack: vi.fn(),
@@ -457,7 +463,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     expect(screen.getByTestId('group-members-dialog')).toBeTruthy();
     expect(screen.getByText('chat.noMembers')).toBeTruthy();
 
@@ -479,7 +485,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
       target: { value: 'nova_pk_bob' },
     });
@@ -501,7 +507,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
       target: { value: 'nova_pk_bob' },
     });
@@ -530,7 +536,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     expect(screen.queryByRole('button', { name: 'chat.addMember' })).toBeNull();
     expect(screen.queryByLabelText('chat.memberFingerprint')).toBeNull();
     expect(screen.getByText('chat.adminOnly')).toBeTruthy();
@@ -559,7 +565,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
     });
 
     expect(screen.getByTestId('join-request-badge').textContent).toBe('1');
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     expect(screen.getByTestId('join-requests').textContent).toContain('nova_pk_bob');
 
     fireEvent.click(screen.getByRole('button', { name: 'chat.approveJoinRequest: nova_pk_bob' }));
@@ -605,7 +611,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     expect(screen.getByText('chat.adminOnly')).toBeTruthy();
     expect(screen.queryByLabelText('chat.memberFingerprint')).toBeNull();
     expect(
@@ -627,7 +633,7 @@ describe('ChatScreen - group chat and P2P wiring', () => {
       onOpenProfile: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
+    openGroupMembers();
     const linkInput = screen.getByLabelText('chat.inviteTitle') as HTMLInputElement;
     expect(linkInput.value).toMatch(/^nova:\/\/chat\/thailand\?invite=[a-f0-9]{24}$/);
 

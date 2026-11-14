@@ -390,7 +390,8 @@
       "off": "Aus",
       "seconds": "{{count}} s",
       "minute": "1 Min."
-    }
+    },
+    "chatActions": "Chat-Aktionen"
   },
   "stories": {
     "title": "Stories",

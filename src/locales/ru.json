@@ -250,7 +250,8 @@
       "off": "Выкл.",
       "seconds": "{{count}} с",
       "minute": "1 мин"
-    }
+    },
+    "chatActions": "Действия чата"
   },
   "stories": {
     "title": "Истории",

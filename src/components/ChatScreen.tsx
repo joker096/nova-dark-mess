@@ -2633,30 +2633,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   </span>
                 )}
 
-                {/* Group Members Button */}
-                {isGroupChat && (
-                  <button
-                    onClick={() => setIsGroupMembersOpen(true)}
-                    title={t('chat.groupMembers')}
-                    aria-label={t('chat.groupMembers')}
-                    data-pending-requests={pendingJoinRequests.length || undefined}
-                    className={`relative w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                      isGroupMembersOpen
-                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                    }`}
-                  >
-                    <Users className="w-3 h-3" />
-                    {currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
-                      <span
-                        data-testid="join-request-badge"
-                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
-                      >
-                        {pendingJoinRequests.length}
-                      </span>
-                    )}
-                  </button>
-                )}
+                {/* Group members live in the "..." menu; the pending-request
+                    badge rides on that button instead of a second icon. */}
 
                 {/* Search Messages in Chat Button */}
                 <button
@@ -2733,8 +2711,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     onClick={() => setIsMoreMenuOpen((prev) => !prev)}
                     aria-haspopup="menu"
                     aria-expanded={isMoreMenuOpen}
-                    aria-label="More actions"
-                    title="More actions"
+                    aria-label={t('chat.chatActions')}
+                    title={t('chat.chatActions')}
+                    data-pending-requests={pendingJoinRequests.length || undefined}
                     className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                       isMoreMenuOpen
                         ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
@@ -2742,6 +2721,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     }`}
                   >
                     <MoreHorizontal className="w-3.5 h-3.5" />
+                    {isGroupChat && currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
+                      <span
+                        data-testid="join-request-badge"
+                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
+                      >
+                        {pendingJoinRequests.length}
+                      </span>
+                    )}
                   </button>
 
                   {isMoreMenuOpen && (
@@ -2755,7 +2742,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         className="absolute right-0 top-full mt-2 w-64 z-50 bg-[#151621]/98 border border-white/10 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
                       >
                         <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                          Chat actions
+                          {t('chat.chatActions')}
                         </div>
                         <button
                           onClick={() => {
@@ -2776,7 +2763,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                           >
                             <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                            <span>Group members</span>
+                            <span>{t('chat.groupMembers')}</span>
                           </button>
                         )}
                         <button

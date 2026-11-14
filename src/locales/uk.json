@@ -250,7 +250,8 @@
       "off": "Вимк.",
       "seconds": "{{count}} с",
       "minute": "1 хв"
-    }
+    },
+    "chatActions": "Дії чату"
   },
   "stories": {
     "title": "Сторіз",

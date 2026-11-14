@@ -390,7 +390,8 @@
       "off": "ปิด",
       "seconds": "{{count}} วิ",
       "minute": "1 นาที"
-    }
+    },
+    "chatActions": "การกระทำของแชท"
   },
   "stories": {
     "title": "สตอรี่",

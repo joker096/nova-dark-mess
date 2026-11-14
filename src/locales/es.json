@@ -392,7 +392,8 @@
       "off": "Off",
       "seconds": "{{count}} s",
       "minute": "1 min"
-    }
+    },
+    "chatActions": "Acciones del chat"
   },
   "stories": {
     "title": "Historias",
