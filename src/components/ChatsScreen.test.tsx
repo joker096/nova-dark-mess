@@ -100,13 +100,14 @@ describe('ChatsScreen - forwardRef openFolderModal', () => {
 });
 
 describe('ChatsScreen - default folders render', () => {
-  it('renders default folder tabs (All, Personal, Work, Channels, Favorites)', () => {
+  it('renders default folder tabs without a Channels tab', () => {
     renderChats();
     expect(screen.getByText('All')).toBeTruthy();
     expect(screen.getByText('Personal')).toBeTruthy();
     expect(screen.getByText('Work')).toBeTruthy();
-    expect(screen.getByText('Channels')).toBeTruthy();
     expect(screen.getByText('Favorites')).toBeTruthy();
+    // Channels have their own section; the list keeps them under "All".
+    expect(screen.queryByText('Channels')).toBeNull();
   });
 });
 

@@ -96,14 +96,8 @@ export const DEFAULT_FOLDERS: ChatFolder[] = [
     icon: 'briefcase',
     isDefault: true,
   },
-  {
-    id: 'channels',
-    name: 'Channels',
-    filterType: 'channels',
-    chatIds: ['kyiv-channel'],
-    icon: 'radio',
-    isDefault: true,
-  },
+  // Channels are their own section with their own layout, so the chat list
+  // keeps them under "All" instead of offering a redundant tab.
   {
     id: 'favorites',
     name: 'Favorites',
