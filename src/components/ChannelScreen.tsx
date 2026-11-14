@@ -28,6 +28,7 @@ import {
   Bookmark,
   Languages,
   Flag,
+  Calendar,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
@@ -318,7 +319,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     manualCollapsedRef.current = false;
     scrollDirectionRef.current = null;
     scrollAccumulatorRef.current = 0;
-    setHeaderCollapsed(false);
+    let collapsed = false;
+    try {
+      collapsed =
+        localStorage.getItem(`nova.channel.headerCollapsed.${channel?.id ?? ''}`) === '1';
+    } catch {
+      collapsed = false;
+    }
+    setHeaderCollapsed(collapsed);
   }, [channel?.id]);
 
   const toggleHeader = () => {
@@ -328,6 +336,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     scrollDirectionRef.current = null;
     scrollAccumulatorRef.current = 0;
     setHeaderCollapsed(nextCollapsed);
+    try {
+      localStorage.setItem(
+        `nova.channel.headerCollapsed.${channel?.id ?? ''}`,
+        nextCollapsed ? '1' : '0',
+      );
+    } catch {
+      // ignore storage errors
+    }
     setPostMenuId(null);
   };
 
@@ -355,6 +371,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       scrollAccumulatorRef.current = 0;
       if (!manualCollapsedRef.current) {
         setHeaderCollapsed(false);
+        try {
+          localStorage.setItem(`nova.channel.headerCollapsed.${channel?.id ?? ''}`, '0');
+        } catch {
+          // ignore storage errors
+        }
       }
       return;
     }
@@ -366,6 +387,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     ) {
       scrollAccumulatorRef.current = 0;
       setHeaderCollapsed(true);
+      try {
+        localStorage.setItem(`nova.channel.headerCollapsed.${channel?.id ?? ''}`, '1');
+      } catch {
+        // ignore storage errors
+      }
     } else if (
       scrollDirectionRef.current === 'up' &&
       scrollAccumulatorRef.current >= HEADER_SCROLL_DELTA &&
@@ -373,6 +399,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     ) {
       scrollAccumulatorRef.current = 0;
       setHeaderCollapsed(false);
+      try {
+        localStorage.setItem(`nova.channel.headerCollapsed.${channel?.id ?? ''}`, '0');
+      } catch {
+        // ignore storage errors
+      }
     }
   };
 
@@ -840,11 +871,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 />
 
                 <NovaIconButton
-                  label={headerCollapsed ? t('channel.expandPanel') : t('channel.collapsePanel')}
-                  icon={headerCollapsed ? <ChevronDown /> : <ChevronUp />}
+                  label={
+                    headerCollapsed
+                      ? t('channel.showCalendar', 'Show calendar')
+                      : t('channel.hideCalendar', 'Hide calendar')
+                  }
+                  icon={<Calendar />}
                   size={36}
                   variant="subtle"
-                  className="border-white/5 bg-[#1e2029]/80"
+                  className={`border-white/5 bg-[#1e2029]/80 ${
+                    !headerCollapsed ? 'text-[var(--nova-accent-color)]' : 'text-white/70'
+                  }`}
                   aria-expanded={!headerCollapsed}
                   aria-controls="channel-date-scrubber"
                   onClick={toggleHeader}
