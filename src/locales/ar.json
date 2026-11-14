@@ -238,6 +238,9 @@
     "showSubscriberCount": "إظهار عدد المشتركين",
     "unsubscribed": "تم إلغاء الاشتراك",
     "commentsCount": "{{count}} تعليقات",
+    "noComments": "لا توجد تعليقات بعد",
+    "commentPlaceholder": "اكتب تعليقًا...",
+    "sendComment": "إرسال التعليق",
     "sharePost": "مشاركة المنشور"
   },
   "location": {

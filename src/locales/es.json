@@ -232,6 +232,9 @@
     "showSubscriberCount": "Mostrar número de suscriptores",
     "unsubscribed": "Suscripción cancelada",
     "commentsCount": "{{count}} comentarios",
+    "noComments": "Aún no hay comentarios",
+    "commentPlaceholder": "Escribe un comentario...",
+    "sendComment": "Enviar comentario",
     "sharePost": "Compartir publicación"
   },
   "location": {

@@ -230,6 +230,9 @@
     "showSubscriberCount": "Abone sayısını göster",
     "unsubscribed": "Abonelikten çıkıldı",
     "commentsCount": "{{count}} yorum",
+    "noComments": "Henüz yorum yok",
+    "commentPlaceholder": "Yorum yaz...",
+    "sendComment": "Yorumu gönder",
     "sharePost": "Gönderiyi paylaş"
   },
   "location": {

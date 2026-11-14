@@ -63,8 +63,44 @@ describe('parseDeepLink', () => {
       { type: 'chat' as const, id: 'katie' },
       { type: 'channel' as const, id: 'channel-kyiv' },
       { type: 'profile' as const, id: 'nova_pk_abc123' },
+      { type: 'channel' as const, id: 'channel-kyiv', postId: 'post-1', comments: true },
+      { type: 'channel' as const, id: 'channel-kyiv', postId: 'post-1' },
     ]) {
       expect(parseDeepLink(buildDeepLink(target))).toEqual(target);
     }
+  });
+
+  it('keeps the post a channel link points at', () => {
+    expect(parseDeepLink('nova://channel/world?post=post-1&comments=1')).toEqual({
+      type: 'channel',
+      id: 'world',
+      postId: 'post-1',
+      comments: true,
+    });
+    expect(parseDeepLink('https://nova.app/channel/world?post=post-1')).toEqual({
+      type: 'channel',
+      id: 'world',
+      postId: 'post-1',
+    });
+  });
+
+  it('ignores a malformed post id', () => {
+    expect(parseDeepLink('nova://channel/world?post=../../etc/passwd&comments=1')).toEqual({
+      type: 'channel',
+      id: 'world',
+    });
+    expect(parseDeepLink('nova://channel/world?post=&comments=1')).toEqual({
+      type: 'channel',
+      id: 'world',
+    });
+  });
+
+  it('builds a post link with its comments flag', () => {
+    expect(
+      buildDeepLink({ type: 'channel', id: 'world', postId: 'post-1', comments: true }),
+    ).toBe('nova://channel/world?post=post-1&comments=1');
+    expect(buildDeepLink({ type: 'channel', id: 'world', postId: 'post-1' })).toBe(
+      'nova://channel/world?post=post-1',
+    );
   });
 });

@@ -5,6 +5,7 @@
  * one-time device-link offer, never an account or contact server.
  *   nova://chat/<id>        open a chat
  *   nova://channel/<id>     open a channel
+ *   nova://channel/<id>?post=<postId>&comments=1   open a post's comments
  *   nova://profile/<id>     open a profile
  *   nova://device-link?…    device linking offer (see lib/p2p/deviceLinking)
  *   https://nova.app/…      the same targets as universal links
@@ -14,7 +15,14 @@ import { parseDeviceLinkOffer } from '../p2p/deviceLinking';
 
 export type DeepLinkTarget =
   | { type: 'chat'; id: string }
-  | { type: 'channel'; id: string }
+  | {
+      type: 'channel';
+      id: string;
+      /** Post the link points at, if any. */
+      postId?: string;
+      /** The link asked for the post's comments instead of the feed. */
+      comments?: boolean;
+    }
   | { type: 'profile'; id: string }
   | { type: 'device-link'; url: string };
 
@@ -26,6 +34,14 @@ const NESTED_TYPES = new Set(['chat', 'channel', 'profile']);
 
 function isValidId(id: string): boolean {
   return ID_PATTERN.test(id);
+}
+
+/** Reads the optional post target a channel link can carry. */
+function readChannelContext(parsed: URL): { postId?: string; comments?: boolean } {
+  const post = parsed.searchParams.get('post')?.trim() ?? '';
+  if (!post || !isValidId(post)) return {};
+  const comments = parsed.searchParams.get('comments') === '1';
+  return comments ? { postId: post, comments } : { postId: post };
 }
 
 /** Parses a deep link into a navigation target, or null if it is not one. */
@@ -48,23 +64,33 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     // nova://chat/<id>
     const id = parsed.pathname.replace(/^\/+|\/+$/g, '');
     if (!isValidId(id)) return null;
-    return { type: parsed.hostname as 'chat' | 'channel' | 'profile', id };
+    if (parsed.hostname === 'channel') {
+      return { type: 'channel', id, ...readChannelContext(parsed) };
+    }
+    return { type: parsed.hostname as 'chat' | 'profile', id };
   }
 
   if (parsed.protocol === 'https:' && parsed.hostname === DEEP_LINK_WEB_HOST) {
     const [type, id] = parsed.pathname.split('/').filter(Boolean);
     if (!type || !NESTED_TYPES.has(type) || !id) return null;
     if (!isValidId(id)) return null;
-    return { type: type as 'chat' | 'channel' | 'profile', id };
+    if (type === 'channel') {
+      return { type: 'channel', id, ...readChannelContext(parsed) };
+    }
+    return { type: type as 'chat' | 'profile', id };
   }
 
   return null;
 }
 
-/** Builds a shareable deep link for a chat, channel or profile. */
+/** Builds a shareable deep link for a chat, channel, post or profile. */
 export function buildDeepLink(target: DeepLinkTarget): string {
   if (target.type === 'device-link') return target.url;
-  return `${DEEP_LINK_SCHEME}://${target.type}/${encodeURIComponent(target.id)}`;
+  const base = `${DEEP_LINK_SCHEME}://${target.type}/${encodeURIComponent(target.id)}`;
+  if (target.type !== 'channel' || !target.postId) return base;
+  const params = new URLSearchParams({ post: target.postId });
+  if (target.comments) params.set('comments', '1');
+  return `${base}?${params.toString()}`;
 }
 
 /**

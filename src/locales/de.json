@@ -230,6 +230,9 @@
     "showSubscriberCount": "Abonnentenzahl anzeigen",
     "unsubscribed": "Abbestellt",
     "commentsCount": "{{count}} Kommentare",
+    "noComments": "Noch keine Kommentare",
+    "commentPlaceholder": "Kommentar schreiben...",
+    "sendComment": "Kommentar senden",
     "sharePost": "Beitrag teilen"
   },
   "location": {
