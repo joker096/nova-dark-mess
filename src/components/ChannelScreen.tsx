@@ -398,14 +398,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   const weekDays = useMemo(() => {
     const focus = new Date(focusDate);
-    const start = new Date(focus);
-    start.setDate(start.getDate() - start.getDay());
-    start.setHours(0, 0, 0, 0);
+    const year = focus.getFullYear();
+    const month = focus.getMonth();
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
     const days: Date[] = [];
-    for (let i = 0; i < 7; i += 1) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      days.push(d);
+    for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+      days.push(new Date(d));
     }
     return days;
   }, [focusDate]);
@@ -474,9 +473,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     day: 'numeric',
   }).format(new Date(selectedDay));
 
-  const shiftWeek = (offset: number) => {
+  const shiftMonth = (offset: number) => {
     const next = new Date(focusDate);
-    next.setDate(next.getDate() + offset * 7);
+    next.setMonth(next.getMonth() + offset);
     const key = dayKey(startOfDay(next));
     setFocusDate(key);
     setSelectedDay(key);
@@ -806,7 +805,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             <div id="channel-date-scrubber" className="w-full px-1">
               <div className="mb-1 flex items-center justify-between px-1">
                 <button
-                  type="button"                    onClick={() => shiftWeek(-1)}
+                  type="button"                    onClick={() => shiftMonth(-1)}
                   className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition hover:bg-white/5 hover:text-white"
                   aria-label={t('channel.previousMonth')}
                 >
@@ -843,7 +842,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 </div>
 
                 <button
-                  type="button"                    onClick={() => shiftWeek(1)}
+                  type="button"                    onClick={() => shiftMonth(1)}
                   className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition hover:bg-white/5 hover:text-white"
                   aria-label={t('channel.nextMonth')}
                 >
@@ -891,7 +890,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 ref={dateScrubberRef}
                 role="grid"
                 aria-label={monthLabel}
-                className="grid w-full grid-cols-7 gap-x-1 px-1"
+                className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap"
+                onWheel={(e) => {
+                  if (e.deltaX === 0 && e.deltaY !== 0) {
+                    e.preventDefault();
+                    dateScrubberRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
+                  }
+                }}
               >
                 {weekDays.map((date) => {
                   const key = dayKey(date);
@@ -937,7 +942,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                         if (!isFuture) setSelectedDay(key);
                       }
                     }}
-                    className={`group relative z-10 flex flex-col items-center rounded-lg px-1 py-1.5 transition active:scale-95 ${
+                    className={`shrink-0 min-w-[48px] group relative z-10 flex flex-col items-center rounded-lg px-1 py-1.5 transition active:scale-95 ${
                       isFuture ? 'cursor-not-allowed opacity-35' : 'hover:bg-white/5'
                     } ${isSelected ? 'bg-[var(--nova-accent-color)]/20 ring-1 ring-[var(--nova-accent-color)]' : ''} ${isToday && !isSelected ? 'ring-1 ring-inset ring-[var(--nova-accent-color)]/50' : ''}`}
                   >
