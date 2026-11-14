@@ -112,7 +112,8 @@
     "chooseImage": "Choose an image",
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
-    "more": "More"
+    "more": "More",
+    "undo": "Undo"
   },
   "channels": "Channels",
   "chats": {
@@ -427,6 +428,7 @@
     "morseDecode": "Show text",
     "morseSample": "АБВ",
     "messageDeleted": "This message was deleted",
+    "messageDeletedToast": "Message deleted",
     "edited": "(edited)",
     "forwardedFrom": "Forwarded from"
   },

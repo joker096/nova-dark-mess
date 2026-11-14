@@ -112,7 +112,8 @@
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
-    "emojis": "Biểu tượng cảm xúc"
+    "emojis": "Biểu tượng cảm xúc",
+    "undo": "Hoàn tác"
   },
   "chats": {
     "joinRequestNotice": "{{who}} muốn tham gia",
@@ -365,6 +366,7 @@
     "morseDecode": "Hiển thị văn bản",
     "morseSample": "АБВ",
     "messageDeleted": "Tin nhắn này đã bị xóa",
+    "messageDeletedToast": "Đã xóa tin nhắn",
     "edited": "(đã chỉnh sửa)",
     "forwardedFrom": "Chuyển tiếp từ"
   },

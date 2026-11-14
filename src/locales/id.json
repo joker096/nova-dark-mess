@@ -112,7 +112,8 @@
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
-    "emojis": "Emoji"
+    "emojis": "Emoji",
+    "undo": "Urungkan"
   },
   "chats": {
     "joinRequestNotice": "{{who}} ingin bergabung",
@@ -365,6 +366,7 @@
     "morseDecode": "Tampilkan teks",
     "morseSample": "АБВ",
     "messageDeleted": "Pesan ini telah dihapus",
+    "messageDeletedToast": "Pesan dihapus",
     "edited": "(diedit)",
     "forwardedFrom": "Diteruskan dari"
   },

@@ -323,10 +323,24 @@ describe('ChatScreen - horizontal lists hide scrollbar', () => {
   });
 
   it('smart replies list uses no-scrollbar by default', () => {
-    renderChat();
+    // Smart replies only appear after an incoming message; kurt ends on one.
+    renderChat({ chatId: 'kurt', onBack: vi.fn(), onOpenProfile: vi.fn() });
     const list = screen.getByTestId('smart-replies');
     expect(list.className).toContain('no-scrollbar');
     expect(list.className).not.toContain('scrollbar-x');
+  });
+});
+
+describe('ChatScreen - smart replies', () => {
+  it('hides suggestions when the last message is outgoing', () => {
+    // The katie conversation ends with our own location message.
+    renderChat();
+    expect(screen.queryByTestId('smart-replies')).toBeNull();
+  });
+
+  it('shows suggestions after an incoming message', () => {
+    renderChat({ chatId: 'kurt', onBack: vi.fn(), onOpenProfile: vi.fn() });
+    expect(screen.getByTestId('smart-replies')).toBeTruthy();
   });
 });
 
@@ -368,10 +382,12 @@ describe('ChatScreen - message delete', () => {
     vi.useRealTimers();
   });
 
-  it('deletes an own message and removes it entirely after the animation', () => {
+  it('deletes an own message from the more menu and removes it entirely after the animation', () => {
     renderChat();
     const bubble = getBubble('m3');
-    fireEvent.click(within(bubble).getByTitle('chat.messageActions.delete'));
+    // Delete lives behind the message "⋯" menu so it cannot be hit by accident.
+    fireEvent.click(within(bubble).getByTitle('common.more'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'chat.messageActions.delete' }));
 
     // The bubble is marked for deletion (animation) but is still in the DOM
     // until the timer fires.
@@ -384,6 +400,27 @@ describe('ChatScreen - message delete', () => {
     });
     expect(screen.queryByText('chat.messageDeleted')).toBeNull();
     expect(screen.queryByText('Yeah, good times. For sure...')).toBeNull();
+  });
+
+  it('offers an Undo toast that brings the message back', () => {
+    renderChat();
+    // m4 rather than m3: the delete test above removes m3 from the stored
+    // history, and history survives between renders.
+    const bubble = getBubble('m4');
+    const text = "If you want to, we can meet and hang out at Harry's";
+    fireEvent.click(within(bubble).getByTitle('common.more'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'chat.messageActions.delete' }));
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    // The text also appears inside m5's reply quote, so assert on the bubble.
+    expect(screen.queryByTestId('bubble-m4')).toBeNull();
+    expect(screen.getByText('chat.messageDeletedToast')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.undo' }));
+    expect(screen.getByTestId('bubble-m4')).toBeTruthy();
+    expect(screen.queryByText('chat.messageDeletedToast')).toBeNull();
   });
 });
 

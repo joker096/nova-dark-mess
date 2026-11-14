@@ -112,7 +112,8 @@
     "chooseImage": "Выберите изображение",
     "upload": "Загрузить",
     "imageUploadFailed": "Не удалось загрузить изображение. Попробуйте другой файл.",
-    "more": "Ещё"
+    "more": "Ещё",
+    "undo": "Отменить"
   },
   "channels": "Каналы",
   "chats": {
@@ -234,6 +235,7 @@
     "morseDecode": "Показать текст",
     "morseSample": "АБВ",
     "messageDeleted": "Сообщение удалено",
+    "messageDeletedToast": "Сообщение удалено",
     "edited": "(изменено)",
     "forwardedFrom": "Переслано от"
   },
