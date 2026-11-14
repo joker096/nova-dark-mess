@@ -5,7 +5,7 @@
  * Checks, in order:
  *   1. The APK installs and `nova://chat/<id>` opens MainActivity (intent data
  *      survives in the activity record).
- *   2. CAMERA and RECORD_AUDIO are declared and can be granted.
+ *   2. CAMERA, RECORD_AUDIO and MODIFY_AUDIO_SETTINGS are declared and can be granted.
  *   3. The running WebView can actually acquire camera and microphone streams
  *      (this exercises Tauri's on_permission_request handler, not just the
  *      manifest).
@@ -209,7 +209,7 @@ async function main() {
   if (!installed) fail(`${PACKAGE} is not installed`);
 
   const manifest = adb(['shell', 'dumpsys', 'package', PACKAGE]);
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
     if (!manifest.includes(permission)) {
       fail(`${PACKAGE} does not declare ${permission}`);
     }
@@ -219,11 +219,11 @@ async function main() {
   // Grant before the WebView is created: Chromium caches the app's capture
   // permissions when the renderer starts, so granting after `am start` leaves
   // getUserMedia reporting NotAllowedError even though dumpsys shows granted.
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
     adb(['shell', 'pm', 'grant', PACKAGE, permission]);
   }
   const granted = adb(['shell', 'dumpsys', 'package', PACKAGE]);
-  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO']) {
+  for (const permission of ['android.permission.CAMERA', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']) {
     if (!granted.includes(`${permission}: granted=true`)) {
       fail(`runtime grant failed for ${permission}`);
     }
