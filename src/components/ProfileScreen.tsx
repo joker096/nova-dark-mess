@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ScrollableRow, NovaSelectableButton, NovaModal } from '../lib/ui';
+import { ScrollableRow, NovaSelectableButton, NovaModal, NovaMenu } from '../lib/ui';
 import {
   ArrowLeft,
   Share2,
@@ -110,7 +110,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [fieldDraft, setFieldDraft] = useState('');
   const [showContactEdit, setShowContactEdit] = useState(false);
   const [contactDraft, setContactDraft] = useState({ name: '', nickname: '', phone: '' });
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [shareContactOpen, setShareContactOpen] = useState(false);
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [peerSafetyInput, setPeerSafetyInput] = useState('');
@@ -260,8 +259,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       else if (showDeviceLinkModal) {
         stopCameraScan();
         setShowDeviceLinkModal(false);
-      } else if (showMoreMenu) setShowMoreMenu(false);
-      else if (showContactEdit) setShowContactEdit(false);
+      } else if (showContactEdit) setShowContactEdit(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -270,7 +268,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     showQrModal,
     showSafetyModal,
     showDeviceLinkModal,
-    showMoreMenu,
     showContactEdit,
   ]);
 
@@ -769,29 +766,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </button>
           )}
 
-          {/* More */}
-          <button
-            onClick={() => {
-              if (isOwnProfile) {
-                if (onOpenSettings) {
-                  onOpenSettings();
-                  return;
-                }
-                triggerToast(t('common.more'));
-                return;
-              }
-              setShowMoreMenu(true);
-            }}
-            className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
-            aria-label={isOwnProfile ? t('settings.title') : t('common.more')}
-          >
-            <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[#252834] border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-              <MoreHorizontal className="w-5 h-5 text-white/90" />
-            </div>
-            <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
-              {isOwnProfile ? t('settings.title') : t('common.more')}
-            </span>
-          </button>
+          {/* More: the contact actions open next to this button, not as a
+              screen-wide sheet. */}
+          <NovaMenu
+            label={t('profile.contactOptions')}
+            align="start"
+            items={
+              isOwnProfile
+                ? []
+                : [
+                    {
+                      key: 'edit',
+                      label: t('profile.editContact'),
+                      icon: <Edit2 />,
+                      onSelect: openContactEdit,
+                    },
+                    {
+                      key: 'share',
+                      label: t('common.share'),
+                      icon: <Share2 />,
+                      onSelect: () => setShareContactOpen(true),
+                    },
+                    {
+                      key: 'copy-id',
+                      label: t('profile.copyId'),
+                      icon: <Copy />,
+                      onSelect: () => {
+                        void copyToClipboard(profileId, 'contact-id', t('profile.contactIdCopied'));
+                      },
+                    },
+                  ]
+            }
+            trigger={
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isOwnProfile) return;
+                  if (onOpenSettings) {
+                    onOpenSettings();
+                    return;
+                  }
+                  triggerToast(t('common.more'));
+                }}
+                className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
+                aria-label={isOwnProfile ? t('settings.title') : t('common.more')}
+              >
+                <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[#252834] border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
+                  <MoreHorizontal className="w-5 h-5 text-white/90" />
+                </div>
+                <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
+                  {isOwnProfile ? t('settings.title') : t('common.more')}
+                </span>
+              </button>
+            }
+          />
         </div>
       </div>
 
@@ -1862,65 +1890,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
       )}
-      {/* Contact options bottom sheet */}
-      {showMoreMenu && !isOwnProfile && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('profile.contactOptions')}
-          data-testid="profile-more-menu"
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center animate-in fade-in"
-          onClick={() => setShowMoreMenu(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-[#171820] border-t border-white/10 rounded-t-3xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-1.5 animate-in slide-in-from-bottom-4"
-          >
-            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-3" aria-hidden="true" />
-            <button
-              type="button"
-              onClick={() => {
-                setShowMoreMenu(false);
-                openContactEdit();
-              }}
-              className="w-full min-h-[48px] px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-sm font-medium flex items-center gap-3 transition cursor-pointer"
-            >
-              <Edit2 className="w-4 h-4 text-[var(--nova-accent-color)]" />
-              {t('profile.editContact')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowMoreMenu(false);
-                setShareContactOpen(true);
-              }}
-              className="w-full min-h-[48px] px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-sm font-medium flex items-center gap-3 transition cursor-pointer"
-            >
-              <Share2 className="w-4 h-4 text-[var(--nova-accent-color)]" />
-              {t('common.share')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void copyToClipboard(profileId, 'contact-id', t('profile.contactIdCopied'));
-                setShowMoreMenu(false);
-              }}
-              className="w-full min-h-[48px] px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-sm font-medium flex items-center gap-3 transition cursor-pointer"
-            >
-              <Copy className="w-4 h-4 text-[var(--nova-accent-color)]" />
-              {t('profile.copyId')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMoreMenu(false)}
-              className="w-full min-h-[48px] px-4 rounded-xl text-white/60 hover:text-white hover:bg-white/[0.04] text-sm font-medium transition cursor-pointer"
-            >
-              {t('common.cancel')}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Contact edit modal */}
       <NovaModal
         isOpen={showContactEdit}
