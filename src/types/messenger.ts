@@ -228,6 +228,9 @@ export interface ChannelPost {
   poll?: PollData;
   sticker?: StickerData;
   comments?: ChannelComment[];
+  isPinned?: boolean;
+  editedAt?: number;
+  forwardedFrom?: string;
 }
 
 export interface SharedMediaItem {
