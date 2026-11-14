@@ -19,6 +19,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Free up disk space
+        # The hosted runner could build the APK but went on to fail with
+        # "Not enough space to create userdata partition" when launching the
+        # emulator. Drop preinstalled toolchains this project never uses.
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          sudo rm -rf "$ANDROID_HOME/ndk/2"[0-5].* "$ANDROID_HOME/sources" "$ANDROID_HOME/system-images/android-2"[0-9]
+          sudo docker image prune --all --force || true
+          df -h /
+
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
@@ -116,6 +127,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # A pixel_6 AVD asks for a 7+ GB userdata partition, which the runner
+          # cannot always provide next to the build outputs. 2 GB is ample for
+          # installing one debug APK and running the checks.
+          disk-size: 2048M
           disable-animations: true
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim
