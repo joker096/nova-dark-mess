@@ -991,7 +991,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         data-testid="channel-posts-scroll"
         className="relative z-10 flex-1 overflow-y-auto px-4 py-1 pb-20"
       >
-        <div className="mb-2 flex items-center justify-between px-1">
+        <div className="sticky top-0 z-10 mb-2 flex items-center justify-between bg-[#0b0c10]/80 px-1 py-1 backdrop-blur-sm">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#868b98]">
             {query ? t('common.search') : dateLabel}
           </span>
