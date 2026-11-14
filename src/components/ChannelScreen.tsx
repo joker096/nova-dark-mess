@@ -501,6 +501,16 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     return counts;
   }, [channelPosts]);
 
+  const monthPostCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    channelPosts.forEach((post) => {
+      const date = new Date(postCreatedAt(post));
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return counts;
+  }, [channelPosts]);
+
   const feedPosts = useMemo(
     () =>
       channelPosts
@@ -960,38 +970,52 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               </div>
 
               {canUse('date_picker') && isMonthPickerOpen && (
-                <div className="mt-1 px-1 flex items-center gap-2">
-                  <label className="text-[9px] text-[#868b98] uppercase tracking-wider">Month</label>
-                  <select
-                    value={String(focusMonth)}
-                    onChange={(e) => setFocusMonth(Number(e.target.value))}
-                    className="rounded border border-white/10 bg-[#1e2029]/60 px-2 py-1 text-[11px] text-white outline-none"
-                  >
-                    {MONTHS.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="text-[9px] text-[#868b98] uppercase tracking-wider">Year</label>
-                  <select
-                    value={String(focusYear)}
-                    onChange={(e) => setFocusYear(Number(e.target.value))}
-                    className="rounded border border-white/10 bg-[#1e2029]/60 px-2 py-1 text-[11px] text-white outline-none"
-                  >
-                    {YEAR_OPTIONS.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={applyMonthPicker}
-                    className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-white/10"
-                  >
-                    Apply
-                  </button>
+                <div className="mt-1 rounded-xl border border-white/10 bg-[#1b1c28] p-2 shadow-2xl shadow-black/60">
+                  <div className="mb-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setFocusYear(focusYear - 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+                      aria-label={t('channel.previousYear', 'Previous year')}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-[11px] font-semibold text-white">{focusYear}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFocusYear(focusYear + 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+                      aria-label={t('channel.nextYear', 'Next year')}
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {MONTHS.map((month) => {
+                      const count = monthPostCounts.get(`${focusYear}-${month.value}`) ?? 0;
+                      const intensity =
+                        count >= 5 ? 'bg-[var(--nova-accent-color)]/40' : count >= 2 ? 'bg-[var(--nova-accent-color)]/25' : count >= 1 ? 'bg-[var(--nova-accent-color)]/12' : 'bg-white/5';
+                      return (
+                        <button
+                          key={month.value}
+                          type="button"
+                          onClick={() => {
+                            setFocusDate(dayKey(new Date(focusYear, month.value, 1)));
+                            setSelectedDay(dayKey(new Date(focusYear, month.value, 1)));
+                            setIsMonthPickerOpen(false);
+                          }}
+                          className={`rounded-lg px-1 py-1.5 text-[10px] font-semibold transition hover:bg-white/10 ${
+                            focusMonth === month.value && focusYear === focus.getFullYear()
+                              ? 'text-white'
+                              : 'text-white/70'
+                          }`}
+                        >
+                          <span className="block truncate">{month.label.slice(0, 3)}</span>
+                          <span className={`mt-0.5 block h-1.5 w-full rounded-full ${intensity}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
