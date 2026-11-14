@@ -35,6 +35,16 @@ export interface ChannelInfo {
   createdAt: number;
   isOwned?: boolean;
   isPopular?: boolean;
+  /** Whether the signed-in user follows this channel. */
+  isFollowing?: boolean;
+  /** Unread post count for the list badge (0 hides it). */
+  unreadCount?: number;
+  /** Mutes the unread badge (gray instead of accent). */
+  muted?: boolean;
+  /** One-line preview of the latest post. */
+  lastPostPreview?: string;
+  /** Timestamp of the latest post, used for the preview time. */
+  lastPostAt?: number;
   soundEnabled?: boolean;
   hideSubscriberCount?: boolean;
   visibility?: ChannelVisibility;

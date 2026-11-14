@@ -4,6 +4,7 @@ import type { ChannelDraft, ChannelInfo } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 import { ChannelAvatar } from './ChannelAvatar';
 import { ChannelCreateModal } from './ChannelCreateModal';
+import { NovaBadge } from '../lib/ui';
 
 interface ChannelListPanelProps {
   channels: ChannelInfo[];
@@ -101,6 +102,46 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       ),
     [regularChannels, searchQuery],
   );
+
+  const isFollowed = (channel: ChannelInfo) =>
+    channel.isFollowing === true || channel.isOwned === true;
+
+  const followingChannels = useMemo(
+    () =>
+      channels
+        .filter((c) => c.visibility !== 'private' && isFollowed(c))
+        .filter(
+          (c) =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+    [channels, searchQuery],
+  );
+
+  const recommendedChannels = useMemo(
+    () =>
+      channels
+        .filter((c) => c.visibility !== 'private' && !isFollowed(c))
+        .filter(
+          (c) =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+    [channels, searchQuery],
+  );
+
+  const formatPreviewTime = (timestamp?: number): string => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return t('common.justNow', 'just now');
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h`;
+    return date.toLocaleDateString(language, { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div className="flex h-full flex-col bg-[#0b0c10] text-white select-none">
@@ -224,7 +265,6 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       </div>
 
       <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4 pt-2">
-        {/* Private channels are hidden from discovery and only listed for their owner. */}
         {privateChannels.length > 0 && (
           <section className="mb-3">
             <h2 className="mb-1.5 flex items-center gap-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[#6a6f7b]">
@@ -235,100 +275,87 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
               {privateChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 return (
-                  <button
-                    key={channel.id}
-                    type="button"
-                    onClick={() => onSelectChannel(channel.id)}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${
-                      isActive
-                        ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10'
-                        : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'
-                    }`}
-                  >
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
                     <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-semibold text-white">
-                          {channel.name}
-                        </span>
-                        <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white/55">
-                          {t('channel.privateBadge')}
-                        </span>
+                        <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
+                        <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white/55">{t('channel.privateBadge')}</span>
                       </div>
-                      <p className="truncate text-[10.5px] text-white/40">
-                        {t('channel.inviteCode', { code: channel.inviteCode ?? '—' })}
-                      </p>
+                      <p className="truncate text-[10.5px] text-white/40">{t('channel.inviteCode', { code: channel.inviteCode ?? '—' })}</p>
                     </div>
-                    {isActive && (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />
-                    )}
+                    {isActive && <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />}
                   </button>
                 );
               })}
             </div>
           </section>
         )}
-
-        {/* Popular Channels Section */}
-        {popularChannels.length > 0 && (
+        {followingChannels.length > 0 && (
           <section className="mb-3">
-            <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[#6a6f7b] mb-1.5">
-              {t('channel.popular', 'Popular channels')}
-            </h2>
+            <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[#6a6f7b] mb-1.5">{t('channel.following')}</h2>
             <div className="space-y-1">
-              {popularChannels.map((channel) => {
+              {followingChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
+                const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
-                  <button
-                    key={channel.id}
-                    type="button"
-                    onClick={() => onSelectChannel(channel.id)}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${
-                      isActive
-                        ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10'
-                        : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'
-                    }`}
-                  >
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
                     <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-semibold text-white">
-                          {channel.name}
-                        </span>
-                        <Star
-                          className="w-3.5 h-3.5 fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)] shrink-0"
-                          aria-label={t('channel.popular', 'Popular')}
-                        />
-                        {channel.isOwned && (
-                          <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">
-                            {t('channel.owned')}
-                          </span>
-                        )}
+                        <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
+                        {channel.isOwned && <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">{t('channel.owned')}</span>}
                       </div>
-                      <p className="truncate text-[10.5px] text-white/40">
-                        {channel.description ||
-                          t('channel.subscribersCompact', {
-                            value: formatSubscribers(channel.subscribers),
-                            count: channel.subscribers,
-                          })}
-                      </p>
+                      <p className="truncate text-[10.5px] text-white/40">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        {previewTime && <span className="text-[9px] tabular-nums text-white/30">{previewTime}</span>}
+                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'neutral' : 'danger'} />}
+                      </div>
                     </div>
-                    {isActive && (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />
-                    )}
+                    {isActive && <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />}
                   </button>
                 );
               })}
             </div>
           </section>
         )}
-
-        {/* All Channels */}
-        {filteredRegular.length === 0 &&
-        popularChannels.length === 0 &&
-        privateChannels.length === 0 ? (
+        {recommendedChannels.length > 0 && (
+          <section className="mb-3">
+            <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[#6a6f7b] mb-1.5">{t('channel.recommended')}</h2>
+            <div className="space-y-1">
+              {recommendedChannels.map((channel) => {
+                const isActive = channel.id === activeChannelId;
+                const previewTime = formatPreviewTime(channel.lastPostAt);
+                return (
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
+                    <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
+                        {channel.isPopular && <Star className="w-3.5 h-3.5 fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)] shrink-0" aria-label={t('channel.popular', 'Popular')} />}
+                        {channel.isOwned && <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">{t('channel.owned')}</span>}
+                      </div>
+                      <p className="truncate text-[10.5px] text-white/40">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        {previewTime && <span className="text-[9px] tabular-nums text-white/30">{previewTime}</span>}
+                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'neutral' : 'danger'} />}
+                      </div>
+                    </div>
+                    {onTogglePopular && (
+                      <span role="button" onClick={(e) => { e.stopPropagation(); onTogglePopular(channel.id); }} className="w-6 h-6 rounded-full flex items-center justify-center border border-white/5 bg-white/5 text-white/40 hover:text-[var(--nova-accent-color)] hover:border-[var(--nova-accent-color)]/50 transition active:scale-95 shrink-0" aria-label={channel.isPopular ? t('channel.removePopular', 'Remove from popular') : t('channel.addPopular', 'Add to popular')}>
+                        <Star className={`w-3.5 h-3.5 ${channel.isPopular ? 'fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)]' : ''}`} />
+                      </span>
+                    )}
+                    {isActive && <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        {privateChannels.length === 0 &&
+        followingChannels.length === 0 &&
+        recommendedChannels.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/5 bg-[#181921] text-white/30">
               <Radio className="h-5 w-5" />
@@ -341,78 +368,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 ? t('channel.noSearchResultsSubtitle', 'Try a different search term.')
                 : t('channel.noChannelsSubtitle')}
             </p>
-          </div>
-        ) : (
-          filteredRegular.map((channel) => {
-            const isActive = channel.id === activeChannelId;
-            return (
-              <button
-                key={channel.id}
-                type="button"
-                onClick={() => onSelectChannel(channel.id)}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${
-                  isActive
-                    ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10'
-                    : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'
-                }`}
-              >
-                <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate text-[13px] font-semibold text-white">
-                      {channel.name}
-                    </span>
-                    {channel.isPopular && (
-                      <Star
-                        className="w-3.5 h-3.5 fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)] shrink-0"
-                        aria-label={t('channel.popular', 'Popular')}
-                      />
-                    )}
-                    {channel.isOwned && (
-                      <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">
-                        {t('channel.owned')}
-                      </span>
-                    )}
-                  </div>
-                  <p className="truncate text-[10.5px] text-white/40">
-                    {channel.description ||
-                      t('channel.subscribersCompact', {
-                        value: formatSubscribers(channel.subscribers),
-                        count: channel.subscribers,
-                      })}
-                  </p>
-                </div>
-                {onTogglePopular && (
-                  <span
-                    role="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTogglePopular(channel.id);
-                    }}
-                    className="w-6 h-6 rounded-full flex items-center justify-center border border-white/5 bg-white/5 text-white/40 hover:text-[var(--nova-accent-color)] hover:border-[var(--nova-accent-color)]/50 transition active:scale-95 shrink-0"
-                    aria-label={
-                      channel.isPopular
-                        ? t('channel.removePopular', 'Remove from popular')
-                        : t('channel.addPopular', 'Add to popular')
-                    }
-                  >
-                    <Star
-                      className={`w-3.5 h-3.5 ${
-                        channel.isPopular
-                          ? 'fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)]'
-                          : ''
-                      }`}
-                    />
-                  </span>
-                )}
-                {isActive && (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />
-                )}
-              </button>
-            );
-          })
-        )}
+          </div>        ) : null}
       </div>
         </>
       )}

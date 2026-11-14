@@ -12,6 +12,8 @@ vi.mock('../context/LanguageContext', () => ({
         return `${options?.value ?? ''} subscribers`;
       if (key === 'channel.searchChannels') return 'Search channels...';
       if (key === 'channel.popular') return 'Popular channels';
+      if (key === 'channel.following') return 'Following';
+      if (key === 'channel.recommended') return 'Recommended';
       if (key === 'channel.addPopular') return 'Add to popular';
       if (key === 'channel.removePopular') return 'Remove from popular';
       if (key === 'channel.noSearchResults') return 'No matching channels';
@@ -86,7 +88,7 @@ describe('ChannelListPanel', () => {
     expect(onSelectChannel).toHaveBeenCalledWith('kyiv-channel');
   });
 
-  it('renders popular channels section with star badge', () => {
+  it('renders recommended channels section with star badge', () => {
     render(
       <ChannelListPanel
         channels={CHANNELS}
@@ -95,7 +97,7 @@ describe('ChannelListPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Popular channels')).toBeInTheDocument();
+    expect(screen.getByText('Recommended')).toBeInTheDocument();
     expect(screen.getByText('Real Kyiv Life')).toBeInTheDocument();
     // Popular channel has a filled star (aria-label + fill class)
     const stars = screen.getAllByLabelText('Popular channels');
@@ -118,7 +120,7 @@ describe('ChannelListPanel', () => {
 
     // Tech channel is not popular - aria-label "Add to popular"
     const allStars = screen.getAllByLabelText('Add to popular');
-    fireEvent.click(allStars[1]);
+    fireEvent.click(allStars[0]);
 
     expect(onTogglePopular).toHaveBeenCalledWith('tech-channel');
   });
