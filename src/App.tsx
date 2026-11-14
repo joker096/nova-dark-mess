@@ -459,6 +459,7 @@ export default function App() {
         {/* Primary Navigation Icons */}
         <nav className="flex flex-col items-center gap-2.5 w-full px-2">
           {/* Chats tab */}
+          <NovaTooltip label={t('common.chats')}>
           <button
             onClick={() => {
               setActiveChatId('katie');
@@ -480,8 +481,10 @@ export default function App() {
               <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
           </button>
+          </NovaTooltip>
 
           {/* Kyiv Channel tab */}
+          <NovaTooltip label={t('common.channels')}>
           <button
             onClick={() => {
               setActiveChatId('kyiv-channel');
@@ -502,6 +505,7 @@ export default function App() {
               <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
             )}
           </button>
+          </NovaTooltip>
 
           {/* Folders tab */}
           <button
