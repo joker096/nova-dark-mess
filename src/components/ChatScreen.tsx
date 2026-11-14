@@ -108,6 +108,7 @@ import { ReceiptManager } from '../lib/p2p/receipts';
 import { enqueueJoinPayload, JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
 import { getThreadMessages } from '../lib/messaging/threads';
 import { editMessage } from '../lib/messaging/messageLifecycle';
+import { playSound, vibrate } from '../lib/notifications/sounds';
 
 const DEMO_PEER_BUNDLE_PREFIX = 'nova_demo_peer_bundle_';
 
@@ -228,6 +229,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         onMessage: (sender, text) => {
           // Skip the local echo: the UI appends our own messages immediately.
           if (sender === localFingerprint) return;
+          playSound('incoming');
+          vibrate(true);
           setMessages((prev) => [
             ...prev,
             {
@@ -685,6 +688,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   // Pinned Messages Carousel State
   const [isPinnedCarouselOpen, setIsPinnedCarouselOpen] = useState(false);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pinnedToast, setPinnedToast] = useState<string | null>(null);
@@ -767,9 +772,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }
   };
 
+  // Auto-scroll fires only when the *list shape* changes (a message is added
+  // or removed). Reaction/edit/read tweaks mutate messages in place, and they
+  // must NOT yank the viewport to the bottom of the conversation.
+  const messageListSignature = useMemo(
+    () => messages.map((m) => m.id).join('|'),
+    [messages],
+  );
+  const lastScrollSignatureRef = useRef<string | null>(null);
   useEffect(() => {
+    if (lastScrollSignatureRef.current === messageListSignature) return;
+    lastScrollSignatureRef.current = messageListSignature;
     scrollToBottom();
-  }, [messages, isTyping, recordedVoiceNote]);
+  }, [messageListSignature, isTyping, recordedVoiceNote]);
 
   // Scheduled Messages Delivery Loop: checks every second
   useEffect(() => {
@@ -1313,6 +1328,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const handleTriggerIncomingVoiceNote = () => {
     if (isTyping) return;
+    playSound('incoming');
+    vibrate(true);
     setTypingActivity('recording');
     setIsTyping(true);
     triggerPinnedToast(`${profile.name} is recording an audio note...`);
@@ -1350,6 +1367,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       setTypingActivity('typing');
 
       if (activityType === 'recording') {
+        playSound('incoming');
+        vibrate(true);
         setMessages((prev) => [
           ...prev,
           {
@@ -1371,6 +1390,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           "Deal! I'll see you at Harry's at 7pm.",
         ];
         const randomText = spontaneousMsgs[Math.floor(Math.random() * spontaneousMsgs.length)];
+        playSound('incoming');
+        vibrate(true);
         setMessages((prev) => [
           ...prev,
           {
@@ -2264,6 +2285,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     };
 
     setMessages((prev) => [...prev, newMessage]);
+    playSound('outgoing');
     if (text) {
       if (isGroupChat) {
         void groupManager.sendText(text).catch((err) => {
@@ -3043,7 +3065,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       )}
 
       {/* Date Pill Divider */}
-      <div className="flex justify-center my-1 relative z-10 shrink-0">
+      <div className="sticky top-0 z-20 flex justify-center my-1 shrink-0 bg-[#0b0c10]/70 backdrop-blur-sm py-1">
         <span className="text-[11px] font-medium text-[#737887] bg-[#14151c]/80 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/5 shadow-inner">
           Today, 24 June
         </span>
@@ -3051,7 +3073,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
       {/* Messages Scroll Area */}
       <div
+        ref={messagesScrollRef}
         onClick={() => setActiveReactionMsgId(null)}
+        onScroll={(event) => {
+          const node = event.currentTarget;
+          const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+          setShowScrollToBottom(distanceFromBottom > 120);
+        }}
         className="flex-1 overflow-y-auto px-4 py-2 space-y-3 relative z-10 no-scrollbar"
       >
         {/* Empty Search Results State */}
@@ -4097,6 +4125,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
         <div ref={messagesEndRef} />
       </div>
+
+      {showScrollToBottom && (
+        <button
+          type="button"
+          onClick={() => {
+            const node = messagesScrollRef.current;
+            if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
+          }}
+          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition hover:brightness-110 active:scale-95"
+          aria-label="Scroll to latest messages"
+          title="Scroll to latest messages"
+        >
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      )}
 
       {/* FLOATING IN-CHAT SEARCH MATCH NAVIGATOR */}
       {isSearchOpen && searchQuery.trim() && matchingMessages.length > 0 && (
