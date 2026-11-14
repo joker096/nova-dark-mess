@@ -238,6 +238,9 @@
     "showSubscriberCount": "Show subscriber count",
     "unsubscribed": "Unsubscribed",
     "commentsCount": "{{count}} comments",
+    "noComments": "No comments yet",
+    "commentPlaceholder": "Write a comment...",
+    "sendComment": "Send comment",
     "sharePost": "Share post"
   },
   "location": {

@@ -684,6 +684,9 @@
     "showSubscriberCount": "Показати кількість підписників",
     "unsubscribed": "Ви відписалися",
     "commentsCount": "{{count}} коментарів",
+    "noComments": "Коментарів ще немає",
+    "commentPlaceholder": "Написати коментар...",
+    "sendComment": "Надіслати коментар",
     "sharePost": "Поділитися постом"
   },
   "location": {

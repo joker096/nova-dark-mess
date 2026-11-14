@@ -230,6 +230,9 @@
     "showSubscriberCount": "Hiện số người theo dõi",
     "unsubscribed": "Đã bỏ theo dõi",
     "commentsCount": "{{count}} bình luận",
+    "noComments": "Chưa có bình luận",
+    "commentPlaceholder": "Viết bình luận...",
+    "sendComment": "Gửi bình luận",
     "sharePost": "Chia sẻ bài viết"
   },
   "location": {

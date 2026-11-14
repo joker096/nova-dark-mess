@@ -230,6 +230,9 @@
     "showSubscriberCount": "แสดงจำนวนผู้ติดตาม",
     "unsubscribed": "เลิกติดตามแล้ว",
     "commentsCount": "{{count}} ความคิดเห็น",
+    "noComments": "ยังไม่มีความคิดเห็น",
+    "commentPlaceholder": "เขียนความคิดเห็น...",
+    "sendComment": "ส่งความคิดเห็น",
     "sharePost": "แชร์โพสต์"
   },
   "location": {

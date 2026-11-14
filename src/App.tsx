@@ -87,6 +87,9 @@ export default function App() {
   const [activeChatId, setActiveChatId] = useState<string>('katie');
   const [activeProfileId, setActiveProfileId] = useState<string>('katie');
   const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
+  // Set when a link points at one post's comments; cleared once the channel
+  // screen has opened the sheet.
+  const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
@@ -135,6 +138,9 @@ export default function App() {
       }
       if (channels.some((channel) => channel.id === target.id)) {
         setActiveChannelId(target.id);
+        setPendingCommentsPostId(
+          target.postId && target.comments ? target.postId : null,
+        );
         setCurrentScreen('channel-kyiv');
       }
     },
@@ -251,6 +257,7 @@ export default function App() {
     if (typeof channelId === 'string' && channelId) {
       setActiveChannelId(channelId);
     }
+    setPendingCommentsPostId(null);
     setCurrentScreen('channel-kyiv');
   };
 
@@ -295,6 +302,8 @@ export default function App() {
     onToggleReaction: togglePostReaction,
     onToggleSound: setChannelSound,
     onToggleSubscriberPrivacy: toggleChannelSubscriberPrivacy,
+    initialCommentsPostId: pendingCommentsPostId,
+    onInitialCommentsHandled: () => setPendingCommentsPostId(null),
   };
 
   // Desktop Main Panel renderer
@@ -303,7 +312,7 @@ export default function App() {
       case 'channel-kyiv':
         return (
           <ChannelScreen
-            key={activeChannelId}
+            key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
             onBack={() => {
               setActiveChatId('katie');
@@ -385,7 +394,7 @@ export default function App() {
       case 'channel-kyiv':
         return (
           <ChannelScreen
-            key={activeChannelId}
+            key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
             onBack={() => setCurrentScreen('chats')}
           />

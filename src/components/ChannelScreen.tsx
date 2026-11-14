@@ -32,6 +32,7 @@ import {
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
 import { isSubscribed, setSubscribed } from '../lib/social/channelSubscriptions';
+import { buildDeepLink } from '../lib/network/deepLinks';
 import { formatCount } from '../lib/ui';
 import type {
   ChannelDraft,
@@ -46,6 +47,7 @@ import { ChannelAvatar } from './ChannelAvatar';
 import { ChannelSwitcherModal } from './ChannelSwitcherModal';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { ChannelPostComposerModal } from './ChannelPostComposerModal';
+import { PostCommentsSheet } from './PostCommentsSheet';
 import { PollBubble } from './chat/PollBubble';
 import { StickerMedia } from './chat/StickerMedia';
 import {
@@ -74,6 +76,10 @@ interface ChannelScreenProps {
   onToggleSound?: (channelId: string, enabled: boolean) => void;
   onToggleSubscriberPrivacy?: (channelId: string, hidden: boolean) => void;
   onVotePoll?: (pollId: string, optionId: string) => void;
+  /** Deep link target: opens the comments of this post on mount. */
+  initialCommentsPostId?: string | null;
+  /** Fired once the deep-link comments open, so the app can drop the target. */
+  onInitialCommentsHandled?: () => void;
 }
 
 const POST_REACTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉', '😍', '😎', '🙏', '💯', '🤔', '😢', '😡', '🎊', '🍻', '🎁', '👀', '💪'];
@@ -113,6 +119,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onToggleSound,
   onToggleSubscriberPrivacy,
   onVotePoll,
+  initialCommentsPostId,
+  onInitialCommentsHandled,
 }) => {
   const { t, language } = useLanguage();
   const { checkout, canUse } = usePremium();
@@ -228,9 +236,33 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [editingPost, setEditingPost] = useState<ChannelPost | null>(null);
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
+  const commentTriggerRef = useRef<HTMLElement | null>(null);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
 
+  // A deep link can point at one post's comments; jump to its day and open it.
+  useEffect(() => {
+    if (!initialCommentsPostId) return;
+    const target = channelPosts.find((post) => post.id === initialCommentsPostId);
+    if (!target) return;
+    const key = dayKey(postCreatedAt(target));
+    setSelectedDay(key);
+    setFocusDate(key);
+    setSearchQuery('');
+    setSearchOpen(false);
+    setCommentingPostId(target.id);
+    onInitialCommentsHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCommentsPostId, channelPosts]);
+
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+
+  const commentingPost = useMemo(
+    () =>
+      commentingPostId
+        ? sourcePosts.find((post) => post.id === commentingPostId) ?? null
+        : null,
+    [commentingPostId, sourcePosts],
+  );
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const postsScrollRef = useRef<HTMLDivElement | null>(null);
@@ -353,7 +385,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   const handleSharePost = async (postId: string) => {
     if (!channel) return;
-    const url = `${window.location.origin}/channel/${channel.id}#post-${postId}`;
+    // A nova:// link reopens the channel on that post with its comments.
+    const url = buildDeepLink({
+      type: 'channel',
+      id: channel.id,
+      postId,
+      comments: true,
+    });
     try {
       await navigator.clipboard?.writeText(url);
       showToast(t('channel.linkCopied'));
@@ -1304,7 +1342,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                         )}
                         <button
                           type="button"
-                          onClick={() => setCommentingPostId(post.id)}
+                          onClick={(event) => {
+                            commentTriggerRef.current = event.currentTarget;
+                            setCommentingPostId(post.id);
+                          }}
+                          aria-haspopup="dialog"
+                          aria-expanded={commentingPostId === post.id}
                           className="flex items-center gap-1.5 rounded-full border border-white/5 bg-[#1e2028] px-2.5 py-1 text-[11px] font-medium text-[#8c919d] transition hover:bg-white/5 hover:text-white active:scale-95"
                         >
                           <MessageCircle className="h-3.5 w-3.5 text-[#8c919d]" />
@@ -1431,64 +1474,19 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         }
       />
 
-      {commentingPostId && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
-        >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white">Comments</h3>
-              <button
-                onClick={() => {
-                  setCommentingPostId(null);
-                  setCommentDraft('');
-                }}
-                className="p-1.5 text-white/50 hover:text-white transition cursor-pointer"
-                aria-label="Close comments"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {(sourcePosts.find((p) => p.id === commentingPostId)?.comments ?? []).map((c) => (
-                <div key={c.id} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/90">
-                  <div className="font-semibold text-[10px] text-white/60 mb-0.5">{c.authorName}</div>
-                  {c.text}
-                </div>
-              ))}
-              {!(sourcePosts.find((p) => p.id === commentingPostId)?.comments?.length) && (
-                <p className="text-xs text-white/40 text-center py-4">No comments yet</p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={commentDraft}
-                onChange={(e) => setCommentDraft(e.target.value)}
-                placeholder="Write a comment..."
-                className="flex-1 rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && commentDraft.trim()) {
-                    onAddComment?.(commentingPostId, commentDraft);
-                    setCommentDraft('');
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (!commentDraft.trim()) return;
-                  onAddComment?.(commentingPostId, commentDraft);
-                  setCommentDraft('');
-                }}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color)] text-white text-xs font-semibold hover:brightness-110 active:scale-95"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
+      {commentingPost && (
+        <PostCommentsSheet
+          post={commentingPost}
+          comments={commentingPost.comments ?? []}
+          draft={commentDraft}
+          onDraftChange={setCommentDraft}
+          onAddComment={(text) => onAddComment?.(commentingPost.id, text)}
+          onClose={() => {
+            setCommentingPostId(null);
+            setCommentDraft('');
+          }}
+          returnFocusTo={commentTriggerRef.current}
+        />
       )}
     </div>
   );
