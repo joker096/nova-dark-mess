@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ListFilter,
   X,
+  MoreHorizontal,
   Palette,
   Search,
   Clock,
@@ -39,6 +40,7 @@ import {
   Users,
   UserMinus,
   ShieldCheck,
+  VolumeX,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -548,6 +550,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           mediaItems: [],
         }
       : CONTACT_PROFILES['katie']);
+  const isProfileOnline = /^online$/i.test((profile.status ?? '').trim());
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
@@ -665,6 +668,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     return 70;
   });
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVideoCallMinimized, setIsVideoCallMinimized] = useState(false);
   const [callMode, setCallMode] = useState<MediaCallMode>('video');
@@ -712,6 +716,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const sendLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSendLongPressTriggeredRef = useRef(false);
+  const [isSendOptionsOpen, setIsSendOptionsOpen] = useState(false);
+  const [sendSilently, setSendSilently] = useState(false);
 
   // Voice recording & waveform staging states
   const voiceMemoRef = useRef<VoiceMemoInputHandle>(null);
@@ -1128,7 +1134,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }
   };
 
-  // Send Button Long Press for Scheduling Handlers
+  // Send Button Long Press for Send Options
   const handleSendPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     isSendLongPressTriggeredRef.current = false;
@@ -1137,7 +1143,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(50);
       }
-      setIsScheduleModalOpen(true);
+      setIsSendOptionsOpen(true);
     }, 450);
   };
 
@@ -1329,6 +1335,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         ]);
       }
     }, 2400);
+  };
+
+  const handleCycleChatTheme = () => {
+    const isPremiumTheme = chatTheme !== 'default';
+    if (isPremiumTheme && !canUse('chat_themes')) {
+      checkout();
+      return;
+    }
+    const next =
+      chatTheme === 'emerald'
+        ? 'default'
+        : Object.keys(PREMIUM_THEMES).includes(chatTheme)
+          ? (['default', 'sapphire', 'amethyst', 'emerald'] as const)[
+              (['default', 'sapphire', 'amethyst', 'emerald'] as const).indexOf(chatTheme) + 1
+            ]
+          : 'default';
+    if (next !== 'default' && !canUse('chat_themes')) {
+      checkout();
+      return;
+    }
+    setChatTheme(next);
+    try {
+      localStorage.setItem(CHAT_THEME_KEY, next);
+    } catch {
+      void 0;
+    }
   };
 
   // Pointer, Swipe-to-Reply & Double-tap Handlers
@@ -1593,7 +1625,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const handlePinMessage = (msgId: string) => {
     setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, pinned: !m.pinned } : m))
+      prev.map((m) => (m.id === msgId ? { ...m, isPinned: !m.isPinned } : m))
     );
   };
 
@@ -2197,6 +2229,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       );
     }, 500);
 
+    if (sendSilently) {
+      appendConversationHistory(chatId, [newMessage]);
+      return;
+    }
+
     // Katie begins real-time typing after 750ms
     setTimeout(() => {
       setTypingActivity('typing');
@@ -2446,46 +2483,61 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               <div className="flex items-center gap-2 min-w-0 flex-1 mx-0.5">
                 <button
                   onClick={onOpenProfile}
-                  className="flex flex-col items-center min-w-0 cursor-pointer focus:outline-none group"
+                  className="flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none group"
+                  aria-label={t('common.profile')}
                 >
-                  <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
-                    {profile.name}
+                  <span className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 ring-2 ring-[var(--nova-accent-color, #ff4e18)]/20 shrink-0">
+                    <img
+                      src={profile.avatar}
+                      alt={profile.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {isProfileOnline && !isTyping && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
+                    )}
                   </span>
-                  {isTyping ? (
-                    <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color, #ff4e18)]"></span>
-                      </span>
-                      {typingActivity === 'recording' ? (
-                        <>
-                          <Mic className="w-2 h-2 text-[var(--nova-accent-color, #ff4e18)] animate-pulse" />
-                          <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">recording</span>
-                          <div className="flex items-center gap-0.5 h-1.5">
-                            <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
-                            <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
-                            <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">typing</span>
-                          <div className="flex items-center gap-0.5 pt-px">
-                            <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.32s]" />
-                            <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.16s]" />
-                            <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce" />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 mt-0.5 select-none">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
-                      <span className="text-[10px] text-[#868b98] font-normal leading-none">
-                        {profile.status}
-                      </span>
-                    </div>
-                  )}
+                  <span className="flex flex-col items-start min-w-0">
+                    <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                      {profile.name}
+                    </span>
+                    {isTyping ? (
+                      <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color, #ff4e18)]"></span>
+                        </span>
+                        {typingActivity === 'recording' ? (
+                          <>
+                            <Mic className="w-2 h-2 text-[var(--nova-accent-color, #ff4e18)] animate-pulse" />
+                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">recording</span>
+                            <div className="flex items-center gap-0.5 h-1.5">
+                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
+                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
+                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">typing</span>
+                            <div className="flex items-center gap-0.5 pt-px">
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.32s]" />
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.16s]" />
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce" />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 mt-0.5 select-none">
+                        {isProfileOnline && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
+                        )}
+                        <span className="text-[10px] text-[#868b98] font-normal leading-none">
+                          {profile.status}
+                        </span>
+                      </div>
+                    )}
+                  </span>
                 </button>
 
                 {/* Header Menu Tabs: [ Chat | Gallery ] */}
@@ -2553,6 +2605,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   </button>
                 )}
 
+                {/* Search Messages in Chat Button */}
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
+                  title={t('common.search')}
+                  aria-label={t('common.search')}
+                >
+                  <Search className="w-3 h-3" />
+                </button>
+
                 {/* Voice Call Toggle Button */}
                 <button
                   onClick={handleStartVoiceCall}
@@ -2587,82 +2649,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   <Video className="w-3 h-3" />
                 </button>
 
-                {/* Search Messages in Chat Button */}
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
-                  title={t('common.search')}
-                >
-                  <Search className="w-3 h-3" />
-                </button>
-
-                {/* Wallpaper Settings Button */}
-                <button
-                  onClick={() => setIsWallpaperModalOpen(true)}
-                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    isWallpaperModalOpen
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                      : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                  }`}
-                  title={t('settings.chatWallpaper')}
-                >
-                  <Palette className="w-3 h-3" />
-                </button>
-
-                {/* Premium Chat Theme Toggle */}
-                <button
-                  disabled={chatTheme !== 'default' && !canUse('chat_themes')}
-                  onClick={() => {
-                    const isPremiumTheme = chatTheme !== 'default';
-                    if (isPremiumTheme && !canUse('chat_themes')) {
-                      checkout();
-                      return;
-                    }
-                    const next =
-                      chatTheme === 'emerald' ? 'default' : Object.keys(PREMIUM_THEMES).includes(chatTheme)
-                        ? (['default', 'sapphire', 'amethyst', 'emerald'] as const)[
-                          (['default', 'sapphire', 'amethyst', 'emerald'] as const).indexOf(chatTheme) + 1
-                        ]
-                        : 'default';
-                    if (next !== 'default' && !canUse('chat_themes')) {
-                      checkout();
-                      return;
-                    }
-                    setChatTheme(next);
-                    try {
-                      localStorage.setItem(CHAT_THEME_KEY, next);
-                    } catch {
-      void 0;
-    }
-                  }}
-                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    chatTheme === 'default'
-                      ? 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                      : 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                  }`}
-                  title={`Chat theme: ${theme.label}${!canUse('chat_themes') && chatTheme === 'default' ? ' (Premium)' : ''}`}
-                >
-                  {canUse('chat_themes') || chatTheme !== 'default' ? (
-                    <Sparkles className={`w-3 h-3 ${chatTheme === 'default' ? '' : 'fill-white'}`} />
-                  ) : (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </button>
-
-                {/* Pinned Messages Header Button */}
-                <button
-                  onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
-                  className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
-                    isPinnedCarouselOpen
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                      : pinnedMessages.length > 0
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff4e18)]/30'
-                      : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
-                  }`}
-                  title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
-                >
-                  <Pin className={`w-3 h-3 ${isPinnedCarouselOpen || pinnedMessages.length > 0 ? 'fill-current' : ''}`} />
-                  {pinnedMessages.length > 0 && (
+                {/* Pinned Messages Header Button (only when pinned exist) */}
+                {pinnedMessages.length > 0 && (
+                  <button
+                    onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
+                    className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
+                      isPinnedCarouselOpen
+                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
+                        : 'bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff4e18)]/30'
+                    }`}
+                    title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
+                    aria-label={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
+                  >
+                    <Pin className={`w-3 h-3 ${isPinnedCarouselOpen ? 'fill-current' : ''}`} />
                     <span
                       className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
                         isPinnedCarouselOpen
@@ -2672,46 +2671,115 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     >
                       {pinnedMessages.length}
                     </span>
-                  )}
-                </button>
+                  </button>
+                )}
 
-                {/* Demo: simulate incoming message */}
-                <button
-                  onClick={isTyping ? handleTriggerIncomingVoiceNote : () => handleSimulateTypingActivity('typing')}
-                  disabled={isTyping}
-                  className={`w-7 h-7 rounded-full border transition flex items-center justify-center cursor-pointer active:scale-95 ${
-                    isTyping
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)]/25 border-[var(--nova-accent-color, #ff4e18)] text-[var(--nova-accent-color, #ff4e18)] ring-1 ring-[var(--nova-accent-color, #ff4e18)]/40 animate-pulse'
-                      : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                  }`}
-                  title={isTyping ? 'Receive voice note' : 'Simulate typing'}
-                >
-                  {isTyping ? <Mic className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" /> : <Sparkles className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />}
-                </button>
+                {/* More menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMoreMenuOpen((prev) => !prev)}
+                    aria-haspopup="menu"
+                    aria-expanded={isMoreMenuOpen}
+                    aria-label="More actions"
+                    title="More actions"
+                    className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                      isMoreMenuOpen
+                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
+                        : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                    }`}
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </button>
 
-                <button
-                  onClick={onOpenProfile}
-                  className={`relative w-8 h-8 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
-                    isTyping
-                      ? 'border-[var(--nova-accent-color, #ff4e18)] ring-2 ring-[var(--nova-accent-color, #ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
-                      : 'border-white/15 ring-2 ring-[var(--nova-accent-color, #ff4e18)]/20'
-                  }`}
-                  title={t('common.profile')}
-                >
-                  <img
-                    src={profile.avatar}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Real-time live status beacon on avatar */}
-                  {isTyping ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/50">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    </span>
-                  ) : (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
+                  {isMoreMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsMoreMenuOpen(false)}
+                      />
+                      <div
+                        role="menu"
+                        className="absolute right-0 top-full mt-2 w-64 z-50 bg-[#151621]/98 border border-white/10 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                      >
+                        <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                          Chat actions
+                        </div>
+                        <button
+                          onClick={() => {
+                            onOpenProfile();
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Contact info</span>
+                        </button>
+                        {isGroupChat && (
+                          <button
+                            onClick={() => {
+                              setIsGroupMembersOpen(true);
+                              setIsMoreMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                            <span>Group members</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setActiveHeaderTab('gallery');
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Media, files, links</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsWallpaperModalOpen(true);
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Chat appearance</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleCycleChatTheme();
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <span>Chat theme</span>
+                        </button>
+                        {scheduledMessages.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setIsScheduleModalOpen(true);
+                              setIsMoreMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                            <span>Scheduled ({scheduledMessages.length})</span>
+                          </button>
+                        )}
+                        <div className="h-px bg-white/10 my-1" />
+                        <button
+                          onClick={() => setIsMoreMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/60 hover:bg-white/5 transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Close</span>
+                        </button>
+                      </div>
+                    </>
                   )}
-                </button>
+                </div>
               </div>
             </>
           )}
@@ -2926,16 +2994,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           </div>
         )}
 
-        {messages.some((m) => m.pinned) && (
+        {messages.some((m) => m.isPinned) && (
           <div className="mb-2 px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 text-xs text-white/90 flex items-center gap-2">
             <Pin className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
             <span className="truncate flex-1">
-              {messages.find((m) => m.pinned)?.text || t('chat.messageDeleted', 'Pinned message')}
+              {messages.find((m) => m.isPinned)?.text || t('chat.messageDeleted', 'Pinned message')}
             </span>
             <button
               type="button"
               onClick={() => {
-                const pinned = messages.find((m) => m.pinned);
+                const pinned = messages.find((m) => m.isPinned);
                 if (pinned) {
                   const el = document.getElementById(`msg-${pinned.id}`);
                   el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3254,10 +3322,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         handlePinMessage(msg.id);
                       }}
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                      title={msg.pinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
+                      title={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
                     >
                       <Pin className="w-3 h-3 text-[var(--nova-accent-color, #ff4e18)]" />
-                      <span>{msg.pinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}</span>
+                      <span>{msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}</span>
                     </button>
                     {messages.some((m) => m.replyTo?.id === msg.id) && (
                       <>
@@ -3306,10 +3374,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             handleDeleteMessage(msg.id);
                           }}
                           className="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-red-500/25 text-red-400 hover:text-red-300 transition active:scale-90 text-[10px] font-semibold cursor-pointer"
-                          title="Delete message"
+                          title={t('chat.messageActions.delete')}
                         >
                           <Trash2 className="w-3 h-3" />
-                          <span>Delete</span>
+                          <span>{t('chat.messageActions.delete')}</span>
                         </button>
                       </>
                     )}
@@ -3389,18 +3457,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMessage(msg.id);
-                            }}
-                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                            title={t('chat.messageActions.delete')}
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
                           <span className="font-mono">{msg.time}</span>
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
@@ -3420,10 +3476,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             }}
                             className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/50"
                           >
-                            <div className="font-bold text-[10.5px] text-white/95">
+                            <div className="font-bold text-[10.5px] text-white/95 truncate">
                               {msg.replyTo.senderName}
                             </div>
-                            <p className="text-[11.5px] truncate text-white/85 font-normal">
+                            <p className="text-[11.5px] truncate text-white/80 font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -3434,19 +3490,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           onRetractVote={handleRetractVote}
                         />
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMessage(msg.id);
-                            }}
-                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                            title={t('chat.messageActions.delete')}
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
                           <span>{msg.time}</span>
+
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
                           ) : (
@@ -3683,19 +3728,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                               <Pencil className="w-2.5 h-2.5" />
                               <span className="text-[9.5px]">{t('chat.messageActions.edit')}</span>
                             </button>
-                            <button
-                              type="button"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteMessage(msg.id);
-                              }}
-                              className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                              title={t('chat.messageActions.delete')}
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                              <span className="text-[9.5px]">{t('chat.messageActions.delete')}</span>
-                            </button>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
@@ -3759,18 +3791,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMessage(msg.id);
-                            }}
-                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                            title={t('chat.messageActions.delete')}
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
                           <span className="font-mono">{msg.time}</span>
                         </div>
                       </div>
@@ -3785,7 +3805,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             }}
                             className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-white/10"
                           >
-                            <div className="font-bold text-[10.5px] text-[var(--nova-accent-color)]">
+                            <div className="font-bold text-[10.5px] text-[var(--nova-accent-color)] truncate">
                               {msg.replyTo.senderName}
                             </div>
                             <p className="text-[11.5px] truncate text-white/80 font-normal">
@@ -3799,22 +3819,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           onRetractVote={handleRetractVote}
                         />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMessage(msg.id);
-                            }}
-                            className="text-white/70 hover:text-red-300 flex items-center gap-1 px-1 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
-                            title={t('chat.messageActions.delete')}
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
                           <span>{msg.time}</span>
                         </div>
                       </div>
                     ) : msg.location ? (
+
                       <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
                         <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
@@ -4466,29 +4475,96 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           </div>
 
           {inputText.trim() ? (
-            <button
-              type="button"
-              onPointerDown={handleSendPointerDown}
-              onPointerUp={handleSendPointerUp}
-              onPointerLeave={handleSendPointerCancel}
-              onPointerCancel={handleSendPointerCancel}
-              onClick={(e) => {
-                if (e.detail === 0) handleSendMessage();
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setIsScheduleModalOpen(true);
-              }}
-              style={{ touchAction: 'manipulation' }}
-              className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none shrink-0"
-              title={t('common.send')}
-            >
-              <Send className="w-4 h-4 ml-0.5" />
-              {/* Hold hint badge */}
-              <div className="absolute -top-7 right-0 bg-[#1e202a] text-white text-[9px] px-2 py-0.5 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md">
-                Hold to schedule 🕒
-              </div>
-            </button>
+            <div className="relative shrink-0">
+              {scheduledMessages.length > 0 && (
+                <span
+                  className="absolute -top-1.5 -left-1 z-10 w-4 h-4 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[9px] font-bold flex items-center justify-center shadow-md"
+                  title={`${scheduledMessages.length} scheduled`}
+                >
+                  {scheduledMessages.length}
+                </span>
+              )}
+              <button
+                type="button"
+                onPointerDown={handleSendPointerDown}
+                onPointerUp={handleSendPointerUp}
+                onPointerLeave={handleSendPointerCancel}
+                onPointerCancel={handleSendPointerCancel}
+                onClick={(e) => {
+                  if (e.detail === 0) handleSendMessage();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setIsSendOptionsOpen((prev) => !prev);
+                }}
+                style={{ touchAction: 'manipulation' }}
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none"
+                title={t('common.send')}
+                aria-haspopup="menu"
+                aria-expanded={isSendOptionsOpen}
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+                {/* Hold hint badge */}
+                <div className="absolute -top-7 right-0 bg-[#1e202a] text-white text-[9px] px-2 py-0.5 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md">
+                  Hold for send options
+                </div>
+              </button>
+
+              {isSendOptionsOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsSendOptionsOpen(false)}
+                  />
+                  <div
+                    role="menu"
+                    className="absolute bottom-full right-0 mb-2 w-56 z-50 bg-[#151621]/98 border border-white/10 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-150"
+                  >
+                    <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                      Send options
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSendSilently((prev) => !prev);
+                        triggerPinnedToast(sendSilently ? 'Silent send off' : 'Silent send on');
+                        setIsSendOptionsOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <VolumeX className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                        <span>Send silently</span>
+                      </span>
+                      {sendSilently && <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsSendOptionsOpen(false);
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                      <span>Schedule send…</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewOnceMode((prev) => !prev);
+                        triggerPinnedToast(viewOnceMode ? 'View-once off' : 'View-once on');
+                        setIsSendOptionsOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Eye className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                        <span>Send as view-once</span>
+                      </span>
+                      {viewOnceMode && <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <VoiceMemoInput
               ref={voiceMemoRef}

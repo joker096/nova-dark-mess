@@ -3,6 +3,9 @@
     "name": "Nova Messenger",
     "tagline": "Trò chuyện an toàn & đẹp"
   },
+  "meshMap": {
+    "title": "Bản đồ Mesh"
+  },
   "common": {
     "search": "Tìm kiếm",
     "searchChats": "Tìm chat",

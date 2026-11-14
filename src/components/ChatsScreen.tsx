@@ -14,6 +14,7 @@ import {
   Folder,
   BarChart3,
   Clock,
+  MapPin,
 } from 'lucide-react';
 import {
   CURRENT_USER,
@@ -55,8 +56,9 @@ interface ChatsScreenProps {
   onOpenSettings?: () => void;
   onOpenFolders?: () => void;
   activeChatId?: string;
-  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'analytics';
+  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'analytics' | 'mesh-map';
   onOpenAnalytics?: () => void;
+  onOpenMeshMap?: () => void;
   stories?: Story[];
   channels?: ChannelInfo[];
   localFingerprint?: string;
@@ -123,6 +125,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onOpenSettings,
     onOpenFolders,
     onOpenAnalytics,
+    onOpenMeshMap,
     activeChatId,
     activeNavTab,
     stories = MOCK_STORIES,
@@ -410,6 +413,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       icon: BarChart3,
       active: activeNavTab === 'analytics',
       onClick: onOpenAnalytics,
+    },
+    {
+      key: 'mesh-map',
+      label: t('meshMap.title'),
+      icon: MapPin,
+      active: activeNavTab === 'mesh-map',
+      onClick: onOpenMeshMap,
     },
     {
       key: 'settings',
@@ -1107,7 +1117,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
       {/* Floating Bottom Navigation Bar */}
       <div className="absolute bottom-4 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
-        <nav className="bg-[#181921]/92 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-0.5 shadow-2xl shadow-black/80 pointer-events-auto max-w-full">
+        <nav className="bg-[#181921]/92 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-0.5 shadow-2xl shadow-black/80 pointer-events-auto max-w-full overflow-x-auto no-scrollbar">
           {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
             <button
               key={key}
@@ -1115,7 +1125,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
               title={label}
               aria-label={label}
               aria-current={active ? 'page' : undefined}
-              className={`h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-90 ${
+              className={`h-10 shrink-0 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-90 ${
                 active
                   ? 'bg-[var(--nova-accent-color)] text-white gap-1.5 px-3.5 shadow-lg shadow-[var(--nova-accent-color)]/30'
                   : 'w-10 text-white/50 hover:text-white hover:bg-white/[0.06]'

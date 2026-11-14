@@ -20,6 +20,7 @@ vi.mock('./FolderModal', () => ({
 
 const onOpenFolders = vi.fn();
 const onOpenProfile = vi.fn();
+const onOpenMeshMap = vi.fn();
 
 const renderChats = (extra: Record<string, unknown> = {}) =>
   render(
@@ -28,6 +29,7 @@ const renderChats = (extra: Record<string, unknown> = {}) =>
       onOpenChannel={vi.fn()}
       onOpenProfile={onOpenProfile}
       onOpenFolders={onOpenFolders}
+      onOpenMeshMap={onOpenMeshMap}
       activeChatId={'katie'}
       activeNavTab={'chats'}
       {...extra}
@@ -39,18 +41,27 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     vi.clearAllMocks();
   });
 
-  it('renders all 5 bottom-nav tabs with localized keys', () => {
+  it('renders all 7 bottom-nav tabs with localized keys', () => {
     renderChats();
     expect(screen.getByRole('button', { name: 'chats.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'channels' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'folders' })).toBeTruthy();
     expect(screen.getAllByRole('button', { name: 'profile.title' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: 'analytics.title' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'meshMap.title' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'settings.title' })).toBeTruthy();
   });
 
   it('calls onOpenFolders when Folders tab clicked', () => {
     renderChats();
     fireEvent.click(screen.getByRole('button', { name: 'folders' }));
     expect(onOpenFolders).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onOpenMeshMap when Mesh Map tab clicked', () => {
+    renderChats();
+    fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
+    expect(onOpenMeshMap).toHaveBeenCalledTimes(1);
   });
 
 });

@@ -3,6 +3,9 @@
     "name": "Nova Messenger",
     "tagline": "Secure & Beautiful Messaging"
   },
+  "meshMap": {
+    "title": "Mesh Map"
+  },
   "common": {
     "search": "Search",
     "searchChats": "Search chats",
