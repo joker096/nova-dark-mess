@@ -78,8 +78,15 @@ jobs:
           npx tauri android build --apk --debug --target x86_64
 
       - name: Locate APK
+        # Depending on the Tauri/Gradle version the debug build lands either in
+        # apk/x86_64/debug/ or as a single apk/universal/debug/ APK. Both run
+        # on the x86_64 emulator, so accept either and prefer the ABI-specific
+        # one when it exists.
         run: |
           APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -path '*x86_64*debug*' -name '*.apk' | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name 'app-*-debug.apk' | head -n 1)
+          fi
           if [ -z "$APK_PATH" ]; then
             echo "Debug APK not found" >&2
             find src-tauri/gen/android/app/build/outputs -type f >&2 || true
