@@ -266,6 +266,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const postsScrollRef = useRef<HTMLDivElement | null>(null);
+  const dayHeaderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const lastScrollTopRef = useRef(0);
   const lastManualToggleRef = useRef(0);
   const manualCollapsedRef = useRef(false);
@@ -318,7 +319,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     scrollDirectionRef.current = null;
     scrollAccumulatorRef.current = 0;
     setHeaderCollapsed(false);
-  }, [selectedDay]);
+  }, [channel?.id]);
 
   const toggleHeader = () => {
     const nextCollapsed = !headerCollapsed;
@@ -463,14 +464,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     return counts;
   }, [channelPosts]);
 
-  const dayPosts = useMemo(
+  const feedPosts = useMemo(
     () =>
       channelPosts
-        .filter((post) => dayKey(postCreatedAt(post)) === selectedDay)
         .filter((post) => Boolean(channel?.isOwned) || !isPostScheduled(post, now))
-        .sort((a, b) => postCreatedAt(a) - postCreatedAt(b)),
+        .slice()
+        .sort((a, b) => postCreatedAt(b) - postCreatedAt(a)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [channelPosts, selectedDay, channel?.isOwned, now],
+    [channelPosts, channel?.isOwned, now],
   );
 
   const query = searchQuery.trim().toLowerCase();
@@ -493,7 +494,26 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         )
         .slice()
         .sort((a, b) => postCreatedAt(b) - postCreatedAt(a))
-    : dayPosts;
+    : feedPosts;
+
+  useEffect(() => {
+    const root = postsScrollRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length === 0) return;
+        const key = Number(visible[0].target.getAttribute('data-day-key'));
+        if (!Number.isNaN(key)) setSelectedDay(key);
+      },
+      { root, rootMargin: '0px 0px -85% 0px', threshold: 0 },
+    );
+    dayHeaderRefs.current.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [displayPosts]);
+
 
   const monthLabel = new Intl.DateTimeFormat(language, {
     month: 'long',
@@ -957,6 +977,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     onClick={() => {
                       if (isFuture) return;
                       setSelectedDay(key);
+                      const node = dayHeaderRefs.current.get(key);
+                      node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                     onKeyDown={(event) => {
                       if (event.key === 'ArrowLeft') {
@@ -1079,14 +1101,40 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           </div>
         ) : (
           <div className="mx-auto w-full max-w-[840px] space-y-4">
-            {displayPosts.map((post) => {
+            {displayPosts.map((post, index) => {
               const scheduled = isPostScheduled(post, now);
               const postCardClassName = scheduled
                 ? 'bg-[#171820]/80 border border-dashed border-[var(--nova-accent-color)]/40 shadow-md shadow-black/40'
                 : 'bg-[#171820]/95 border border-white/5 shadow-md shadow-black/50';
 
+              const dayKeyForPost = dayKey(postCreatedAt(post));
+              const prevPost = index > 0 ? displayPosts[index - 1] : null;
+              const showDayHeader =
+                !query &&
+                (!prevPost ||
+                  dayKey(postCreatedAt(prevPost)) !== dayKeyForPost);
+
               return (
-                <div key={post.id} className="relative flex items-start gap-2.5">
+                <React.Fragment key={post.id}>
+                  {showDayHeader && (
+                    <div
+                      ref={(node) => {
+                        if (node) dayHeaderRefs.current.set(dayKeyForPost, node);
+                        else dayHeaderRefs.current.delete(dayKeyForPost);
+                      }}
+                      data-day-key={dayKeyForPost}
+                      className="sticky top-0 z-20 -mx-4 mb-2 border-b border-white/[0.06] bg-[#0b0c10]/90 px-4 py-1.5 backdrop-blur-sm"
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+                        {new Intl.DateTimeFormat(language, {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        }).format(new Date(dayKeyForPost))}
+                      </span>
+                    </div>
+                  )}
+                  <div className="relative flex items-start gap-2.5">
                   {/* Left Timestamp Margin */}
                   <div className="w-10 shrink-0 pt-3 text-right text-[11px] font-medium tabular-nums text-[#717682]">
                     {post.time}
@@ -1364,6 +1412,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     </div>
                   </div>
                 </div>
+                  </React.Fragment>
               );
             })}
           </div>
