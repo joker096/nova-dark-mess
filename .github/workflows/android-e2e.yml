@@ -132,7 +132,11 @@ jobs:
           # installing one debug APK and running the checks.
           disk-size: 2048M
           disable-animations: true
+          # `virtualscene` needs working GL from the emulator, and on the
+          # headless runner it made getUserMedia fail with "Could not start
+          # video source". The plain `emulated` cameras are synthetic
+          # (checkerboard) and start under swiftshader.
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim
-            -camera-back virtualscene -camera-front emulated
+            -camera-back emulated -camera-front emulated
           script: node scripts/android-e2e.mjs
