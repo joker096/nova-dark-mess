@@ -1,106 +1,65 @@
 # Android/iOS End-to-End Verification Plan
 
-Last updated: 2026-11-13
+Last updated: 2026-11-14
 
 ## Current State
 
 ### Android
-- **Project generated:** `src-tauri/gen/android/` exists
-- **APK/AAB built:** `app-release.apk` (4.3 MB), `app-release.aab` (4.2 MB) from Nov 11
-- **Issues found:**
-  - `MainActivity.kt` is an empty `AppCompatActivity`, NOT a Tauri Activity
-  - `nova://` deep link intent-filter missing from merged AndroidManifest.xml
-  - `build.gradle` lacks Tauri-specific dependencies
-  - The current APK **cannot handle `nova://` deep links**
+- **Project generated:** `src-tauri/gen/android/` exists and is tracked.
+- **Activity:** `MainActivity.kt` extends `TauriActivity()`.
+- **Deep link:** `nova://` is declared in `tauri.conf.json` (`plugins.deep-link.mobile`) and present in the merged manifest.
+- **Permissions:** `AndroidManifest.xml` declares `CAMERA`, `RECORD_AUDIO`, and optional `camera` / `microphone` features.
+- **Runtime permission handler:** `src-tauri/src/lib.rs` answers Tauri permission requests for Camera and Microphone with `Allow`.
+- **Verified locally (2026-11-14):** a debug APK installed on an x86_64 emulator, `am start -a android.intent.action.VIEW -d "nova://chat/ci-smoke-test"` resumed `com.messanger.e2e.debug` with the link intact, and `pm grant` succeeded for both permissions.
+- **Not yet verified on CI:** the WebView `getUserMedia` probe still needs a green run of `.github/workflows/android-e2e.yml` on GitHub-hosted infrastructure. The local API 37 (16 KB page size) image crashes `surfaceflinger` and system services, so it is not a reliable target.
 
 ### iOS
-- **Project NOT initialized** — requires macOS + Xcode for `tauri ios init`
+- **Project NOT initialized** — requires macOS + Xcode for `tauri ios init`.
 
-## Required Steps
+## Automated Android Check
 
-### 1. Reinitialize Android Project (Linux/Windows with Android SDK)
+`.github/workflows/android-e2e.yml` runs on `workflow_dispatch` and on pull requests touching the Android shell, deep links, media calls, or the workflow itself.
 
-```bash
-# Prerequisites:
-# - Android SDK installed and ANDROID_HOME set
-# - Java 17
-# - Tauri CLI with Android support
+It:
+1. Installs Android SDK 37, build-tools 37.0.0, NDK 27.0.12077973, and all four Android Rust targets.
+2. Builds a debug APK with `npx tauri android build --apk --debug --target x86_64`.
+3. Starts an API 35 `google_apis` x86_64 emulator with a virtual back camera and audio enabled.
+4. Runs `node scripts/android-e2e.mjs`, which:
+   - installs the APK and opens `nova://chat/ci-smoke-test`;
+   - asserts the app is the resumed activity and the intent kept the deep link;
+   - asserts `CAMERA` and `RECORD_AUDIO` are declared and grants them;
+   - attaches to the WebView through `adb forward` + Chrome DevTools Protocol and calls `navigator.mediaDevices.getUserMedia({ video: true })` and `({ audio: true })`, failing unless both streams open;
+   - fails if logcat contains a `FATAL EXCEPTION`, native crash or ANR for the app package, or if the app process restarted during the check.
 
-# Remove existing generated Android project
-rm -rf src-tauri/gen/android
-
-# Regenerate
-npx tauri android init
-```
-
-This will:
-- Create proper Tauri Activity (not empty AppCompatActivity)
-- Generate correct `build.gradle` with Tauri dependencies
-- Set up deep link handler
-
-### 2. Verify Deep Link Configuration
-
-After `tauri android init`, verify:
+Run it locally against a booted emulator/device:
 
 ```bash
-# Check MainActivity.kt extends Tauri Activity
-cat src-tauri/gen/android/app/src/main/java/com/messanger/e2e/MainActivity.kt
-
-# Check AndroidManifest.xml has nova:// intent-filter
-grep -A 5 "scheme.*nova" src-tauri/gen/android/app/src/main/AndroidManifest.xml
-
-# If intent-filter missing, add manually:
+ANDROID_APK=src-tauri/gen/android/app/build/outputs/apk/x86_64/debug/app-x86_64-debug.apk \
+  node scripts/android-e2e.mjs
 ```
 
-Manual deep link intent-filter (if Tauri doesn't generate it):
+Useful environment overrides: `ADB`, `ANDROID_PACKAGE`, `ANDROID_DEEP_LINK`, `SKIP_INSTALL=1`.
 
-```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="nova" />
-</intent-filter>
-```
+## Manual Android Check (optional)
 
-### 3. Build and Verify APK
+1. Install the debug APK.
+2. Run `adb shell am start -W -a android.intent.action.VIEW -d "nova://chat/test123"`.
+3. Confirm the app opens the chat.
+4. Open the QR scanner and start a voice call; both should acquire media without a system denial.
+
+## iOS
+
+iOS still requires macOS + Xcode:
 
 ```bash
-# Build release APK
-npx tauri android build
-
-# Verify deep link handler in APK
-unzip -p src-tauri/gen/android/app/build/outputs/apk/release/app-release.apk AndroidManifest.xml | grep -A 5 "nova"
-```
-
-### 4. Test on Device (Manual)
-
-1. Install `app-release.apk` on Android device
-2. Open browser on device
-3. Navigate to `nova://chat/test123` (or use `adb shell am start -a android.intent.action.VIEW -d "nova://chat/test123"`)
-4. Verify app opens with chat ID
-
-### 5. Initialize iOS Project (macOS required)
-
-```bash
-# Prerequisites:
-# - macOS with Xcode
-# - Tauri CLI with iOS support
-
 npx tauri ios init
-```
-
-### 6. Verify iOS Deep Link
-
-```bash
-# Check iOS project has nova:// URL scheme
 grep -r "nova" src-tauri/ios/ --include="*.plist" --include="*.entitlements"
 ```
 
 ## Success Criteria
 
-- [ ] Android APK opens when `nova://chat/<id>` is tapped
-- [ ] Camera permission requested when QR scan is initiated
-- [ ] Microphone permission requested when voice call is initiated
-- [ ] iOS app opens when `nova://chat/<id>` is tapped (if iOS project exists)
-- [ ] No PII collected during deep link handling
+- [x] Android APK opens when `nova://chat/<id>` is dispatched (verified on a local emulator).
+- [ ] Camera permission and stream work inside the Android WebView (automated in `android-e2e.yml`; pending a green CI run).
+- [ ] Microphone permission and stream work inside the Android WebView (automated in `android-e2e.yml`; pending a green CI run).
+- [ ] iOS app opens when `nova://chat/<id>` is tapped (iOS project does not exist yet).
+- [x] No PII collected during deep link handling.
