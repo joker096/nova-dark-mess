@@ -25,6 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
@@ -149,27 +150,67 @@ const count = fs.readdirSync(OUT).length;
 ok(`Staged ${count} top-level entries`);
 
 // ── 3. Deploy ────────────────────────────────────────────────────────
-if (deployFlag) {
-  if (!deployHost) {
-    fail('--deploy requires a host argument (user@host) or LANDING_HOST env');
-  }
-  const remote = process.env.LANDING_REMOTE || '/var/www/mess-anger';
-  const port = process.env.LANDING_SSH_PORT || '22';
-  const cmd = `scp -P ${port} -r ${JSON.stringify(OUT)} ${deployHost}:${remote}`;
-  ok(`Deploy command:\n  ${cmd}\n  ssh -p ${port} ${deployHost} 'cd ${remote} && npm install --omit=dev && pm2 restart mess-anger-landing'`);
+// The live site is served by the `mess-api` pm2 process running as `user0`
+// from LANDING_REMOTE, with the static root at <remote>/landing.
+// `package.json` is deliberately not uploaded: production keeps its own
+// manifest (type: module, its own name) and a root-owned node_modules, so
+// shipping the bundle manifest would rename the pm2 app and reinstall deps.
+const remote = (process.env.LANDING_REMOTE || '/var/www/mess.cvr.name').replace(/\/+$/, '');
+const sshPort = process.env.LANDING_SSH_PORT || '22';
+const pm2App = process.env.LANDING_PM2_APP || 'mess-api';
+const pm2User = process.env.LANDING_PM2_USER || 'user0';
+const healthUrl = process.env.LANDING_HEALTH_URL || 'http://127.0.0.1:3003/api/health';
+const sshKey = (process.env.LANDING_SSH_KEY || '').trim();
+
+const posix = (p) => p.split(path.sep).join('/');
+const q = (p) => `"${posix(p)}"`;
+const sshKeyArg = sshKey ? `-i ${q(sshKey)}` : '';
+const sshCmd = (inner) => `ssh ${sshKeyArg} -p ${sshPort} ${deployHost} ${JSON.stringify(inner)}`;
+const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
+
+const copyLanding = `scp ${sshKeyArg} -P ${sshPort} -r ${q(path.join(OUT, 'landing'))} ${deployHost}:${remote}/`;
+const copyServer = `scp ${sshKeyArg} -P ${sshPort} ${q(path.join(OUT, 'server.js'))} ${q(path.join(OUT, '.env.example'))} ${deployHost}:${remote}/`;
+const hashCmd = sshCmd(`sha256sum ${remote}/server.js`);
+const restartCmd = sshCmd(
+  `chown -R ${pm2User}:${pm2User} ${remote}/landing ${remote}/server.js ${remote}/.env.example` +
+  ` && runuser -u ${pm2User} -- pm2 restart ${pm2App} --update-env >/dev/null` +
+  ` && sleep 2 && curl -fsS --max-time 5 ${healthUrl}`
+);
+
+if (!deployFlag) {
+  console.log('\nBundle ready. To deploy manually:');
+  console.log(`  scp -r ${q(path.join(OUT, 'landing'))} <user@host>:${remote}/`);
+  console.log(`  scp ${q(path.join(OUT, 'server.js'))} <user@host>:${remote}/`);
+  console.log(`  ssh <user@host> "runuser -u ${pm2User} -- pm2 restart ${pm2App} --update-env"`);
+  console.log('\nOr run: node scripts/publish-landing.js --deploy <user@host>');
+} else if (!deployHost) {
+  fail('--deploy requires a host argument (user@host) or LANDING_HOST env');
+} else {
+  console.log('\nDeploy plan:');
+  console.log('  1. ' + copyLanding);
+  console.log('  2. ' + copyServer);
+  console.log('  3. ' + hashCmd);
+  console.log('  4. ' + restartCmd);
+
   if (deployHost === 'dry-run') {
-    ok('dry-run mode — command printed, not executed');
+    ok('dry-run mode — nothing executed');
   } else {
     try {
-      execSync(cmd, { stdio: 'inherit' });
-      ok('Deployed.');
+      run(copyLanding);
+      run(copyServer);
+
+      // Fail before restarting if the host is not running the code we just sent.
+      const localHash = createHash('sha256').update(fs.readFileSync(path.join(OUT, 'server.js'))).digest('hex');
+      const remoteHash = String(execSync(hashCmd, { encoding: 'utf8' })).trim().split(/\s+/)[0];
+      if (remoteHash !== localHash) {
+        fail(`server.js on host does not match the bundle (local ${localHash.slice(0, 12)}… remote ${remoteHash.slice(0, 12)}…)`);
+      }
+      ok(`server.js uploaded and verified (sha256 ${localHash.slice(0, 12)}…)`);
+
+      run(restartCmd);
+      ok(`pm2 "${pm2App}" restarted as ${pm2User}; ${healthUrl} answered`);
     } catch (e) {
       fail('Deploy failed: ' + e.message);
     }
   }
-} else {
-  console.log('\nBundle ready. To deploy manually:');
-  console.log('  scp -r ' + OUT + ' <user@host>:/var/www/mess-anger');
-  console.log('  ssh <user@host> "cd /var/www/mess-anger && npm install --omit=dev && pm2 restart mess-anger-landing"');
-  console.log('\nOr run: node scripts/publish-landing.js --deploy <user@host>');
 }
