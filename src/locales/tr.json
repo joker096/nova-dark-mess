@@ -152,7 +152,8 @@
       "delete": "Sohbeti sil",
       "markAsRead": "Okundu olarak işaretle",
       "markAsUnread": "Okunmamış olarak işaretle"
-    }
+    },
+    "greeting": "Merhaba, {{name}}"
   },
   "channel": {
     "searchFeed": "Kanal akışında ara...",
@@ -576,7 +577,8 @@
     "rateApp": "Uygulamayı değerlendir",
     "comingSoon": "Yakında",
     "termsOfService": "Kullanım koşulları",
-    "privacyPolicy": "Gizlilik politikası"
+    "privacyPolicy": "Gizlilik politikası",
+    "rerunSetup": "Kurulumu yeniden çalıştır"
   },
   "wallpaper": {
     "title": "Sohbet duvar kağıdı",

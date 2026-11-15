@@ -152,7 +152,8 @@
       "delete": "Chat löschen",
       "markAsRead": "Als gelesen markieren",
       "markAsUnread": "Als ungelesen markieren"
-    }
+    },
+    "greeting": "Hallo, {{name}}"
   },
   "channel": {
     "searchFeed": "Kanal-Feed durchsuchen...",
@@ -576,7 +577,8 @@
     "rateApp": "App bewerten",
     "comingSoon": "Demnächst",
     "termsOfService": "Nutzungsbedingungen",
-    "privacyPolicy": "Datenschutzrichtlinie"
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "rerunSetup": "Einrichtung erneut starten"
   },
   "wallpaper": {
     "title": "Chat-Hintergrund",

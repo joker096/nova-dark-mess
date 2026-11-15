@@ -482,7 +482,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           </button>
           <div>
             <h1 className="text-[17px] font-bold text-white tracking-tight leading-tight">
-              Hello, {account.displayName}
+              {t('chats.greeting', { name: account.displayName })}
             </h1>
             <div
               className="flex items-center gap-1.5 mt-0.5"

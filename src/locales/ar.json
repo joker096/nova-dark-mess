@@ -152,7 +152,8 @@
       "delete": "حذف المحادثة",
       "markAsRead": "تحديد كمقروءة",
       "markAsUnread": "تحديد كغير مقروءة"
-    }
+    },
+    "greeting": "مرحباً، {{name}}"
   },
   "channel": {
     "searchFeed": "بحث في محتوى القناة...",
@@ -584,7 +585,8 @@
     "rateApp": "تقييم التطبيق",
     "comingSoon": "قريباً",
     "termsOfService": "شروط الخدمة",
-    "privacyPolicy": "سياسة الخصوصية"
+    "privacyPolicy": "سياسة الخصوصية",
+    "rerunSetup": "إعادة تشغيل الإعداد"
   },
   "wallpaper": {
     "title": "خلفية المحادثة",

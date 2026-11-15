@@ -153,7 +153,8 @@
       "delete": "Delete chat",
       "markAsRead": "Mark as read",
       "markAsUnread": "Mark as unread"
-    }
+    },
+    "greeting": "Hello, {{name}}"
   },
   "schedule": {
     "title": "Publish time",
@@ -638,7 +639,8 @@
     "rateApp": "Rate App",
     "comingSoon": "Coming Soon",
     "termsOfService": "Terms of Service",
-    "privacyPolicy": "Privacy Policy"
+    "privacyPolicy": "Privacy Policy",
+    "rerunSetup": "Run setup again"
   },
   "wallpaper": {
     "title": "Chat Wallpaper",

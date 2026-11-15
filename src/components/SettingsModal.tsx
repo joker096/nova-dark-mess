@@ -3,6 +3,7 @@ import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upl
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
+import { resetOnboarding } from '../lib/onboarding';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
 import { downloadEncryptedBackup, uploadEncryptedBackup } from '../lib/storage/cloudBackup';
 import { localAnalytics } from '../lib/analytics/localAnalytics';
@@ -985,6 +986,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
           >
             <span>{t('settings.privacyPolicy')}</span>
+            <ChevronRight className="w-4 h-4 text-white/35" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetOnboarding();
+              window.location.reload();
+            }}
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+          >
+            <span>{t('settings.rerunSetup')}</span>
             <ChevronRight className="w-4 h-4 text-white/35" />
           </button>
           {aboutMsg && (

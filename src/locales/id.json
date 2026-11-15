@@ -152,7 +152,8 @@
       "delete": "Hapus obrolan",
       "markAsRead": "Tandai dibaca",
       "markAsUnread": "Tandai belum dibaca"
-    }
+    },
+    "greeting": "Halo, {{name}}"
   },
   "channel": {
     "searchFeed": "Cari di kanal...",
@@ -576,7 +577,8 @@
     "rateApp": "Nilai aplikasi",
     "comingSoon": "Segera",
     "termsOfService": "Ketentuan layanan",
-    "privacyPolicy": "Kebijakan privasi"
+    "privacyPolicy": "Kebijakan privasi",
+    "rerunSetup": "Jalankan pengaturan lagi"
   },
   "wallpaper": {
     "title": "Wallpaper obrolan",
