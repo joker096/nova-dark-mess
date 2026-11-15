@@ -865,6 +865,8 @@
     "finish": "Finish",
     "doneTitle": "You're all set",
     "doneBody": "Your identity is ready. Messages are encrypted on this device before they leave.",
-    "startMessaging": "Start messaging"
+    "startMessaging": "Start messaging",
+    "languageTitle": "Choose your language",
+    "languageBody": "Pick the language you want to use. You can change it later in Settings."
   }
 }

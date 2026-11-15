@@ -9,20 +9,20 @@ interface OnboardingWizardProps {
   onDone: () => void;
 }
 
-type Step = 'welcome' | 'choice' | 'profile' | 'phrase' | 'security' | 'done';
+type Step = 'language' | 'welcome' | 'choice' | 'profile' | 'phrase' | 'security' | 'done';
 
-const STEP_ORDER: Step[] = ['welcome', 'choice', 'profile', 'phrase', 'security', 'done'];
+const STEP_ORDER: Step[] = ['language', 'welcome', 'choice', 'profile', 'phrase', 'security', 'done'];
 
 /**
  * First-launch setup. Replaces the "Hello, Joseph" fallback: a new install has to
  * either create a local identity (and save its recovery phrase) or restore one.
  */
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) => {
-  const { t } = useLanguage();
+  const { t, language, changeLanguage, languages } = useLanguage();
   const { identity, restoreIdentityFromMnemonic, setPin } = useSecurity();
   const { account, updateAccount } = useAccount();
 
-  const [step, setStep] = useState<Step>('welcome');
+  const [step, setStep] = useState<Step>('language');
   const [path, setPath] = useState<OnboardingPath | null>(null);
   const [name, setName] = useState('');
   const [phraseInput, setPhraseInput] = useState('');
@@ -128,6 +128,37 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
         </div>
 
         <div className="flex-1 flex flex-col justify-center gap-4">
+          {step === 'language' && (
+            <div className="space-y-4" data-testid="onboarding-language">
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">{t('onboarding.languageTitle')}</h1>
+                <p className="text-[13px] leading-relaxed text-white/65">{t('onboarding.languageBody')}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto no-scrollbar pr-1">
+                {languages.map((item) => (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => changeLanguage(item.code)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition active:scale-95 ${
+                      language === item.code
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)]/15 border-[var(--nova-accent-color,#ff4e18)]/60 text-white'
+                        : 'bg-white/[0.04] border-white/10 text-white/80 hover:bg-white/[0.08]'
+                    }`}
+                    aria-pressed={language === item.code}
+                  >
+                    <span className="text-lg leading-none">{item.flag}</span>
+                    <span className="text-[13px] font-medium truncate">{item.nativeName}</span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" className={primaryBtn} onClick={() => setStep('welcome')}>
+                {t('onboarding.continue')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {step === 'welcome' && (
             <div className="text-center space-y-4" data-testid="onboarding-welcome">
               <div className="mx-auto w-16 h-16 rounded-3xl bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">

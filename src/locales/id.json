@@ -865,6 +865,8 @@
     "finish": "Selesai",
     "doneTitle": "Semua siap",
     "doneBody": "Identitas Anda siap. Pesan dienkripsi di perangkat ini sebelum dikirim.",
-    "startMessaging": "Mulai mengobrol"
+    "startMessaging": "Mulai mengobrol",
+    "languageTitle": "Pilih bahasa",
+    "languageBody": "Pilih bahasa antarmuka. Anda dapat mengubahnya nanti di Pengaturan."
   }
 }

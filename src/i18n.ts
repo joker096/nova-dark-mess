@@ -15,6 +15,16 @@ const localeLoaders: Record<string, () => Promise<{ default: Record<string, unkn
   vi: () => import('./locales/vi.json'),
   ar: () => import('./locales/ar.json'),
   th: () => import('./locales/th.json'),
+  fr: () => import('./locales/fr.json'),
+  pt: () => import('./locales/pt.json'),
+  it: () => import('./locales/it.json'),
+  pl: () => import('./locales/pl.json'),
+  nl: () => import('./locales/nl.json'),
+  sv: () => import('./locales/sv.json'),
+  zh: () => import('./locales/zh.json'),
+  ja: () => import('./locales/ja.json'),
+  ko: () => import('./locales/ko.json'),
+  hi: () => import('./locales/hi.json'),
 };
 
 const savedLanguage = localStorage.getItem('appLanguage') || 'en';

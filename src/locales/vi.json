@@ -865,6 +865,8 @@
     "finish": "Hoàn tất",
     "doneTitle": "Đã xong",
     "doneBody": "Danh tính đã sẵn sàng. Tin nhắn được mã hóa trên thiết bị trước khi gửi.",
-    "startMessaging": "Bắt đầu nhắn tin"
+    "startMessaging": "Bắt đầu nhắn tin",
+    "languageTitle": "Chọn ngôn ngữ",
+    "languageBody": "Chọn ngôn ngữ giao diện. Bạn có thể đổi sau trong Cài đặt."
   }
 }
