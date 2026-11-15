@@ -58,16 +58,18 @@ vi.mock('../hooks/usePremium', () => ({
   usePremium: vi.fn(),
 }));
 
-const renderSettings = (onClose = vi.fn()) => {
+const renderSettings = (onClose = vi.fn(), onOpenAnalytics?: () => void) => {
   (usePremium as ReturnType<typeof vi.fn>).mockReturnValue({
     premium: premiumMock.premium,
     loading: false,
     checkout: premiumMock.checkout,
     canUse: (feature: string) => (feature === 'chat_themes' ? premiumMock.canUseThemes : false),
     freeDaysRemaining: () => premiumMock.freeDays,
-    minSubscriptionCost: 49,
+    minSubscriptionCost: 390,
   });
-  const utils = render(<SettingsModal isOpen onClose={onClose} />);
+  const utils = render(
+    <SettingsModal isOpen onClose={onClose} onOpenAnalytics={onOpenAnalytics} />,
+  );
   return { ...utils, onClose };
 };
 
@@ -128,6 +130,16 @@ describe('SettingsModal', () => {
     expect(document.documentElement.style.fontSize).toBe('14px');
     const saved = JSON.parse(localStorage.getItem('nova_messenger_settings') || '{}');
     expect(saved.fontSize).toBe('small');
+  });
+
+  it('opens the analytics dashboard from settings and closes the modal', () => {
+    const onOpenAnalytics = vi.fn();
+    const { onClose } = renderSettings(vi.fn(), onOpenAnalytics);
+
+    fireEvent.click(screen.getByTestId('open-analytics'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onOpenAnalytics).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the dialog open after changing language', () => {

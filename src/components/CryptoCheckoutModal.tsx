@@ -6,7 +6,7 @@ import {
   Lock,
   Clock,
 } from 'lucide-react';
-import { setPremium, checkoutPremium } from '../lib/premium';
+import { createPremiumCheckout, activatePremiumLicense } from '../lib/premium';
 import { NovaButton } from '../lib/ui';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -24,19 +24,34 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
   const { t } = useLanguage();
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [licenseInput, setLicenseInput] = useState('');
+  const [activating, setActivating] = useState(false);
+  const [activateMsg, setActivateMsg] = useState('');
 
   const handlePay = async () => {
     setPaying(true);
-    // Real PaymentO checkout (see src/lib/premium.ts). Falls back to a local
-    // 30-day activation when the PaymentO widget is absent (dev mode).
-    const ok = await checkoutPremium();
-    if (ok) {
-      setPremium(true);
-      setPaying(false);
+    const r = await createPremiumCheckout();
+    setPaying(false);
+    if (r.ok) {
       setPaid(true);
       onSuccess();
     } else {
-      setPaying(false);
+      setActivateMsg(r.error || 'checkout failed');
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!licenseInput.trim()) return;
+    setActivating(true);
+    setActivateMsg('');
+    const r = await activatePremiumLicense(licenseInput);
+    setActivating(false);
+    if (r.ok) {
+      setPaid(true);
+      setActivateMsg('');
+      onSuccess();
+    } else {
+      setActivateMsg(r.error || 'activation failed');
     }
   };
 
@@ -124,6 +139,30 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               {t('premium.paymentReceived')}
             </div>
           )}
+
+          {/* Manual license activation */}
+          <div className="pt-2 border-t border-white/5 space-y-2">
+            <p className="text-[10px] text-[#868b98]">Already paid? Paste your license key:</p>
+            <input
+              type="text"
+              value={licenseInput}
+              onChange={(e) => setLicenseInput(e.target.value)}
+              placeholder="MA1...."
+              className="w-full bg-[#1b1c28] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
+            />
+            <NovaButton
+              variant="ghost"
+              block
+              size="md"
+              onClick={handleActivate}
+              disabled={activating || !licenseInput.trim()}
+            >
+              {activating ? t('premium.checking') : 'Activate license'}
+            </NovaButton>
+            {activateMsg && (
+              <p className="text-[10px] text-red-400">{activateMsg}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

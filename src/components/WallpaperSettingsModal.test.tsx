@@ -15,7 +15,7 @@ vi.mock('../hooks/usePremium', () => ({
     checkout,
     canUse: (feature: string) => premiumState.allowed && feature === 'wallpaper',
     freeDaysRemaining: 0,
-    minSubscriptionCost: 49,
+    minSubscriptionCost: 390,
   }),
 }));
 
