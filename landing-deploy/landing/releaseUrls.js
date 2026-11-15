@@ -3,22 +3,18 @@
 // Keep in sync with `scripts/deploy-*.ps1` artifacts.
 //
 // Consumed by `app.js`:
-//   globalThis.MessAngerReleaseUrls = { windows: "...", linux: "...", ... }
+//   globalThis.MessAngerReleaseUrls = { android: "...", ios: "..." }
 // and the `releases.json` manifest fetched from `/releases/releases.json`.
+//
+// The project ships mobile builds only — there are no desktop installers.
 
 // Site base for release assets. Served from the site root.
 globalThis.MessAngerReleaseUrls = {
   base: 'https://mess.cvr.name',
-  // Windows: NSIS installer (built by Tauri `tauri build --target windows`)
-  windows: 'https://mess.cvr.name/releases/NovaDarkMessenger-1.0.0-setup.exe',
-  // macOS: universal .app.tar.gz (built on macOS runner)
-  macos: 'https://mess.cvr.name/releases/NovaDarkMessenger-1.0.0-universal.tar.gz',
-  // Linux: AppImage (built on Linux runner)
-  linux: 'https://mess.cvr.name/releases/NovaDarkMessenger-1.0.0-x86_64.AppImage',
-  // Android: release AAB (signed, uploaded to Google Play or sideload)
-  android: 'https://mess.cvr.name/releases/NovaDarkMessenger-1.0.0-release.aab',
-  // iOS: TestFlight deep link (IPA is App Store only)
-  ios: 'https://apps.apple.com/app/id0',
+  // Android: Google Play listing
+  android: 'https://play.google.com/store/apps/details?id=com.messanger.e2e',
+  // iOS: App Store listing (empty until the listing is live)
+  ios: '',
 
   /**
    * Resolve the download URL for a manifest file entry.

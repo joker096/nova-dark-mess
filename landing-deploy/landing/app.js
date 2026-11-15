@@ -74,7 +74,9 @@ function applyLang(lang) {
 
   // Update active state
   document.querySelectorAll('.lang-opt').forEach(el => {
-    el.classList.toggle('active', el.dataset.lang === lang);
+    const active = el.dataset.lang === lang;
+    el.classList.toggle('active', active);
+    el.setAttribute('aria-selected', active ? 'true' : 'false');
   });
 
   loadLang(lang).then(dict => {
@@ -85,8 +87,9 @@ function applyLang(lang) {
       el.innerHTML = i18nHtml(dict[key]);
     });
 
-    // Also update ticker
+    // Also update ticker + download cards (they carry their own copy)
     buildTicker(lang);
+    if (typeof renderDownloads === 'function') renderDownloads();
 
     // Fade animation
     document.body.classList.remove('lang-fade');
@@ -113,13 +116,22 @@ loadLang(curLang).then(() => applyLang(curLang));
 // Toggle dropdown
 const switcher = document.getElementById('langSwitcher');
 const langBtn  = document.getElementById('langBtn');
-langBtn.addEventListener('click', e => { e.stopPropagation(); switcher.classList.toggle('open'); });
-document.addEventListener('click', () => switcher.classList.remove('open'));
+function setOpen(open) {
+  switcher.classList.toggle('open', open);
+  langBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+langBtn.addEventListener('click', e => { e.stopPropagation(); setOpen(!switcher.classList.contains('open')); });
+document.addEventListener('click', () => setOpen(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
 document.querySelectorAll('.lang-opt').forEach(el => {
-  el.addEventListener('click', e => {
-    e.stopPropagation();
+  const choose = () => {
     applyLang(el.dataset.lang);
-    switcher.classList.remove('open');
+    setOpen(false);
+    langBtn.focus();
+  };
+  el.addEventListener('click', e => { e.stopPropagation(); choose(); });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); choose(); }
   });
 });
 
@@ -353,14 +365,17 @@ document.querySelectorAll('.faq dt').forEach(dt => {
 // DOWNLOADS — rendered from dist/releases/releases.json
 // (so every OS variant is always the LATEST built version)
 // ════════════════════════════════════════════════════
-(async function () {
+let dlManifest = null;
+const tr = (key, fallback) => (T[curLang] && T[curLang][key]) || fallback;
+
+async function renderDownloads() {
   const grid = document.getElementById('dlGrid');
   const ver  = document.getElementById('dlVersion');
   if (!grid) return;
-  let manifest;
-  try {
+  let manifest = dlManifest;
+  if (!manifest) try {
     const r = await fetch('/releases/releases.json', { cache: 'no-store' });
-    manifest = await r.json();
+    manifest = dlManifest = await r.json();
   } catch (e) {
     grid.innerHTML = '<div class="card"><h3>Downloads</h3><p>Release manifest unavailable.</p></div>';
     return;
@@ -372,12 +387,22 @@ document.querySelectorAll('.faq dt').forEach(dt => {
     grid.innerHTML = '<div class="card"><h3>Downloads</h3><p>Release manifest unavailable.</p></div>';
     return;
   }
-  if (ver) ver.textContent = 'Version ' + manifest.version + ' · SHA-256 verified · ' + manifest.files.filter(f => f.present).length + ' builds';
+  const presentCount = manifest.files.filter(f => f.present).length;
+  const liveStores = manifest.files
+    .filter(f => f.url && RU.safeUrl(f.url))
+    .map(f => f.platform === 'android' ? 'Google Play' : f.platform === 'ios' ? 'App Store' : f.platform);
+  if (ver) ver.textContent = tr('dl.version', 'Version') + ' ' + manifest.version
+    + (presentCount
+      ? ' · ' + tr('dl.verified', 'SHA-256 verified') + ' · ' + presentCount + ' ' + tr('dl.builds', 'builds')
+      : liveStores.length
+        ? ' · ' + liveStores.join(' · ')
+        : ' · ' + tr('dl.rolling', 'rolling out'));
+  // Mobile-only project: there are no desktop builds.
   const LABELS = {
-    windows: 'Desktop · Windows', linux: 'Desktop · Linux', macos: 'Desktop · macOS',
-    android: 'Mobile · Android', ios: 'Mobile · iOS', web: 'Web · PWA'
+    android: tr('dl.android', 'Mobile · Android'),
+    ios: tr('dl.ios', 'Mobile · iOS')
   };
-  const ORDER = ['windows', 'linux', 'macos', 'android', 'ios', 'web'];
+  const ORDER = ['android', 'ios'];
   const KINDNAME = { exe: 'EXE', msi: 'MSI', apk: 'APK', deb: 'DEB', appimage: 'AppImage', rpm: 'RPM', dmg: 'DMG', app: 'App', store: 'Google Play', pwa: 'PWA' };
   const files = manifest.files.slice().sort((a, b) => ORDER.indexOf(a.platform) - ORDER.indexOf(b.platform));
   const byPlat = {};
@@ -389,7 +414,7 @@ document.querySelectorAll('.faq dt').forEach(dt => {
     const present = list.filter(f => f.present);
     const pending = list.filter(f => !f.present);
     const card = document.createElement('div');
-    card.className = 'card' + (p === 'windows' ? ' mid' : '');
+    card.className = 'card' + (p === 'android' ? ' mid' : '');
     let body = '<h3>' + escapeHtml(LABELS[p] || p) + '</h3>';
     const btn = (label, href, download) =>
       '<a class="btn" href="' + escapeHtml(href) + '"' +
@@ -408,13 +433,15 @@ document.querySelectorAll('.faq dt').forEach(dt => {
     for (const f of pending) {
       const href = RU.safeUrl(f.url, window.location.href);
       if (!href) {
-        body += '<p>' + escapeHtml(f.note || 'Coming soon.') + '</p><span class="btn" style="opacity:.5">Pending</span>';
+        body += '<p>' + escapeHtml(f.note ? tr('dl.note' + (f.platform === 'ios' ? 'Ios' : 'Android'), f.note) : tr('dl.soon', 'Coming soon.')) + '</p><span class="btn is-pending">' + escapeHtml(tr('dl.pending', 'Pending')) + '</span>';
         continue;
       }
       const storeLabel = (f.platform === 'android' && f.kind === 'store') ? 'Google Play' : (KINDNAME[f.kind] ? 'Get ' + KINDNAME[f.kind] : 'Get ' + escapeHtml(f.kind || '').toUpperCase());
-      body += '<p>' + escapeHtml(f.note || 'Coming soon.') + '</p>' + btn(storeLabel, href);
+      body += '<p>' + escapeHtml(f.note ? tr('dl.note' + (f.platform === 'ios' ? 'Ios' : 'Android'), f.note) : tr('dl.soon', 'Coming soon.')) + '</p>' + btn(storeLabel, href);
     }
     card.innerHTML = body;
     grid.appendChild(card);
   }
-})();
+}
+
+renderDownloads();

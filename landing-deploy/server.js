@@ -54,6 +54,13 @@ const RELAY_MAX_PER_DEST = parseInt(process.env.RELAY_MAX_PER_DEST || '200', 10)
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 
+// Digital Asset Links for Android App Links. express.static() ignores dotfiles
+// by default, so this file needs an explicit route.
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  res.type('application/json');
+  res.sendFile(path.join(__dirname, 'landing', '.well-known', 'assetlinks.json'));
+});
+
 // Serve the landing (static promo) at the site root.
 app.use(express.static(path.join(__dirname, 'landing')));
 
