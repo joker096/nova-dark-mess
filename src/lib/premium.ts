@@ -215,6 +215,9 @@ export function getApiBase(): string {
   const envUrl = (import.meta.env.VITE_NOVA_API_URL as string | undefined) || '';
   if (envUrl) return envUrl.replace(/\/+$/, '');
   if (typeof window === 'undefined' || isDesktopShell()) return REMOTE_API_BASE;
+  // In dev the Vite server proxies /api to the local backend, so use a
+  // same-origin URL: no cross-origin request and no CSP violation.
+  if (import.meta.env.DEV) return '';
   if (
     window.location &&
     (window.location.protocol === 'https:' || window.location.protocol === 'http:') &&
