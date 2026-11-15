@@ -257,13 +257,17 @@ describe('SettingsModal', () => {
     await waitFor(() => expect(securityMock.removePin).toHaveBeenCalledTimes(1));
   });
 
-  it('shows feedback for Terms and Privacy links', () => {
+  it('opens the Terms and Privacy documents instead of a placeholder', () => {
     renderSettings();
     fireEvent.click(screen.getByRole('button', { name: 'settings.termsOfService' }));
-    expect(screen.getByRole('status').textContent).toBe('settings.comingSoon');
+    expect(screen.getByTestId('legal-modal-terms')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.close' }).at(-1)!);
+    expect(screen.queryByTestId('legal-modal-terms')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.privacyPolicy' }));
-    expect(screen.getByRole('status').textContent).toBe('settings.comingSoon');
+    expect(screen.getByTestId('legal-modal-privacy')).toBeTruthy();
   });
 
   it('closes on Escape', () => {

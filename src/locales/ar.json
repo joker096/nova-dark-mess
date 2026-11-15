@@ -4,7 +4,11 @@
     "tagline": "مessaging آمن وجميل"
   },
   "meshMap": {
-    "title": "خريطة مِش"
+    "title": "خريطة مِش",
+    "locateMe": "موقعي",
+    "showSample": "عرض نموذج",
+    "hideSample": "إخفاء النموذج",
+    "noPeers": "لا يوجد أقران متصلون بعد. افتح محادثة مع قرين متصل أو شارك موقعك."
   },
   "common": {
     "search": "بحث",
@@ -407,7 +411,12 @@
       "seconds": "{{count}} ث",
       "minute": "دقيقة واحدة"
     },
-    "chatActions": "إجراءات المحادثة"
+    "chatActions": "إجراءات المحادثة",
+    "contactInfo": "معلومات جهة الاتصال",
+    "mediaLinks": "الوسائط والملفات والروابط",
+    "appearance": "مظهر المحادثة",
+    "chatTheme": "سمة المحادثة",
+    "scheduledCount": "المجدولة ({{count}})"
   },
   "stories": {
     "title": "القصص",
@@ -724,7 +733,7 @@
     "futureTime": "Choose a time in the future"
   },
   "premium": {
-    "title": "بريميوم",
+    "title": "Premium",
     "upgrade": "ترقية إلى بريميوم",
     "cryptoTitle": "دفع بالعملات المشفرة",
     "cryptoSubtitle": "ادفع بالعملات المشفرة لفتح بريميوم",
@@ -739,7 +748,14 @@
     "paymentReceived": "تم استلام الدفع — تم تفعيل بريميوم",
     "lockedIcon": "أيقونة بريميوم",
     "freeTrial": "تجربة مجانية — يتبقى {{days}} أيام",
-    "subscribe": "اشتراك"
+    "subscribe": "اشتراك",
+    "sub30Days": "لكل 30 يومًا",
+    "licensePrompt": "هل دفعت بالفعل؟ الصق مفتاح الترخيص",
+    "activate": "تنشيط الترخيص",
+    "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "errorUnavailable": "خدمة الدفع غير متاحة حاليًا.",
+    "errorWindow": "تم حظر نافذة الدفع. اسمح بالنوافذ المنبثقة وحاول مجددًا.",
+    "errorPending": "الدفع قيد الانتظار. سيتم تنشيط المفتاح تلقائيًا بعد التأكيد."
   },
   "poll": {
     "title": "استطلاع",
@@ -819,5 +835,46 @@
     "deletePrompt": "حذف هذا المجتمع؟",
     "editTitle": "تعديل المجتمع",
     "save": "حفظ"
+  },
+  "legal": {
+    "lastUpdated": "آخر تحديث",
+    "openOnline": "فتح النسخة الكاملة"
+  },
+  "onboarding": {
+    "stepOf": "الخطوة {{current}} من {{total}}",
+    "welcomeTitle": "مرحبًا بك في Nova",
+    "welcomeBody": "مراسلة مشفرة من طرف إلى طرف دون حساب أو رقم هاتف أو بريد. مفاتيحك لا تغادر هذا الجهاز.",
+    "getStarted": "ابدأ",
+    "createOption": "إنشاء هويتي",
+    "createOptionDesc": "إنشاء زوج مفاتيح وعبارة استرداد جديدة على هذا الجهاز.",
+    "restoreOption": "الاستعادة من نسخة سابقة",
+    "restoreOptionDesc": "استخدم عبارة الاسترداد من تثبيت سابق.",
+    "nameLabel": "اسمك",
+    "namePlaceholder": "كيف يراك الآخرون؟",
+    "continue": "متابعة",
+    "back": "رجوع",
+    "identityTitle": "عبارة الاسترداد الخاصة بك",
+    "identityBody": "هذه الكلمات الـ24 هي حسابك. اكتبها: من يحصل عليها يستطيع قراءة رسائلك.",
+    "seedWarning": "لا تشارك هذه العبارة أبدًا. لا يمكن استردادها نيابة عنك.",
+    "copyPhrase": "نسخ العبارة",
+    "copied": "تم النسخ",
+    "savedPhrase": "حفظت العبارة",
+    "restoreTitle": "استعادة هويتك",
+    "restoreBody": "الصق عبارة الاسترداد من تثبيتك السابق. تبقى بصمتك كما هي، لذا يجدك جهات اتصالك.",
+    "phraseLabel": "عبارة الاسترداد",
+    "phrasePlaceholder": "كلمة1 كلمة2 كلمة3 …",
+    "restoreAction": "استعادة",
+    "phraseInvalid": "العبارة غير صالحة. تحقق من الكلمات وترتيبها.",
+    "restoreFailed": "تعذر استعادة هذه الهوية على هذا الجهاز.",
+    "securityTitle": "احمِ التطبيق",
+    "securityBody": "اختياري: عيّن رمز PIN من 4 أرقام لفتح Nova.",
+    "pinLabel": "رمز PIN",
+    "pinConfirmLabel": "أعد رمز PIN",
+    "pinMismatch": "رمزا PIN غير متطابقين.",
+    "skip": "تخطي",
+    "finish": "إنهاء",
+    "doneTitle": "كل شيء جاهز",
+    "doneBody": "هويتك جاهزة. تُشفَّر الرسائل على هذا الجهاز قبل إرسالها.",
+    "startMessaging": "ابدأ المراسلة"
   }
 }

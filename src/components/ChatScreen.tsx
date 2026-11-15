@@ -34,7 +34,6 @@ import {
   Download,
   Forward,
   Eye,
-  Lock,
   BarChart2,
   Pencil,
   Trash2,
@@ -182,7 +181,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [membershipStatus, setMembershipStatus] = useState<GroupMembership | null>(() =>
     chatItem?.type === 'group' ? getGroupMembership(chatId) : null,
   );
+  const [pinnedToast, setPinnedToast] = useState<string | null>(null);
   const joinRequestSentRef = useRef<string | null>(null);
+  const triggerPinnedToast = useCallback((text: string) => {
+    setPinnedToast(text);
+    setTimeout(() => setPinnedToast(null), 2200);
+  }, []);
   const pendingJoinRequests = joinRequests.filter((request) => request.status === 'pending');
   const updateMembership = (status: GroupMembership) => {
     setGroupMembership(chatId, status);
@@ -193,6 +197,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const groupManagerRef = useRef<GroupChatManager | null>(null);
   const fileManagerRef = useRef<FileTransferManager | null>(null);
   const [roomPeerCount, setRoomPeerCount] = useState(0);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
+      if (idx === 1) {
+        return {
+          ...msg,
+          reactions: [
+            { emoji: '🔥', count: 2, fromMe: false },
+            { emoji: '❤️', count: 1, fromMe: true },
+          ],
+        };
+      }
+      return msg;
+    });
+  });
 
   const appendSystemMessage = (text: string) => {
     const message = {
@@ -230,7 +248,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           // Skip the local echo: the UI appends our own messages immediately.
           if (sender === localFingerprint) return;
           playSound('incoming');
-          vibrate(true);
+          vibrate();
           setMessages((prev) => [
             ...prev,
             {
@@ -556,20 +574,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         }
       : CONTACT_PROFILES['katie']);
   const isProfileOnline = /^online$/i.test((profile.status ?? '').trim());
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
-      if (idx === 1) {
-        return {
-          ...msg,
-          reactions: [
-            { emoji: '🔥', count: 2, fromMe: false },
-            { emoji: '❤️', count: 1, fromMe: true },
-          ],
-        };
-      }
-      return msg;
-    });
-  });
 
   useEffect(() => {
     registerCreatedGroups();
@@ -692,7 +696,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
-  const [pinnedToast, setPinnedToast] = useState<string | null>(null);
   const [deletedUndo, setDeletedUndo] = useState<{ message: ChatMessage; index: number } | null>(null);
   const undoDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
@@ -886,11 +889,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeReactionMsgId, isAttachmentMenuOpen, isEmojiPickerOpen]);
-
-  const triggerPinnedToast = (text: string) => {
-    setPinnedToast(text);
-    setTimeout(() => setPinnedToast(null), 2200);
-  };
 
   // The send-options sheet belongs next to the button that opened it, not to
   // the whole composer block, so anchor it to the trigger box.
@@ -1324,85 +1322,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         ]);
       }
     }, 2800);
-  };
-
-  const handleTriggerIncomingVoiceNote = () => {
-    if (isTyping) return;
-    playSound('incoming');
-    vibrate(true);
-    setTypingActivity('recording');
-    setIsTyping(true);
-    triggerPinnedToast(`${profile.name} is recording an audio note...`);
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'm-katie-voice-' + Date.now(),
-          senderId: 'other',
-          voiceNote: {
-            duration: '0:16',
-            durationSeconds: 16,
-            waveform: [25, 40, 60, 85, 90, 75, 50, 65, 95, 100, 70, 55, 45, 60, 80, 90, 65, 45, 30, 20],
-          },
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-    }, 2200);
-  };
-
-  const handleSimulateTypingActivity = (activityType: 'typing' | 'recording' = 'typing') => {
-    if (isTyping) return;
-    setTypingActivity(activityType);
-    setIsTyping(true);
-    triggerPinnedToast(
-      activityType === 'recording'
-        ? `${profile.name} is recording audio...`
-        : `${profile.name} is typing in real time...`
-    );
-
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-
-      if (activityType === 'recording') {
-        playSound('incoming');
-        vibrate(true);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: 'm-katie-voice-' + Date.now(),
-            senderId: 'other',
-            voiceNote: {
-              duration: '0:12',
-              durationSeconds: 12,
-              waveform: [30, 45, 70, 90, 85, 65, 50, 75, 95, 80, 60, 45, 35, 20],
-            },
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      } else {
-        const spontaneousMsgs = [
-          "Hey! Are you still down for that coffee this Sunday?",
-          "By the way, John just texted me — he's bringing Rebecca too! 🎉",
-          "Sounds great, let's catch up then! Talk soon 🙌",
-          "Deal! I'll see you at Harry's at 7pm.",
-        ];
-        const randomText = spontaneousMsgs[Math.floor(Math.random() * spontaneousMsgs.length)];
-        playSound('incoming');
-        vibrate(true);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: 'm-spontaneous-' + Date.now(),
-            senderId: 'other',
-            text: randomText,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      }
-    }, 2400);
   };
 
   const handleCycleChatTheme = () => {
@@ -2821,7 +2740,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                         >
                           <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Contact info</span>
+                          <span>{t('chat.contactInfo')}</span>
                         </button>
                         {isGroupChat && (
                           <button
@@ -2843,7 +2762,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                         >
                           <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Media, files, links</span>
+                          <span>{t('chat.mediaLinks')}</span>
                         </button>
                         <button
                           onClick={() => {
@@ -2853,7 +2772,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                         >
                           <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Chat appearance</span>
+                          <span>{t('chat.appearance')}</span>
                         </button>
                         <button
                           onClick={() => {
@@ -2863,7 +2782,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>Chat theme</span>
+                          <span>{t('chat.chatTheme')}</span>
                         </button>
                         {scheduledMessages.length > 0 && (
                           <button
@@ -2874,7 +2793,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                           >
                             <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                            <span>Scheduled ({scheduledMessages.length})</span>
+                            <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
                           </button>
                         )}
                         <div className="h-px bg-white/10 my-1" />

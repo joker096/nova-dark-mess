@@ -58,6 +58,8 @@ export interface SecurityContextType {
     chatList: Array<{ id: string; name: string; isEncrypted: boolean }>
   ) => Promise<Blob>;
   importEncryptedBackup: (backupContent: string, passphrase: string) => Promise<BackupPayload>;
+  /** Rebuilds the identity from a 12/24-word phrase, keeping the same fingerprint. */
+  restoreIdentityFromMnemonic: (mnemonic: string) => Promise<UserIdentity>;
   clearLocalEncryptedData: () => Promise<void>;
 }
 
@@ -407,6 +409,23 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     []
   );
 
+  const restoreIdentityFromMnemonic = useCallback(
+    async (mnemonic: string): Promise<UserIdentity> => {
+      if (!isValidMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
+      const restored = deriveIdentityFromMnemonic(mnemonic);
+      await saveStoredIdentity(restored);
+      sessionsRef.current = {};
+      setRatchetSessions({});
+      if (storageReadyRef.current) {
+        await dbInstance.clearSessions().catch(() => undefined);
+        await dbInstance.clearPreKeys().catch(() => undefined);
+      }
+      setIdentity(restored);
+      return restored;
+    },
+    []
+  );
+
   const pinHashSalt = 'nova-pin-v1';
 
   const hashPin = useCallback(async (pin: string): Promise<string> => {
@@ -480,6 +499,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         disable2FA,
         exportEncryptedBackup,
         importEncryptedBackup,
+        restoreIdentityFromMnemonic,
         clearLocalEncryptedData,
       }}
     >

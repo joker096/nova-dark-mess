@@ -4,7 +4,11 @@
     "tagline": "Trò chuyện an toàn & đẹp"
   },
   "meshMap": {
-    "title": "Bản đồ Mesh"
+    "title": "Bản đồ Mesh",
+    "locateMe": "Vị trí của tôi",
+    "showSample": "Xem mẫu",
+    "hideSample": "Ẩn mẫu",
+    "noPeers": "Chưa có peer trực tuyến. Mở trò chuyện với người đang online hoặc chia sẻ vị trí."
   },
   "common": {
     "search": "Tìm kiếm",
@@ -399,7 +403,12 @@
       "seconds": "{{count}} giây",
       "minute": "1 phút"
     },
-    "chatActions": "Hành động trò chuyện"
+    "chatActions": "Hành động trò chuyện",
+    "contactInfo": "Thông tin liên hệ",
+    "mediaLinks": "Media, tệp, liên kết",
+    "appearance": "Giao diện trò chuyện",
+    "chatTheme": "Chủ đề trò chuyện",
+    "scheduledCount": "Đã hẹn ({{count}})"
   },
   "stories": {
     "title": "Truyện",
@@ -731,7 +740,14 @@
     "paymentReceived": "Đã nhận thanh toán — Premium đã kích hoạt",
     "lockedIcon": "Biểu tượng Premium",
     "freeTrial": "Thử miễn phí — còn {{days}} ngày",
-    "subscribe": "Đăng ký"
+    "subscribe": "Đăng ký",
+    "sub30Days": "mỗi 30 ngày",
+    "licensePrompt": "Đã thanh toán? Dán khóa bản quyền của bạn",
+    "activate": "Kích hoạt bản quyền",
+    "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "errorUnavailable": "Hiện không kết nối được dịch vụ thanh toán.",
+    "errorWindow": "Cửa sổ thanh toán bị chặn. Hãy cho phép cửa sổ bật lên rồi thử lại.",
+    "errorPending": "Thanh toán đang chờ xử lý. Khóa sẽ tự kích hoạt khi được xác nhận."
   },
   "poll": {
     "title": "Bình chọn",
@@ -807,5 +823,46 @@
     "deletePrompt": "Xóa cộng đồng này?",
     "editTitle": "Sửa cộng đồng",
     "save": "Lưu"
+  },
+  "legal": {
+    "lastUpdated": "Cập nhật",
+    "openOnline": "Mở bản đầy đủ"
+  },
+  "onboarding": {
+    "stepOf": "Bước {{current}} / {{total}}",
+    "welcomeTitle": "Chào mừng đến với Nova",
+    "welcomeBody": "Nhắn tin mã hóa đầu-cuối, không tài khoản, không số điện thoại, không email. Khóa của bạn ở lại thiết bị này.",
+    "getStarted": "Bắt đầu",
+    "createOption": "Tạo danh tính của tôi",
+    "createOptionDesc": "Tạo cặp khóa và cụm từ khôi phục mới trên thiết bị này.",
+    "restoreOption": "Khôi phục từ trước",
+    "restoreOptionDesc": "Dùng cụm từ khôi phục từ lần cài trước.",
+    "nameLabel": "Tên của bạn",
+    "namePlaceholder": "Người khác sẽ thấy bạn thế nào?",
+    "continue": "Tiếp tục",
+    "back": "Quay lại",
+    "identityTitle": "Cụm từ khôi phục của bạn",
+    "identityBody": "24 từ này là tài khoản của bạn. Hãy ghi lại: ai có chúng đều đọc được tin nhắn của bạn.",
+    "seedWarning": "Không bao giờ chia sẻ cụm từ này. Không thể khôi phục thay bạn.",
+    "copyPhrase": "Sao chép cụm từ",
+    "copied": "Đã sao chép",
+    "savedPhrase": "Tôi đã lưu cụm từ",
+    "restoreTitle": "Khôi phục danh tính",
+    "restoreBody": "Dán cụm từ khôi phục từ lần cài trước. Dấu vân tay của bạn giữ nguyên nên liên hệ vẫn tìm thấy bạn.",
+    "phraseLabel": "Cụm từ khôi phục",
+    "phrasePlaceholder": "từ1 từ2 từ3 …",
+    "restoreAction": "Khôi phục",
+    "phraseInvalid": "Cụm từ không hợp lệ. Kiểm tra lại các từ và thứ tự.",
+    "restoreFailed": "Không thể khôi phục danh tính này trên thiết bị này.",
+    "securityTitle": "Bảo vệ ứng dụng",
+    "securityBody": "Tùy chọn: đặt mã PIN 4 số để mở Nova.",
+    "pinLabel": "Mã PIN",
+    "pinConfirmLabel": "Nhập lại PIN",
+    "pinMismatch": "Mã PIN không khớp.",
+    "skip": "Bỏ qua",
+    "finish": "Hoàn tất",
+    "doneTitle": "Đã xong",
+    "doneBody": "Danh tính đã sẵn sàng. Tin nhắn được mã hóa trên thiết bị trước khi gửi.",
+    "startMessaging": "Bắt đầu nhắn tin"
   }
 }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
 import { downloadEncryptedBackup, uploadEncryptedBackup } from '../lib/storage/cloudBackup';
+import { localAnalytics } from '../lib/analytics/localAnalytics';
 import {
   loadPrivacyPrefs,
   readBatteryStatus,
@@ -14,8 +15,10 @@ import {
   type PrivacyPrefs,
 } from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
+import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
+import { LegalModal } from './LegalModal';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -28,6 +31,7 @@ import {
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenAnalytics?: () => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'nova_messenger_settings';
@@ -109,7 +113,7 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
   </button>
 );
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenAnalytics }) => {
   const { t } = useLanguage();
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -140,6 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [cloudToken, setCloudToken] = useState('');
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
   const [joinOutboxCount, setJoinOutboxCount] = useState<number>(() => loadJoinOutbox().length);
+  const [soundId, setSoundId] = useState<SoundId>(loadSoundId);
 
   // Relay queue length can change while the modal is closed.
   useEffect(() => {
@@ -161,6 +166,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [clearDataPin, setClearDataPin] = useState('');
   const [cacheMsg, setCacheMsg] = useState<string | null>(null);
   const [aboutMsg, setAboutMsg] = useState<string | null>(null);
+  const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
 
   useEffect(() => {
     applyAppTheme(appTheme);
@@ -464,17 +470,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     { value: 'large', label: 'Large' },
   ];
 
+  const analyticsCounts = localAnalytics.getEventCountsByType();
+  const analyticsMessageCount =
+    (analyticsCounts.message_send ?? 0) +
+    (analyticsCounts.message_receive ?? 0) +
+    (analyticsCounts.voice_message_send ?? 0) +
+    (analyticsCounts.voice_message_receive ?? 0);
+  const analyticsActiveChats = Object.keys(localAnalytics.getMessagesByChat()).length;
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 pt-[max(0.75rem,var(--nova-safe-top))] pb-[max(0.75rem,var(--nova-safe-bottom))] animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
-        className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md text-white shadow-2xl max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
+        className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md text-white shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
       >
         <div className="flex items-center justify-between p-4 pb-3 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -495,7 +509,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </button>
         </div>
 
-        <div className="overflow-y-auto px-4 py-3 space-y-1 flex-1">
+        <div className="overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 space-y-1 flex-1">
           <SectionHeader
             icon={<Languages className="w-3.5 h-3.5" />}
             title={t('settings.language')}
@@ -667,6 +681,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             enabled={prefs.notificationSound}
             onToggle={() => updatePref('notificationSound', !prefs.notificationSound)}
           />
+          {prefs.notificationSound && (
+            <div className="flex flex-wrap gap-1.5 px-1 py-1">
+              {SOUND_IDS.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    saveSoundId(id);
+                    setSoundId(id);
+                    if (id !== 'silent') playSound('notification', id);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-[11px] border transition cursor-pointer ${
+                    soundId === id
+                      ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-white'
+                      : 'border-white/10 text-white/60 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {id === 'silent'
+                    ? t('settings.soundSilent')
+                    : SOUNDS[id].label}
+                </button>
+              ))}
+            </div>
+          )}
           <ToggleRow
             label={t('settings.vibration')}
             enabled={prefs.vibration}
@@ -901,6 +938,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             )}
           </div>
 
+          <SectionHeader icon={<BarChart3 className="w-3.5 h-3.5" />} title={t('analytics.title')} />
+          <button
+            type="button"
+            data-testid="open-analytics"
+            onClick={() => {
+              onClose();
+              onOpenAnalytics?.();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+          >
+            <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-white/90">{t('analytics.usageTitle')}</p>
+              <p className="text-[10.5px] text-[#8c919d] truncate">{t('analytics.usageSubtitle')}</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-[10px] text-white/70">
+                  {analyticsMessageCount} · {t('analytics.totalMessages')}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-[10px] text-white/70">
+                  {analyticsActiveChats} · {t('analytics.activeChats')}
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+          </button>
+
           <SectionHeader icon={<Info className="w-3.5 h-3.5" />} title={t('settings.about')} />
           <div className="py-2 px-1 flex items-center justify-between">
             <span className="text-[13px] text-white/90">{t('app.name')}</span>
@@ -908,17 +973,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
           <button
             type="button"
-            onClick={() => setAboutMsg(t('settings.comingSoon'))}
+            onClick={() => setLegalDoc('terms')}
             className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
           >
             <span>{t('settings.termsOfService')}</span>
+            <ChevronRight className="w-4 h-4 text-white/35" />
           </button>
           <button
             type="button"
-            onClick={() => setAboutMsg(t('settings.comingSoon'))}
+            onClick={() => setLegalDoc('privacy')}
             className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
           >
             <span>{t('settings.privacyPolicy')}</span>
+            <ChevronRight className="w-4 h-4 text-white/35" />
           </button>
           {aboutMsg && (
             <div className="text-[11px] px-1 pb-1 text-[var(--nova-accent-color)]" role="status">
@@ -932,7 +999,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       {backupModal && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
           <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
@@ -1090,7 +1157,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       {showSeedPhraseModal && identity && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
           <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
@@ -1147,6 +1214,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           }}
         />
       )}
+
+      {/* Terms / Privacy */}
+      {legalDoc && <LegalModal docId={legalDoc} onClose={() => setLegalDoc(null)} />}
     </div>
   );
 };

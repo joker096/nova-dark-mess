@@ -28,6 +28,13 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
   const [activating, setActivating] = useState(false);
   const [activateMsg, setActivateMsg] = useState('');
 
+  const localizeError = (error?: string) => {
+    if (error?.includes('blocked')) return t('premium.errorWindow');
+    if (error?.includes('unavailable')) return t('premium.errorUnavailable');
+    if (error?.includes('waiting for payment')) return t('premium.errorPending');
+    return t('premium.errorGeneric');
+  };
+
   const handlePay = async () => {
     setPaying(true);
     const r = await createPremiumCheckout();
@@ -36,7 +43,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
       setPaid(true);
       onSuccess();
     } else {
-      setActivateMsg(r.error || 'checkout failed');
+      setActivateMsg(localizeError(r.error));
     }
   };
 
@@ -51,7 +58,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
       setActivateMsg('');
       onSuccess();
     } else {
-      setActivateMsg(r.error || 'activation failed');
+      setActivateMsg(localizeError(r.error));
     }
   };
 
@@ -60,7 +67,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -103,7 +110,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               <span className="text-[20px] font-bold text-white">
                 ${(MIN_SUBSCRIPTION_COST / 100).toFixed(2)}
               </span>
-              <span className="text-[11px] text-[#868b98]">USD / month</span>
+              <span className="text-[11px] text-[#868b98]">USD {t('premium.sub30Days')}</span>
             </div>
           </div>
 
@@ -146,7 +153,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
 
           {/* Manual license activation */}
           <div className="pt-2 border-t border-white/5 space-y-2">
-            <p className="text-[10px] text-[#868b98]">Already paid? Paste your license key:</p>
+            <p className="text-[10px] text-[#868b98]">{t('premium.licensePrompt')}</p>
             <input
               type="text"
               value={licenseInput}
@@ -161,7 +168,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               onClick={handleActivate}
               disabled={activating || !licenseInput.trim()}
             >
-              {activating ? t('premium.checking') : 'Activate license'}
+              {activating ? t('premium.checking') : t('premium.activate')}
             </NovaButton>
             {activateMsg && (
               <p className="text-[10px] text-red-400">{activateMsg}</p>

@@ -16,6 +16,9 @@ import { loadGroupRoles } from '../social/groupRoles';
 
 const LAST_FIX_KEY = 'nova_last_gps_fix';
 
+/** Fired after a new GPS fix is stored so screens recompute the mesh. */
+export const GPS_FIX_EVENT = 'nova-gps-fix';
+
 export interface LocalGpsFix {
   latitude: number;
   longitude: number;
@@ -28,7 +31,10 @@ export function saveLastGpsFix(fix: LocalGpsFix): void {
   try {
     localStorage.setItem(LAST_FIX_KEY, JSON.stringify(fix));
   } catch {
-    void 0;
+    return;
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(GPS_FIX_EVENT));
   }
 }
 
