@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 ## Release & CI (GitHub Actions)
 
@@ -192,6 +192,49 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - [x] Feed the mesh map from relay presence (`/api/presence` heartbeat + fetch,
   peers shown as online nodes).
 - [x] Add a "run setup again" action in Settings (`resetOnboarding()` + reload).
+
+### Phase 7 — Translation, release readiness & quality (next, 1–2 sprints)
+
+**Goal:** turn the now-complete feature set into a shippable, trustworthy 1.0:
+real translations, a live deployment, green mobile CI, and a verified payment.
+
+- [ ] **Translate the scaffolded locales** (fr, pt, it, pl, nl, sv, zh, ja, ko, hi).
+  Priority: onboarding, settings, chat, premium, legal. Keep `npm run audit:i18n`
+  green and add a "translation coverage" metric to CI.
+- [ ] **Deploy landing + server** to `mess.cvr.name`: `landing/terms.html`,
+  `/api/presence`, PaymentO IPN URL registration, PM2 restart, health check.
+  Smoke-test the hosted Terms/Privacy URLs and the presence endpoint.
+- [ ] **Mobile CI green on the pushed commit**: add `workflow_dispatch` to
+  `android-e2e.yml`, run it; fix the iOS build (`ios.yml`) and verify deep links
+  on a real device.
+- [ ] **End-to-end Premium payment** in staging: real IPN → signed `MA1.*`
+  license → `/api/premium/status` → app unlocks features; document the operator
+  steps (store "Mess&Anger user", API key, HMAC secret).
+- [ ] **Code-splitting**: split the 675 kB main chunk (lazy-load MeshMap, Profile,
+  Settings, Onboarding already lazy where possible) and raise the chunk warning
+  threshold only after measuring.
+- [ ] **Accessibility pass**: keyboard navigation + focus traps in all modals,
+  ARIA labels, contrast check, RTL verification for ar (and he if added).
+- [ ] **Test coverage for new surfaces**: OnboardingWizard, MeshMap, presence
+  helpers, LegalModal, language picker; add a visual snapshot for the wizard.
+- [ ] **Dev ergonomics**: allow `http://localhost:8080` in `connect-src` only in
+  dev builds (via Vite env) so local checkout/presence work without weakening
+  production CSP.
+- [ ] **Release checklist doc** (`docs/release-checklist.md`): version bump,
+  changelog, tag, CI artifacts, store upload, smoke test.
+
+### Phase 8 — Advanced P2P & long-term (later)
+
+- [ ] **Presence privacy**: opt-in toggle, shorter/longer TTL, optional hashing so
+  the relay never sees raw fingerprints; document the metadata trade-off.
+- [ ] **Calls without simulated fallback**: real WebRTC media end-to-end, optional
+  self-hosted TURN, call quality indicators.
+- [ ] **Resumable file transfers** across app restarts (persist transfer state).
+- [ ] **Backup verification**: dry-run restore, checksum, "test restore" button.
+- [ ] **Performance**: media cache with eviction, image thumbnails, faster cold start
+  on low-end Android.
+- [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
+  user-run signaling/relay gateways, documented but never required.
 
 ## Recent changes (2026-11-15)
 
