@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const LOCALES_DIR = join(process.cwd(), 'src', 'locales');
-const LANGUAGES = ['en', 'ru', 'uk', 'de', 'es', 'tr', 'id', 'vi', 'ar', 'th'] as const;
+const LANGUAGES = ['en', 'ru', 'uk', 'de', 'es', 'tr', 'id', 'vi', 'ar', 'th', 'fr', 'pt', 'it', 'pl', 'nl', 'sv', 'zh', 'ja', 'ko', 'hi'] as const;
 
 type Locale = Record<string, unknown>;
 

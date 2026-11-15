@@ -868,6 +868,8 @@
     "finish": "Terminar",
     "doneTitle": "Todo listo",
     "doneBody": "Tu identidad está lista. Los mensajes se cifran en este dispositivo antes de salir.",
-    "startMessaging": "Empezar a chatear"
+    "startMessaging": "Empezar a chatear",
+    "languageTitle": "Elige tu idioma",
+    "languageBody": "Elige el idioma de la interfaz. Puedes cambiarlo después en Ajustes."
   }
 }

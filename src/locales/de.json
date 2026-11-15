@@ -865,6 +865,8 @@
     "finish": "Fertig",
     "doneTitle": "Alles bereit",
     "doneBody": "Deine Identität ist bereit. Nachrichten werden vor dem Senden auf diesem Gerät verschlüsselt.",
-    "startMessaging": "Chat starten"
+    "startMessaging": "Chat starten",
+    "languageTitle": "Sprache wählen",
+    "languageBody": "Wähle die Sprache der Oberfläche. Du kannst sie später in den Einstellungen ändern."
   }
 }

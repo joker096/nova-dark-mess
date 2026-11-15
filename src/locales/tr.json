@@ -865,6 +865,8 @@
     "finish": "Bitir",
     "doneTitle": "Her şey hazır",
     "doneBody": "Kimliğiniz hazır. Mesajlar cihazdan çıkmadan önce şifrelenir.",
-    "startMessaging": "Mesajlaşmaya başla"
+    "startMessaging": "Mesajlaşmaya başla",
+    "languageTitle": "Dilini seç",
+    "languageBody": "Arayüz dilini seç. Daha sonra Ayarlar'dan değiştirebilirsin."
   }
 }
