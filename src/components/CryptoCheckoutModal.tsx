@@ -6,7 +6,7 @@ import {
   Lock,
   Clock,
 } from 'lucide-react';
-import { createPremiumCheckout, activatePremiumLicense } from '../lib/premium';
+import { createPremiumCheckout, activatePremiumLicense, MIN_SUBSCRIPTION_COST } from '../lib/premium';
 import { NovaButton } from '../lib/ui';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -95,10 +95,14 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
           <div className="bg-[#1b1c28] border border-white/10 rounded-xl p-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[11px] text-[#868b98]">{t('premium.amount')}</span>
-              <span className="text-xs font-mono text-white/60">$0.49</span>
+              <span className="text-xs font-mono text-white/60">
+                ${(MIN_SUBSCRIPTION_COST / 100).toFixed(2)}
+              </span>
             </div>
             <div className="flex items-end gap-1">
-              <span className="text-[20px] font-bold text-white">$0.49</span>
+              <span className="text-[20px] font-bold text-white">
+                ${(MIN_SUBSCRIPTION_COST / 100).toFixed(2)}
+              </span>
               <span className="text-[11px] text-[#868b98]">USD / month</span>
             </div>
           </div>
