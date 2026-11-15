@@ -152,7 +152,8 @@
       "delete": "Eliminar chat",
       "markAsRead": "Marcar como leído",
       "markAsUnread": "Marcar como no leído"
-    }
+    },
+    "greeting": "Hola, {{name}}"
   },
   "channel": {
     "searchFeed": "Buscar en el canal...",
@@ -578,7 +579,8 @@
     "rateApp": "Calificar app",
     "comingSoon": "Próximamente",
     "termsOfService": "Términos de servicio",
-    "privacyPolicy": "Política de privacidad"
+    "privacyPolicy": "Política de privacidad",
+    "rerunSetup": "Volver a la configuración"
   },
   "wallpaper": {
     "title": "Fondo de chat",

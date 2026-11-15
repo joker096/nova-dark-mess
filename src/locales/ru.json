@@ -153,7 +153,8 @@
       "delete": "Удалить чат",
       "markAsRead": "Отметить как прочитанное",
       "markAsUnread": "Отметить как непрочитанное"
-    }
+    },
+    "greeting": "Привет, {{name}}"
   },
   "chat": {
     "systemMemberAdded": "{{member}} вступил(а) в группу",
@@ -431,7 +432,8 @@
     "rateApp": "Оценить приложение",
     "comingSoon": "Скоро",
     "termsOfService": "Условия использования",
-    "privacyPolicy": "Политика конфиденциальности"
+    "privacyPolicy": "Политика конфиденциальности",
+    "rerunSetup": "Запустить настройку снова"
   },
   "wallpaper": {
     "title": "Обои чата",

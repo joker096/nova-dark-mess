@@ -152,7 +152,8 @@
       "delete": "Xóa trò chuyện",
       "markAsRead": "Đánh dấu đã đọc",
       "markAsUnread": "Đánh dấu chưa đọc"
-    }
+    },
+    "greeting": "Xin chào, {{name}}"
   },
   "channel": {
     "searchFeed": "Tìm kiếm feed kênh...",
@@ -576,7 +577,8 @@
     "rateApp": "Đánh giá ứng dụng",
     "comingSoon": "Sắp ra mắt",
     "termsOfService": "Điều khoản dịch vụ",
-    "privacyPolicy": "Chính sách quyền riêng tư"
+    "privacyPolicy": "Chính sách quyền riêng tư",
+    "rerunSetup": "Chạy lại thiết lập"
   },
   "wallpaper": {
     "title": "Nền trò chuyện",
