@@ -79,6 +79,8 @@ export interface MeshMapInputs {
   localFingerprint?: string;
   /** Map of groupId → fingerprints that currently share an open WebRTC room. */
   activeRooms?: Record<string, string[]>;
+  /** Fingerprints reported online by the relay presence endpoint. */
+  onlinePeers?: string[];
   /** Epoch ms; defaults to Date.now(). */
   now?: number;
 }
@@ -165,6 +167,29 @@ export function buildLiveMeshSnapshot(inputs: MeshMapInputs = {}): MeshMapSnapsh
         demo: false,
       });
     }
+  }
+
+  // Relay presence: peers the relay has seen recently. They get a node (with a
+  // deterministic pseudo-position when we have no GPS fix for them) marked
+  // online, so the map reflects who is actually reachable right now.
+  for (const peer of inputs.onlinePeers ?? []) {
+    if (!peer || peer === local) continue;
+    if (nodes.has(peer)) {
+      const existing = nodes.get(peer)!;
+      if (existing.status !== 'online') {
+        nodes.set(peer, { ...existing, status: 'online' });
+      }
+      continue;
+    }
+    const pos = positionFromFingerprint(peer);
+    nodes.set(peer, {
+      id: peer,
+      lat: pos.lat,
+      lng: pos.lng,
+      label: 'Peer',
+      status: 'online',
+      demo: false,
+    });
   }
 
   return { nodes: [...nodes.values()], links };
