@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Radio,
@@ -47,6 +47,7 @@ import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/
 import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
+import { buildLiveMeshSnapshot } from './lib/p2p/meshMapNodes';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -85,6 +86,11 @@ export default function App() {
     toggleChannelSubscriberPrivacy,
   } = useSocialData();
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
+  // Navigation history: each entry is the screen state we came from, so the
+  // back button restores the previous view instead of jumping to a fixed menu.
+  const [navHistory, setNavHistory] = useState<
+    Array<{ screen: ScreenId; chatId: string; profileId: string; channelId: string }>
+  >([]);
   const [activeChatId, setActiveChatId] = useState<string>('katie');
   const [activeProfileId, setActiveProfileId] = useState<string>('katie');
   const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
@@ -114,73 +120,16 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [joinNotice]);
 
-  // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
-  // stay offline: they carry an id, not an account lookup.
-  const handleTarget = useCallback(
-    (target: DeepLinkTarget, link: string) => {
-      if (!target || target.type === 'device-link') return;
-
-      if (target.type === 'chat') {
-        // An invite link asks first: joining a group is never silent.
-        if (/(?:\?|&)invite=([a-f0-9]+)/i.test(link)) {
-          const groupName =
-            MOCK_CHATS.find((chat) => chat.id === target.id)?.name ?? target.id;
-          setPendingInvite({ chatId: target.id, groupName });
-          return;
-        }
-        setActiveChatId(target.id);
-        setCurrentScreen('chat-katie');
-        return;
-      }
-      if (target.type === 'profile') {
-        setActiveProfileId(target.id);
-        setCurrentScreen('profile-katie');
-        return;
-      }
-      if (channels.some((channel) => channel.id === target.id)) {
-        setActiveChannelId(target.id);
-        setPendingCommentsPostId(
-          target.postId && target.comments ? target.postId : null,
-        );
-        setCurrentScreen('channel-kyiv');
-      }
-    },
-    [channels],
+  // Real mesh map points: computed whenever the mesh-map screen mounts.
+  // useMemo keyed on the screen keeps the GPS fix read out of other renders.
+  const liveMesh = useMemo(
+    () =>
+      currentScreen === 'mesh-map'
+        ? buildLiveMeshSnapshot({ localFingerprint: identity?.fingerprint })
+        : { nodes: [], links: [] },
+    [currentScreen, identity?.fingerprint],
   );
 
-  useEffect(() => {
-    const applyDeepLink = () => {
-      const hash = window.location.hash;
-      if (!hash || hash === handledDeepLinkRef.current) return;
-      handledDeepLinkRef.current = hash;
-      const target = parseDeepLinkFromHash(hash);
-      if (!target) return;
-      handleTarget(target, hash);
-    };
-
-    applyDeepLink();
-    window.addEventListener('hashchange', applyDeepLink);
-    return () => window.removeEventListener('hashchange', applyDeepLink);
-  }, [handleTarget]);
-
-  // The Tauri shells hand links to the webview instead of using a hash.
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    let cancelled = false;
-    let lastLink: string | null = null;
-    void subscribeTauriDeepLinks((target, link) => {
-      if (link === lastLink) return;
-      lastLink = link;
-      handleTarget(target, link);
-    }).then((fn) => {
-      if (cancelled) fn();
-      else unsubscribe = fn;
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, [handleTarget]);
 
   // Join requests and admin decisions travel through a session-wide mesh relay,
   // so a request survives closing the group (or the app) before an admin sees it.
@@ -251,8 +200,12 @@ export default function App() {
   }, []);
 
   const openProfile = (profileId: string) => {
-    setActiveProfileId(profileId);
-    setCurrentScreen('profile-katie');
+    navigate('profile-katie', { profileId });
+  };
+
+  const openAnalytics = () => {
+    setIsSettingsOpen(false);
+    navigate('analytics');
   };
 
   const openChannel = (channelId?: string) => {
@@ -260,8 +213,109 @@ export default function App() {
       setActiveChannelId(channelId);
     }
     setPendingCommentsPostId(null);
-    setCurrentScreen('channel-kyiv');
+    navigate('channel-kyiv');
   };
+
+  // Central navigation: push the current view onto the history stack, then
+  // switch to the requested screen (updating the relevant active ids).
+  const navigate = useCallback(
+    (screen: ScreenId, opts?: { chatId?: string; profileId?: string; channelId?: string }) => {
+      setNavHistory((h) => [
+        ...h,
+        { screen: currentScreen, chatId: activeChatId, profileId: activeProfileId, channelId: activeChannelId },
+      ]);
+      if (opts?.chatId) setActiveChatId(opts.chatId);
+      if (opts?.profileId) setActiveProfileId(opts.profileId);
+      if (opts?.channelId) setActiveChannelId(opts.channelId);
+      setCurrentScreen(screen);
+    },
+    [currentScreen, activeChatId, activeProfileId, activeChannelId],
+  );
+
+  const goBack = useCallback(() => {
+    setNavHistory((h) => {
+      if (h.length === 0) {
+        // No previous view recorded (e.g. top-level tab or deep link):
+        // fall back to the chats list instead of doing nothing.
+        setCurrentScreen('chats');
+        return h;
+      }
+      const prev = h[h.length - 1];
+      setActiveChatId(prev.chatId);
+      setActiveProfileId(prev.profileId);
+      setActiveChannelId(prev.channelId);
+      setCurrentScreen(prev.screen);
+      return h.slice(0, -1);
+    });
+  }, []);
+
+  // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
+  // stay offline: they carry an id, not an account lookup.
+  const handleTarget = useCallback(
+    (target: DeepLinkTarget, link: string) => {
+      if (!target || target.type === 'device-link') return;
+
+      if (target.type === 'chat') {
+        // An invite link asks first: joining a group is never silent.
+        if (/(?:\?|&)invite=([a-f0-9]+)/i.test(link)) {
+          const groupName =
+            MOCK_CHATS.find((chat) => chat.id === target.id)?.name ?? target.id;
+          setPendingInvite({ chatId: target.id, groupName });
+          return;
+        }
+        navigate('chat-katie', { chatId: target.id });
+        return;
+      }
+      if (target.type === 'profile') {
+        navigate('profile-katie', { profileId: target.id });
+        return;
+      }
+      if (channels.some((channel) => channel.id === target.id)) {
+        setActiveChannelId(target.id);
+        setPendingCommentsPostId(
+          target.postId && target.comments ? target.postId : null,
+        );
+        navigate('channel-kyiv', { channelId: target.id });
+      }
+    },
+    [channels, navigate],
+  );
+
+  // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
+  // stay offline: they carry an id, not an account lookup.
+  useEffect(() => {
+    const applyDeepLink = () => {
+      const hash = window.location.hash;
+      if (!hash || hash === handledDeepLinkRef.current) return;
+      handledDeepLinkRef.current = hash;
+      const target = parseDeepLinkFromHash(hash);
+      if (!target) return;
+      handleTarget(target, hash);
+    };
+
+    applyDeepLink();
+    window.addEventListener('hashchange', applyDeepLink);
+    return () => window.removeEventListener('hashchange', applyDeepLink);
+  }, [handleTarget]);
+
+  // The Tauri shells hand links to the webview instead of using a hash.
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    let lastLink: string | null = null;
+    void subscribeTauriDeepLinks((target, link) => {
+      if (link === lastLink) return;
+      lastLink = link;
+      handleTarget(target, link);
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unsubscribe = fn;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [handleTarget]);
 
   const handleDeleteChannel = (channelId: string) => {
     deleteChannel(channelId);
@@ -316,31 +370,27 @@ export default function App() {
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
-            onBack={() => {
-              setActiveChatId('katie');
-              setCurrentScreen('chat-katie');
-            }}
+            onBack={goBack}
           />
         );
       case 'profile-katie':
         return (
           <ProfileScreen
             profileId={activeProfileId}
-            onBack={() => {
-              setCurrentScreen('chat-katie');
-            }}
-            onOpenChat={() => {
-              setCurrentScreen('chat-katie');
-            }}
+            onBack={goBack}
+            onOpenChat={() => navigate('chat-katie')}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
       case 'analytics':
-        return <AnalyticsScreen />;
+        return <AnalyticsScreen onBack={goBack} />;
       case 'mesh-map':
         return (
           <div className="w-full h-full p-4">
-            <MeshMapScreen />
+            <MeshMapScreen
+              nodes={liveMesh.nodes.length > 0 ? liveMesh.nodes : undefined}
+              links={liveMesh.links.length > 0 ? liveMesh.links : undefined}
+            />
           </div>
         );
       case 'chat-katie':
@@ -349,9 +399,7 @@ export default function App() {
         return (
           <ChatScreen
             chatId={activeChatId}
-            onBack={() => {
-              setCurrentScreen('chats');
-            }}
+            onBack={goBack}
             onOpenProfile={() => openProfile(activeChatId)}
           />
         );
@@ -365,13 +413,11 @@ export default function App() {
         return (
           <ChatsScreen
             onSelectChat={(id) => {
-              setActiveChatId(id);
-              setCurrentScreen('chat-katie');
+              navigate('chat-katie', { chatId: id });
             }}
             onOpenChannel={openChannel}
             onOpenProfile={() => openProfile(account.id)}
-            onOpenAnalytics={() => setCurrentScreen('analytics')}
-            onOpenMeshMap={() => setCurrentScreen('mesh-map')}
+            onOpenMeshMap={() => navigate('mesh-map')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             activeChatId={activeChatId}
             activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
@@ -389,7 +435,7 @@ export default function App() {
         return (
           <ChatScreen
             chatId={activeChatId}
-            onBack={() => setCurrentScreen('chats')}
+            onBack={goBack}
             onOpenProfile={() => openProfile(activeChatId)}
           />
         );
@@ -398,31 +444,31 @@ export default function App() {
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
-            onBack={() => setCurrentScreen('chats')}
+            onBack={goBack}
           />
         );
       case 'profile-katie':
         return (
           <ProfileScreen
             profileId={activeProfileId}
-            onBack={() => setCurrentScreen('chat-katie')}
-            onOpenChat={() => setCurrentScreen('chat-katie')}
+            onBack={goBack}
+            onOpenChat={() => navigate('chat-katie')}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
       case 'analytics':
-        return <AnalyticsScreen onBack={() => setCurrentScreen('chats')} />;
+        return <AnalyticsScreen onBack={goBack} />;
       case 'mesh-map':
         return (
           <div className="flex h-full w-full flex-col bg-[#090a0e]">
-            <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 border-b border-white/[0.06] shrink-0">
+            <header className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] shrink-0">
               <NovaTooltip label={t('common.back')}>
                 <NovaIconButton
                   label={t('common.back')}
                   icon={<ArrowLeft />}
                   size={44}
                   variant="subtle"
-                  onClick={() => setCurrentScreen('chats')}
+                  onClick={goBack}
                 />
               </NovaTooltip>
               <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
@@ -430,7 +476,7 @@ export default function App() {
                 {t('meshMap.title')}
               </h1>
             </header>
-            <div className="flex-1 min-h-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="flex-1 min-h-0 p-3">
               <MeshMapScreen />
             </div>
           </div>
@@ -449,7 +495,7 @@ export default function App() {
       {isLocked && pinHash ? (
         <PinLockScreen onUnlock={unlock} />
       ) : (
-        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none">
+        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
       {/* ======================================================== */}
@@ -472,7 +518,8 @@ export default function App() {
             }`}
             title={t('common.chats')}
           >
-            <MessageSquare className="w-5 h-5 fill-[var(--nova-accent-color)]" />
+            <MessageSquare className="w-5 h-5" />
+            {isDesktopChatActive && <span className="absolute inset-0 rounded-2xl bg-[var(--nova-accent-color)]/10" aria-hidden="true" />}
             {totalUnreadChats > 0 && (
               <NovaBadge value={totalUnreadChats} max={99} variant="danger" className="absolute -top-0.5 -right-0.5" />
             )}
@@ -704,7 +751,11 @@ export default function App() {
 
       {/* App Settings Modal (language switch lives here) */}
       <Suspense fallback={null}>
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onOpenAnalytics={openAnalytics}
+        />
       </Suspense>
         </div>
       )}
