@@ -211,7 +211,7 @@ function isDesktopShell(): boolean {
   return protocol === 'tauri:' || /^tauri\.localhost$/i.test(hostname || '');
 }
 
-function getApiBase(): string {
+export function getApiBase(): string {
   const envUrl = (import.meta.env.VITE_NOVA_API_URL as string | undefined) || '';
   if (envUrl) return envUrl.replace(/\/+$/, '');
   if (typeof window === 'undefined' || isDesktopShell()) return REMOTE_API_BASE;

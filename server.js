@@ -570,6 +570,31 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// Presence: who is online right now (in-memory, short TTL). Carries only a
+// fingerprint — the same opaque address the relay already uses. No content.
+// ───────────────────────────────────────────────────────────────────────────
+const PRESENCE_TTL_MS = 2 * 60 * 1000;
+const presenceMap = new Map();
+function sweepPresence() {
+  const now = Date.now();
+  for (const [fp, lastSeen] of presenceMap) {
+    if (now - lastSeen > PRESENCE_TTL_MS) presenceMap.delete(fp);
+  }
+}
+app.post('/api/presence', (req, res) => {
+  const raw = req && req.body && req.body.fingerprint;
+  const safe = typeof raw === 'string' ? raw.replace(/[^a-zA-Z0-9_-]/g, '') : '';
+  if (!safe) return res.status(400).json({ ok: false, reason: 'missing fingerprint' });
+  sweepPresence();
+  presenceMap.set(safe, Date.now());
+  res.json({ ok: true });
+});
+app.get('/api/presence', (_req, res) => {
+  sweepPresence();
+  res.json({ fingerprints: [...presenceMap.keys()] });
+});
+
 // List recent receipts (admin / audit).
 app.get('/api/paymento/receipts', requireAdmin, (_req, res) => {
   try {

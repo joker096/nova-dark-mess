@@ -188,11 +188,10 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 
 **Still open in this area**
 
-- [ ] Localize the chats header greeting (`Hello, {{name}}`) — still hardcoded
-  English.
-- [ ] Feed the mesh map from relay presence (who is actually online right now)
-  rather than from locally known sessions.
-- [ ] Add a "run setup again" action in Settings that calls `resetOnboarding()`.
+- [x] Localize the chats header greeting (`Hello, {{name}}`).
+- [x] Feed the mesh map from relay presence (`/api/presence` heartbeat + fetch,
+  peers shown as online nodes).
+- [x] Add a "run setup again" action in Settings (`resetOnboarding()` + reload).
 
 ## Recent changes (2026-11-15)
 

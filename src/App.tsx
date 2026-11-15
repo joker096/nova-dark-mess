@@ -51,6 +51,7 @@ import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLi
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
 import { buildLiveMeshSnapshot, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
+import { heartbeatPresence, fetchPresence } from './lib/p2p/presence';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -136,14 +137,47 @@ export default function App() {
     return () => window.removeEventListener(GPS_FIX_EVENT, onFix);
   }, []);
 
+  // Relay presence: announce ourselves and refresh the list of online peers
+  // so the mesh map reflects who is actually reachable right now.
+  const [presencePeers, setPresencePeers] = useState<string[]>([]);
+  useEffect(() => {
+    const fingerprint = identity?.fingerprint;
+    if (!fingerprint) return;
+    let cancelled = false;
+    const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
+    beat();
+    const interval = window.setInterval(beat, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [identity?.fingerprint]);
+  useEffect(() => {
+    if (currentScreen !== 'mesh-map') return;
+    let cancelled = false;
+    const refresh = async () => {
+      const peers = await fetchPresence();
+      if (!cancelled) setPresencePeers(peers);
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [currentScreen]);
+
   // Real mesh map points: computed whenever the mesh-map screen mounts.
   // useMemo keyed on the screen keeps the GPS fix read out of other renders.
   const liveMesh = useMemo(
     () =>
       currentScreen === 'mesh-map'
-        ? buildLiveMeshSnapshot({ localFingerprint: identity?.fingerprint })
+        ? buildLiveMeshSnapshot({
+            localFingerprint: identity?.fingerprint,
+            onlinePeers: presencePeers,
+          })
         : { nodes: [], links: [] },
-    [currentScreen, identity?.fingerprint, meshTick],
+    [currentScreen, identity?.fingerprint, meshTick, presencePeers],
   );
 
 
