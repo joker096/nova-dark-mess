@@ -8,7 +8,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
@@ -27,6 +27,11 @@ export default defineConfig(() => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // In dev, proxy API calls to the local relay/premium backend so the app
+      // talks to a same-origin URL and is not blocked by the production CSP.
+      proxy: {
+        '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      },
     },
     test: {
       environment: 'jsdom',
