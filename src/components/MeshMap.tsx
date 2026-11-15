@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { MapContainer, Marker, Popup, Polyline, TileLayer } from 'react-leaflet';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './mesh-map.css';
@@ -12,6 +12,18 @@ import {
   type MeshNodeStatus,
   type MeshLinkType,
 } from './meshDemoData';
+import { saveLastGpsFix } from '../lib/p2p/meshMapNodes';
+import { useLanguage } from '../context/LanguageContext';
+
+/** Keeps the viewport on the current real nodes when they change. */
+function FitBounds({ bounds }: { bounds?: [[number, number], [number, number]] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!bounds) return;
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 });
+  }, [bounds, map]);
+  return null;
+}
 
 /**
  * Tracks browser online/offline state (network online + offline events).
@@ -83,12 +95,33 @@ export const MeshMap: React.FC<MeshMapProps> = ({
   links,
   showDemo,
 }) => {
+  const { t } = useLanguage();
   const online = useOnline();
+  // Real nodes only by default: the sample topology is an explicit opt-in, so
+  // an empty map always means "no live peers", never fake data.
+  const [demoEnabled, setDemoEnabled] = useState(showDemo === true);
+  const [locating, setLocating] = useState(false);
+  // One passive GPS fix per mount so the device's own node is at the real
+  // position when permission was already granted; never prompts on its own.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        saveLastGpsFix({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          timestamp: position.timestamp || Date.now(),
+        });
+      },
+      () => undefined,
+      { timeout: 5_000, maximumAge: 60_000 },
+    );
+  }, []);
   const liveNodes = useMemo(() => nodes ?? [], [nodes]);
   const liveLinks = useMemo(() => links ?? [], [links]);
   const hasLive = liveNodes.length > 0;
-  const demoNodes = hasLive ? [] : showDemo === false ? [] : DEMO_MESH_NODES;
-  const demoLinks = hasLive ? [] : showDemo === false ? [] : DEMO_MESH_LINKS;
+  const demoNodes = hasLive || !demoEnabled ? [] : DEMO_MESH_NODES;
+  const demoLinks = hasLive || !demoEnabled ? [] : DEMO_MESH_LINKS;
   const allNodes = [...liveNodes, ...demoNodes];
   const allLinks = [...liveLinks, ...demoLinks];
 
@@ -115,6 +148,23 @@ export const MeshMap: React.FC<MeshMapProps> = ({
   const fallbackCenter: [number, number] = [48.5, 134.5];
   const mapCenter = center ?? fallbackCenter;
 
+  const locate = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        saveLastGpsFix({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          timestamp: position.timestamp || Date.now(),
+        });
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 0 },
+    );
+  }, []);
+
   return (
     <div
       className={className}
@@ -129,6 +179,7 @@ export const MeshMap: React.FC<MeshMapProps> = ({
         zoomControl
         attributionControl={false}
       >
+        <FitBounds bounds={bounds} />
         {online ? (
           <TileLayer
             key="osm"
@@ -193,24 +244,55 @@ export const MeshMap: React.FC<MeshMapProps> = ({
             {s}
           </div>
         ))}
-        {demoNodes.length > 0 && (
-          <div
+        <div
+          style={{
+            marginTop: 6,
+            paddingTop: 6,
+            borderTop: '1px solid rgba(255,255,255,0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          <button
+            type="button"
+            onClick={locate}
+            disabled={locating}
             style={{
-              marginTop: 4,
-              paddingTop: 4,
-              borderTop: '1px solid rgba(255,255,255,0.15)',
               fontSize: 10,
-              color: 'rgba(255,255,255,0.7)',
+              fontWeight: 700,
+              color: '#fff',
+              background: 'rgba(255,78,24,0.25)',
+              border: '1px solid rgba(255,78,24,0.5)',
+              borderRadius: 6,
+              padding: '3px 6px',
+              cursor: locating ? 'wait' : 'pointer',
+              opacity: locating ? 0.6 : 1,
             }}
           >
-            ● demo (no live P2P nodes)
-          </div>
-        )}
-        {!hasLive && (
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-            Showing sample topology
-          </div>
-        )}
+            {locating ? '…' : t('meshMap.locateMe')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDemoEnabled((on) => !on)}
+            style={{
+              fontSize: 9.5,
+              color: 'rgba(255,255,255,0.65)',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 6,
+              padding: '3px 6px',
+              cursor: 'pointer',
+            }}
+          >
+            {demoEnabled ? t('meshMap.hideSample') : t('meshMap.showSample')}
+          </button>
+          {!hasLive && !demoEnabled && (
+            <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.5)', maxWidth: 150 }}>
+              {t('meshMap.noPeers')}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

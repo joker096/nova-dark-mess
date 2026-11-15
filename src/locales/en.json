@@ -4,7 +4,11 @@
     "tagline": "Secure & Beautiful Messaging"
   },
   "meshMap": {
-    "title": "Mesh Map"
+    "title": "Mesh Map",
+    "locateMe": "Locate me",
+    "showSample": "Show sample",
+    "hideSample": "Hide sample",
+    "noPeers": "No live peers yet. Open a chat with an online peer, or share live location."
   },
   "common": {
     "search": "Search",
@@ -461,7 +465,12 @@
       "seconds": "{{count}} s",
       "minute": "1 min"
     },
-    "chatActions": "Chat actions"
+    "chatActions": "Chat actions",
+    "contactInfo": "Contact info",
+    "mediaLinks": "Media, files, links",
+    "appearance": "Chat appearance",
+    "chatTheme": "Chat theme",
+    "scheduledCount": "Scheduled ({{count}})"
   },
   "stories": {
     "title": "Stories",
@@ -785,7 +794,14 @@
     "paymentReceived": "Payment received — Premium activated",
     "lockedIcon": "Premium icon",
     "freeTrial": "Free trial — {{days}} days left",
-    "subscribe": "Subscribe"
+    "subscribe": "Subscribe",
+    "sub30Days": "per 30 days",
+    "licensePrompt": "Already paid? Paste your licence key",
+    "activate": "Activate licence",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorUnavailable": "Payment service is unreachable right now.",
+    "errorWindow": "The payment window was blocked. Allow pop-ups and try again.",
+    "errorPending": "Payment is still pending. The key activates automatically once confirmed."
   },
   "communities": {
     "title": "Communities",
@@ -807,5 +823,46 @@
     "deletePrompt": "Delete this community?",
     "editTitle": "Edit community",
     "save": "Save"
+  },
+  "legal": {
+    "lastUpdated": "Last updated",
+    "openOnline": "Open full version"
+  },
+  "onboarding": {
+    "stepOf": "Step {{current}} of {{total}}",
+    "welcomeTitle": "Welcome to Nova",
+    "welcomeBody": "End-to-end encrypted messaging with no account, no phone number and no email. Your keys never leave this device.",
+    "getStarted": "Get started",
+    "createOption": "Create my identity",
+    "createOptionDesc": "Generate a new keypair and recovery phrase on this device.",
+    "restoreOption": "Restore from before",
+    "restoreOptionDesc": "Use your recovery phrase from an earlier install.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "How should others see you?",
+    "continue": "Continue",
+    "back": "Back",
+    "identityTitle": "Your recovery phrase",
+    "identityBody": "These 24 words are your account. Write them down: anyone who has them can read your messages.",
+    "seedWarning": "Never share this phrase. It cannot be recovered for you.",
+    "copyPhrase": "Copy phrase",
+    "copied": "Copied",
+    "savedPhrase": "I saved my phrase",
+    "restoreTitle": "Restore your identity",
+    "restoreBody": "Paste the recovery phrase from your previous install. Your fingerprint stays the same, so contacts still find you.",
+    "phraseLabel": "Recovery phrase",
+    "phrasePlaceholder": "word1 word2 word3 …",
+    "restoreAction": "Restore",
+    "phraseInvalid": "That phrase is not valid. Check the words and their order.",
+    "restoreFailed": "Could not restore this identity on this device.",
+    "securityTitle": "Protect the app",
+    "securityBody": "Optional: set a 4-digit PIN that is required to open Nova.",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "Repeat PIN",
+    "pinMismatch": "PINs do not match.",
+    "skip": "Skip",
+    "finish": "Finish",
+    "doneTitle": "You're all set",
+    "doneBody": "Your identity is ready. Messages are encrypted on this device before they leave.",
+    "startMessaging": "Start messaging"
   }
 }

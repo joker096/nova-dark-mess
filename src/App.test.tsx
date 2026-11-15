@@ -67,6 +67,20 @@ describe('App - desktop navigation rail', () => {
   beforeEach(() => {
     capturedRef.current = null;
     vi.clearAllMocks();
+    // Except for the explicit first-launch test, these specs run on an app that
+    // has already been through the onboarding wizard.
+    localStorage.setItem(
+      'nova_onboarding_v1',
+      JSON.stringify({ version: 1, completedAt: '2026-01-01T00:00:00.000Z', path: 'create' }),
+    );
+  });
+
+  it('shows the onboarding wizard on a fresh install', () => {
+    localStorage.removeItem('nova_onboarding_v1');
+    render(<App />);
+    expect(screen.getByTestId('onboarding-wizard')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'onboarding.getStarted' })).toBeTruthy();
+    expect(screen.queryByTestId('chats-screen')).toBeNull();
   });
 
   it('renders a Folders button in the desktop rail', () => {

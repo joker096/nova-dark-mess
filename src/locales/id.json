@@ -4,7 +4,11 @@
     "tagline": "Pesan aman dan indah"
   },
   "meshMap": {
-    "title": "Peta Mesh"
+    "title": "Peta Mesh",
+    "locateMe": "Lokasi saya",
+    "showSample": "Tampilkan contoh",
+    "hideSample": "Sembunyikan contoh",
+    "noPeers": "Belum ada peer online. Buka chat dengan peer online atau bagikan lokasi langsung."
   },
   "common": {
     "search": "Cari",
@@ -399,7 +403,12 @@
       "seconds": "{{count}} dtk",
       "minute": "1 mnt"
     },
-    "chatActions": "Tindakan obrolan"
+    "chatActions": "Tindakan obrolan",
+    "contactInfo": "Info kontak",
+    "mediaLinks": "Media, file, tautan",
+    "appearance": "Tampilan chat",
+    "chatTheme": "Tema chat",
+    "scheduledCount": "Terjadwal ({{count}})"
   },
   "stories": {
     "title": "Cerita",
@@ -731,7 +740,14 @@
     "paymentReceived": "Pembayaran diterima — Premium diaktifkan",
     "lockedIcon": "Ikon Premium",
     "freeTrial": "Coba gratis — {{days}} hari tersisa",
-    "subscribe": "Langganan"
+    "subscribe": "Langganan",
+    "sub30Days": "per 30 hari",
+    "licensePrompt": "Sudah membayar? Tempel kunci lisensi Anda",
+    "activate": "Aktifkan lisensi",
+    "errorGeneric": "Terjadi kesalahan. Coba lagi.",
+    "errorUnavailable": "Layanan pembayaran tidak dapat dihubungi.",
+    "errorWindow": "Jendela pembayaran diblokir. Izinkan pop-up lalu coba lagi.",
+    "errorPending": "Pembayaran masih tertunda. Kunci aktif otomatis setelah dikonfirmasi."
   },
   "poll": {
     "title": "Polling",
@@ -807,5 +823,46 @@
     "deletePrompt": "Hapus komunitas ini?",
     "editTitle": "Edit komunitas",
     "save": "Simpan"
+  },
+  "legal": {
+    "lastUpdated": "Diperbarui",
+    "openOnline": "Buka versi lengkap"
+  },
+  "onboarding": {
+    "stepOf": "Langkah {{current}} dari {{total}}",
+    "welcomeTitle": "Selamat datang di Nova",
+    "welcomeBody": "Pesan terenkripsi ujung-ke-ujung tanpa akun, nomor telepon, atau email. Kunci Anda tetap di perangkat ini.",
+    "getStarted": "Mulai",
+    "createOption": "Buat identitas saya",
+    "createOptionDesc": "Buat pasangan kunci dan frasa pemulihan baru di perangkat ini.",
+    "restoreOption": "Pulihkan dari sebelumnya",
+    "restoreOptionDesc": "Gunakan frasa pemulihan dari pemasangan sebelumnya.",
+    "nameLabel": "Nama Anda",
+    "namePlaceholder": "Bagaimana orang lain melihat Anda?",
+    "continue": "Lanjutkan",
+    "back": "Kembali",
+    "identityTitle": "Frasa pemulihan Anda",
+    "identityBody": "24 kata ini adalah akun Anda. Catat: siapa pun yang memilikinya bisa membaca pesan Anda.",
+    "seedWarning": "Jangan pernah membagikan frasa ini. Tidak bisa dipulihkan untuk Anda.",
+    "copyPhrase": "Salin frasa",
+    "copied": "Disalin",
+    "savedPhrase": "Saya sudah menyimpan frasa",
+    "restoreTitle": "Pulihkan identitas Anda",
+    "restoreBody": "Tempel frasa pemulihan dari pemasangan sebelumnya. Sidik jari Anda tetap sama, kontak tetap menemukan Anda.",
+    "phraseLabel": "Frasa pemulihan",
+    "phrasePlaceholder": "kata1 kata2 kata3 …",
+    "restoreAction": "Pulihkan",
+    "phraseInvalid": "Frasa tidak valid. Periksa kata dan urutannya.",
+    "restoreFailed": "Tidak dapat memulihkan identitas ini di perangkat ini.",
+    "securityTitle": "Lindungi aplikasi",
+    "securityBody": "Opsional: atur PIN 4 digit untuk membuka Nova.",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "Ulangi PIN",
+    "pinMismatch": "PIN tidak cocok.",
+    "skip": "Lewati",
+    "finish": "Selesai",
+    "doneTitle": "Semua siap",
+    "doneBody": "Identitas Anda siap. Pesan dienkripsi di perangkat ini sebelum dikirim.",
+    "startMessaging": "Mulai mengobrol"
   }
 }

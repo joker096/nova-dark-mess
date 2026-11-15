@@ -32,6 +32,9 @@ const MeshMapScreen = lazy(() =>
 const SettingsModal = lazy(() =>
   import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal })),
 );
+const CryptoCheckoutModal = lazy(() =>
+  import('./components/CryptoCheckoutModal').then((m) => ({ default: m.CryptoCheckoutModal })),
+);
 
 const ScreenFallback: React.FC = () => (
   <div className="flex h-full w-full items-center justify-center bg-[#090a0e]">
@@ -47,7 +50,7 @@ import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/
 import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
-import { buildLiveMeshSnapshot } from './lib/p2p/meshMapNodes';
+import { buildLiveMeshSnapshot, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -57,13 +60,15 @@ import {
   nextJoinOutboxDelay,
 } from './lib/social/joinRequestRelay';
 import { MOCK_CHATS } from './data/mockMessengerData';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { isOnboardingComplete } from './lib/onboarding';
 
 type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map';
 
 export default function App() {
   const { t } = useLanguage();
   const { account } = useAccount();
-  const { isLocked, pinHash, unlock, identity } = useSecurity();
+  const { isLocked, pinHash, unlock, identity, isInitialized } = useSecurity();
   const {
     stories,
     channels,
@@ -99,6 +104,8 @@ export default function App() {
   const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete());
   const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
     null,
   );
@@ -120,6 +127,15 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [joinNotice]);
 
+  // A new GPS fix changes where the local node belongs, so recompute the
+  // snapshot when one lands (the map writes it, we only listen).
+  const [meshTick, setMeshTick] = useState(0);
+  useEffect(() => {
+    const onFix = () => setMeshTick((tick) => tick + 1);
+    window.addEventListener(GPS_FIX_EVENT, onFix);
+    return () => window.removeEventListener(GPS_FIX_EVENT, onFix);
+  }, []);
+
   // Real mesh map points: computed whenever the mesh-map screen mounts.
   // useMemo keyed on the screen keeps the GPS fix read out of other renders.
   const liveMesh = useMemo(
@@ -127,7 +143,7 @@ export default function App() {
       currentScreen === 'mesh-map'
         ? buildLiveMeshSnapshot({ localFingerprint: identity?.fingerprint })
         : { nodes: [], links: [] },
-    [currentScreen, identity?.fingerprint],
+    [currentScreen, identity?.fingerprint, meshTick],
   );
 
 
@@ -419,6 +435,7 @@ export default function App() {
             onOpenProfile={() => openProfile(account.id)}
             onOpenMeshMap={() => navigate('mesh-map')}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenPremium={() => setIsPremiumOpen(true)}
             activeChatId={activeChatId}
             activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
             stories={stories}
@@ -489,6 +506,12 @@ export default function App() {
    const totalUnreadChats = MOCK_CHATS.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0);
    const totalUnreadChannels = channels.reduce((acc, channel) => acc + (channel.unreadCount || 0), 0);
 
+  // A fresh install has no setup record yet, so it goes through the wizard
+  // instead of landing on a pre-filled "Hello, Joseph" profile.
+  if (!onboardingDone) {
+    if (isInitialized === false) return <ScreenFallback />;
+    return <OnboardingWizard onDone={() => setOnboardingDone(true)} />;
+  }
 
   return (
     <>
@@ -646,6 +669,7 @@ export default function App() {
           onOpenProfile={() => openProfile(account.id)}
           onOpenMeshMap={() => navigate('mesh-map')}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenPremium={() => setIsPremiumOpen(true)}
           activeChatId={activeChatId}
           activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
           stories={stories}
@@ -754,6 +778,17 @@ export default function App() {
           onOpenAnalytics={openAnalytics}
         />
       </Suspense>
+
+      {/* Premium checkout, reachable from the chats header and from Settings */}
+      {isPremiumOpen && (
+        <Suspense fallback={null}>
+          <CryptoCheckoutModal
+            isOpen={isPremiumOpen}
+            onClose={() => setIsPremiumOpen(false)}
+            onSuccess={() => setIsPremiumOpen(false)}
+          />
+        </Suspense>
+      )}
         </div>
       )}
     </>

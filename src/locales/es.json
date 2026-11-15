@@ -4,7 +4,11 @@
     "tagline": "Mensajería segura y bella"
   },
   "meshMap": {
-    "title": "Mapa mesh"
+    "title": "Mapa mesh",
+    "locateMe": "Mi ubicación",
+    "showSample": "Ver ejemplo",
+    "hideSample": "Ocultar ejemplo",
+    "noPeers": "Aún no hay pares en línea. Abre un chat con alguien conectado o comparte tu ubicación."
   },
   "common": {
     "search": "Buscar",
@@ -401,7 +405,12 @@
       "seconds": "{{count}} s",
       "minute": "1 min"
     },
-    "chatActions": "Acciones del chat"
+    "chatActions": "Acciones del chat",
+    "contactInfo": "Información del contacto",
+    "mediaLinks": "Multimedia, archivos, enlaces",
+    "appearance": "Apariencia del chat",
+    "chatTheme": "Tema del chat",
+    "scheduledCount": "Programados ({{count}})"
   },
   "stories": {
     "title": "Historias",
@@ -733,7 +742,14 @@
     "paymentReceived": "Pago recibido — Premium activado",
     "lockedIcon": "Icono Premium",
     "freeTrial": "Prueba gratuita — {{days}} días restantes",
-    "subscribe": "Suscribirse"
+    "subscribe": "Suscribirse",
+    "sub30Days": "por 30 días",
+    "licensePrompt": "¿Ya pagaste? Pega tu clave de licencia",
+    "activate": "Activar licencia",
+    "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+    "errorUnavailable": "El servicio de pago no está disponible ahora.",
+    "errorWindow": "La ventana de pago fue bloqueada. Permite las ventanas emergentes y reintenta.",
+    "errorPending": "El pago sigue pendiente. La clave se activa automáticamente al confirmarse."
   },
   "poll": {
     "title": "Encuesta",
@@ -810,5 +826,46 @@
     "deletePrompt": "¿Eliminar esta comunidad?",
     "editTitle": "Editar comunidad",
     "save": "Guardar"
+  },
+  "legal": {
+    "lastUpdated": "Actualizado",
+    "openOnline": "Abrir versión completa"
+  },
+  "onboarding": {
+    "stepOf": "Paso {{current}} de {{total}}",
+    "welcomeTitle": "Bienvenido a Nova",
+    "welcomeBody": "Mensajería cifrada de extremo a extremo sin cuenta, teléfono ni correo. Tus claves no salen de este dispositivo.",
+    "getStarted": "Empezar",
+    "createOption": "Crear mi identidad",
+    "createOptionDesc": "Genera un nuevo par de claves y frase de recuperación en este dispositivo.",
+    "restoreOption": "Restaurar desde antes",
+    "restoreOptionDesc": "Usa tu frase de recuperación de una instalación anterior.",
+    "nameLabel": "Tu nombre",
+    "namePlaceholder": "¿Cómo te verán los demás?",
+    "continue": "Continuar",
+    "back": "Atrás",
+    "identityTitle": "Tu frase de recuperación",
+    "identityBody": "Estas 24 palabras son tu cuenta. Anótalas: quien las tenga podrá leer tus mensajes.",
+    "seedWarning": "Nunca compartas esta frase. No se puede recuperar por ti.",
+    "copyPhrase": "Copiar frase",
+    "copied": "Copiado",
+    "savedPhrase": "He guardado mi frase",
+    "restoreTitle": "Restaura tu identidad",
+    "restoreBody": "Pega la frase de recuperación de tu instalación anterior. Tu huella no cambia, así que tus contactos te siguen encontrando.",
+    "phraseLabel": "Frase de recuperación",
+    "phrasePlaceholder": "palabra1 palabra2 palabra3 …",
+    "restoreAction": "Restaurar",
+    "phraseInvalid": "Esa frase no es válida. Revisa las palabras y su orden.",
+    "restoreFailed": "No se pudo restaurar esta identidad en este dispositivo.",
+    "securityTitle": "Protege la app",
+    "securityBody": "Opcional: define un PIN de 4 dígitos para abrir Nova.",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "Repite el PIN",
+    "pinMismatch": "Los PIN no coinciden.",
+    "skip": "Omitir",
+    "finish": "Terminar",
+    "doneTitle": "Todo listo",
+    "doneBody": "Tu identidad está lista. Los mensajes se cifran en este dispositivo antes de salir.",
+    "startMessaging": "Empezar a chatear"
   }
 }

@@ -148,6 +148,52 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - [x] Local/dev secrets filled in `.env` (keystore passwords rotated, `messandanger-keystore.jks` regenerated with a fresh RSA key; PaymentO/Cloudflare/Supabase placeholders replaced with generated values). Production values still require creating the PaymentO store "Mess&Anger user" (plan `premium`, amount=49, currency=usd) and pasting the real API key / IPN HMAC secret.
 - [x] Landing bundle staged (`npm run deploy:landing` → `landing-deploy/`, 19 entries, build OK). Actual upload to `https://mess.cvr.name/` requires SSH host access (run `node scripts/publish-landing.js --deploy <user@host>` or scp manually) and registering the IPN URL in PaymentO store settings.
 
+### Phase 6 — Real data & first-run UX (2026-11-15) — ✅ Completed
+
+- [x] **First-run wizard instead of a fake greeting.** A new install is gated
+  on `nova_onboarding_v1` (`src/lib/onboarding.ts`); until setup is finished the
+  app renders `src/components/OnboardingWizard.tsx` instead of the chat list, so
+  nobody starts as "Hello, Joseph". The wizard is a single flow with a progress
+  bar: welcome → *create a new identity* / *restore from before* → display name →
+  recovery phrase (24 words, copy, "I saved my phrase") or phrase input with
+  validation → optional 4-digit PIN → done. Restoring derives the same keypair
+  from the mnemonic (`restoreIdentityFromMnemonic` in `SecurityContext`), so the
+  fingerprint — and therefore contacts and safety numbers — stay stable.
+- [x] **Mesh map shows real peers.** `src/lib/p2p/meshMapNodes.ts` builds the
+  live snapshot from the session relay plus the last saved GPS fix; the demo
+  topology is now opt-in behind a "Show sample" toggle and the empty state
+  explains how to get a node (open a chat with an online peer or share live
+  location). "Locate me" asks for geolocation and re-fits the bounds, and a
+  `nova-gps-fix` event refreshes the map as soon as a fix is stored.
+- [x] **Premium is discoverable.** A Premium button sits in the chats header and
+  opens the real PaymentO checkout; the price is stated as **$3.90 per 30 days**
+  (not "USD / month"), and checkout failures (blocked window, unreachable
+  service, payment pending) are shown as localized messages instead of being
+  swallowed by `usePremium.checkout()`.
+- [x] **Terms and Privacy are real documents.** `src/lib/legal.ts` holds both
+  texts, `src/components/LegalModal.tsx` renders them in-app with an "Open full
+  version" link, and the hosted copies live at
+  `https://mess.cvr.name/{terms,privacy}.html` (staged from `landing/`).
+- [x] **One z-index scale.** `src/lib/ui/zIndex.ts` defines the layers
+  (backdrop 40, menus 50, sheets 70, modals 80, nested modals 90, toast 120);
+  Settings, the crypto checkout, the legal modal and the chat action menu were
+  moved onto it so a dialog can no longer open underneath the one that spawned
+  it.
+- [x] **Media no longer blocked by CSP.** `index.html` now allows
+  `media-src 'self' blob: https:` and `blob:` in `img-src`, so remote sample
+  media and locally recorded voice notes both play.
+- [x] **Chat action menu localized** (`chat.contactInfo`, `chat.mediaLinks`,
+  `chat.appearance`, `chat.chatTheme`, `chat.scheduledCount`) in all 10 locales,
+  restoring key parity in `npm run audit:i18n`.
+
+**Still open in this area**
+
+- [ ] Localize the chats header greeting (`Hello, {{name}}`) — still hardcoded
+  English.
+- [ ] Feed the mesh map from relay presence (who is actually online right now)
+  rather than from locally known sessions.
+- [ ] Add a "run setup again" action in Settings that calls `resetOnboarding()`.
+
 ## Recent changes (2026-11-15)
 
 - **Back navigation restores the previous view.** `App.tsx` keeps a

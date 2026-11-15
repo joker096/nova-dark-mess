@@ -4,7 +4,11 @@
     "tagline": "Sicher & beautiful Messaging"
   },
   "meshMap": {
-    "title": "Mesh-Karte"
+    "title": "Mesh-Karte",
+    "locateMe": "Meinen Standort",
+    "showSample": "Beispiel zeigen",
+    "hideSample": "Beispiel ausblenden",
+    "noPeers": "Noch keine aktiven Peers. Öffne einen Chat mit einem Online-Peer oder teile deinen Standort."
   },
   "common": {
     "search": "Suche",
@@ -399,7 +403,12 @@
       "seconds": "{{count}} s",
       "minute": "1 Min."
     },
-    "chatActions": "Chat-Aktionen"
+    "chatActions": "Chat-Aktionen",
+    "contactInfo": "Kontaktinfo",
+    "mediaLinks": "Medien, Dateien, Links",
+    "appearance": "Chat-Design",
+    "chatTheme": "Chat-Thema",
+    "scheduledCount": "Geplant ({{count}})"
   },
   "stories": {
     "title": "Stories",
@@ -731,7 +740,14 @@
     "paymentReceived": "Zahlung erhalten — Premium aktiviert",
     "lockedIcon": "Premium-Symbol",
     "freeTrial": "Kostenlose Testversion — noch {{days}} Tage",
-    "subscribe": "Abonnieren"
+    "subscribe": "Abonnieren",
+    "sub30Days": "pro 30 Tage",
+    "licensePrompt": "Schon bezahlt? Lizenzschlüssel einfügen",
+    "activate": "Lizenz aktivieren",
+    "errorGeneric": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+    "errorUnavailable": "Der Zahlungsdienst ist gerade nicht erreichbar.",
+    "errorWindow": "Das Zahlungsfenster wurde blockiert. Pop-ups erlauben und erneut versuchen.",
+    "errorPending": "Die Zahlung ist noch offen. Der Schlüssel wird nach Bestätigung automatisch aktiviert."
   },
   "poll": {
     "title": "Umfrage",
@@ -807,5 +823,46 @@
     "deletePrompt": "Diese Gemeinschaft löschen?",
     "editTitle": "Gemeinschaft bearbeiten",
     "save": "Speichern"
+  },
+  "legal": {
+    "lastUpdated": "Zuletzt aktualisiert",
+    "openOnline": "Vollversion öffnen"
+  },
+  "onboarding": {
+    "stepOf": "Schritt {{current}} von {{total}}",
+    "welcomeTitle": "Willkommen bei Nova",
+    "welcomeBody": "Ende-zu-Ende verschlüsselt – ohne Konto, Telefonnummer oder E-Mail. Deine Schlüssel bleiben auf diesem Gerät.",
+    "getStarted": "Loslegen",
+    "createOption": "Eigene Identität erstellen",
+    "createOptionDesc": "Neues Schlüsselpaar und Wiederherstellungsphrase auf diesem Gerät erzeugen.",
+    "restoreOption": "Von früher wiederherstellen",
+    "restoreOptionDesc": "Wiederherstellungsphrase aus einer früheren Installation verwenden.",
+    "nameLabel": "Dein Name",
+    "namePlaceholder": "Wie sollen andere dich sehen?",
+    "continue": "Weiter",
+    "back": "Zurück",
+    "identityTitle": "Deine Wiederherstellungsphrase",
+    "identityBody": "Diese 24 Wörter sind dein Konto. Schreibe sie auf: Wer sie hat, kann deine Nachrichten lesen.",
+    "seedWarning": "Teile diese Phrase niemals. Sie kann nicht für dich wiederhergestellt werden.",
+    "copyPhrase": "Phrase kopieren",
+    "copied": "Kopiert",
+    "savedPhrase": "Ich habe die Phrase gespeichert",
+    "restoreTitle": "Identität wiederherstellen",
+    "restoreBody": "Füge die Wiederherstellungsphrase deiner früheren Installation ein. Dein Fingerabdruck bleibt gleich, Kontakte finden dich weiter.",
+    "phraseLabel": "Wiederherstellungsphrase",
+    "phrasePlaceholder": "wort1 wort2 wort3 …",
+    "restoreAction": "Wiederherstellen",
+    "phraseInvalid": "Diese Phrase ist ungültig. Prüfe Wörter und Reihenfolge.",
+    "restoreFailed": "Diese Identität konnte auf diesem Gerät nicht wiederhergestellt werden.",
+    "securityTitle": "App schützen",
+    "securityBody": "Optional: 4-stellige PIN festlegen, die zum Öffnen von Nova nötig ist.",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "PIN wiederholen",
+    "pinMismatch": "PINs stimmen nicht überein.",
+    "skip": "Überspringen",
+    "finish": "Fertig",
+    "doneTitle": "Alles bereit",
+    "doneBody": "Deine Identität ist bereit. Nachrichten werden vor dem Senden auf diesem Gerät verschlüsselt.",
+    "startMessaging": "Chat starten"
   }
 }

@@ -4,7 +4,11 @@
     "tagline": "Güvenli ve güzel mesajlaşma"
   },
   "meshMap": {
-    "title": "Mesh Haritası"
+    "title": "Mesh Haritası",
+    "locateMe": "Konumum",
+    "showSample": "Örneği göster",
+    "hideSample": "Örneği gizle",
+    "noPeers": "Henüz çevrimiçi eş yok. Çevrimiçi biriyle sohbet aç veya konumunu paylaş."
   },
   "common": {
     "search": "Ara",
@@ -399,7 +403,12 @@
       "seconds": "{{count}} sn",
       "minute": "1 dk"
     },
-    "chatActions": "Sohbet eylemleri"
+    "chatActions": "Sohbet eylemleri",
+    "contactInfo": "Kişi bilgisi",
+    "mediaLinks": "Medya, dosyalar, bağlantılar",
+    "appearance": "Sohbet görünümü",
+    "chatTheme": "Sohbet teması",
+    "scheduledCount": "Planlanan ({{count}})"
   },
   "stories": {
     "title": "Hikayeler",
@@ -731,7 +740,14 @@
     "paymentReceived": "Ödeme alındı — Premium etkinleştirildi",
     "lockedIcon": "Premium simgesi",
     "freeTrial": "Ücretsiz deneme — {{days}} gün kaldı",
-    "subscribe": "Abone ol"
+    "subscribe": "Abone ol",
+    "sub30Days": "30 gün için",
+    "licensePrompt": "Zaten ödediniz mi? Lisans anahtarınızı yapıştırın",
+    "activate": "Lisansı etkinleştir",
+    "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+    "errorUnavailable": "Ödeme servisine şu anda ulaşılamıyor.",
+    "errorWindow": "Ödeme penceresi engellendi. Açılır pencerelere izin verip tekrar deneyin.",
+    "errorPending": "Ödeme hâlâ beklemede. Onaylandığında anahtar otomatik etkinleşir."
   },
   "poll": {
     "title": "Anket",
@@ -807,5 +823,46 @@
     "deletePrompt": "Bu topluluk silinsin mi?",
     "editTitle": "Topluluğu düzenle",
     "save": "Kaydet"
+  },
+  "legal": {
+    "lastUpdated": "Son güncelleme",
+    "openOnline": "Tam sürümü aç"
+  },
+  "onboarding": {
+    "stepOf": "Adım {{current}} / {{total}}",
+    "welcomeTitle": "Nova'ya hoş geldiniz",
+    "welcomeBody": "Hesap, telefon numarası ve e-posta olmadan uçtan uca şifreli mesajlaşma. Anahtarlarınız bu cihazdan çıkmaz.",
+    "getStarted": "Başla",
+    "createOption": "Kimliğimi oluştur",
+    "createOptionDesc": "Bu cihazda yeni anahtar çifti ve kurtarma ifadesi oluştur.",
+    "restoreOption": "Öncekinden geri yükle",
+    "restoreOptionDesc": "Önceki kurulumdaki kurtarma ifadenizi kullanın.",
+    "nameLabel": "Adınız",
+    "namePlaceholder": "Başkaları sizi nasıl görsün?",
+    "continue": "Devam",
+    "back": "Geri",
+    "identityTitle": "Kurtarma ifadeniz",
+    "identityBody": "Bu 24 kelime hesabınızdır. Yazın: onlara sahip olan mesajlarınızı okuyabilir.",
+    "seedWarning": "Bu ifadeyi asla paylaşmayın. Sizin için kurtarılamaz.",
+    "copyPhrase": "İfadeyi kopyala",
+    "copied": "Kopyalandı",
+    "savedPhrase": "İfademi kaydettim",
+    "restoreTitle": "Kimliğinizi geri yükleyin",
+    "restoreBody": "Önceki kurulumunuzun kurtarma ifadesini yapıştırın. Parmak iziniz aynı kalır, kişiler sizi bulmaya devam eder.",
+    "phraseLabel": "Kurtarma ifadesi",
+    "phrasePlaceholder": "kelime1 kelime2 kelime3 …",
+    "restoreAction": "Geri yükle",
+    "phraseInvalid": "Bu ifade geçersiz. Kelimeleri ve sırasını kontrol edin.",
+    "restoreFailed": "Bu kimlik bu cihazda geri yüklenemedi.",
+    "securityTitle": "Uygulamayı koru",
+    "securityBody": "İsteğe bağlı: Nova’yı açmak için 4 haneli PIN belirleyin.",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "PIN’i tekrarlayın",
+    "pinMismatch": "PIN’ler eşleşmiyor.",
+    "skip": "Atla",
+    "finish": "Bitir",
+    "doneTitle": "Her şey hazır",
+    "doneBody": "Kimliğiniz hazır. Mesajlar cihazdan çıkmadan önce şifrelenir.",
+    "startMessaging": "Mesajlaşmaya başla"
   }
 }

@@ -10,12 +10,13 @@ import {
   Settings,
   Pin,
   X,
-  MessageCircle,
   FolderPlus,
   Folder,
-  BarChart3,
   Clock,
   MapPin,
+  Megaphone,
+  UserRound,
+  Sparkles,
 } from 'lucide-react';
 import {
   CURRENT_USER,
@@ -55,10 +56,10 @@ interface ChatsScreenProps {
   onOpenCalls?: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  onOpenPremium?: () => void;
   onOpenFolders?: () => void;
   activeChatId?: string;
-  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'analytics' | 'mesh-map';
-  onOpenAnalytics?: () => void;
+  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'mesh-map';
   onOpenMeshMap?: () => void;
   stories?: Story[];
   channels?: ChannelInfo[];
@@ -118,8 +119,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
     onOpenProfile,
     onOpenSettings,
+    onOpenPremium,
     onOpenFolders,
-    onOpenAnalytics,
     onOpenMeshMap,
     activeChatId,
     activeNavTab,
@@ -379,7 +380,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     {
       key: 'channel',
       label: t('channels'),
-      icon: MessageCircle,
+      icon: Megaphone,
       active: activeNavTab === 'channel',
       onClick: () => onOpenChannel?.(),
     },
@@ -398,16 +399,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     {
       key: 'profile',
       label: t('profile.title'),
-      icon: Users,
+      icon: UserRound,
       active: activeNavTab === 'profile',
       onClick: onOpenProfile,
-    },
-    {
-      key: 'analytics',
-      label: t('analytics.title'),
-      icon: BarChart3,
-      active: activeNavTab === 'analytics',
-      onClick: onOpenAnalytics,
     },
     {
       key: 'mesh-map',
@@ -513,6 +507,16 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             <Plus className="w-4 h-4" />
           </button>
 
+          <button
+            onClick={onOpenPremium}
+            className="h-9 px-3 rounded-full bg-[var(--nova-accent-color)]/15 hover:bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] hover:text-white border border-[var(--nova-accent-color)]/40 flex items-center gap-1.5 text-[11px] font-semibold transition cursor-pointer active:scale-95 shadow-md"
+            aria-label={t('premium.title')}
+            title={t('premium.title')}
+            data-testid="open-premium"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {t('premium.title')}
+          </button>
         </div>
       </div>
 
@@ -1117,8 +1121,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     )}
 
       {/* Floating Bottom Navigation Bar */}
-      <div className="absolute bottom-4 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
-        <nav className="bg-[#181921]/92 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-0.5 shadow-2xl shadow-black/80 pointer-events-auto max-w-full overflow-x-auto no-scrollbar">
+      <div className="absolute bottom-3 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
+        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-6 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
           {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
             <button
               key={key}
@@ -1126,15 +1130,16 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
               title={label}
               aria-label={label}
               aria-current={active ? 'page' : undefined}
-              className={`h-10 shrink-0 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-90 ${
+              className={`relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 ${
                 active
-                  ? 'bg-[var(--nova-accent-color)] text-white gap-1.5 px-3.5 shadow-lg shadow-[var(--nova-accent-color)]/30'
-                  : 'w-10 text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  ? 'bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}
             >
-              <Icon className={`w-5 h-5 shrink-0 ${active ? 'fill-current' : ''}`} />
+              <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'stroke-[2.4]' : ''}`} />
+              <span className="max-w-full truncate px-0.5 text-[9.5px] font-semibold leading-none">{label}</span>
               {active && (
-                <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{label}</span>
+                <span className="absolute top-1 h-1 w-1 rounded-full bg-[var(--nova-accent-color)]" />
               )}
             </button>
           ))}
