@@ -75,11 +75,11 @@ describe('App - desktop navigation rail', () => {
     );
   });
 
-  it('shows the onboarding wizard on a fresh install', () => {
+  it('shows the onboarding wizard on a fresh install', async () => {
     localStorage.removeItem('nova_onboarding_v1');
     render(<App />);
-    expect(screen.getByTestId('onboarding-wizard')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'onboarding.continue' })).toBeTruthy();
+    expect(await screen.findByTestId('onboarding-wizard')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'onboarding.continue' })).toBeTruthy();
     expect(screen.queryByTestId('chats-screen')).toBeNull();
   });
 
