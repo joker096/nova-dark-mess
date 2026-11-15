@@ -6,6 +6,23 @@ Package ID: `com.messanger.e2e` (debug-сборки: `com.messanger.e2e.debug`)
 AAB собирается через `scripts/deploy-android.ps1 -Version <x.y.z> -Channel release`
 (нужны `KEYSTORE_PASSWORD` / `KEY_PASSWORD` из `.env`, см. android.yml).
 
+**Подпись (важно).** Play принимает только upload-ключ с отпечатком
+SHA1 `5E:1B:A8:21:E0:80:EE:36:C8:27:FE:CE:9E:83:59:F4:AC:46:90:E4`
+(SHA256 `13:36:84:83:…:9F:86:3D`, alias `messandanger`, JKS). Его копия лежит в корне
+проекта как `play-upload-key.jks`; пароль — `BUBBLEWRAP_KEYSTORE_PASSWORD` /
+`BUBBLEWRAP_KEY_PASSWORD` из `.env` (в старом проекте `F:\AISTUDIO\neumorphic-ui`,
+тот же alias `messandanger`).
+
+Файл `messandanger-keystore.jks` в корне — **другой ключ** (SHA1 `9F:95:4B:75:…:BF:F1`, PKCS12),
+им подписывать нельзя: Play отклонит загрузку с ошибкой «неправильный ключ».
+Переподпись готового бандла:
+
+```bash
+jarsigner -keystore play-upload-key.jks -sigalg SHA256withRSA -digestalg SHA-256 \
+  dist/android/NovaDarkMessenger-<ver>.aab messandanger
+keytool -printcert -jarfile dist/android/NovaDarkMessenger-<ver>.aab | grep SHA1   # должно быть 5E:1B:…
+```
+
 ---
 
 ## 1. Основной листинг (Store listing)
@@ -92,9 +109,9 @@ Double Ratchet, X3DH — well-reviewed primitives only.
 
 | Актив | Требование | Источник / как получить |
 |---|---|---|
-| App icon (512×512 PNG, 32-bit) | ≤1 МБ | `src-tauri/icons/icon.png` масштабировать до 512×512 (`magick src-tauri/icons/icon.png -resize 512x512 play/icon-512.png`) |
-| Feature graphic 1024×500 | JPG/PNG, без текста по краям | соберите макет: тёмный фон #0b0c10, иконка по центру, слоган «Keys, not identities» |
-| Phone screenshots | min 2, рекомендовано 8; 16:9 или 9:16, 320–3840 px | снимки с эмулятора API 35 (см. ниже список кадров) |
+| App icon (512×512 PNG, 32-bit) | ≤1 МБ | ✅ готово: `play/icon-512.png` (512×512, непрозрачный, 25 КБ, из `src-tauri/icons/app-icon.png`) |
+| Feature graphic 1024×500 | JPG/PNG 24-bit без альфы, без текста по краям | ✅ готово: `play/feature-graphic.png` (1024×500, 24-bit, тёмный фон #0b0c10, светлый логотип по центру) |
+| Phone screenshots | min 2, рекомендовано 8; 16:9 или 9:16, 320–3840 px | ✅ готово 4 шт.: `play/screenshots/` (1080×1920 PNG, 9:16, ≤ 0.43 МБ): список чатов в папке Personal, чат с опросом/стикером/геолокацией, канал с календарём недели, настройки темы и Premium. Сняты с запущенного веб-слоя приложения в headless-браузере (эмулятор не понадобился) |
 | 7" tablet screenshots | опционально | те же кадры с планшетного эмулятора |
 | Promo video | опционально | YouTube-ссылка |
 
@@ -205,9 +222,9 @@ and the people you chat with (P2P), optional encrypted relay envelopes
 map tiles from OpenStreetMap when online, and — only if you enable it — your
 own encrypted backup uploaded to a WebDAV/S3 endpoint you choose.
 
-Payments: the optional $0.49/month premium subscription is processed by
-PaymentO. We store a PII-stripped receipt (no name, no email) solely to
-verify entitlement.
+Payments: the optional $3.90 / 30-day premium subscription is processed by
+PaymentO. We store a PII-stripped receipt (no name, no email) and issue a
+signed license key bound to the device solely to verify entitlement.
 
 Children: Nova is not directed at children under 13.
 
@@ -226,7 +243,7 @@ Contact: (ваш email)
 
 ### Чек-лист перед заливкой AAB
 - [ ] `com.messanger.e2e` без `.debug` суффикса в release-сборке (проверить `applicationId` в `build.gradle` после сборки).
-- [ ] Подписано release-ключом `messandanger-keystore.jks` (не debug!).
+- [ ] Подписано upload-ключом `play-upload-key.jks` (SHA1 `5E:1B:…`), не `messandanger-keystore.jks` и не debug-ключом.
 - [ ] `versionCode` увеличен относительно прошлой загрузки (Tauri ставит из `version`).
 - [ ] Внутри AAB не попали secrets: `npm run check:secrets` + gitleaks в CI уже проверяют.
 - [ ] Скриншоты сняты с реального билда, feature graphic без изношенного текста.

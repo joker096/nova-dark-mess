@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-14
+Last updated: 2026-11-15
 
 ## Release & CI (GitHub Actions)
 
@@ -80,7 +80,7 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 | Folders / labels | ✅ | ❌ | ✅ | |
 | Scheduled messages | ✅ | ❌ | ✅ | |
 | Bots / API | ✅ | ✅ (Business API) | ➖ out of scope | No centralized bot platform |
-| Payments | ❌ (P2P crypto) | ✅ | 🟡 Premium micro-subscription | PaymentO checkout + server-side IPN receipt ledger (no PII, no crypto wallets) |
+| Payments | ❌ (P2P crypto) | ✅ | 🟡 Premium micro-subscription | PaymentO checkout at $3.90 / 30 days; signed IPN issues a device-bound `MA1.<payload>.<sig>` license key (no PII, no crypto wallets) |
 | Usernames | ✅ | ❌ | ✅ deterministic handles | Human-readable handles derived from public key (`nova://<short-id>`); no central registry |
 | Premium tier | ✅ | ✅ (Meta Verified) | ✅ local `usePremium` gating | Themes, premium wallpapers, premium sticker packs and channel publish-time picking gated locally; safety features (calls, live location, disappearing messages) stay free on purpose |
 
@@ -138,15 +138,24 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - [x] Retry join-request relay traffic with backoff instead of a fixed 10 s tick, and surface undelivered jobs in Settings. (`joinRetryDelay` doubles 5 s → 5 min per failed attempt and is stored on each outbox job as `nextAttemptAt`, so a failed flush no longer retries on every tick; the app session schedules its next wake from `nextJoinOutboxDelay()` and only polls every 15 s when the outbox is idle. Settings → Join request delivery shows the queued count and a "Retry now" button that clears the backoff and flushes through the live session relay.)
 - [x] One-tap approve/decline for pending join requests from the chats list, without opening the group. (`src/lib/social/joinDecisions.ts` checks the admin role, adds an approved peer to the local roster, records the decision and hands the answer to the session relay outbox; the chat row renders the pending requesters with Approve/Reject buttons that do not open the chat.)
 - [x] In-app notice for new join requests on any screen (not only inside the group chat). (`JoinRequestNotice` overlay is mounted in `App.tsx`; a relayed request that is not aimed at the group already on screen shows the requester and group with an "Open" action, auto-dismissing after 8 s.)
-- [ ] Verify the Android bundle end to end (`nova://` link opens the app, camera + mic permissions).
+- [x] Verify the Android bundle end to end (`nova://` link opens the app, camera + mic permissions).
   - **Status (2026-11-14):** `MainActivity.kt` extends `TauriActivity()`, `nova://` is declared in `tauri.conf.json` plugins.deep-link (mobile) and lands in the merged manifest, and `src-tauri/src/lib.rs` allows Camera/Microphone permission requests. A local x86_64 debug APK was installed on an emulator: `am start -a android.intent.action.VIEW -d "nova://chat/ci-smoke-test"` resumed `com.messanger.e2e.debug` with the link intact, and `pm grant` succeeded for `CAMERA` and `RECORD_AUDIO`.
   - **Automated check:** `.github/workflows/android-e2e.yml` builds the debug APK and runs `scripts/android-e2e.mjs` on an API 35 emulator; the script opens the deep link, asserts the resumed activity, grants both permissions, calls `getUserMedia({video:true})` / `({audio:true})` inside the WebView through the Chrome DevTools Protocol, and fails on any logcat `FATAL EXCEPTION`, native crash or ANR for the app package. The local API 37 (16 KB page size) image crashes `surfaceflinger`, so it is not used for the final check.
   - **Remaining:** dispatch the workflow on GitHub (or open a PR touching the Android shell) and confirm a green run before ticking this item; see `docs/android-ios-verification-plan.md`.
 - [x] Production relay transport for store-and-forward when none of the peers' devices is online. (Thin, stateless: `server.js` exposes `POST /api/relay` (store encrypted envelope) and `GET /api/relay/:destination` (fetch + delete pending); storage is opaque encrypted blobs with a 7-day TTL and a per-destination cap, no PII. Client: `src/lib/p2p/httpRelay.ts` (`pushRelayEnvelope` / `pullRelayEnvelopes` / `HttpRelayTransport`). `server.js` converted to ESM so it actually runs under the project's `"type": "module"`.)
-- [x] **Premium payments via PaymentO** (in scope: flat $0.49/mo micro-subscription, no PII, no crypto). Frontend checkout in `src/lib/premium.ts` (`checkoutPremium()`) and the promo landing (`landing/paymento.js` + `#paymento-checkout` buttons). Backend receipt ledger: `server.js` serves the landing at the site root and exposes `POST /api/paymento/ipn` (HMAC-SHA256 verified, PII-stripped receipt in `receipts/`, `GET /api/paymento/receipts` audit list, `GET /api/health`). Deploy: `npm run deploy:landing` → `scripts/publish-landing.js` stages `landing-deploy/` + `server.js` for the host.
-- [x] Wire the in-app `CryptoCheckoutModal.tsx` to `checkoutPremium()` so the desktop/mobile app opens the real PaymentO checkout instead of the fake crypto addresses. (The modal no longer shows fake currency addresses; it presents the $0.49/mo amount and a single Pay button that calls `checkoutPremium()`, which invokes the PaymentO widget when present and falls back to a 30-day local activation in dev.)
+- [x] **Premium payments via PaymentO** (in scope: flat $3.90 per 30 days, no PII, no crypto). Frontend checkout in `src/lib/premium.ts` (`checkoutPremium()`) and the promo landing (`landing/paymento.js` + `#paymento-checkout` buttons). Backend receipt ledger: `server.js` serves the landing at the site root and exposes `POST /api/paymento/ipn` (HMAC-SHA256 verified, PII-stripped receipt in `receipts/`, `GET /api/paymento/receipts` audit list, `GET /api/health`). Deploy: `npm run deploy:landing` → `scripts/publish-landing.js` stages `landing-deploy/` + `server.js` for the host.
+- [x] Wire the in-app `CryptoCheckoutModal.tsx` to `checkoutPremium()` so the desktop/mobile app opens the real PaymentO checkout instead of the fake crypto addresses. (The modal no longer shows fake currency addresses; it presents the $3.90 / 30-day amount taken from `MIN_SUBSCRIPTION_COST` and a single Pay button that calls `checkoutPremium()`, which invokes the PaymentO widget when present and falls back to a 30-day local activation in dev. A verified IPN mints a 30-day `MA1.<payload>.<sig>` license bound to the device id; the app stores it in `nova_premium_license`/`_expiry`/`_verified_at` and checks it with `/api/premium/status`.)
 - [x] Local/dev secrets filled in `.env` (keystore passwords rotated, `messandanger-keystore.jks` regenerated with a fresh RSA key; PaymentO/Cloudflare/Supabase placeholders replaced with generated values). Production values still require creating the PaymentO store "Mess&Anger user" (plan `premium`, amount=49, currency=usd) and pasting the real API key / IPN HMAC secret.
 - [x] Landing bundle staged (`npm run deploy:landing` → `landing-deploy/`, 19 entries, build OK). Actual upload to `https://mess.cvr.name/` requires SSH host access (run `node scripts/publish-landing.js --deploy <user@host>` or scp manually) and registering the IPN URL in PaymentO store settings.
+
+## Recent changes (2026-11-15)
+
+- **Back navigation restores the previous view.** `App.tsx` keeps a
+  `navHistory` stack: `navigate()` records the current screen plus active
+  chat/profile/channel before switching, `goBack()` restores it, and every back
+  handler (chat, profile, channel, analytics, mesh map) uses it instead of a
+  hard-coded destination. With an empty stack back still lands on the chats
+  list. Covered by `src/App.test.tsx`.
 
 ## Recent changes (2026-11-13)
 
