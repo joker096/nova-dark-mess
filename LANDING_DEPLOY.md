@@ -26,12 +26,18 @@
 
 ```
 # ── Обязательные ──────────────────────────────────────────────────────────
-# Секрет из PaymentO admin → store "Mess&Anger user" → IPN → Signing secret.
-# Без него server.js принимает unsigned IPN и логирует warning (dev mode).
-PAYMENTO_SECRET="вставь_секрет_из_paymento"
+# Секреты IPN из PaymentO admin → store "Mess&Anger user" → IPN → Signing secret.
+# Comma-separated список; первый элемент — основной, остальные принимаются
+# (для ротации). server.js сверяет HMAC-SHA256 по сырым байтам тела,
+# заголовок X-HMAC-SHA256-Signature, сравнение в hex (case-insensitive).
+# Без PAYMENTO_SECRET_KEYS server.js принимает unsigned IPN и логирует warning (dev mode).
+PAYMENTO_SECRET_KEYS="<base64 IPN signing secret from PaymentO admin>"
+
+# API-ключ PaymentO (base64). Используется для создания checkout-сессий.
+PAYMENTO_API_KEY="<base64 API key from PaymentO admin>"
 
 # Порт, на котором слушает Node-процесс (Nginx проксирует 443 → сюда).
-PORT="8080"
+PORT="3003"
 
 # ── Опциональные ───────────────────────────────────────────────────────────
 # Перекрыть URL верификации PaymentO (дефолт: https://api.paymento.io/v2/verify)
@@ -50,10 +56,11 @@ PORT="8080"
 | Store name | Mess&Anger user |
 | IPN URL | `https://mess.cvr.name/api/paymento/ipn` |
 | IPN method | HTTP POST |
-| Signing secret | тот же `PAYMENTO_SECRET`, что в `.env` |
+| Signing secret | первый элемент `PAYMENTO_SECRET_KEYS` |
 | Plan id | `premium` |
-| Plan amount | `49` (=$0.49) |
+| Plan amount | `390` (=$3.90 за 30 дней) |
 | Plan currency | `usd` |
+| Signing secret | первый элемент `PAYMENTO_SECRET_KEYS` |
 
 ### 2.4 Структура deploy-пакета
 
@@ -101,13 +108,29 @@ npm run deploy:landing
 
 ### 3.2 Копирование на хост
 
-```bash
-# Вариант A: вручную
-scp -r landing-deploy/ <user>@mess.cvr.name:/var/www/mess-anger
+Деплой выполняется через `scripts/publish-landing.js --deploy`:
 
-# Вариант B: через скрипт
-LANDING_HOST="deploy@mess.cvr.name" node scripts/publish-landing.js --deploy dry-run
-# (dry-run печатает команду без выполнения; уберите dry-run для реального scp)
+```bash
+# LANDING_SSH_KEY — путь к SSH-ключу (по умолчанию ~/.ssh/vps_root_ed25519)
+LANDING_HOST="root@mess.cvr.name" \
+  LANDING_SSH_KEY="$HOME/.ssh/vps_root_ed25519" \
+  node scripts/publish-landing.js --deploy
+```
+
+Скрипт (после коммита `300a808`):
+1. Собирает бандл `landing-deploy/`.
+2. Загружает `server.js` на `/var/www/mess.cvr.name/server.js`.
+3. Проверяет sha256 до рестарта (отказывается, если хэш не совпал).
+4. `chown user0:user0` загруженного файла.
+5. Перезапускает PM2-процесс `mess-api` от `user0` (`runuser -u user0 -- pm2 restart mess-api`).
+6. Делает health-check `GET /api/health`.
+
+> `package.json` на хосте **не перезаписывается** — зависимости уже установлены.
+> `--deploy dry-run` печатает команду без выполнения.
+
+Ручной вариант (если скрипт недоступен):
+```bash
+scp -r landing-deploy/ root@mess.cvr.name:/var/www/mess.cvr.name
 ```
 
 ### 3.3 На хосте: установка и запуск
@@ -116,22 +139,22 @@ LANDING_HOST="deploy@mess.cvr.name" node scripts/publish-landing.js --deploy dry
 ssh <user>@mess.cvr.name
 
 # 1. Переместить бандл
-sudo mkdir -p /var/www/mess-anger
-sudo cp -r /path/to/landing-deploy/* /var/www/mess-anger/
-cd /var/www/mess-anger
+sudo mkdir -p /var/www/mess.cvr.name
+cd /var/www/mess.cvr.name
 
 # 2. Зависимости
 npm install --omit=dev
 
 # 3. Конфиг
 cat > .env <<EOF
-PAYMENTO_SECRET="ваш_секрет_из_paymento"
-PORT="8080"
+PAYMENTO_SECRET_KEYS="<base64 IPN signing secret from PaymentO admin>"
+PAYMENTO_API_KEY="<base64 API key from PaymentO admin>"
+PORT="3003"
 EOF
 chmod 600 .env
 
 # 4. Запуск через PM2
-pm2 start server.js --name mess-anger-landing
+pm2 start server.js --name mess-api --user user0
 pm2 save
 pm2 startup    # автозапуск после reboot
 
@@ -144,13 +167,13 @@ pm2 startup    # автозапуск после reboot
 `/etc/systemd/system/mess-anger-landing.service`:
 ```ini
 [Unit]
-Description=Mess&Anger landing server
+Description=Mess&Anger landing server (mess-api)
 After=network.target
 
 [Service]
 Type=simple
 User=www
-WorkingDirectory=/var/www/mess-anger
+WorkingDirectory=/var/www/mess.cvr.name
 ExecStart=/usr/bin/node server.js
 Environment=NODE_ENV=production
 Restart=always
@@ -160,8 +183,8 @@ RestartSec=3
 WantedBy=multi-user.target
 ```
 ```bash
-sudo systemctl enable mess-anger-landing
-sudo systemctl start mess-anger-landing
+sudo systemctl enable mess-api
+sudo systemctl start mess-api
 ```
 
 ### 3.5 Nginx reverse proxy (обязательно — PaymentO шлёт по HTTPS)
@@ -180,7 +203,7 @@ server {
     # (в отдельном server-блоке: listen 80; return 301 https://$host$request_uri;)
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:3003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -189,7 +212,7 @@ server {
 
     # IPN от PaymentO (должен работать даже если основной сайт лёг)
     location /api/paymento/ipn {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:3003;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -247,9 +270,9 @@ scp -r landing-deploy/ <user>@mess.cvr.name:/var/www/mess-anger-new/
 
 # 3. На хосте
 ssh <user>@mess.cvr.name
-sudo rsync -av /var/www/mess-anger-new/ /var/www/mess-anger/
-cd /var/www/mess-anger
-pm2 restart mess-anger-landing
+sudo rsync -av /var/www/mess-anger-new/ /var/www/mess.cvr.name/
+cd /var/www/mess.cvr.name
+pm2 restart mess-api
 
 # 4. Проверить
 curl -s https://mess.cvr.name/api/health
@@ -261,9 +284,9 @@ curl -s https://mess.cvr.name/api/health
 
 | Что | Где смотреть |
 |-----|-------------|
-| Логи server.js | `pm2 logs mess-anger-landing` или `journalctl -u mess-anger-landing -f` |
+| Логи server.js | `pm2 logs mess-api` или `journalctl -u mess-api -f` |
 | IPN события | `[paymento] IPN accepted` / `[paymento] IPN signature mismatch` в логах |
-| Чеки | `ls -lt /var/www/mess-anger/receipts/` (или `GET /api/paymento/receipts`) |
+| Чеки | `ls -lt /var/www/mess.cvr.name/receipts/` (или `GET /api/paymento/receipts`) |
 | Упал ли сервер | `pm2 status` / `systemctl status mess-anger-landing` |
 | Nginx access log | `/var/log/nginx/mess.cvr.name.access.log` |
 
@@ -271,8 +294,9 @@ curl -s https://mess.cvr.name/api/health
 
 ## 6. Чек-лист перед продакшеном
 
-- [ ] `PAYMENTO_SECRET` в `.env` совпадает с секретом в PaymentO admin
-- [ ] `PAYMENTO_SECRET` не публичный (`.env` chmod 600, не в git)
+- [ ] `PAYMENTO_SECRET_KEYS` в `.env` совпадает с секретом в PaymentO admin (первый элемент)
+- [ ] `PAYMENTO_SECRET_KEYS` не публичный (`.env` chmod 600, не в git)
+- [ ] `PAYMENTO_API_KEY` в `.env` валиден (`GET /v1/payment/coins` → success:true)
 - [ ] `https://mess.cvr.name/` отдаёт `index.html` (не `404` / `403`)
 - [ ] `https://mess.cvr.name/api/health` → `{"ok":true}`
 - [ ] `https://mess.cvr.name/releases/releases.json` → валидный JSON
@@ -289,18 +313,22 @@ curl -s https://mess.cvr.name/api/health
 PaymentO шлёт:
 ```
 POST /api/paymento/ipn
-Content-Type: application/json   (или application/x-www-form-urlencoded)
+Content-Type: application/json
+X-HMAC-SHA256-Signature: <hex HMAC-SHA256 of raw body with secret>
 
 {
-  "payment_id": "...",
-  "plan": "premium",
-  "amount": 49,
-  "currency": "usd",
-  "status": "paid",
-  "timestamp": "2026-11-13T12:00:00Z",
-  "signature": "<hex HMAC-SHA256 of raw body with PAYMENTO_SECRET>"
+  "Token": "...",
+  "PaymentId": "...",
+  "OrderId": "...",
+  "OrderStatus": 7,
+  "AdditionalData": []
 }
 ```
+
+- Подпись считается по **сырым байтам тела** (до парсинга), заголовок `X-HMAC-SHA256-Signature`, сравнение в hex (case-insensitive).
+- Поддерживаются несколько секретов (`PAYMENTO_SECRET_KEYS`, comma-separated); первый — основной, остальные принимаются (ротация).
+- `OrderStatus === 7` (Completed) → server.js выдаёт лицензионный ключ `MA1.<payload>.<sig>` (HMAC-SHA256, привязка к device id, срок 30 дней) и отдаёт его через `/api/premium/order/:id`.
+- Недоплата / другой статус → лицензия не выдаётся.
 
 Ответ server.js:
 ```json
@@ -325,5 +353,7 @@ Content-Type: application/json   (или application/x-www-form-urlencoded)
 | `landing/paymento.js` | `STORE_ID`, `PLAN.amount`, `PLAN.currency` — как в PaymentO admin |
 | `src/lib/premium.ts` | `MIN_SUBSCRIPTION_COST` — как `PLAN.amount` в `paymento.js` |
 | `landing/index.html` | `<script src="https://widget.paymento.io/v2/paymento.js">` — домен PaymentO |
-| `server.js` | HMAC secret — как `PAYMENTO_SECRET` в `.env` и в PaymentO admin |
+| `server.js` | HMAC secret — первый элемент `PAYMENTO_SECRET_KEYS` в `.env` и в PaymentO admin |
+| `src/lib/premium.ts` | `MIN_SUBSCRIPTION_COST` = `390` (= $3.90), как `PLAN.amount` в PaymentO admin и `landing/paymento.js` |
+| `landing/paymento.js` | `PLAN.amount` = `390`, `PLAN.currency` = `usd` |
 | `landing/releases/releases.json` | SHA-256 и URL — как в `deploy-android.ps1` / `deploy-ios.ps1` |
