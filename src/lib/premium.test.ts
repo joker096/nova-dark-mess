@@ -178,51 +178,39 @@ describe('canUseFeature', () => {
 });
 
 describe('checkoutPremium', () => {
-  it('falls back to a local 30-day activation when no paymento widget exists', async () => {
+  beforeEach(() => {
+    // jsdom window.open returns null by default; stub it to a truthy popup.
+    vi.spyOn(window, 'open').mockReturnValue({} as Window);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns true immediately when already premium', async () => {
+    setPremium(true, Date.now() + 60_000);
     await expect(checkoutPremium()).resolves.toBe(true);
-    expect(isPremium()).toBe(true);
-    expect(localStorage.getItem('nova_premium_expiry')).toBeTruthy();
   });
 
-  it('invokes the paymento widget with the fixed plan parameters', async () => {
-    const checkout = vi.fn().mockResolvedValue({ ok: true });
-    (window as unknown as Record<string, unknown>).paymento = { checkout };
-    await expect(checkoutPremium()).resolves.toBe(true);
-    expect(checkout).toHaveBeenCalledWith({
-      plan: 'premium',
-      amount: MIN_SUBSCRIPTION_COST,
-      currency: 'usd',
-    });
-    expect(isPremium()).toBe(true);
-    // The free-trial marker is cleared once a payment succeeded.
-    expect(localStorage.getItem('nova_premium_free_until')).toBeNull();
-  });
-
-  it('returns false when the widget reports a failed payment', async () => {
-    (window as unknown as Record<string, unknown>).paymento = {
-      checkout: vi.fn().mockResolvedValue({ ok: false }),
-    };
-    localStorage.setItem('nova_premium_free_until', String(Date.now() + 60_000));
-    await expect(checkoutPremium()).resolves.toBe(false);
-    expect(isPremium()).toBe(true); // trial untouched
-  });
-
-  it('returns false and stays non-premium when the widget rejects', async () => {
-    (window as unknown as Record<string, unknown>).paymento = {
-      checkout: vi.fn().mockRejectedValue(new Error('network down')),
-    };
+  it('returns false when the checkout endpoint is unreachable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
     await expect(checkoutPremium()).resolves.toBe(false);
     expect(isPremium()).toBe(false);
   });
 
-  it('returns false when the widget throws synchronously', async () => {
-    Object.defineProperty(window, 'paymento', {
-      configurable: true,
-      get() {
-        throw new Error('broken getter');
-      },
-    });
+  it('returns false when the server rejects the checkout request', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 503, json: async () => ({ ok: false, error: 'payments disabled' }),
+    }));
     await expect(checkoutPremium()).resolves.toBe(false);
+    expect(isPremium()).toBe(false);
+  });
+
+  it('returns false when the order never reaches paid status', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, orderId: 'ord-1', url: 'https://pay.example/x' }) })
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: 'pending' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(checkoutPremium({ pollIntervalMs: 1, pollTimeoutMs: 5 })).resolves.toBe(false);
   });
 });
 

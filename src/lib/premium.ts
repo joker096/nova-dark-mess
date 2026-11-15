@@ -223,13 +223,18 @@ interface ApiResponse {
 }
 
 async function apiFetch(path: string, init?: RequestInit): Promise<ApiResponse> {
-  const response = await fetch(`${getApiBase()}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBase()}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+      },
+    });
+  } catch {
+    return { ok: false, status: 0, json: {} };
+  }
   let json: Record<string, unknown> = {};
   try {
     const parsed = await response.json();
