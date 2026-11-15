@@ -201,11 +201,21 @@ export function canUseFeature(feature: PremiumFeature): boolean {
   return isPremium();
 }
 
+const REMOTE_API_BASE = 'https://mess.cvr.name';
+
+/** True inside the Tauri webview, where location.origin is not a reachable API host. */
+function isDesktopShell(): boolean {
+  if (typeof window === 'undefined') return false;
+  if ((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) return true;
+  const { protocol, hostname } = window.location || ({} as Location);
+  return protocol === 'tauri:' || /^tauri\.localhost$/i.test(hostname || '');
+}
+
 function getApiBase(): string {
   const envUrl = (import.meta.env.VITE_NOVA_API_URL as string | undefined) || '';
   if (envUrl) return envUrl.replace(/\/+$/, '');
+  if (typeof window === 'undefined' || isDesktopShell()) return REMOTE_API_BASE;
   if (
-    typeof window !== 'undefined' &&
     window.location &&
     (window.location.protocol === 'https:' || window.location.protocol === 'http:') &&
     window.location.hostname !== 'localhost' &&
