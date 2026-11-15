@@ -567,7 +567,7 @@ export default function App() {
 
           {/* Analytics tab */}
           <button
-            onClick={() => setCurrentScreen('analytics')}
+            onClick={() => navigate('analytics')}
             className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               currentScreen === 'analytics'
                 ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
@@ -583,7 +583,7 @@ export default function App() {
 
           {/* Mesh Map tab */}
           <button
-            onClick={() => setCurrentScreen('mesh-map')}
+            onClick={() => navigate('mesh-map')}
             className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               currentScreen === 'mesh-map'
                 ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
@@ -640,12 +640,11 @@ export default function App() {
         <ChatsScreen
           ref={foldersRef}
           onSelectChat={(id) => {
-            setActiveChatId(id);
-            setCurrentScreen('chat-katie');
+            navigate('chat-katie', { chatId: id });
           }}
           onOpenChannel={openChannel}
           onOpenProfile={() => openProfile(account.id)}
-          onOpenMeshMap={() => setCurrentScreen('mesh-map')}
+          onOpenMeshMap={() => navigate('mesh-map')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           activeChatId={activeChatId}
           activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
@@ -690,8 +689,7 @@ export default function App() {
         notice={joinNotice}
         onDismiss={() => setJoinNotice(null)}
         onOpen={(groupId) => {
-          setActiveChatId(groupId);
-          setCurrentScreen('chat-katie');
+          navigate('chat-katie', { chatId: groupId });
           setJoinNotice(null);
         }}
       />
@@ -736,8 +734,7 @@ export default function App() {
                 onClick={() => {
                   // Joining is a request, not membership: an admin has to approve it.
                   markJoinPending(pendingInvite.chatId);
-                  setActiveChatId(pendingInvite.chatId);
-                  setCurrentScreen('chat-katie');
+                  navigate('chat-katie', { chatId: pendingInvite.chatId });
                   setPendingInvite(null);
                 }}
                 className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-xs font-semibold text-white transition cursor-pointer"
