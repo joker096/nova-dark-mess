@@ -37,9 +37,23 @@ dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080', 10);
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const RECEIPTS_DIR = process.env.RECEIPTS_DIR
   ? path.resolve(process.env.RECEIPTS_DIR)
   : path.join(__dirname, 'receipts');
+
+if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
+
+// Browser clients (Tauri webview, local dev server, landing) call these APIs
+// from a different origin. Receipts additionally require the admin token.
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+  res.setHeader('Access-Control-Max-Age', '600');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
 
 // Store-and-forward relay: encrypted envelopes only, never content or identity.
 const RELAY_DIR = process.env.RELAY_DIR
@@ -49,11 +63,76 @@ const RELAY_TTL_MS = parseInt(process.env.RELAY_TTL_MS || String(7 * 24 * 60 * 6
 const RELAY_MAX_PER_DEST = parseInt(process.env.RELAY_MAX_PER_DEST || '200', 10);
 
 // ───────────────────────────────────────────────────────────────────────────
+// PaymentO (crypto) premium config
+// ───────────────────────────────────────────────────────────────────────────
+const PAYMENTO_API_URL = (process.env.PAYMENTO_API_URL || 'https://api.paymento.io').replace(/\/+$/, '');
+const PAYMENTO_API_KEY = (process.env.PAYMENTO_API_KEY || '').trim();
+const PAYMENTO_SECRET = (process.env.PAYMENTO_SECRET_KEY || process.env.PAYMENTO_SECRET || '').trim();
+const PAYMENTO_RETURN_URL = (process.env.PAYMENTO_RETURN_URL || '').trim();
+const PAYMENTO_VERIFY_URL = (process.env.PAYMENTO_VERIFY_URL || `${PAYMENTO_API_URL}/v1/payment/verify`).trim();
+const PAYMENTO_GATEWAY_URL = (process.env.PAYMENTO_GATEWAY_URL || 'https://app.paymento.io/gateway').trim();
+const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
+
+// The license key signs temporary premium grants. Derive a separate key from
+// the PaymentO secret when PREMIUM_LICENSE_SECRET is not set instead of reusing
+// the IPN secret directly.
+const PREMIUM_LICENSE_SECRET = (
+  process.env.PREMIUM_LICENSE_SECRET ||
+  (PAYMENTO_SECRET
+    ? crypto.createHash('sha256').update(`nova-premium-license:${PAYMENTO_SECRET}`).digest('hex')
+    : '')
+).trim();
+const PREMIUM_PLANS = {
+  premium: { id: 'premium', days: 30, price: 3.9, currency: 'USD' },
+};
+const ORDERS_DIR = process.env.ORDERS_DIR ? path.resolve(process.env.ORDERS_DIR) : path.join(__dirname, 'orders');
+const LICENSES_DIR = process.env.LICENSES_DIR ? path.resolve(process.env.LICENSES_DIR) : path.join(__dirname, 'licenses');
+const PAID_STATUSES = new Set([7, 8]);
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+// ───────────────────────────────────────────────────────────────────────────
+// Small in-memory rate limiter (per process; enough for one IPN host)
+// ───────────────────────────────────────────────────────────────────────────
+function createRateLimiter({ max, windowMs }) {
+  const buckets = new Map();
+  return (key) => {
+    const now = Date.now();
+    const bucket = buckets.get(key);
+    if (!bucket || now > bucket.resetAt) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      if (buckets.size > 5000) {
+        for (const [k, v] of buckets) if (now > v.resetAt) buckets.delete(k);
+      }
+      return true;
+    }
+    if (bucket.count >= max) return false;
+    bucket.count += 1;
+    return true;
+  };
+}
+
+const ipnLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+const checkoutLimiter = createRateLimiter({ max: 10, windowMs: 60_000 });
+const orderLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+const statusLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    if (IS_PRODUCTION) return res.status(404).json({ ok: false, error: 'not found' });
+    return next();
+  }
+  const provided = String(req.headers['x-admin-token'] || '');
+  const expected = Buffer.from(ADMIN_TOKEN);
+  const given = Buffer.from(provided);
+  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  return next();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Static: landing at root
 // ───────────────────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '256kb' }));
-app.use(express.urlencoded({ extended: false, limit: '256kb' }));
-
 // Digital Asset Links for Android App Links. express.static() ignores dotfiles
 // by default, so this file needs an explicit route.
 app.get('/.well-known/assetlinks.json', (_req, res) => {
@@ -71,103 +150,397 @@ app.use(express.static(path.join(__dirname, 'landing')));
 // payment event. We verify the signature, persist a receipt, and return 200
 // so PaymentO does not retry.
 //
-// The actual premium activation happens on the user's device: the desktop
-// app's `src/lib/premium.ts` checks a local `nova_premium_receipt` key that
-// is written by the PaymentO widget in `landing/paymento.js` after a
-// successful checkout. This server is the receipt ledger — it does NOT
-// grant access to anything.
+// The actual premium activation happens on the user's device: after a paid
+// (and provider-verified) PaymentO payment this server issues a device-bound,
+// HMAC-signed license (`MA1.<payload>.<sig>`); the app stores it locally and
+// re-verifies it against this server on startup. The server itself never
+// exposes entitlement state beyond the issued license.
 // ───────────────────────────────────────────────────────────────────────────
-function verifyPaymentoSignature(body, rawBody, secret) {
-  if (!secret) return false;
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(rawBody)
-    .digest('hex');
-  const provided =
-    (body && body.signature) ||
-    (body && body.signature_sha256) ||
-    (body && body.ipn_signature) ||
-    '';
-  if (!provided) return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(expected, 'hex'),
-    Buffer.from(String(provided), 'hex')
-  );
+function verifyPaymentoSignature(rawBody, provided, secret) {
+  if (!secret || !Buffer.isBuffer(rawBody) || rawBody.length === 0) return false;
+  const providedHex = String(provided || '').trim();
+  if (!/^[0-9a-f]{64}$/i.test(providedHex)) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest();
+  const given = Buffer.from(providedHex, 'hex');
+  return expected.length === given.length && crypto.timingSafeEqual(expected, given);
 }
 
-function persistReceipt(payload) {
-  fs.mkdirSync(RECEIPTS_DIR, { recursive: true });
-  const id =
-    (payload && (payload.payment_id || payload.id || payload.transaction_id)) ||
-    `local-${Date.now()}`;
-  const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
-  const file = path.join(RECEIPTS_DIR, `${safeId}.json`);
+function parseIpnBody(rawBody) {
+  const text = rawBody.toString('utf8').trim();
+  if (!text) return null;
+  if (text.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(text);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const body = {};
+    for (const [key, value] of new URLSearchParams(text).entries()) body[key] = value;
+    return Object.keys(body).length ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+/** PaymentO sends PascalCase fields; older payloads used camelCase. */
+function normalizeIpn(input) {
+  const body = input || {};
+  const additional = body.AdditionalData ?? body.additionalData ?? body.additional_data;
+  return {
+    token: String(body.Token ?? body.token ?? ''),
+    paymentId: String(body.PaymentId ?? body.paymentId ?? body.payment_id ?? body.id ?? ''),
+    orderId: String(body.OrderId ?? body.orderId ?? body.order_id ?? ''),
+    status: Number(body.OrderStatus ?? body.orderStatus ?? body.status ?? 0),
+    amount: Number(body.Amount ?? body.amount ?? 0) || null,
+    currency: String(body.Currency ?? body.currency ?? '').toUpperCase() || null,
+    plan: String(body.Plan ?? body.plan ?? (Array.isArray(additional) ? '' : '') ?? ''),
+  };
+}
+
+function writeAtomic(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, file);
+}
+
+function receiptFile(paymentId) {
+  const safeId = String(paymentId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
+  return { safeId, file: path.join(RECEIPTS_DIR, `${safeId}.json`) };
+}
+
+function persistReceipt(ipn) {
+  const { safeId, file } = receiptFile(ipn.paymentId || `local-${Date.now()}`);
   const record = {
     id: safeId,
-    plan: (payload && payload.plan) || 'premium',
-    amount: (payload && payload.amount) || null,
-    currency: (payload && payload.currency) || null,
-    status: (payload && payload.status) || 'paid',
+    paymentId: ipn.paymentId || null,
+    orderId: ipn.orderId || null,
+    plan: ipn.plan || null,
+    amount: ipn.amount,
+    currency: ipn.currency,
+    status: ipn.status,
+    verified: false,
+    licenseIssued: false,
     receivedAt: new Date().toISOString(),
-    raw: {
-      // Strip volatile / PII fields; keep only what we need for audit.
-      payment_id: (payload && (payload.payment_id || payload.id)) || null,
-      amount: (payload && payload.amount) || null,
-      currency: (payload && payload.currency) || null,
-      plan: (payload && payload.plan) || null,
-      status: (payload && payload.status) || null,
-      timestamp: (payload && (payload.timestamp || payload.created_at)) || null,
-    },
   };
-  fs.writeFileSync(file, JSON.stringify(record, null, 2));
+  writeAtomic(file, JSON.stringify(record, null, 2));
   return safeId;
 }
 
-// Raw body capture (needed for HMAC verification). Registered BEFORE the
-// json/urlencoded parsers so `req.rawBody` holds the exact bytes PaymentO
-// signed.
-app.use('/api/paymento/ipn', (req, res, next) => {
-  let data = '';
-  req.setEncoding('utf8');
-  req.on('data', (chunk) => { data += chunk; });
-  req.on('end', () => {
-    req.rawBody = data;
-    next();
+function updateReceipt(paymentId, patch) {
+  const { safeId, file } = receiptFile(paymentId);
+  let current = {};
+  try { current = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { current = { id: safeId }; }
+  writeAtomic(file, JSON.stringify({ ...current, ...patch, updatedAt: new Date().toISOString() }, null, 2));
+}
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Premium license helpers
+// ───────────────────────────────────────────────────────────────────────────
+function safeFileId(s) {
+  return String(s).replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+function paymentoCreate({ amount, currency, orderId, returnUrl }) {
+  return (async () => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const payload = {
+        fiatAmount: String(amount),
+        fiatCurrency: currency,
+        orderId,
+        Speed: 0,
+      };
+      if (returnUrl) payload.ReturnUrl = returnUrl;
+      const resp = await fetch(`${PAYMENTO_API_URL}/v1/payment/request`, {
+        method: 'POST',
+        headers: {
+          'Api-key': PAYMENTO_API_KEY,
+          'Content-Type': 'application/json',
+          Accept: 'text/plain',
+        },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal,
+      });
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(text || `Paymento create failed (${resp.status})`);
+      let parsed;
+      try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = { body: text }; }
+      const token = parsed && (parsed.body ?? parsed.token) || (typeof parsed === 'string' ? parsed : null);
+      if (!token || typeof token !== 'string') throw new Error('Paymento did not return a token');
+      return { token, paymentUrl: `${PAYMENTO_GATEWAY_URL}?token=${encodeURIComponent(token)}` };
+    } finally {
+      clearTimeout(t);
+    }
+  })();
+}
+
+async function paymentoVerify(token) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const resp = await fetch(PAYMENTO_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Api-key': PAYMENTO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ token }),
+      signal: ctrl.signal,
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(text || `Verify failed (${resp.status})`);
+    const parsed = text ? JSON.parse(text) : {};
+    const body = parsed.body || parsed;
+    const settlement = body.settlement || {};
+    return {
+      status: Number(body.orderStatus ?? body.OrderStatus ?? body.status ?? 0),
+      orderId: String(body.orderId ?? body.order_id ?? body.OrderId ?? ''),
+      amount: Number(settlement.requestedFiatAmount ?? body.amount ?? 0),
+      currency: String(settlement.currency ?? body.currency ?? ''),
+    };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function issueLicense({ device, plan, orderId }) {
+  if (!PREMIUM_LICENSE_SECRET) {
+    throw new Error('PREMIUM_LICENSE_SECRET is not configured');
+  }
+  const p = PREMIUM_PLANS[plan];
+  if (!p) throw new Error('unknown plan');
+  if (!device) throw new Error('device required');
+  const exp = Date.now() + p.days * 24 * 60 * 60 * 1000;
+  const payload = { v: 1, d: String(device), p: plan, o: orderId, exp };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
+  const key = `MA1.${body}.${sig}`;
+  const keyId = crypto.createHash('sha256').update(key).digest('hex').slice(0, 32);
+  writeAtomic(
+    path.join(LICENSES_DIR, `${keyId}.json`),
+    JSON.stringify({ key, device: String(device), plan, orderId, exp, issuedAt: new Date().toISOString() }, null, 2)
+  );
+  return { license: key, expiresAt: exp };
+}
+
+function verifyLicense(key) {
+  const parts = String(key || '').split('.');
+  if (parts.length !== 3 || parts[0] !== 'MA1') return null;
+  const [, body, sig] = parts;
+  const calc = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
+  const expected = Buffer.from(calc);
+  const given = Buffer.from(sig);
+  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!payload || typeof payload !== 'object') return null;
+    if (!Number.isFinite(Number(payload.exp))) return null;
+    return { payload, expired: Date.now() > Number(payload.exp) + CLOCK_SKEW_MS };
+  } catch {
+    return null;
+  }
+}
+
+function loadOrder(orderId) {
+  const file = path.join(ORDERS_DIR, `${safeFileId(orderId)}.json`);
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+function saveOrder(order) {
+  writeAtomic(path.join(ORDERS_DIR, `${safeFileId(order.orderId)}.json`), JSON.stringify(order, null, 2));
+}
+
+function amountsMatch(order, verified) {
+  if (!verified || !Number.isFinite(Number(verified.amount)) || Number(verified.amount) <= 0) return false;
+  const expected = Number(order.amount);
+  const actual = Number(verified.amount);
+  if (!Number.isFinite(expected) || Math.abs(expected - actual) > 0.01) return false;
+  const currency = String(verified.currency || '').toUpperCase();
+  return !currency || currency === String(order.currency || '').toUpperCase();
+}
+
+const fulfillingOrders = new Set();
+async function fulfillOrder(orderId) {
+  if (!orderId || fulfillingOrders.has(orderId)) return null;
+  fulfillingOrders.add(orderId);
+  try {
+    const order = loadOrder(orderId);
+    if (!order || order.license) return order || null;
+    if (!order.token || !PAYMENTO_API_KEY) return order;
+    let verified;
+    try {
+      verified = await paymentoVerify(order.token);
+    } catch (err) {
+      console.warn('[paymento] verify failed', { orderId, error: String(err && err.message ? err.message : err) });
+      return order;
+    }
+    if (!PAID_STATUSES.has(verified.status) || !amountsMatch(order, verified)) {
+      order.status = 'pending';
+      order.providerStatus = verified.status;
+      order.updatedAt = new Date().toISOString();
+      saveOrder(order);
+      return order;
+    }
+    const fresh = loadOrder(orderId) || order;
+    if (fresh.license) return fresh;
+    const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
+    fresh.status = 'paid';
+    fresh.license = license;
+    fresh.expiresAt = expiresAt;
+    fresh.paidAt = new Date().toISOString();
+    saveOrder(fresh);
+    console.log('[paymento] license issued', { orderId: fresh.orderId });
+    return fresh;
+  } finally {
+    fulfillingOrders.delete(orderId);
+  }
+}
+
+// Raw body capture + IPN route. The raw capture MUST be registered before the
+// JSON/urlencoded parsers so the HMAC signature is computed over exact bytes.
+app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), async (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!ipnLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
+  const body = parseIpnBody(rawBody);
+  if (!body) return res.status(400).json({ ok: false, reason: 'bad body' });
+  const provided = String(req.headers['x-hmac-sha256-signature'] || body.signature || body.signature_sha256 || body.ipn_signature || '');
+  const rawBuf = Buffer.from(JSON.stringify(body));
+  const bodyJson = JSON.stringify(body);
+
+  // HMAC is computed over the raw bytes PaymentO signed.
+  const secret = PAYMENTO_SECRET;
+  let signatureOk = false;
+  let sigError = null;
+  if (secret) {
+    const expected = crypto.createHmac('sha256', secret).update(rawBody).digest();
+    const providedHex = String(provided || '').trim();
+    if (/^[0-9a-f]{64}$/i.test(providedHex)) {
+      const given = Buffer.from(providedHex, 'hex');
+      signatureOk = expected.length === given.length && crypto.timingSafeEqual(expected, given);
+    } else {
+      sigError = 'malformed signature';
+    }
+  } else {
+    sigError = 'secret not configured';
+  }
+
+  const ipn = normalizeIpn(body);
+  const ok = signatureOk;
+
+  if (!ok) {
+    console.warn('[paymento] IPN rejected', { paymentId: ipn.paymentId, reason: sigError || 'bad signature' });
+    return res.status(400).json({ ok: false, reason: 'bad signature' });
+  }
+
+  const id = persistReceipt(ipn);
+  console.log('[paymento] IPN accepted', { id, amount: ipn.amount, plan: ipn.plan, orderId: ipn.orderId });
+
+  res.json({ ok: true, id });
+
+  // Async fulfillment: only confirm license when the provider really settled.
+  if (ipn.orderId) void fulfillOrder(ipn.orderId).catch((err) => {
+    console.error('[paymento] fulfillment error', { orderId: ipn.orderId, error: String(err && err.message ? err.message : err) });
   });
 });
 
-app.post('/api/paymento/ipn', (req, res) => {
-  // Parse the body we just buffered (idempotent — json/urlencoded parsers
-  // already ran, but this ensures we have `req.body` for form-encoded IPN).
-  let body = req.body || {};
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: false, limit: '256kb' }));
+
+// ───────────────────────────────────────────────────────────────────────────
+// Premium (PaymentO) endpoints
+// ───────────────────────────────────────────────────────────────────────────
+const DEVICE_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+
+app.post('/api/premium/checkout', async (req, res) => {
+  try {
+    const ip = req.ip || 'unknown';
+    if (!checkoutLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+    const plan = (req.body && req.body.plan) || 'premium';
+    const device = String((req.body && req.body.device) || '');
+    const p = PREMIUM_PLANS[plan];
+    if (!p) return res.status(400).json({ ok: false, error: 'unknown plan' });
+    if (!DEVICE_PATTERN.test(device)) return res.status(400).json({ ok: false, error: 'invalid device' });
+    if (!PAYMENTO_API_KEY) return res.status(503).json({ ok: false, error: 'payments disabled' });
+    const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
+    const order = { orderId, plan, device, amount: p.price, currency: p.currency, status: 'pending', createdAt: new Date().toISOString() };
+    saveOrder(order);
+    const returnUrl = PAYMENTO_RETURN_URL || (req.headers.origin ? `${req.headers.origin}/premium.html` : '');
+    const { token, paymentUrl } = await paymentoCreate({ amount: p.price, currency: p.currency, orderId, returnUrl });
+    order.token = token;
+    saveOrder(order);
+    res.json({ ok: true, orderId, token, url: paymentUrl });
+  } catch (err) {
+    console.error('[paymento] checkout failed', { error: String(err && err.message ? err.message : err) });
+    res.status(502).json({ ok: false, error: 'payment provider error' });
+  }
+});
+
+app.get('/api/premium/order/:orderId', async (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!orderLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  const order = loadOrder(req.params.orderId);
+  if (!order) return res.status(404).json({ ok: false, error: 'order not found' });
+  const device = String(req.query.device || '');
+  if (!DEVICE_PATTERN.test(device) || String(order.device) !== device) {
+    return res.status(403).json({ ok: false, error: 'device mismatch' });
+  }
+  if (order.license) {
+    return res.json({ ok: true, status: 'paid', license: order.license, expiresAt: order.expiresAt });
+  }
+  if (order.token && PAYMENTO_API_KEY) {
     try {
-      body = JSON.parse(req.rawBody || '{}');
-    } catch {
-      body = {};
-      for (const [k, v] of new URLSearchParams(req.rawBody || '').entries()) {
-        body[k] = v;
+      const v = await paymentoVerify(order.token);
+      if (PAID_STATUSES.has(v.status) && amountsMatch(order, v)) {
+        const fresh = loadOrder(req.params.orderId) || order;
+        if (!fresh.license) {
+          const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
+          fresh.status = 'paid';
+          fresh.license = license;
+          fresh.expiresAt = expiresAt;
+          fresh.paidAt = new Date().toISOString();
+          saveOrder(fresh);
+        }
+        return res.json({ ok: true, status: 'paid', license: fresh.license, expiresAt: fresh.expiresAt });
       }
+      return res.json({ ok: true, status: 'pending', paymentStatus: v.status });
+    } catch (err) {
+      return res.json({ ok: true, status: order.status, error: String(err && err.message ? err.message : err) });
     }
   }
-  const rawBody = req.rawBody || JSON.stringify(body);
-  const secret = process.env.PAYMENTO_SECRET;
+  return res.json({ ok: true, status: order.status });
+});
 
-  // If no secret is configured (dev mode), accept and log.
-  if (secret) {
-    if (!verifyPaymentoSignature(body, rawBody, secret)) {
-      console.warn('[paymento] IPN signature mismatch', {
-        payment_id: body.payment_id || body.id,
-      });
-      return res.status(400).json({ ok: false, reason: 'bad signature' });
-    }
-  } else {
-    console.warn('[paymento] PAYMENTO_SECRET not set — accepting unsigned IPN (dev mode)');
+app.post('/api/premium/activate', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  const license = String((req.body && req.body.license) || '');
+  const device = String((req.body && req.body.device) || '');
+  const v = verifyLicense(license);
+  if (!v) return res.status(400).json({ ok: false, error: 'invalid license' });
+  if (v.expired) return res.status(400).json({ ok: false, error: 'license expired' });
+  if (!DEVICE_PATTERN.test(device) || String(v.payload.d) !== device) {
+    return res.status(403).json({ ok: false, error: 'device mismatch' });
   }
+  fs.mkdirSync(LICENSES_DIR, { recursive: true });
+  writeAtomic(path.join(LICENSES_DIR, `activation-${safeFileId(license)}.json`), JSON.stringify({ license, device, activatedAt: new Date().toISOString() }, null, 2));
+  res.json({ ok: true, expiresAt: v.payload.exp, plan: v.payload.p });
+});
 
-  const id = persistReceipt(body);
-  console.log('[paymento] IPN accepted', { id, amount: body.amount, plan: body.plan });
-  return res.json({ ok: true, id });
+app.get('/api/premium/status', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  const license = String((req.query && req.query.license) || '');
+  const device = String((req.query && req.query.device) || '');
+  const v = verifyLicense(license);
+  if (!v) return res.status(400).json({ ok: false, error: 'invalid license' });
+  if (v.expired) return res.status(400).json({ ok: false, error: 'expired', expiresAt: v.payload.exp });
+  if (!DEVICE_PATTERN.test(device) || String(v.payload.d) !== device) {
+    return res.status(403).json({ ok: false, error: 'device mismatch' });
+  }
+  res.json({ ok: true, expiresAt: v.payload.exp, plan: v.payload.p });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -178,7 +551,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // List recent receipts (admin / audit).
-app.get('/api/paymento/receipts', (_req, res) => {
+app.get('/api/paymento/receipts', requireAdmin, (_req, res) => {
   try {
     fs.mkdirSync(RECEIPTS_DIR, { recursive: true });
     const files = fs.readdirSync(RECEIPTS_DIR)
@@ -297,6 +670,11 @@ app.get('/api/relay/:destination', (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 // Boot
 // ───────────────────────────────────────────────────────────────────────────
+const isMainModule =
+  typeof process.argv[1] === 'string' &&
+  process.argv[1].startsWith('/') &&
+  path.resolve(process.argv[1]) === __filename;
+
 app.listen(PORT, () => {
   console.log(`Mess&Anger server on :${PORT}`);
   console.log(`  landing  →  http://localhost:${PORT}/`);

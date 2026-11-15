@@ -1,143 +1,241 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  isPremium,
-  setPremium,
+  MIN_SUBSCRIPTION_COST,
+  PREMIUM_FEATURES,
   canUseFeature,
   checkoutPremium,
   ensureFirstMonthFree,
   freeDaysRemaining,
-  MIN_SUBSCRIPTION_COST,
   getMinSubscriptionCost,
-} from '../lib/premium';
+  isPremium,
+  setPremium,
+  type PremiumFeature,
+} from './premium';
 
-const PREMIUM_KEY = 'nova_premium_active';
-const PREMIUM_EXPIRY_KEY = 'nova_premium_expiry';
-const PREMIUM_FREE_UNTIL_KEY = 'nova_premium_free_until';
-const FIRST_INSTALL_KEY = 'nova_first_install_ts';
+const KEYS = [
+  'nova_premium_active',
+  'nova_premium_expiry',
+  'nova_premium_free_until',
+  'nova_first_install_ts',
+] as const;
 
 beforeEach(() => {
-  localStorage.removeItem(PREMIUM_KEY);
-  localStorage.removeItem(PREMIUM_EXPIRY_KEY);
-  localStorage.removeItem(PREMIUM_FREE_UNTIL_KEY);
-  localStorage.removeItem(FIRST_INSTALL_KEY);
-  vi.restoreAllMocks();
+  for (const key of KEYS) localStorage.removeItem(key);
 });
 
 afterEach(() => {
-  localStorage.removeItem(PREMIUM_KEY);
-  localStorage.removeItem(PREMIUM_EXPIRY_KEY);
-  localStorage.removeItem(PREMIUM_FREE_UNTIL_KEY);
-  localStorage.removeItem(FIRST_INSTALL_KEY);
+  for (const key of KEYS) localStorage.removeItem(key);
+  // Remove a paymento stub installed by an individual test.
+  delete (window as unknown as Record<string, unknown>).paymento;
 });
 
-describe('premium lib', () => {
-  it('isPremium returns false when no flag set', () => {
+describe('isPremium (negative / empty state)', () => {
+  it('returns false when nothing is stored', () => {
     expect(isPremium()).toBe(false);
   });
 
-  it('setPremium(true) activates and isPremium returns true', () => {
-    setPremium(true);
-    expect(isPremium()).toBe(true);
-    expect(localStorage.getItem(PREMIUM_KEY)).toBe('true');
+  it('returns false when the flag holds a non-"true" value', () => {
+    localStorage.setItem('nova_premium_active', 'yes');
+    expect(isPremium()).toBe(false);
   });
 
-  it('setPremium(false) deactivates', () => {
+  it('returns false and self-heals when the paid expiry is in the past', () => {
+    localStorage.setItem('nova_premium_active', 'true');
+    localStorage.setItem('nova_premium_expiry', String(Date.now() - 1));
+    expect(isPremium()).toBe(false);
+    expect(localStorage.getItem('nova_premium_active')).toBeNull();
+    expect(localStorage.getItem('nova_premium_expiry')).toBeNull();
+  });
+
+  it('ignores a corrupt (non-numeric) expiry and stays active', () => {
+    localStorage.setItem('nova_premium_active', 'true');
+    localStorage.setItem('nova_premium_expiry', 'not-a-number');
+    expect(isPremium()).toBe(true);
+  });
+
+  it('returns true while the free trial is active, without a paid flag', () => {
+    localStorage.setItem('nova_premium_free_until', String(Date.now() + 60_000));
+    expect(isPremium()).toBe(true);
+  });
+
+  it('returns false and removes an expired free-trial marker', () => {
+    localStorage.setItem('nova_premium_free_until', String(Date.now() - 1));
+    expect(isPremium()).toBe(false);
+    expect(localStorage.getItem('nova_premium_free_until')).toBeNull();
+  });
+
+  it('ignores a corrupt free-trial marker', () => {
+    localStorage.setItem('nova_premium_free_until', 'garbage');
+    expect(isPremium()).toBe(false);
+  });
+
+  it('degrades gracefully when localStorage throws', () => {
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+    expect(isPremium()).toBe(false);
+    spy.mockRestore();
+  });
+});
+
+describe('setPremium', () => {
+  it('activates premium without an expiry', () => {
     setPremium(true);
+    expect(localStorage.getItem('nova_premium_active')).toBe('true');
+    expect(localStorage.getItem('nova_premium_expiry')).toBeNull();
+    expect(isPremium()).toBe(true);
+  });
+
+  it('stores a future expiry and stays active', () => {
+    const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    setPremium(true, expiry);
+    expect(localStorage.getItem('nova_premium_expiry')).toBe(String(expiry));
+    expect(isPremium()).toBe(true);
+  });
+
+  it('deactivating removes both flag and expiry', () => {
+    setPremium(true, Date.now() + 1000);
+    setPremium(false);
+    expect(localStorage.getItem('nova_premium_active')).toBeNull();
+    expect(localStorage.getItem('nova_premium_expiry')).toBeNull();
+    expect(isPremium()).toBe(false);
+  });
+
+  it('deactivating after expiry keeps premium off', () => {
+    setPremium(true, Date.now() - 1000);
     setPremium(false);
     expect(isPremium()).toBe(false);
   });
+});
 
-  it('expired premium is treated as inactive', () => {
-    const past = Date.now() - 1000;
-    setPremium(true, past);
-    expect(isPremium()).toBe(false);
-  });
-
-  it('future expiry stays active', () => {
-    const future = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    setPremium(true, future);
+describe('ensureFirstMonthFree', () => {
+  it('records the first install and starts a ~30 day trial', () => {
+    const before = Date.now();
+    ensureFirstMonthFree();
+    const install = Number(localStorage.getItem('nova_first_install_ts'));
+    const freeUntil = Number(localStorage.getItem('nova_premium_free_until'));
+    expect(install).toBeGreaterThanOrEqual(before);
+    expect(freeUntil).toBeGreaterThan(install);
+    // 30 days, allow a small clock skew of a second.
+    expect(freeUntil - install).toBeGreaterThanOrEqual(30 * 24 * 60 * 60 * 1000 - 1000);
     expect(isPremium()).toBe(true);
   });
 
-  it('canUseFeature returns false without premium', () => {
-    expect(canUseFeature('chat_themes')).toBe(false);
+  it('is idempotent — a second call does not move the timestamps', () => {
+    ensureFirstMonthFree();
+    const install = localStorage.getItem('nova_first_install_ts');
+    const freeUntil = localStorage.getItem('nova_premium_free_until');
+    ensureFirstMonthFree();
+    expect(localStorage.getItem('nova_first_install_ts')).toBe(install);
+    expect(localStorage.getItem('nova_premium_free_until')).toBe(freeUntil);
+  });
+});
+
+describe('freeDaysRemaining', () => {
+  it('returns 0 when no trial marker exists', () => {
+    expect(freeDaysRemaining()).toBe(0);
   });
 
-  it('canUseFeature returns true with premium', () => {
+  it('returns 0 for a corrupt marker', () => {
+    localStorage.setItem('nova_premium_free_until', 'abc');
+    expect(freeDaysRemaining()).toBe(0);
+  });
+
+  it('counts remaining trial days', () => {
+    localStorage.setItem(
+      'nova_premium_free_until',
+      String(Date.now() + 5 * 24 * 60 * 60 * 1000),
+    );
+    expect(freeDaysRemaining()).toBeGreaterThanOrEqual(5);
+    expect(freeDaysRemaining()).toBeLessThanOrEqual(6);
+  });
+
+  it('never returns a negative number for an expired trial', () => {
+    localStorage.setItem('nova_premium_free_until', String(Date.now() - 10 * 24 * 60 * 60 * 1000));
+    expect(freeDaysRemaining()).toBe(0);
+  });
+});
+
+describe('canUseFeature', () => {
+  it('denies every sold feature without premium', () => {
+    for (const feature of PREMIUM_FEATURES) {
+      expect(canUseFeature(feature)).toBe(false);
+    }
+  });
+
+  it('allows every sold feature with premium', () => {
     setPremium(true);
-    expect(canUseFeature('chat_themes')).toBe(true);
-    expect(canUseFeature('wallpaper')).toBe(true);
-    expect(canUseFeature('premium_stickers')).toBe(true);
-    expect(canUseFeature('date_picker')).toBe(true);
+    for (const feature of PREMIUM_FEATURES) {
+      expect(canUseFeature(feature)).toBe(true);
+    }
   });
 
-  it('checkoutPremium activates premium without paymento', async () => {
-    const ok = await checkoutPremium();
-    expect(ok).toBe(true);
+  it('rejects an unknown feature name even with premium', () => {
+    setPremium(true);
+    expect(canUseFeature('live_location' as PremiumFeature)).toBe(false);
+    expect(canUseFeature('' as PremiumFeature)).toBe(false);
+  });
+});
+
+describe('checkoutPremium', () => {
+  it('falls back to a local 30-day activation when no paymento widget exists', async () => {
+    await expect(checkoutPremium()).resolves.toBe(true);
     expect(isPremium()).toBe(true);
+    expect(localStorage.getItem('nova_premium_expiry')).toBeTruthy();
   });
 
-  it('checkoutPremium uses paymento when available', async () => {
-    const mockCheckout = vi.fn().mockResolvedValue({ ok: true });
-    (window as any).paymento = { checkout: mockCheckout };
-    const ok = await checkoutPremium();
-    expect(mockCheckout).toHaveBeenCalledWith({
+  it('invokes the paymento widget with the fixed plan parameters', async () => {
+    const checkout = vi.fn().mockResolvedValue({ ok: true });
+    (window as unknown as Record<string, unknown>).paymento = { checkout };
+    await expect(checkoutPremium()).resolves.toBe(true);
+    expect(checkout).toHaveBeenCalledWith({
       plan: 'premium',
       amount: MIN_SUBSCRIPTION_COST,
       currency: 'usd',
     });
-    expect(ok).toBe(true);
     expect(isPremium()).toBe(true);
+    // The free-trial marker is cleared once a payment succeeded.
+    expect(localStorage.getItem('nova_premium_free_until')).toBeNull();
   });
 
-  it('ensureFirstMonthFree activates free trial and sets first install', () => {
-    expect(localStorage.getItem(FIRST_INSTALL_KEY)).toBeNull();
-    expect(localStorage.getItem(PREMIUM_FREE_UNTIL_KEY)).toBeNull();
-
-    ensureFirstMonthFree();
-
-    const firstInstall = localStorage.getItem(FIRST_INSTALL_KEY);
-    const freeUntil = localStorage.getItem(PREMIUM_FREE_UNTIL_KEY);
-    expect(firstInstall).not.toBeNull();
-    expect(freeUntil).not.toBeNull();
-    expect(parseInt(freeUntil!, 10)).toBeGreaterThan(Date.now());
+  it('returns false when the widget reports a failed payment', async () => {
+    (window as unknown as Record<string, unknown>).paymento = {
+      checkout: vi.fn().mockResolvedValue({ ok: false }),
+    };
+    localStorage.setItem('nova_premium_free_until', String(Date.now() + 60_000));
+    await expect(checkoutPremium()).resolves.toBe(false);
+    expect(isPremium()).toBe(true); // trial untouched
   });
 
-  it('ensureFirstMonthFree is idempotent', () => {
-    ensureFirstMonthFree();
-    const first = localStorage.getItem(FIRST_INSTALL_KEY);
-    ensureFirstMonthFree();
-    expect(localStorage.getItem(FIRST_INSTALL_KEY)).toBe(first);
-  });
-
-  it('isPremium returns true during free trial without paid flag', () => {
-    const now = Date.now();
-    localStorage.setItem(PREMIUM_FREE_UNTIL_KEY, String(now + 10 * 24 * 60 * 60 * 1000));
-    expect(isPremium()).toBe(true);
-  });
-
-  it('isPremium returns false after free trial expired', () => {
-    const past = Date.now() - 1000;
-    localStorage.setItem(PREMIUM_FREE_UNTIL_KEY, String(past));
+  it('returns false and stays non-premium when the widget rejects', async () => {
+    (window as unknown as Record<string, unknown>).paymento = {
+      checkout: vi.fn().mockRejectedValue(new Error('network down')),
+    };
+    await expect(checkoutPremium()).resolves.toBe(false);
     expect(isPremium()).toBe(false);
   });
 
-  it('freeDaysRemaining returns days left in trial', () => {
-    const now = Date.now();
-    localStorage.setItem(PREMIUM_FREE_UNTIL_KEY, String(now + 5 * 24 * 60 * 60 * 1000));
-    expect(freeDaysRemaining()).toBeGreaterThanOrEqual(5);
+  it('returns false when the widget throws synchronously', async () => {
+    Object.defineProperty(window, 'paymento', {
+      configurable: true,
+      get() {
+        throw new Error('broken getter');
+      },
+    });
+    await expect(checkoutPremium()).resolves.toBe(false);
   });
+});
 
-  it('freeDaysRemaining returns 0 when no trial', () => {
-    expect(freeDaysRemaining()).toBe(0);
-  });
-
-  it('MIN_SUBSCRIPTION_COST is a low minimum price', () => {
-    expect(MIN_SUBSCRIPTION_COST).toBeGreaterThan(0);
-    expect(MIN_SUBSCRIPTION_COST).toBeLessThanOrEqual(99);
-  });
-
-  it('getMinSubscriptionCost returns the constant', () => {
+describe('pricing constants', () => {
+  it('exposes a low, positive micro-subscription price', () => {
+    expect(MIN_SUBSCRIPTION_COST).toBe(390);
     expect(getMinSubscriptionCost()).toBe(MIN_SUBSCRIPTION_COST);
+  });
+
+  it('never gates safety features behind the subscription', () => {
+    const sold = PREMIUM_FEATURES as readonly string[];
+    for (const safety of ['calls', 'live_location', 'disappearing_messages']) {
+      expect(sold).not.toContain(safety);
+    }
   });
 });

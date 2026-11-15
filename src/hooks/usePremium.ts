@@ -6,6 +6,7 @@ import {
   ensureFirstMonthFree,
   freeDaysRemaining,
   getMinSubscriptionCost,
+  resumePremiumCheckout,
   type PremiumFeature,
 } from '../lib/premium';
 
@@ -15,16 +16,36 @@ export function usePremium() {
   const [premium, setPremiumState] = useState<boolean>(isPremium());
   const [loading, setLoading] = useState(false);
 
+  const refresh = useCallback(async () => {
+    ensureFirstMonthFree();
+    const resumed = await resumePremiumCheckout();
+    if (resumed) {
+      setPremiumState(true);
+      return true;
+    }
+    const active = isPremium();
+    setPremiumState(active);
+    return active;
+  }, []);
+
   useEffect(() => {
     ensureFirstMonthFree();
-    setPremiumState(isPremium());
-  }, []);
+    void refresh();
+
+    const onFocus = () => {
+      void refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refresh]);
 
   const checkout = useCallback(async () => {
     setLoading(true);
     const ok = await checkoutPremium();
-    setPremiumState(ok);
     setLoading(false);
+    setPremiumState(isPremium());
     return ok;
   }, []);
 
