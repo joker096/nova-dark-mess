@@ -61,8 +61,10 @@ import {
   nextJoinOutboxDelay,
 } from './lib/social/joinRequestRelay';
 import { MOCK_CHATS } from './data/mockMessengerData';
-import { OnboardingWizard } from './components/OnboardingWizard';
 import { isOnboardingComplete } from './lib/onboarding';
+const OnboardingWizard = lazy(() =>
+  import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
+);
 
 type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map';
 
@@ -544,7 +546,11 @@ export default function App() {
   // instead of landing on a pre-filled "Hello, Joseph" profile.
   if (!onboardingDone) {
     if (isInitialized === false) return <ScreenFallback />;
-    return <OnboardingWizard onDone={() => setOnboardingDone(true)} />;
+    return (
+      <Suspense fallback={<ScreenFallback />}>
+        <OnboardingWizard onDone={() => setOnboardingDone(true)} />
+      </Suspense>
+    );
   }
 
   return (
