@@ -1,46 +1,22 @@
 {
-  "version": "1.0.0",
-  "publishedAt": "2026-06-01T00:00:00Z",
-  "notes": "Initial public release. 1:1 + group chats, WebRTC P2P, post-quantum ML-KEM-768, mesh compass, 10-layer security, Premium $0.49/mo via PaymentO.",
+  "version": "1.0.49",
+  "publishedAt": "2026-11-14T00:00:00Z",
+  "notes": "Mobile-only release: Android on Google Play, iOS in App Store review.",
   "files": [
-    {
-      "platform": "windows",
-      "file": "NovaDarkMessenger-1.0.0-setup.exe",
-      "kind": "exe",
-      "sha256": "REPLACE_WITH_SHA256",
-      "size": 125000000,
-      "present": true
-    },
-    {
-      "platform": "macos",
-      "file": "NovaDarkMessenger-1.0.0-universal.tar.gz",
-      "kind": "app",
-      "sha256": "REPLACE_WITH_SHA256",
-      "size": 98000000,
-      "present": true
-    },
-    {
-      "platform": "linux",
-      "file": "NovaDarkMessenger-1.0.0-x86_64.AppImage",
-      "kind": "appimage",
-      "sha256": "REPLACE_WITH_SHA256",
-      "size": 110000000,
-      "present": true
-    },
     {
       "platform": "android",
       "file": "",
       "kind": "store",
-      "url": "https://play.google.com/store/apps/details?id=ru.messanger",
-      "note": "Google Play · rolling out",
+      "url": "https://play.google.com/store/apps/details?id=com.messanger.e2e",
+      "note": "Google Play",
       "present": false
     },
     {
       "platform": "ios",
       "file": "",
       "kind": "store",
-      "url": "https://apps.apple.com/app/id0",
-      "note": "App Store · rolling out",
+      "url": "",
+      "note": "App Store · review in progress",
       "present": false
     }
   ]

@@ -25,6 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,6 +86,14 @@ ok(`Checked ${refs.size} local asset references`);
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.cpSync(LANDING, path.join(OUT, 'landing'), { recursive: true });
+// Privacy policy must always ship: Google Play validates this exact URL.
+// It lives one level above landing/ on the host; stage it into the bundle too.
+const privacySrc = path.join(ROOT, 'landing', 'privacy.html');
+if (fs.existsSync(privacySrc)) {
+  fs.copyFileSync(privacySrc, path.join(OUT, 'landing', 'privacy.html'));
+} else {
+  fail('landing/privacy.html is missing — Google Play requires it');
+}
 fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(OUT, 'server.js'));
 fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(OUT, 'package.json'));
 fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(OUT, '.env.example'));
@@ -102,6 +111,38 @@ pkg.dependencies = {
   dotenv: pkg.dependencies?.dotenv || '16.4.0',
 };
 fs.writeFileSync(path.join(OUT, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+
+// Pre-compressed siblings (served by nginx gzip_static/brotli_static when on)
+// must be rebuilt from the fresh sources — copying landing/ would ship stale
+// HTML/CSS/JS inside the .gz/.br files.
+const COMPRESSIBLE = /\.(html|css|js|json|svg|webmanifest)$/;
+const TEXT_ASSETS = ['index.html', 'styles.css', 'app.js', 'releaseUrls.js', 'paymento.js', 'manifest.json'];
+function walk(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...walk(p));
+    else out.push(p);
+  }
+  return out;
+}
+let compressed = 0;
+for (const file of walk(path.join(OUT, 'landing'))) {
+  const rel = path.relative(path.join(OUT, 'landing'), file).split(path.sep).join('/');
+  if (!COMPRESSIBLE.test(file)) continue;
+  const hasSibling = fs.existsSync(file + '.gz') || fs.existsSync(file + '.br');
+  if (!hasSibling && !TEXT_ASSETS.includes(rel)) continue;
+  const buf = fs.readFileSync(file);
+  fs.writeFileSync(file + '.gz', zlib.gzipSync(buf, { level: 9 }));
+  fs.writeFileSync(file + '.br', zlib.brotliCompressSync(buf, {
+    params: {
+      [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
+      [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length,
+    },
+  }));
+  compressed++;
+}
+ok(`Regenerated .gz/.br for ${compressed} files`);
 
 ok(`Bundle staged at ${OUT}`);
 const count = fs.readdirSync(OUT).length;
