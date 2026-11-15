@@ -67,7 +67,14 @@ const RELAY_MAX_PER_DEST = parseInt(process.env.RELAY_MAX_PER_DEST || '200', 10)
 // ───────────────────────────────────────────────────────────────────────────
 const PAYMENTO_API_URL = (process.env.PAYMENTO_API_URL || 'https://api.paymento.io').replace(/\/+$/, '');
 const PAYMENTO_API_KEY = (process.env.PAYMENTO_API_KEY || '').trim();
-const PAYMENTO_SECRET = (process.env.PAYMENTO_SECRET_KEY || process.env.PAYMENTO_SECRET || '').trim();
+// PaymentO signs IPN callbacks with the store secret. Accept a comma-separated
+// list so a rotated/extra secret can be added without a code change.
+const PAYMENTO_SECRETS = (process.env.PAYMENTO_SECRET_KEYS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const PAYMENTO_SECRET = (PAYMENTO_SECRETS[0] || process.env.PAYMENTO_SECRET_KEY || process.env.PAYMENTO_SECRET || '').trim();
+if (PAYMENTO_SECRET && !PAYMENTO_SECRETS.includes(PAYMENTO_SECRET)) PAYMENTO_SECRETS.unshift(PAYMENTO_SECRET);
 const PAYMENTO_RETURN_URL = (process.env.PAYMENTO_RETURN_URL || '').trim();
 const PAYMENTO_VERIFY_URL = (process.env.PAYMENTO_VERIFY_URL || `${PAYMENTO_API_URL}/v1/payment/verify`).trim();
 const PAYMENTO_GATEWAY_URL = (process.env.PAYMENTO_GATEWAY_URL || 'https://app.paymento.io/gateway').trim();
@@ -163,6 +170,12 @@ function verifyPaymentoSignature(rawBody, provided, secret) {
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest();
   const given = Buffer.from(providedHex, 'hex');
   return expected.length === given.length && crypto.timingSafeEqual(expected, given);
+}
+
+/** Returns the secret that matched the signature, or null. */
+function verifyPaymentoSignatureAny(rawBody, provided) {
+  const matched = PAYMENTO_SECRETS.find((secret) => verifyPaymentoSignature(rawBody, provided, secret));
+  return matched || null;
 }
 
 function parseIpnBody(rawBody) {
@@ -407,31 +420,38 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
   const body = parseIpnBody(rawBody);
   if (!body) return res.status(400).json({ ok: false, reason: 'bad body' });
   const provided = String(req.headers['x-hmac-sha256-signature'] || body.signature || body.signature_sha256 || body.ipn_signature || '');
-  const rawBuf = Buffer.from(JSON.stringify(body));
-  const bodyJson = JSON.stringify(body);
 
   // HMAC is computed over the raw bytes PaymentO signed.
-  const secret = PAYMENTO_SECRET;
-  let signatureOk = false;
   let sigError = null;
-  if (secret) {
-    const expected = crypto.createHmac('sha256', secret).update(rawBody).digest();
-    const providedHex = String(provided || '').trim();
-    if (/^[0-9a-f]{64}$/i.test(providedHex)) {
-      const given = Buffer.from(providedHex, 'hex');
-      signatureOk = expected.length === given.length && crypto.timingSafeEqual(expected, given);
-    } else {
-      sigError = 'malformed signature';
-    }
-  } else {
+  let signatureOk = false;
+  if (PAYMENTO_SECRETS.length === 0) {
     sigError = 'secret not configured';
+  } else if (!/^[0-9a-f]{64}$/i.test(String(provided).trim())) {
+    sigError = 'malformed signature';
+  } else {
+    const matched = verifyPaymentoSignatureAny(rawBody, provided);
+    if (matched) {
+      signatureOk = true;
+      console.log('[paymento] IPN signature matched secret:', String(matched).slice(0, 6) + '…' + String(matched).slice(-4));
+    } else {
+      sigError = 'bad signature';
+    }
   }
 
   const ipn = normalizeIpn(body);
-  const ok = signatureOk;
 
-  if (!ok) {
-    console.warn('[paymento] IPN rejected', { paymentId: ipn.paymentId, reason: sigError || 'bad signature' });
+  if (!signatureOk) {
+    // Log enough to diagnose a secret mismatch from the host without leaking it.
+    console.warn('[paymento] IPN rejected', {
+      paymentId: ipn.paymentId,
+      reason: sigError,
+      method: req.method,
+      contentType: req.headers['content-type'],
+      secretsConfigured: PAYMENTO_SECRETS.length,
+      providedSignature: String(provided).slice(0, 16),
+      rawBody: rawBody.toString('utf8').slice(0, 600),
+    });
+
     return res.status(400).json({ ok: false, reason: 'bad signature' });
   }
 
