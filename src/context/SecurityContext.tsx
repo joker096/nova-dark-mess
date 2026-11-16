@@ -430,7 +430,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const hashPin = useCallback(async (pin: string): Promise<string> => {
     const salt = new TextEncoder().encode(pinHashSalt);
-    const key = await deriveKeyFromPassphrase(pin, salt as unknown as Uint8Array);
+    const key = await deriveKeyFromPassphrase(pin, salt as unknown as Uint8Array, undefined, true);
     const raw = await crypto.subtle.exportKey('raw', key);
     return bufferToHex(new Uint8Array(raw));
   }, []);
