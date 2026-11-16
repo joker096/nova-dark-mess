@@ -270,6 +270,14 @@ describe('SettingsModal', () => {
     expect(screen.getByTestId('legal-modal-privacy')).toBeTruthy();
   });
 
+  it('opens the moderation centre from settings', () => {
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: 'settings.moderation' }));
+
+    expect(screen.getByTestId('sanction-screen')).toBeTruthy();
+    expect(screen.getByText('moderation.clearTitle')).toBeTruthy();
+  });
+
   it('closes on Escape', () => {
     const { onClose } = renderSettings();
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -323,6 +331,7 @@ describe('SettingsModal', () => {
       presenceSharing: false,
       presenceHashing: true,
       presenceTtl: 'normal',
+      webrtcRelayOnly: false,
     });
     delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
   });
@@ -416,6 +425,49 @@ describe('SettingsModal', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('alpha beta gamma delta'));
     expect(screen.getByRole('button', { name: /common.copied/ })).toBeTruthy();
+  });
+
+  it('shows local ad preferences and resets them', () => {
+    localStorage.setItem('nova_ads_dismissed_v1', JSON.stringify(['campaign-1']));
+    localStorage.setItem('nova_ads_blocked_advertisers_v1', JSON.stringify(['advertiser-1']));
+    renderSettings();
+
+    expect(screen.getByTestId('ad-preferences')).toBeTruthy();
+    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('1');
+    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.adsReset' }));
+
+    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('0');
+    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('0');
+    expect(localStorage.getItem('nova_ads_dismissed_v1')).toBeNull();
+    expect(localStorage.getItem('nova_ads_blocked_advertisers_v1')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('settings.adsResetDone');
+  });
+
+  it('restores one hidden ad and unblocks one advertiser', () => {
+    localStorage.setItem(
+      'nova_ads_dismissed_v1',
+      JSON.stringify(['cmp_demo_auralis_001', 'cmp_demo_second_002']),
+    );
+    localStorage.setItem(
+      'nova_ads_blocked_advertisers_v1',
+      JSON.stringify(['adv_demo_auralis', 'adv_demo_second']),
+    );
+    renderSettings();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.adsRestore' })[0]);
+    expect(JSON.parse(localStorage.getItem('nova_ads_dismissed_v1') ?? '[]')).toEqual([
+      'cmp_demo_second_002',
+    ]);
+    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('1');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.adsUnblock' })[0]);
+    expect(JSON.parse(localStorage.getItem('nova_ads_blocked_advertisers_v1') ?? '[]')).toEqual([
+      'adv_demo_second',
+    ]);
+    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('1');
+    expect(screen.getByRole('status').textContent).toBe('settings.adsPreferenceUpdated');
   });
 
   it('reports an empty join request outbox', () => {

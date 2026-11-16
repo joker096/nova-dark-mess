@@ -78,7 +78,7 @@ export class RoomDataChannel {
     if (typeof BroadcastChannel === 'undefined') return;
 
     const createSignalChannel = this.options.createSignalChannel;
-    let channel: BroadcastChannel | null = null;
+    let channel: BroadcastChannel | null;
     try {
       channel = createSignalChannel
         ? createSignalChannel(`${SIGNAL_PREFIX}${this.room}`)

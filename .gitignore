@@ -32,3 +32,4 @@ tools/gitleaks/
 .e2e/report.json
 .e2e/bugbash/**/artifacts/
 .e2e/bugbash/**/report.json
+.andromity/

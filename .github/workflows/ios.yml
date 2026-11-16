@@ -38,15 +38,39 @@ jobs:
           brew install cocoapods || true
           pod setup --silent || true
 
+      - name: Check Xcode version (16+ required for 16 KB memory pages)
+        run: |
+          $xcodeVersion = xcodebuild -version | Select-Object -First 1
+          Write-Host $xcodeVersion
+          if ($xcodeVersion -notmatch 'Xcode\s+(\d+)') {
+            Write-Error "Не удалось определить версию Xcode."
+            exit 1
+          }
+          $major = [int]$matches[1]
+          if ($major -lt 16) {
+            Write-Error "Требуется Xcode 16+ для поддержки 16 КБ страниц памяти (App Store Connect). Текущий: $xcodeVersion"
+            exit 1
+          }
+
       - name: Build iOS (IPA)
         shell: pwsh
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+          SIGNING_CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
         run: |
           $version = "${{ github.event.inputs.version }}"
           if (-not $version) { $version = $GITHUB_REF_NAME -replace '^v','' }
-          .\scripts\deploy-ios.ps1 -Version $version -Channel release
+          $splat = @{
+            Version = $version
+            Channel = 'release'
+            AppleId = $env:APPLE_ID
+            TeamId = $env:TEAM_ID
+            ProvisioningProfile = $env:PROVISIONING_PROFILE
+            SigningCertificate = $env:SIGNING_CERTIFICATE
+          }
+          .\scripts\deploy-ios.ps1 @splat
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4

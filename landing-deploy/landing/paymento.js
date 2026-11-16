@@ -62,7 +62,7 @@
         e.preventDefault();
         startCheckout();
       });
-      btn.textContent = 'Unlock Premium — ' + PRICE + '/mo';
+      btn.textContent = 'Unlock Premium — ' + PRICE + ' / ' + PERIOD;
     });
   }
 

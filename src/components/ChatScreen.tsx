@@ -80,6 +80,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
+import { loadPrivacyPrefs } from '../lib/network/privacyMode';
 import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
 import { RoomDataChannel, isRoomChannelSupported } from '../lib/p2p/roomChannel';
 import type { FileTransferMessage } from '../lib/p2p/fileTransfer';
@@ -1112,7 +1113,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       return;
     }
 
-    const call = new P2PMediaCall({ localFingerprint, peerFingerprint, mode });
+    const call = new P2PMediaCall({
+      localFingerprint,
+      peerFingerprint,
+      mode,
+      // Relay-only ICE hides the local IP from the peer; the user opts in via
+      // Settings → Privacy (WebRTC IP privacy) and needs a TURN server.
+      icePolicy: loadPrivacyPrefs().webrtcRelayOnly ? 'relay-only' : 'direct',
+    });
     mediaCallRef.current = call;
     setCallConnectionStatus('connecting');
 
@@ -4923,6 +4931,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         localStream={localCallStream}
         remoteStream={remoteCallStream}
         connectionStatus={callConnectionStatus}
+        hidesIp={loadPrivacyPrefs().webrtcRelayOnly}
         isMicOn={isCallMicOn}
         isCameraOn={isCallCameraOn}
         onToggleMic={() => {

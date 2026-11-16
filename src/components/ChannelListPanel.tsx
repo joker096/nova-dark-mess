@@ -64,17 +64,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       maximumFractionDigits: 1,
     }).format(count);
 
-  const popularChannels = useMemo(
-    () =>
-      channels
-        .filter((c) => c.isPopular === true && c.visibility !== 'private')
-        .filter(
-          (c) =>
-            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-        ),
-    [channels, searchQuery],
-  );
+
 
   const privateChannels = useMemo(
     () =>
@@ -88,20 +78,9 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
     [channels, searchQuery],
   );
 
-  const regularChannels = useMemo(
-    () => channels.filter((c) => c.isPopular !== true && c.visibility !== 'private'),
-    [channels],
-  );
 
-  const filteredRegular = useMemo(
-    () =>
-      regularChannels.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-    [regularChannels, searchQuery],
-  );
+
+
 
   const isFollowed = (channel: ChannelInfo) =>
     channel.isFollowing === true || channel.isOwned === true;

@@ -1,0 +1,240 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Mess&amp;Anger — Terms of Service</title>
+    <meta
+      name="description"
+      content="Terms of Service for Mess&Anger, an end-to-end encrypted peer-to-peer messenger: your keys, acceptable use, the optional premium subscription, and liability."
+    />
+    <style>
+      :root {
+        --bg: #e0e5ec;
+        --bg-dark: #1b1f27;
+        --txt: #2d3240;
+        --txt-dark: #d7dce6;
+        --accent: #4b7bec;
+        --radius: 18px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--txt);
+        min-height: 100vh;
+        padding: 32px 16px 64px;
+      }
+      body.dark { background: var(--bg-dark); color: var(--txt-dark); }
+      .wrap { max-width: 860px; margin: 0 auto; }
+      .topbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 18px; }
+      button.toggle {
+        border: none; cursor: pointer; padding: 10px 16px; border-radius: var(--radius);
+        background: var(--bg); color: var(--txt);
+        box-shadow: 6px 6px 12px #b8bcc4, -6px -6px 12px #ffffff;
+      }
+      body.dark button.toggle { background: var(--bg-dark); color: var(--txt-dark); box-shadow: 6px 6px 12px #11141a, -6px -6px 12px #232833; }
+      button.toggle:active { box-shadow: inset 4px 4px 8px #b8bcc4, inset -4px -4px 8px #ffffff; }
+      body.dark button.toggle:active { box-shadow: inset 4px 4px 8px #11141a, inset -4px -4px 8px #232833; }
+      header { text-align: center; margin-bottom: 28px; }
+      h1 { font-size: clamp(26px, 5vw, 40px); margin: 0 0 6px; }
+      .sub { opacity: 0.7; font-size: 15px; }
+      .sec {
+        margin-top: 22px; background: var(--bg); border-radius: var(--radius); padding: 22px 24px;
+        box-shadow: 8px 8px 18px #b8bcc4, -8px -8px 18px #ffffff;
+      }
+      body.dark .sec { background: var(--bg-dark); box-shadow: 8px 8px 18px #11141a, -8px -8px 18px #232833; }
+      .sec h2 { margin: 0 0 10px; font-size: 18px; }
+      .sec p, .sec li { font-size: 14px; line-height: 1.7; }
+      .sec ul { margin: 0; padding-left: 18px; }
+      .sec code { background: rgba(127,127,127,0.18); padding: 2px 6px; border-radius: 6px; font-size: 12.5px; }
+      footer { text-align: center; opacity: 0.55; font-size: 12px; margin-top: 30px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <a class="toggle" style="text-decoration:none" href="./">← Back to app</a>
+        <button class="toggle" id="theme">Dark / Light</button>
+      </div>
+      <header>
+        <h1>Mess&amp;Anger — Terms of Service</h1>
+        <div class="sub">Last updated: November 16, 2026</div>
+      </header>
+
+      <div class="sec">
+        <h2>The short version</h2>
+        <p>
+          Mess&amp;Anger is a free, end-to-end encrypted peer-to-peer messenger. You hold your own keys.
+          We do not run accounts, store your messages, or ask for personal data. Public channels may
+          show clearly labelled first-party ads; private chats are never scanned or advertised in. The
+          optional premium tier costs USD 3.90 per 30 days and is unlocked by a signed licence key
+          bound to your device.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>1. What the service is</h2>
+        <p>
+          Mess&amp;Anger encrypts content on your device and delivers it directly between participants,
+          optionally through a thin relay that stores only opaque encrypted envelopes for a short time.
+        </p>
+        <p>
+          There is no account, no phone number, no email address, and no contact upload. Your identity is
+          a cryptographic keypair generated on your device and represented by a 12- or 24-word recovery
+          phrase.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>2. Your keys and your responsibility</h2>
+        <p>
+          Only you can decrypt your messages. If you lose your recovery phrase and have no encrypted
+          backup, the data cannot be recovered by us or by anyone else.
+        </p>
+        <p>You are responsible for keeping your device, recovery phrase and backups safe, and for the content you send.</p>
+      </div>
+
+      <div class="sec">
+        <h2>3. Acceptable use</h2>
+        <p>You agree not to use the app or public channels to:</p>
+        <ul>
+          <li>publish or distribute child sexual abuse material, or sexual content involving minors;</li>
+          <li>promote violence, violent extremism, terrorism or credible threats of harm;</li>
+          <li>sell or facilitate illegal drugs, controlled substances, weapons, stolen data, forged documents or other illegal goods and services;</li>
+          <li>publish non-consensual intimate imagery, stalk, dox or expose another person's private data;</li>
+          <li>harass, threaten, defraud, impersonate another person, brand, channel or moderator, or run scam and spam campaigns;</li>
+          <li>distribute malware, phishing links, credential-stealing pages, or attack the relay and other participants' devices;</li>
+          <li>infringe copyright or other rights, or evade a sanction by creating a new identity to continue the same violation.</li>
+        </ul>
+      </div>
+
+      <div class="sec">
+        <h2>4. Moderation, reports and sanctions</h2>
+        <p>
+          Reports can target a public post, comment, channel or ad. A report includes the target
+          identifier, a reason, an optional note and a case id. Do not include passwords, recovery
+          phrases or private chats in a report.
+        </p>
+        <p>
+          Because Nova has no accounts, a sanction applies to the pseudonymous fingerprint derived
+          from an identity key. A sanction may remove content, limit distribution, throttle traffic or
+          pause relay delivery for that fingerprint. It does not give Nova access to your keys, local
+          history or encrypted messages.
+        </p>
+        <p>
+          We use human review for sanctions that restrict access. Automated action is reserved for
+          clear, high-confidence cases; urgent reports are prioritised. Sanctions have a stated level,
+          reason code and duration. You can appeal once from the in-app moderation screen without an
+          email address; temporary sanctions can be appealed while active, and the appeal window is
+          90 days from issue. The response is delivered in the app and filing an appeal does not pause
+          the sanction.
+        </p>
+        <p>
+          Creating a new identity does not erase a sanction on the old fingerprint, and using a new
+          identity to continue the same violation is itself a violation. In a peer-to-peer network no
+          operator can guarantee that every banned device is permanently unreachable; we use layered
+          limits rather than promise an absolute block.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>5. Channels and advertising</h2>
+        <p>
+          Public channels may include a limited number of native sponsored cards between posts. Ads
+          are labelled, never cover photos or videos, never autoplay sound, and can be hidden or
+          reported. Ads are not shown in end-to-end encrypted chats or private conversations.
+        </p>
+        <p>
+          Advertising is contextual: it may use the channel topic and language, but not message
+          content, contact lists, private profile data, cross-site tracking or advertising identifiers.
+          Channel owners and advertisers receive aggregated statistics only, subject to minimum group
+          sizes and delay.
+        </p>
+        <p>
+          Advertisers are pseudonymous. Nova does not run KYC, request passports, legal-entity
+          documents, phone numbers or email addresses from advertisers. An advertiser is identified by
+          an <code>advertiser_id</code> with a prepaid balance; creatives and destination domains are
+          reviewed before delivery. Channel payouts go to a pseudonymous channel wallet after a
+          holdback. Taxes and any duties are the recipient's responsibility.
+        </p>
+        <p>
+          Channel owners are responsible for the content they publish and for configuring ad density
+          and blocked categories. Nova may pause a campaign, reject a creative, remove a channel from
+          advertising or block an <code>advertiser_id</code> and its domains for violations. Prepaid
+          funds for invalid traffic or undelivered impressions are returned to the ad balance.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>6. Premium subscription</h2>
+        <p>
+          Premium is an optional paid tier billed at <b>USD 3.90 per 30 days</b>. Payment is processed
+          by <b>PaymentO</b>; we never see your card details. Premium removes sponsored cards from
+          public channels.
+        </p>
+        <p>
+          After a verified payment the relay issues a signed licence key
+          (<code>MA1.payload.signature</code>) bound to your device identifier. The key unlocks premium
+          features for 30 days and can be re-activated on the same device. Because the key is bound to a
+          device, a licence cannot be transferred to another device unless the app provides a transfer
+          flow. Contact support if a payment succeeded but no key was issued.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>7. No warranty</h2>
+        <p>
+          The app is provided "as is" and "as available", without warranties of any kind, express or
+          implied, including fitness for a particular purpose and uninterrupted or error-free operation.
+        </p>
+        <p>
+          Delivery depends on both devices being reachable, directly or through the relay, and on your
+          network. We do not guarantee message delivery.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>8. Limitation of liability</h2>
+        <p>
+          To the maximum extent permitted by law, we are not liable for indirect, incidental or
+          consequential damages, or for loss of data, messages or keys. Where liability cannot be
+          excluded, it is limited to the amount you paid in the last 30 days (or USD 3.90 if you used the
+          free tier).
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>9. Changes and termination</h2>
+        <p>
+          We may update these terms as the app changes; the current version is always shown in Settings
+          and at this URL. Continuing to use the app after a change means you accept the updated terms.
+        </p>
+        <p>
+          You can stop using the service at any time and delete local data from Settings; generating a
+          new identity permanently disconnects the old one. Deleting local data does not lift an active
+          sanction on the old fingerprint.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>10. Contact</h2>
+        <p>
+          Questions about these terms:
+          <b><a href="mailto:top.seo.one@gmail.com">top.seo.one@gmail.com</a></b>
+        </p>
+        <p>See also the <a href="./privacy.html">Privacy Policy</a>.</p>
+      </div>
+
+      <footer>Mess&amp;Anger — end-to-end encrypted P2P messenger</footer>
+    </div>
+
+    <script>
+      document.getElementById('theme').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+      });
+    </script>
+  </body>
+</html>

@@ -30,6 +30,7 @@
   "dependencies": {
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
+    "@noble/post-quantum": "^0.7.1",
     "@scure/bip39": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/plugin-deep-link": "^2.6.3",

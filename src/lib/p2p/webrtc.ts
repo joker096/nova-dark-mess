@@ -11,12 +11,22 @@ export interface P2PConnectionState {
 export interface WebRtcOptions {
   iceServers?: RTCIceServer[];
   connectTimeoutMs?: number;
+  /**
+   * IP-privacy mode. 'direct' (default) allows host/srflx candidates, which
+   * exposes your IP to the peer and STUN; 'relay-only' sets
+   * `iceTransportPolicy: 'relay'`, so media flows only through TURN and the
+   * peer learns only the TURN server's address.
+   */
+  icePolicy?: 'direct' | 'relay-only';
 }
 
 const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
 ];
+
+/** TURN servers usable in relay-only mode; empty unless self-hosted. */
+export const TURN_SERVERS: RTCIceServer[] = [];
 
 export class P2PMessengerChannel {
   private pc: RTCPeerConnection | null = null;
@@ -32,6 +42,7 @@ export class P2PMessengerChannel {
   private remoteMediaStream: MediaStream | null = null;
   private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   private readonly iceServers: RTCIceServer[];
+  private readonly icePolicy: 'direct' | 'relay-only';
   private readonly connectTimeoutMs: number;
 
   public readonly peerFingerprint: string;
@@ -48,6 +59,7 @@ export class P2PMessengerChannel {
     this.peerFingerprint = peerFingerprint;
     this.signaling = signaling;
     this.iceServers = options.iceServers ?? DEFAULT_ICE_SERVERS;
+    this.icePolicy = options.icePolicy ?? 'direct';
     this.connectTimeoutMs = options.connectTimeoutMs ?? 30000;
     this.currentState = {
       peerFingerprint,
@@ -119,7 +131,14 @@ export class P2PMessengerChannel {
   private ensurePeerConnection(): RTCPeerConnection {
     if (this.pc) return this.pc;
 
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    // In relay-only mode the peer connection refuses host/srflx candidates:
+    // media can only flow through a TURN relay, so the peer never learns the
+    // local IP addresses and the STUN servers are never contacted.
+    const relayOnly = this.icePolicy === 'relay-only' && TURN_SERVERS.length > 0;
+    const pc = new RTCPeerConnection({
+      iceServers: relayOnly ? TURN_SERVERS : this.iceServers,
+      ...(relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
+    });
     this.pc = pc;
 
     pc.ontrack = (event) => {

@@ -33,6 +33,8 @@ interface VideoCallOverlayProps {
   isCameraOn?: boolean;
   onToggleMic?: () => void;
   onToggleCamera?: () => void;
+  /** True when media flows through a TURN relay and the peer cannot see the local IP. */
+  hidesIp?: boolean;
 }
 
 type VideoFilter = 'none' | 'studio' | 'cyber' | 'noir';
@@ -53,6 +55,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   isCameraOn: controlledCameraOn,
   onToggleMic,
   onToggleCamera,
+  hidesIp = false,
 }) => {
   const { account } = useAccount();
   const name = contactName || 'Contact';
@@ -370,9 +373,12 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             </button>
           )}
 
-          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80">
+          <div
+            className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80"
+            title={hidesIp ? 'Media relayed through TURN — your IP is hidden' : 'Direct P2P media: the peer sees your IP address. Enable “Hide my IP in calls” in Settings → Privacy to relay it.'}
+          >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>End-to-end Encrypted</span>
+            <span>{hidesIp ? 'E2EE · IP hidden' : 'End-to-end Encrypted'}</span>
           </div>
         </div>
 

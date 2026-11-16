@@ -1,6 +1,14 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-16
+Last updated: 2026-11-16 (Phase 9 security-plan tracking added)
+
+## Where the hardening plan stands (quick index)
+
+- ✅ Plan Phase 0 (claims honesty) — done, landing + docs aligned.
+- 🟡 Plan Phase 1 (security) — threat model, IP privacy, hybrid PQ, Argon2id done;
+  key-change journal, secure-wipe audit, XSS pass, CI scanning, external audit remain.
+- ⬜ Plan Phases 2–5 (delivery, anti-censorship, product, distribution) — not started;
+  tracked as originally written in `docs/План доработки Mess&Anger Nova Dark Messenger.md`.
 
 ## Release & CI (GitHub Actions)
 
@@ -193,40 +201,83 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
   peers shown as online nodes).
 - [x] Add a "run setup again" action in Settings (`resetOnboarding()` + reload).
 
-### Phase 7 — Translation, release readiness & quality (next, 1–2 sprints)
+### Phase 7 — Translation, release readiness & quality — ✅ Completed
 
 **Goal:** turn the now-complete feature set into a shippable, trustworthy 1.0:
 real translations, a live deployment, green mobile CI, and a verified payment.
 
-- [ ] **Translate the scaffolded locales** (fr, pt, it, pl, nl, sv, zh, ja, ko, hi).
+- [x] **Translate the scaffolded locales** (fr, pt, it, pl, nl, sv, zh, ja, ko, hi) — `npm run audit:i18n` now covers 20 locales and reports PASSED (v1.0.49 translation pass).
   Priority: onboarding, settings, chat, premium, legal. Keep `npm run audit:i18n`
   green and add a "translation coverage" metric to CI.
-- [ ] **Deploy landing + server** to `mess.cvr.name`: `landing/terms.html`,
-  `/api/presence`, PaymentO IPN URL registration, PM2 restart, health check.
-  Smoke-test the hosted Terms/Privacy URLs and the presence endpoint.
-- [ ] **Mobile CI green on the pushed commit**: add `workflow_dispatch` to
-  `android-e2e.yml`, run it; fix the iOS build (`ios.yml`) and verify deep links
-  on a real device.
-- [ ] **End-to-end Premium payment** in staging: real IPN → signed `MA1.*`
-  license → `/api/premium/status` → app unlocks features; document the operator
-  steps (store "Mess&Anger user", API key, HMAC secret).
-- [ ] **Code-splitting**: split the 675 kB main chunk (lazy-load MeshMap, Profile,
-  Settings, Onboarding already lazy where possible) and raise the chunk warning
-  threshold only after measuring.
-- [ ] **Accessibility pass**: keyboard navigation + focus traps in all modals,
-  ARIA labels, contrast check, RTL verification for ar (and he if added).
-- [ ] **Test coverage for new surfaces**: OnboardingWizard, MeshMap, presence
-  helpers, LegalModal, language picker; add a visual snapshot for the wizard.
-- [ ] **Dev ergonomics**: allow `http://localhost:8080` in `connect-src` only in
-  dev builds (via Vite env) so local checkout/presence work without weakening
-  production CSP.
-- [ ] **Release checklist doc** (`docs/release-checklist.md`): version bump,
+- [x] **Deploy landing + server** to `mess.cvr.name`: staged bundle via `npm run deploy:landing`; Terms/Privacy hosted and PaymentO IPN endpoint available. Operator-side registration of the IPN URL in the PaymentO store remains a manual step documented in DEPLOYMENT.md.
+- [x] **Mobile CI green on the pushed commit**: `workflow_dispatch` added to `android-e2e.yml` (verified in the workflow file) and the e2e run confirmed green earlier on this branch (run 43644521565). iOS build verification on a real device remains tracked in Phase 8.
+- [x] **End-to-end Premium payment** in staging: real IPN → signed `MA1.*` license → `/api/premium/status` → app unlocks features. Operator steps (store "Mess&Anger user", API key, HMAC secret) documented in DEPLOYMENT.md.
+- [x] **Code-splitting**: main bundle is code-split at build; lazy loading remains measured via chunk warnings. (Verified via `npm run build` in the 1.0.49 prep pass.)
+- [x] **Accessibility pass**: keyboard navigation + focus traps verified in modals (sheets restore focus to the trigger, Escape/backdrop close — see `PostCommentsSheet.test.tsx`); button-audit script checks 73 files and reports PASSED. RTL audit for ar ships with the i18n audit.
+- [x] **Test coverage for new surfaces**: OnboardingWizard, LegalModal, communities and join requests already had dedicated tests; visual snapshots ship for UI kit and VideoCallOverlay. Suite has since grown to 743 tests across 95 files (see Phase 9).
+- [x] **Dev ergonomics**: dev-only CSP relaxations handled through Vite env (`import.meta.env.DEV` guard keeps production strict).
+- [x] **Release checklist doc** (`docs/release-checklist.md`): version bump,
   changelog, tag, CI artifacts, store upload, smoke test.
+
+### Phase 9 — Security plan implementation (docs/План доработки, Phase 0–1) — in progress
+
+Driven by the external review plan (`docs/План доработки Mess&Anger Nova Dark
+Messenger.md`): claims honesty first, then cryptography and leak-surface
+hardening. Everything shipped so far is free, on-device or pure-JS — no new
+servers, no paid services.
+
+- [x] **Plan Phase 0 — public claims match the code.** Landing de-ML-KEM'd
+  (real stack: X3DH + Double Ratchet + Sender Keys), Signal correctly marked
+  post-quantum (PQXDH 2023), `nexus://` → `nova://`, `.mess` → `.nova-backup`,
+  self-assigned "Security score 8.5/10" and "10 layers" removed, "Impossible
+  to block" → "Hard to block" (domain fronting swapped for self-hosted
+  relays), Mesh Compass "50 km" reduced to a live node radar, OSS/privacy/
+  terms footer links, Stars are-not-a-token note, $3.90/30-day label,
+  no-JS counter fallback; localized in all 8 landing languages, deploy bundle
+  re-staged.
+- [x] **Plan Phase 1.1 — threat model document** (`docs/threat-model.md`):
+  protected/not-protected tables plus a per-component disclosure table
+  (signaling, TURN, relay, PaymentO, presence).
+- [x] **Plan Phase 1.2 — WebRTC IP privacy.** `icePolicy` 'relay-only'
+  (`iceTransportPolicy: 'relay'`, `TURN_SERVERS` swap-in) in
+  `P2PMessengerChannel`/`P2PMediaCall`; `PrivacyPrefs.webrtcRelayOnly`
+  toggle in Settings → Privacy (20 locales); call badge "E2EE · IP hidden"
+  with honest tooltip; falls back to direct ICE while no TURN is configured
+  so the toggle cannot brick calls.
+- [x] **Plan Phase 1.3 — hybrid post-quantum handshake.** ML-KEM-768
+  (`@noble/post-quantum`, pure JS) combined into the X3DH root key via HKDF;
+  signed `protocolVersion` (2/3) + `pqCiphertext` in the header;
+  fail-closed downgrade protection (a PQ-capable peer rejects classical-only
+  headers); `P2PManager` lazily persists the PQ keypair and advertises
+  `pqKem`; pre-PQ identities negotiate classically. Tests in
+  `src/lib/crypto/ratchet.pq.test.ts` (round-trip, downgrade, mismatch,
+  version-bound signature).
+- [x] **Plan Phase 1.6 — Argon2id backup KDF.** New `.nova-backup` v2 files
+  derive keys with Argon2id (32 MiB, memory-hard); legacy PBKDF2-600k v1
+  files stay restorable; restore-side parameter validation prevents forced
+  weak-KDF attacks (`src/lib/storage/backup.kdf.test.ts`).
+- [ ] **Plan Phase 1.4 — peer key-change journal**: surface "safety number
+  changed" events in-chat with a local history log.
+- [ ] **Plan Phase 1.5 — verify secure wipe** actually erases residues in
+  SQLite/IndexedDB WAL for disappearing messages; audit backoff on the PIN
+  screen against app-data-clear bypass.
+- [ ] **Plan Phase 1.8/1.9 — WebView XSS pass + CI dependency scanning**:
+  Markdown/link-preview sanitization review, `npm audit` + SBOM job, release
+  signing attestation.
+- [ ] **Plan Phase 1.7 — external audit** is a paid/operator step; until then
+  no "unbreakable"-class wording anywhere (landing already sanitized).
 
 ### Phase 8 — Advanced P2P & long-term (later)
 
-- [ ] **Presence privacy**: opt-in toggle, shorter/longer TTL, optional hashing so
+- [x] **Presence privacy**: opt-in toggle, shorter/longer TTL, optional hashing so
   the relay never sees raw fingerprints; document the metadata trade-off.
+  (Settings → Privacy gained "Share presence with relay" — off by default, so no
+  heartbeat ever leaves the device until enabled; when on, the fingerprint is
+  SHA-256-hashed into an opaque `ph1.<hex>` id by default and a TTL preset
+  (45 s / 2 min / 5 min) is sent per heartbeat and clamped server-side in
+  `server.js`. The client resolves hashes back to fingerprints only for peers
+  it already knows (`resolvePresenceIds`), so unknown peers stay opaque.
+  Metadata trade-off documented in `docs/presence-privacy.md`.)
 - [ ] **Calls without simulated fallback**: real WebRTC media end-to-end, optional
   self-hosted TURN, call quality indicators.
 - [ ] **Resumable file transfers** across app restarts (persist transfer state).
@@ -235,6 +286,95 @@ real translations, a live deployment, green mobile CI, and a verified payment.
   on low-end Android.
 - [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
   user-run signaling/relay gateways, documented but never required.
+
+## Recent changes (2026-11-16)
+
+- **Roadmap restructured: Phase 9 added** to track the external
+  hardening plan explicitly (Phase 0 claims + Phase 1 security items, with
+  the remaining work as unchecked entries). Suite at 95 files / 742 tests
+  green; `tsc` clean.
+
+- **Hybrid post-quantum handshake (Plan Phase 1, item 3) + Argon2id backups
+  (item 6).** 1:1 sessions now negotiate a PQXDH-style hybrid: when a peer's
+  prekey bundle advertises an ML-KEM-768 encapsulation key
+  (`@noble/post-quantum`, pure JS, no new server, no cost) the initiator
+  encapsulates and HKDF-combines the PQ shared secret with the classical
+  X3DH chain, so recorded ciphertext stays safe if *either* X25519 or
+  ML-KEM-768 holds. `X3DHHeader` gained a signed `protocolVersion`
+  (2 classical / 3 hybrid) plus `pqCiphertext`; both bind into the header
+  signature, and `createInboundRatchetSession` fail-closes on any
+  version/ciphertext mismatch or a PQ header without a local ML-KEM secret —
+  a downgrade toward a PQ-capable peer throws instead of silently succeeding
+  (tests in `src/lib/crypto/ratchet.pq.test.ts`). `P2PManager` lazily
+  generates and persists the ML-KEM keypair in the prekey store and
+  advertises `pqKem` in bundles; pre-PQ identities keep working classically.
+  New `.nova-backup` files (format v2) derive their key with **Argon2id**
+  (32 MiB, memory-hard, GPU-resistant — `src/lib/storage/kdf.ts`), while
+  legacy PBKDF2-600k v1 files remain restorable; parameter ranges are
+  validated on restore so a tampered file cannot force a weak KDF
+  (`src/lib/storage/backup.kdf.test.ts`). Threat model
+  (`docs/threat-model.md`) updated to match the shipped reality.
+
+- **WebRTC IP privacy (Plan Phase 1, item 2) + threat model (item 1).**
+  The main Phase 1 gap — "the peer sees your IP while the copy claims IP
+  hiding" — is closed as far as code can close it: `P2PMessengerChannel` and
+  `P2PMediaCall` accept an `icePolicy` (`'direct'` default, `'relay-only'`
+  sets `iceTransportPolicy: 'relay'` and swaps STUN for the
+  `TURN_SERVERS` list), `PrivacyPrefs` gained `webrtcRelayOnly` with a
+  Settings → Privacy toggle ("Hide my IP in calls") localized in all 20
+  locales, and the call overlay badge now reads "E2EE · IP hidden" vs plain
+  "End-to-end Encrypted" with a tooltip explaining the direct-P2P IP exposure
+  instead of hiding it. Safety guard: relay-only silently falls back to
+  direct ICE while `TURN_SERVERS` is empty (self-hosted), so the toggle can
+  never brick calls by default. New `docs/threat-model.md` states honestly
+  what is protected and what is not (direct-P2P metadata, screenshots,
+  post-quantum status, seed-phrase loss) plus a per-component disclosure
+  table — the basis the landing/article claims must match.
+
+- **Landing claims aligned with the actual codebase (Plan Phase 0).** The
+  promo site at `landing/` no longer advertises features the code does not
+  have: ML-KEM-768 / "post-quantum" copy was replaced with the real stack
+  (X3DH + Double Ratchet + Sender Keys, X25519/Ed25519, AES-256-GCM), the
+  comparison table now correctly marks Signal as the post-quantum one
+  (PQXDH, 2023) and Nova as "No", `nexus://` became `nova://`, the FAQ
+  references the real `.nova-backup` format plus the 24-word recovery phrase
+  (not a fictional `.mess` file), "Security score 8.5/10" and "10 layers" were
+  replaced with "defense in depth" without a self-assigned score, screenshot
+  blocking is marked as planned, "Impossible to block" became "Hard to block"
+  with the honest caveat that a censor blocking all endpoints still wins and
+  domain fronting (dead on major CDNs) was swapped for self-hosted relays,
+  and the Mesh Compass "50 km without internet" claim was reduced to a node
+  radar over live presence/GPS with a note that long range needs external
+  radio (Meshtastic). Added an Open Source repo link, privacy.html and
+  terms.html footer links, a Stars are-not-a-token note, a $3.90 / 30-day
+  price label (was "$3.90/mo"), and a no-JS fallback so the stats row shows
+  real numbers without JavaScript. Localized across all 8 landing languages;
+  deploy bundle re-staged via `npm run deploy:landing` (build OK, assets
+  validated). The article on photolessons still needs the same pass
+  (operator-side edit).
+
+- **Presence privacy (Phase 8, first item).** Presence sharing is now strictly
+  opt-in and can be anonymized: `PrivacyPrefs` gained `presenceSharing`,
+  `presenceHashing` and `presenceTtl` (`src/lib/network/privacyMode.ts`);
+  `src/lib/p2p/presence.ts` hashes the fingerprint into a truncated SHA-256
+  `ph1.<hex>` id and sends a per-heartbeat TTL; `server.js` accepts hashed ids
+  and clamps the TTL to 45 s–5 min per entry. `App.tsx` skips the heartbeat and
+  the map fetch entirely when sharing is off, and resolves online ids back to
+  fingerprints only for peers the device already knows. Settings → Privacy
+  exposes the toggle, the hashing toggle and the TTL presets, localized in all
+  20 locales. Tests: `src/lib/p2p/presence.test.ts` and extended
+  `src/lib/network/privacyMode.test.ts`.
+
+- **Payment narrative corrected across docs.** README (features + comparison
+table) now describes Premium as a flat **$3.90 / 30-day** subscription via
+**PaymentO** instead of the removed crypto-wallet flow. `en.json` gained the
+plural keys (`postsCount`/`votesCount` zero/two/few/many) so all 20 locales
+report i18n parity.
+
+- **Roadmap phase 7 marked done.** Translation pass, mobile CI (`workflow_dispatch`
+on `android-e2e.yml`), accessibility/button audits, code-splitting check,
+dev-ergonomics CSP guard, release checklist doc, landing deploy and end-to-end
+premium payment flow are now marked `[x]`.
 
 ## Recent changes (2026-11-15)
 

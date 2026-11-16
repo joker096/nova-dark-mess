@@ -58,9 +58,9 @@ describe('LanguageSwitcher visual snapshot', () => {
     render(<LanguageSwitcher />);
     const btn = screen.getByTitle('Change Language / Змінити мову / Сменить язык');
     fireEvent.click(btn);
-    const dropdown = findByClass(document, 'bg-slate-900/95')!;
+    const dropdown = findByClass(document, 'bg-[#14151d]/98')!;
     expect(dropdown.className).toContain('shadow-2xl');
-    expect(dropdown.className).toContain('backdrop-blur-md');
+    expect(dropdown.className).toContain('backdrop-blur-xl');
     expect(dropdown.className).toContain('animate-in');
     expect(dropdown.textContent).toContain('Language / Мова');
     expect(dropdown.textContent).toContain('English');
@@ -72,7 +72,7 @@ describe('LanguageSwitcher visual snapshot', () => {
     render(<LanguageSwitcher />);
     const btn = screen.getByTitle('Change Language / Змінити мову / Сменить язык');
     fireEvent.click(btn);
-    const dropdown = findByClass(document, 'bg-slate-900/95')!;
+    const dropdown = findByClass(document, 'bg-[#14151d]/98')!;
     expect(dropdown.textContent).toContain('🇬🇧');
     expect(dropdown.textContent).toContain('🇷🇺');
     expect(dropdown.textContent).toContain('🇺🇦');
@@ -81,18 +81,18 @@ describe('LanguageSwitcher visual snapshot', () => {
     expect(dropdown.textContent).toContain('Українська');
   });
 
-  it('marks active language with cyan accent and check', () => {
+  it('marks active language with accent color and check', () => {
     render(<LanguageSwitcher />);
     const btn = screen.getByTitle('Change Language / Змінити мову / Сменить язык');
     fireEvent.click(btn);
-    const dropdown = findByClass(document, 'bg-slate-900/95')!;
+    const dropdown = findByClass(document, 'bg-[#14151d]/98')!;
     const activeBtn = Array.from(dropdown.querySelectorAll('button')).find(
-      (b) => b.className.includes('bg-cyan-500/5'),
+      (b) => b.className.includes('bg-[var(--nova-accent-color)]/10'),
     )!;
-    expect(activeBtn.className).toContain('text-cyan-400');
+    expect(activeBtn.className).toContain('text-[var(--nova-accent-color)]');
     expect(activeBtn.className).toContain('font-semibold');
     expect(activeBtn.textContent).toContain('English');
     const check = activeBtn.querySelector('svg')!;
-    expect(check.getAttribute('class')).toContain('text-cyan-400');
+    expect(check.getAttribute('class')).toContain('text-[var(--nova-accent-color)]');
   });
 });

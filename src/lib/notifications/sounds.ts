@@ -182,9 +182,20 @@ export function playSound(kind: SoundKind, id: SoundId = loadSoundId()): void {
   }
 }
 
+export function isVibrationEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem('nova_messenger_settings');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as Partial<{ vibration: boolean }>;
+    return parsed.vibration === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Haptic buzz for incoming notifications, honoring the vibration pref. */
-export function vibrate(enabled: boolean): void {
-  if (!enabled) return;
+export function vibrate(): void {
+  if (!isVibrationEnabled()) return;
   try {
     navigator.vibrate?.(18);
   } catch {

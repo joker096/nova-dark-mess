@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
@@ -16,10 +16,19 @@ import {
   type PrivacyPrefs,
 } from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
+import {
+  clearLocalAdPrefs,
+  loadAdPreferences,
+  restoreHiddenAd,
+  unblockAdvertiser,
+  type LocalAdPreferences,
+} from '../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import { LegalModal } from './LegalModal';
+import { SanctionScreen } from './SanctionScreen';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -116,6 +125,7 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenAnalytics }) => {
   const { t } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const { identity, is2FAEnabled, totpSecret, enable2FA, disable2FA, exportEncryptedBackup, importEncryptedBackup, pinEnabled, setPin, verifyPin, removePin, clearLocalEncryptedData } = useSecurity();
@@ -145,11 +155,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [cloudToken, setCloudToken] = useState('');
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
   const [joinOutboxCount, setJoinOutboxCount] = useState<number>(() => loadJoinOutbox().length);
+  const [adPrefs, setAdPrefs] = useState<LocalAdPreferences>(() => loadAdPreferences());
+  const [adPrefsMsg, setAdPrefsMsg] = useState<string | null>(null);
   const [soundId, setSoundId] = useState<SoundId>(loadSoundId);
 
-  // Relay queue length can change while the modal is closed.
+  // Relay queue length and local ad preferences can change while the modal is closed.
   useEffect(() => {
-    if (isOpen) setJoinOutboxCount(loadJoinOutbox().length);
+    if (!isOpen) return;
+    setJoinOutboxCount(loadJoinOutbox().length);
+    setAdPrefs(loadAdPreferences());
+    setAdPrefsMsg(null);
   }, [isOpen]);
   const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
   const [backupBusy, setBackupBusy] = useState(false);
@@ -168,6 +183,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [cacheMsg, setCacheMsg] = useState<string | null>(null);
   const [aboutMsg, setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
+  const [moderationOpen, setModerationOpen] = useState(false);
 
   useEffect(() => {
     applyAppTheme(appTheme);
@@ -215,6 +231,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     return () => clearTimeout(timer);
   }, [cacheMsg]);
 
+  useEffect(() => {
+    if (!adPrefsMsg) return;
+    const timer = setTimeout(() => setAdPrefsMsg(null), 2500);
+    return () => clearTimeout(timer);
+  }, [adPrefsMsg]);
+
   if (!isOpen) return null;
 
   const updatePrivacyPref = (metadataMinimization: boolean) => {
@@ -246,6 +268,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       localStorage.removeItem('nova_messenger_chat_cache');
     } catch { void 0; }
     setCacheMsg(t('settings.cacheCleared'));
+  };
+
+  const handleResetAdPrefs = () => {
+    clearLocalAdPrefs();
+    setAdPrefs(loadAdPreferences());
+    setAdPrefsMsg(t('settings.adsResetDone'));
+  };
+
+  const handleRestoreAd = (campaignId: string) => {
+    restoreHiddenAd(campaignId);
+    setAdPrefs(loadAdPreferences());
+    setAdPrefsMsg(t('settings.adsPreferenceUpdated'));
+  };
+
+  const handleUnblockAdvertiser = (advertiserId: string) => {
+    unblockAdvertiser(advertiserId);
+    setAdPrefs(loadAdPreferences());
+    setAdPrefsMsg(t('settings.adsPreferenceUpdated'));
+  };
+
+  const readableAdId = (id: string) => {
+    const label = id.replace(/^(cmp|adv)_/, '').replace(/^demo_/, '').replace(/_/g, ' ');
+    return label.charAt(0).toUpperCase() + label.slice(1);
   };
 
   const cloudTarget = () => ({
@@ -491,6 +536,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 pt-[max(0.75rem,var(--nova-safe-top))] pb-[max(0.75rem,var(--nova-safe-bottom))] animate-in fade-in duration-200"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -510,6 +556,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+            aria-label={t('common.close')}
             title={t('common.close')}
           >
             <X className="w-4 h-4" />
@@ -728,6 +775,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             enabled={privacyPrefs.metadataMinimization}
             onToggle={() => updatePrivacyPref(!privacyPrefs.metadataMinimization)}
           />
+          <ToggleRow
+            label={t('settings.webrtcRelayOnly')}
+            enabled={privacyPrefs.webrtcRelayOnly}
+            onToggle={() => updatePresencePref({ webrtcRelayOnly: !privacyPrefs.webrtcRelayOnly })}
+          />
+          {privacyPrefs.webrtcRelayOnly && (
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+              {t('settings.webrtcRelayOnlyHint')}
+            </p>
+          )}
           {privacyPrefs.metadataMinimization && (
             <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
               {t('settings.metadataMinimizationHint')}
@@ -769,6 +826,94 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </div>
             </div>
           )}
+
+          <SectionHeader icon={<Megaphone className="w-3.5 h-3.5" />} title={t('settings.advertising')} />
+          <div className="px-1 pb-2 space-y-2" data-testid="ad-preferences">
+            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              {t('settings.adsPrivacyHint')}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2">
+                <span className="text-[10px] text-[#8c919d]">{t('settings.adsHidden')}</span>
+                <span className="mt-0.5 block text-sm font-bold text-white" data-testid="ad-prefs-hidden">
+                  {adPrefs.hiddenAds.length}
+                </span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2">
+                <span className="text-[10px] text-[#8c919d]">{t('settings.adsBlocked')}</span>
+                <span className="mt-0.5 block text-sm font-bold text-white" data-testid="ad-prefs-blocked">
+                  {adPrefs.blockedAdvertisers.length}
+                </span>
+              </div>
+            </div>
+            {adPrefs.hiddenAds.length > 0 && (
+              <div className="space-y-1" data-testid="ad-prefs-hidden-list">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d]">
+                  {t('settings.adsHidden')}
+                </p>
+                <div className="max-h-28 space-y-1 overflow-y-auto">
+                  {adPrefs.hiddenAds.map((id) => (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-1"
+                    >
+                      <span className="truncate text-[10.5px] text-white/60" title={id}>
+                        {readableAdId(id)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreAd(id)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white/45 transition hover:bg-white/5 hover:text-white"
+                      >
+                        <RotateCcw className="h-2.5 w-2.5" />
+                        {t('settings.adsRestore')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {adPrefs.blockedAdvertisers.length > 0 && (
+              <div className="space-y-1" data-testid="ad-prefs-blocked-list">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d]">
+                  {t('settings.adsBlocked')}
+                </p>
+                <div className="max-h-28 space-y-1 overflow-y-auto">
+                  {adPrefs.blockedAdvertisers.map((id) => (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-1"
+                    >
+                      <span className="truncate text-[10.5px] text-white/60" title={id}>
+                        {readableAdId(id)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnblockAdvertiser(id)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white/45 transition hover:bg-white/5 hover:text-white"
+                      >
+                        <Ban className="h-2.5 w-2.5" />
+                        {t('settings.adsUnblock')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleResetAdPrefs}
+              disabled={adPrefs.hiddenAds.length === 0 && adPrefs.blockedAdvertisers.length === 0}
+              className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98] disabled:cursor-default disabled:opacity-35"
+            >
+              {t('settings.adsReset')}
+            </button>
+            {adPrefsMsg && (
+              <p role="status" className="text-[10.5px] text-emerald-300/80">
+                {adPrefsMsg}
+              </p>
+            )}
+          </div>
 
           <SectionHeader icon={<Send className="w-3.5 h-3.5" />} title={t('settings.joinOutbox')} />
           <div className="px-1 pb-2 space-y-2" data-testid="join-outbox">
@@ -1009,6 +1154,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             <span className="text-[13px] text-white/90">{t('app.name')}</span>
             <span className="text-[11px] font-mono text-[#8c9195]">v1.0.0</span>
           </div>
+          <button
+            type="button"
+            onClick={() => setModerationOpen(true)}
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <ShieldAlert className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
+              {t('settings.moderation')}
+            </span>
+            <ChevronRight className="w-4 h-4 text-white/35" />
+          </button>
           <button
             type="button"
             onClick={() => setLegalDoc('terms')}
@@ -1263,6 +1419,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           }}
         />
       )}
+
+      {/* Moderation / appeals */}
+      {moderationOpen && <SanctionScreen onClose={() => setModerationOpen(false)} />}
 
       {/* Terms / Privacy */}
       {legalDoc && <LegalModal docId={legalDoc} onClose={() => setLegalDoc(null)} />}
