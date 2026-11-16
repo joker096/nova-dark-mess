@@ -4,45 +4,37 @@
 ### ./
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| a5b54aa2-ab12-4876-92ac-619633a8bc33 | 🔴 bugfix | Secret-scan false positives allowlisted for full-tree commit | 2026-11-14 |
+| ea74c4fc-4d22-41e6-9ae6-28203eebbc23 | 🟣 feature | Landing mobile-only: Play Store link, responsive fixes, deploy bundle | 2026-11-15 |
 
-**Key concepts:** pre-commit, secret-scanning, gitleaks, false-positive, allowlist
+**Key concepts:** landing, mobile-only, google-play, responsive, i18n, publish-landing, deploy-bundle
+
+### landing/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| ea74c4fc-4d22-41e6-9ae6-28203eebbc23 | 🟣 feature | Landing mobile-only: Play Store link, responsive fixes, deploy bundle | 2026-11-15 |
+
+**Key concepts:** landing, mobile-only, google-play, responsive, i18n, publish-landing, deploy-bundle
+
+### landing-deploy\landing\releases/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| ea74c4fc-4d22-41e6-9ae6-28203eebbc23 | 🟣 feature | Landing mobile-only: Play Store link, responsive fixes, deploy bundle | 2026-11-15 |
+
+**Key concepts:** landing, mobile-only, google-play, responsive, i18n, publish-landing, deploy-bundle
+
+### landing\releases/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| ea74c4fc-4d22-41e6-9ae6-28203eebbc23 | 🟣 feature | Landing mobile-only: Play Store link, responsive fixes, deploy bundle | 2026-11-15 |
+
+**Key concepts:** landing, mobile-only, google-play, responsive, i18n, publish-landing, deploy-bundle
 
 ### scripts/
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| a5b54aa2-ab12-4876-92ac-619633a8bc33 | 🔴 bugfix | Secret-scan false positives allowlisted for full-tree commit | 2026-11-14 |
+| ea74c4fc-4d22-41e6-9ae6-28203eebbc23 | 🟣 feature | Landing mobile-only: Play Store link, responsive fixes, deploy bundle | 2026-11-15 |
 
-**Key concepts:** pre-commit, secret-scanning, gitleaks, false-positive, allowlist
-
-### src-tauri/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| a5b54aa2-ab12-4876-92ac-619633a8bc33 | 🔴 bugfix | Secret-scan false positives allowlisted for full-tree commit | 2026-11-14 |
-
-**Key concepts:** pre-commit, secret-scanning, gitleaks, false-positive, allowlist
-
-### src\components/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| a5b54aa2-ab12-4876-92ac-619633a8bc33 | 🔴 bugfix | Secret-scan false positives allowlisted for full-tree commit | 2026-11-14 |
-| 60a21ded-76d2-488f-a3ed-2f6097c0b7c5 | 🔴 bugfix | ProfileScreen avatar override reset bug + full test suite green | 2026-11-14 |
-
-**Key concepts:** pre-commit, secret-scanning, gitleaks, false-positive, allowlist, profile-screen, avatar-override, useEffect, vitest, i18n
-
-### src\lib\p2p/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| a5b54aa2-ab12-4876-92ac-619633a8bc33 | 🔴 bugfix | Secret-scan false positives allowlisted for full-tree commit | 2026-11-14 |
-
-**Key concepts:** pre-commit, secret-scanning, gitleaks, false-positive, allowlist
-
-### src\lib\ui\__visual__/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| 60a21ded-76d2-488f-a3ed-2f6097c0b7c5 | 🔴 bugfix | ProfileScreen avatar override reset bug + full test suite green | 2026-11-14 |
-
-**Key concepts:** profile-screen, avatar-override, useEffect, vitest, i18n, scrollable-row, snapshot-test
+**Key concepts:** landing, mobile-only, google-play, responsive, i18n, publish-landing, deploy-bundle
 
 💡 *Use `mem-find` to search full details. Use `mem-create` to save important decisions.*
 <!-- /open-mem-context -->

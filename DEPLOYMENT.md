@@ -139,10 +139,15 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 
 1. **Проверка** — все локальные asset-ссылки в `index.html` существуют, все `lang/*.json` и `releases/releases.json` валидный JSON.
 2. **Стадируем** `landing-deploy/` — копия `landing/` + `server.js` + `package.json` (отдельный пакет `mess-anger-landing`) + `.env.example`.
-3. **Деплой** (`--deploy user@host` или `LANDING_HOST` env): scp бандла на хост, `npm install --production` + `pm2 restart mess-landing` (или `npm start` в фоне).
+3. **Деплой** (`--deploy user@host` или `LANDING_HOST` env): scp бандла на хост, `npm install --production` + `pm2 restart mess-api` (или `npm start` в фоне).
 4. **Проверка** — `GET /` (index.html), `GET /releases/releases.json`, `GET /api/health`, `POST /api/paymento/ipn`.
 
-Требования на хосте: Node.js 18+, `PORT` (по дефолту 8080), `PAYMENTO_SECRET` (HMAC-секрет от PaymentO для подписи IPN), Nginx/reverse-proxy с TLS до `mess.cvr.name`.
+Требования на хосте: Node.js 18+, `PORT` (в production — 3002, как в `scripts/deploy/mess.cvr.name.conf`), `PAYMENTO_SECRET` (HMAC-секрет от PaymentO для подписи IPN), Nginx/reverse-proxy с TLS до `mess.cvr.name`.
+
+> 💡 Оплата Premium идёт через **PaymentO** — фикс **$3.90 / 30 дней**, без
+> криптовалютных кошельков и привязки карт в приложении. IPN-хук
+> `POST /api/paymento/ipn` проверяет HMAC-подпись, сохраняет чек без PII и
+> отдаёт устройству подписанную лицензию `MA1.<payload>.<sig>`.
 
 **Пример релиза Android:**
 ```powershell

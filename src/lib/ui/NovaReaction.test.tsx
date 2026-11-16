@@ -73,6 +73,7 @@ describe('NovaReactionPicker', () => {
         onSelect={onSelect}
         allowCustom
         customLabel="Add a custom reaction"
+        customSubmitLabel="Add"
         trigger={<button type="button">React</button>}
       />,
     );

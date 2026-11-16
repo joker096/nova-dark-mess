@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS } from './sounds';
+import { isVibrationEnabled, loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, vibrate } from './sounds';
 
 type OscSpec = { freq: number[]; gain: number[]; type: string };
 const created: OscSpec[] = [];
@@ -85,6 +85,20 @@ describe('notification sounds', () => {
     );
     playSound('incoming', 'nova');
     expect(ctxInstances).toBe(0);
+  });
+
+  it('only vibrates when the vibration pref is enabled', () => {
+    const vibrateSpy = vi.fn();
+    vi.stubGlobal('navigator', { ...navigator, vibrate: vibrateSpy });
+
+    expect(isVibrationEnabled()).toBe(false);
+    vibrate();
+    expect(vibrateSpy).not.toHaveBeenCalled();
+
+    localStorage.setItem('nova_messenger_settings', JSON.stringify({ vibration: true }));
+    expect(isVibrationEnabled()).toBe(true);
+    vibrate();
+    expect(vibrateSpy).toHaveBeenCalledWith(18);
   });
 
   it('incoming is louder than outgoing', () => {

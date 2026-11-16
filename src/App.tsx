@@ -16,6 +16,7 @@ import { ChannelScreen } from './components/ChannelScreen';
 import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
+import { SanctionGate } from './components/SanctionGate';
 
 // Secondary screens and the settings modal are loaded on demand, so their code
 // (qr-code rendering, analytics charts, crypto backup UI) stays out of the
@@ -579,6 +580,7 @@ export default function App() {
       {isLocked && pinHash ? (
         <PinLockScreen onUnlock={unlock} />
       ) : (
+        <SanctionGate>
         <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
@@ -852,6 +854,7 @@ export default function App() {
         </Suspense>
       )}
         </div>
+        </SanctionGate>
       )}
     </>
   );

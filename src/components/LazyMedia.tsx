@@ -10,7 +10,7 @@ export interface LazyMediaProps {
 /**
  * Lazy-loads media only when it enters the viewport.
  */
-export function LazyMedia({ src, alt, className, placeholder }: LazyMediaProps) {
+export function LazyMedia({ src, alt, className, placeholder: _placeholder }: LazyMediaProps) {
   const ref = useRef<HTMLImageElement>(null);
   const [visible, setVisible] = useState(false);
 

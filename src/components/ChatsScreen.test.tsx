@@ -41,15 +41,15 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     vi.clearAllMocks();
   });
 
-  it('renders all 7 bottom-nav tabs with localized keys', () => {
+  it('renders six bottom-nav tabs with localized keys and moves analytics to settings', () => {
     renderChats();
     expect(screen.getByRole('button', { name: 'chats.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'channels' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'folders' })).toBeTruthy();
     expect(screen.getAllByRole('button', { name: 'profile.title' }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('button', { name: 'analytics.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'meshMap.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'settings.title' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
   });
 
   it('calls onOpenFolders when Folders tab clicked', () => {

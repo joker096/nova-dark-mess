@@ -17,6 +17,8 @@ export interface MediaCallOptions {
   mode: MediaCallMode;
   signalingUrl?: string;
   iceServers?: RTCIceServer[];
+  /** 'relay-only' routes media through TURN so the peer never sees the local IP. */
+  icePolicy?: 'direct' | 'relay-only';
 }
 
 type StatusListener = (status: MediaCallStatus) => void;
@@ -144,7 +146,7 @@ export class P2PMediaCall {
       this.options.localFingerprint,
       this.options.peerFingerprint,
       this.signaling,
-      { iceServers: this.options.iceServers }
+      { iceServers: this.options.iceServers, icePolicy: this.options.icePolicy }
     );
 
     this.channel.attachLocalStream(this.localStream);

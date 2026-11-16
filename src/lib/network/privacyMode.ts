@@ -17,6 +17,8 @@ export interface PrivacyPrefs {
   presenceHashing: boolean;
   /** How long the relay keeps a heartbeat alive. */
   presenceTtl: PresenceTtl;
+  /** Route WebRTC media through TURN only, hiding the local IP from peers. */
+  webrtcRelayOnly: boolean;
 }
 
 export interface BatteryStatus {
@@ -31,6 +33,7 @@ export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = {
   presenceSharing: false,
   presenceHashing: true,
   presenceTtl: 'normal',
+  webrtcRelayOnly: false,
 };
 
 const PRESENCE_TTLS: PresenceTtl[] = ['short', 'normal', 'long'];
@@ -61,6 +64,10 @@ export function loadPrivacyPrefs(): PrivacyPrefs {
           ? parsed.presenceHashing
           : DEFAULT_PRIVACY_PREFS.presenceHashing,
       presenceTtl: parsePresenceTtl(parsed.presenceTtl),
+      webrtcRelayOnly:
+        typeof parsed.webrtcRelayOnly === 'boolean'
+          ? parsed.webrtcRelayOnly
+          : DEFAULT_PRIVACY_PREFS.webrtcRelayOnly,
     };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFS };

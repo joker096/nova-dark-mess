@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -50,6 +50,15 @@ import { ChannelSwitcherModal } from './ChannelSwitcherModal';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { ChannelPostComposerModal } from './ChannelPostComposerModal';
 import { PostCommentsSheet } from './PostCommentsSheet';
+import { ReportSheet } from './ReportSheet';
+import { SponsoredPostCard } from './SponsoredPostCard';
+import { getDemoCampaign } from '../lib/ads/demoCampaign';
+import {
+  AD_PREFS_CHANGED_EVENT,
+  isAdDismissed,
+  isAdvertiserBlocked,
+} from '../lib/ads/localAds';
+import type { ReportTarget } from '../types/moderation';
 import { PollBubble } from './chat/PollBubble';
 import { StickerMedia } from './chat/StickerMedia';
 import {
@@ -125,7 +134,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onInitialCommentsHandled,
 }) => {
   const { t, language } = useLanguage();
-  const { checkout, canUse } = usePremium();
+  const { checkout, canUse, premium } = usePremium();
   const fallbackChannels = useMemo(() => [createDefaultChannel()], []);
   const availableChannels = channels ?? fallbackChannels;
   const channel = availableChannels.find((item) => item.id === channelId) ?? availableChannels[0];
@@ -242,6 +251,21 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [commentDraft, setCommentDraft] = useState('');
   const commentTriggerRef = useRef<HTMLElement | null>(null);
   const [postMenuId, setPostMenuId] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [adDismissed, setAdDismissed] = useState(false);
+  const [, refreshAdPrefs] = useReducer((tick: number) => tick + 1, 0);
+
+  // Settings can reset hidden ads and blocked advertisers without remounting
+  // the feed. Clearing the in-session flag and forcing a render lets the slot
+  // be evaluated again.
+  useEffect(() => {
+    const refresh = () => {
+      setAdDismissed(false);
+      refreshAdPrefs();
+    };
+    window.addEventListener(AD_PREFS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(AD_PREFS_CHANGED_EVENT, refresh);
+  }, []);
   const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
@@ -338,14 +362,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     manualCollapsedRef.current = false;
     scrollDirectionRef.current = null;
     scrollAccumulatorRef.current = 0;
-    let collapsed = false;
     try {
-      collapsed =
+      const collapsed =
         localStorage.getItem(`nova.channel.headerCollapsed.${channel?.id ?? ''}`) === '1';
+      setHeaderCollapsed(collapsed);
     } catch {
-      collapsed = false;
+      setHeaderCollapsed(false);
     }
-    setHeaderCollapsed(collapsed);
   }, [channel?.id]);
 
   const toggleHeader = () => {
@@ -570,6 +593,17 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         .sort((a, b) => postCreatedAt(b) - postCreatedAt(a))
     : feedPosts;
 
+  const demoCampaign = useMemo(() => getDemoCampaign(language), [language]);
+  const showSponsoredCard =
+    !query &&
+    !premium &&
+    !channel.isOwned &&
+    channel.visibility !== 'private' &&
+    displayPosts.length >= 5 &&
+    !adDismissed &&
+    !isAdDismissed(demoCampaign.id) &&
+    !isAdvertiserBlocked(demoCampaign.advertiserId);
+
   useEffect(() => {
     const root = postsScrollRef.current;
     if (!root) return;
@@ -612,24 +646,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const focusMonth = focus.getMonth();
   const focusYear = focus.getFullYear();
 
-  const nowYear = now ? new Date(now).getFullYear() : new Date().getFullYear();
-  const YEAR_OPTIONS = useMemo(
-    () => Array.from({ length: 21 }, (_, i) => nowYear - 10 + i),
-    [nowYear],
-  );
-
-  const setFocusMonth = (month: number) => {
-    setFocusDate(dayKey(new Date(focusYear, month, 1)));
-    setSelectedDay(dayKey(new Date(focusYear, month, 1)));
-  };
-
   const setFocusYear = (year: number) => {
     setFocusDate(dayKey(new Date(year, focusMonth, 1)));
     setSelectedDay(dayKey(new Date(year, focusMonth, 1)));
-  };
-
-  const applyMonthPicker = () => {
-    setIsMonthPickerOpen(false);
   };
 
   const handleJumpToMonth = () => {
@@ -1429,7 +1448,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                showToast(t('channel.reported', 'Reported'));
+                                setReportTarget({
+                                  type: 'post',
+                                  id: post.id,
+                                  channelId: channel.id,
+                                  title: post.title,
+                                });
                                 setPostMenuId(null);
                               }}
                               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/10"
@@ -1595,12 +1619,32 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     </div>
                   </div>
                 </div>
+                {showSponsoredCard && index === 3 && (
+                  <div
+                    className="relative flex items-start gap-2.5"
+                    data-testid="channel-sponsored-slot"
+                  >
+                    <div className="w-10 shrink-0 pt-3 text-right text-[9px] font-bold uppercase tracking-wider text-[var(--nova-accent-color)]/70">
+                      {t('ads.label')}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SponsoredPostCard
+                        campaign={demoCampaign}
+                        onDismissed={() => setAdDismissed(true)}
+                      />
+                    </div>
+                  </div>
+                )}
                   </React.Fragment>
               );
             })}
           </div>
         )}
       </div>
+
+      {reportTarget && (
+        <ReportSheet target={reportTarget} onClose={() => setReportTarget(null)} />
+      )}
 
       {/* Toast Notification */}
       {lightbox && (

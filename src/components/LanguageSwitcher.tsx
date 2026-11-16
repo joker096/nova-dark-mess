@@ -49,21 +49,34 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
     if (!isOpen) return;
     updatePosition();
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (triggerRef.current?.contains(target)) return;
       if (menuRef.current?.contains(target)) return;
       setIsOpen(false);
     };
+    // Keep the dropdown open while it scrolls itself or while the settings
+    // pane scrolls behind it; only close when the trigger leaves the viewport.
+    const handleScroll = (event: Event) => {
+      const target = event.target as Node | null;
+      if (target && menuRef.current?.contains(target)) return;
+      if (target && triggerRef.current?.contains(target)) return;
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) {
+        setIsOpen(false);
+        return;
+      }
+      updatePosition();
+    };
     const handleReflow = () => setIsOpen(false);
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('resize', handleReflow);
-    window.addEventListener('scroll', handleReflow, true);
+    document.addEventListener('scroll', handleScroll, true);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('resize', handleReflow);
-      window.removeEventListener('scroll', handleReflow, true);
+      document.removeEventListener('scroll', handleScroll, true);
     };
   }, [isOpen, updatePosition]);
 
@@ -74,14 +87,14 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        className={`flex items-center gap-2 rounded-xl transition-all duration-200 border border-slate-700/50 bg-slate-900/80 hover:bg-slate-800 text-slate-200 shadow-md backdrop-blur-sm ${
+        className={`flex items-center gap-2 rounded-xl transition-all duration-200 border border-white/10 bg-[#1a1b26] hover:bg-[#22242f] text-white/90 hover:text-white shadow-md backdrop-blur-sm cursor-pointer ${
           compact ? 'px-2.5 py-1.5 text-xs' : 'px-3.5 py-2 text-sm'
         }`}
         title="Change Language / Змінити мову / Сменить язык"
       >
         <span className="text-base leading-none">{currentLang.flag}</span>
         <span className="font-medium tracking-wide">{compact ? currentLang.code.toUpperCase() : currentLang.nativeName}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-white/45 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen &&
@@ -89,10 +102,10 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
           <div
             ref={menuRef}
             style={menuStyle}
-            className="z-[120] flex flex-col overflow-y-auto overscroll-contain rounded-xl bg-slate-900/95 border border-slate-700/60 shadow-2xl backdrop-blur-md py-1.5 animate-in fade-in zoom-in-95 duration-150"
+            className="z-[120] flex flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] rounded-xl bg-[#14151d]/98 border border-white/15 shadow-2xl shadow-black/70 backdrop-blur-xl py-1.5 animate-in fade-in zoom-in-95 duration-150"
           >
-            <div className="sticky top-0 shrink-0 bg-slate-900/95 px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 flex items-center gap-1.5">
-              <Globe className="w-3 h-3 text-cyan-400" />
+            <div className="sticky top-0 shrink-0 bg-[#14151d]/98 px-3 py-1.5 text-[10px] font-bold text-white/45 uppercase tracking-wider border-b border-white/5 flex items-center gap-1.5">
+              <Globe className="w-3 h-3 text-[var(--nova-accent-color)]" />
               Language / Мова
             </div>
             {languages.map((lang: LanguageItem) => (
@@ -104,15 +117,17 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
                   changeLanguage(lang.code as Language);
                   setIsOpen(false);
                 }}
-                className={`w-full shrink-0 text-left px-3.5 py-2.5 text-sm flex items-center justify-between hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors ${
-                  language === lang.code ? 'text-cyan-400 font-semibold bg-cyan-500/5' : 'text-slate-300'
+                className={`w-full shrink-0 text-left px-3.5 py-2.5 text-sm flex items-center justify-between hover:bg-white/[0.06] transition-colors cursor-pointer ${
+                  language === lang.code
+                    ? 'text-[var(--nova-accent-color)] font-semibold bg-[var(--nova-accent-color)]/10'
+                    : 'text-white/80 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-base">{lang.flag}</span>
                   <span>{lang.nativeName}</span>
                 </div>
-                {language === lang.code && <Check className="w-4 h-4 text-cyan-400" />}
+                {language === lang.code && <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />}
               </button>
             ))}
           </div>,

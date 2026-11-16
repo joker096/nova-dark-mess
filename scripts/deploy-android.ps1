@@ -39,9 +39,11 @@ Write-Host "╚═════════════════════�
 Write-Host "`n[1/7] Проверка окружения..." -ForegroundColor Yellow
 
 $javaOk = $false
+$javaVer = ''
 try {
-  $javaVer = & java -version 2>&1 | Select-Object -First 1
-  if ($javaVer -match '"?(1\.8|17|19|21|22|23)"?') { $javaOk = $true }
+  # java -version prints to stderr; cmd /c captures it without PS NativeCommandError noise.
+  $javaVer = cmd /c 'java -version 2>&1' | Out-String
+  if ($LASTEXITCODE -eq 0 -and $javaVer -match 'version "(1\.8|17|19|21|22|23)[.\"]') { $javaOk = $true }
 } catch {}
 if (-not $javaOk) {
   Write-Error "Java JDK не найден. Установите JDK 17 или 21 и добавьте в PATH."

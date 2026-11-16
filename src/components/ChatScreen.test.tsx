@@ -309,6 +309,33 @@ describe('ChatScreen - long press and double tap', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByTitle('React with ❤️')).toBeNull();
   });
+
+  it('reacting to a message does not auto-scroll the conversation to the bottom', () => {
+    const scrolls: Element[] = [];
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function mockScrollIntoView(this: Element) {
+      scrolls.push(this);
+      return undefined as unknown as void;
+    };
+    try {
+      renderChat();
+      scrolls.length = 0; // drop the initial mount autoscroll
+
+      const bubble = getBubble();
+      pointer(bubble, 'pointerDown', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+      fireEvent.click(screen.getByTitle('React with ❤️'));
+
+      expect(screen.getByTestId('bubble-m1').textContent).toContain('❤️');
+      // The only allowed scroll after reacting is the reaction-picker cleanup,
+      // never the messages-end anchor.
+      expect(scrolls.some((el) => el === null || el.tagName === 'DIV')).toBe(false);
+      expect(scrolls.length).toBe(0);
+    } finally {
+      HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
 });
 
 describe('ChatScreen - horizontal lists hide scrollbar', () => {
@@ -413,7 +440,6 @@ describe('ChatScreen - message delete', () => {
     // m4 rather than m3: the delete test above removes m3 from the stored
     // history, and history survives between renders.
     const bubble = getBubble('m4');
-    const text = "If you want to, we can meet and hang out at Harry's";
     fireEvent.click(within(bubble).getByTitle('common.more'));
     fireEvent.click(screen.getByRole('menuitem', { name: 'chat.messageActions.delete' }));
 

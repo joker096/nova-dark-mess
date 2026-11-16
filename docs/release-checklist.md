@@ -34,6 +34,9 @@ Use this checklist for every `v*` release.
 - [ ] Confirm CI artifacts (AAB/APK/IPA) uploaded.
 - [ ] Smoke test: install, onboarding, send message, premium checkout.
 
+> Step-by-step AAB build instructions (manual dispatch, tag, gh CLI, local):
+> see `docs/deploy-aab.md`.
+
 ## 6. Post-release
 - [ ] Monitor server logs / PM2 for errors.
 - [ ] Check crash reports / user feedback.

@@ -1,10 +1,10 @@
 {
-  "en": ["ML-KEM-768", "AES-256-GCM", "X25519", "Double Ratchet", "Tor bridges", "Domain Fronting", "Stealth ±5 min", "No central servers", "Post-quantum", "P2P WebRTC", "Ciphertext", "511 tests"],
-  "ru": ["ML-KEM-768", "AES-256-GCM", "X25519", "Double Ratchet", "Tor-мосты", "Domain Fronting", "Стелс ±5 мин", "Без центральных серверов", "Пост-квантовая", "P2P WebRTC", "Шифротекст", "511 тестов"],
-  "de": ["ML-KEM-768", "AES-256-GCM", "X25519", "Double Ratchet", "Tor-Brücken", "Domain Fronting", "Stealth ±5 Min", "Kein zentraler Server", "Post-Quanten", "P2P WebRTC", "Chiffertext", "511 Tests"],
-  "es": ["ML-KEM-768", "AES-256-GCM", "X25519", "Double Ratchet", "Puentes Tor", "Domain Fronting", "Sigilo ±5 min", "Sin servidores centrales", "Post-cuántico", "P2P WebRTC", "Cifrado", "511 pruebas"],
-  "fr": ["ML-KEM-768", "AES-256-GCM", "X25519", "Double Ratchet", "Ponts Tor", "Domain Fronting", "Discrétion ±5 min", "Aucun serveur central", "Post-quantique", "P2P WebRTC", "Chiffrement", "511 tests"],
-  "zh": ["ML-KEM-768", "AES-256-GCM", "X25519", "双棘轮", "Tor 桥", "域名前置", "隐匿 ±5 分钟", "无中心服务器", "后量子", "P2P WebRTC", "密文", "511 项测试"],
-  "ja": ["ML-KEM-768", "AES-256-GCM", "X25519", "ダブルラチェット", "Tor ブリッジ", "ドメインフロンティング", "ステルス ±5分", "中央サーバーなし", "ポスト量子", "P2P WebRTC", "暗号文", "511 テスト"],
-  "ko": ["ML-KEM-768", "AES-256-GCM", "X25519", "이중 래칫", "Tor 브리지", "도메인 프론티링", "스텔스 ±5분", "중앙 서버 없음", "포스트 양자", "P2P WebRTC", "암호문", "511 테스트"]
+  "en": ["AES-256-GCM", "X25519", "Double Ratchet", "X3DH", "Sealed sender", "Stealth ±5 min", "No servers storing messages", "E2EE by default", "P2P WebRTC", "Ciphertext", "Open protocol spec", "702 tests"],
+  "ru": ["AES-256-GCM", "X25519", "Double Ratchet", "X3DH", "Sealed sender", "Стелс ±5 мин", "Серверы не хранят переписку", "E2EE по умолчанию", "P2P WebRTC", "Шифротекст", "Открытая спецификация", "702 теста"],
+  "de": ["AES-256-GCM", "X25519", "Double Ratchet", "X3DH", "Sealed Sender", "Stealth ±5 Min", "Kein Server speichert Nachrichten", "E2EE standardmäßig", "P2P WebRTC", "Chiffrat", "Offene Spezifikation", "702 Tests"],
+  "es": ["AES-256-GCM", "X25519", "Double Ratchet", "X3DH", "Sealed sender", "Sigilo ±5 min", "Ningún servidor guarda mensajes", "E2EE por defecto", "P2P WebRTC", "Cifrado", "Especificación abierta", "702 pruebas"],
+  "fr": ["AES-256-GCM", "X25519", "Double Ratchet", "X3DH", "Sealed sender", "Discrétion ±5 min", "Aucun serveur ne stocke les messages", "E2EE par défaut", "P2P WebRTC", "Chiffré", "Spécification ouverte", "702 tests"],
+  "zh": ["AES-256-GCM", "X25519", "双棘轮", "X3DH", "密封发送方", "隐匿 ±5 分钟", "服务器不存储消息", "默认端到端加密", "P2P WebRTC", "密文", "公开协议规范", "702 项测试"],
+  "ja": ["AES-256-GCM", "X25519", "ダブルラチェット", "X3DH", "シールドドセンダー", "ステルス ±5分", "サーバーはメッセージを保存しない", "デフォルトでE2EE", "P2P WebRTC", "暗号文", "公開プロトコル仕様", "702 テスト"],
+  "ko": ["AES-256-GCM", "X25519", "이중 래칫", "X3DH", "봉인된 발신자", "스텔스 ±5분", "서버에 메시지 저장 없음", "기본 E2EE", "P2P WebRTC", "암호문", "공개 프로토콜 명세", "702 테스트"]
 }

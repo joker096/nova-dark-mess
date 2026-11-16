@@ -61,15 +61,17 @@
       </div>
       <header>
         <h1>Mess&amp;Anger — Terms of Service</h1>
-        <div class="sub">Last updated: November 15, 2026</div>
+        <div class="sub">Last updated: November 16, 2026</div>
       </header>
 
       <div class="sec">
         <h2>The short version</h2>
         <p>
           Mess&amp;Anger is a free, end-to-end encrypted peer-to-peer messenger. You hold your own keys.
-          We do not run accounts, store your messages, or ask for personal data. The optional premium
-          tier costs USD 3.90 per 30 days and is unlocked by a signed licence key bound to your device.
+          We do not run accounts, store your messages, or ask for personal data. Public channels may
+          show clearly labelled first-party ads; private chats are never scanned or advertised in. The
+          optional premium tier costs USD 3.90 per 30 days and is unlocked by a signed licence key
+          bound to your device.
         </p>
       </div>
 
@@ -97,19 +99,81 @@
 
       <div class="sec">
         <h2>3. Acceptable use</h2>
-        <p>You agree not to use the app to:</p>
+        <p>You agree not to use the app or public channels to:</p>
         <ul>
-          <li>send unlawful content, malware, or material that infringes the rights of others;</li>
-          <li>harass, threaten or defraud other people;</li>
-          <li>attack, overload or probe the relay or other participants' devices.</li>
+          <li>publish or distribute child sexual abuse material, or sexual content involving minors;</li>
+          <li>promote violence, violent extremism, terrorism or credible threats of harm;</li>
+          <li>sell or facilitate illegal drugs, controlled substances, weapons, stolen data, forged documents or other illegal goods and services;</li>
+          <li>publish non-consensual intimate imagery, stalk, dox or expose another person's private data;</li>
+          <li>harass, threaten, defraud, impersonate another person, brand, channel or moderator, or run scam and spam campaigns;</li>
+          <li>distribute malware, phishing links, credential-stealing pages, or attack the relay and other participants' devices;</li>
+          <li>infringe copyright or other rights, or evade a sanction by creating a new identity to continue the same violation.</li>
         </ul>
       </div>
 
       <div class="sec">
-        <h2>4. Premium subscription</h2>
+        <h2>4. Moderation, reports and sanctions</h2>
+        <p>
+          Reports can target a public post, comment, channel or ad. A report includes the target
+          identifier, a reason, an optional note and a case id. Do not include passwords, recovery
+          phrases or private chats in a report.
+        </p>
+        <p>
+          Because Nova has no accounts, a sanction applies to the pseudonymous fingerprint derived
+          from an identity key. A sanction may remove content, limit distribution, throttle traffic or
+          pause relay delivery for that fingerprint. It does not give Nova access to your keys, local
+          history or encrypted messages.
+        </p>
+        <p>
+          We use human review for sanctions that restrict access. Automated action is reserved for
+          clear, high-confidence cases; urgent reports are prioritised. Sanctions have a stated level,
+          reason code and duration. You can appeal once from the in-app moderation screen without an
+          email address; temporary sanctions can be appealed while active, and the appeal window is
+          90 days from issue. The response is delivered in the app and filing an appeal does not pause
+          the sanction.
+        </p>
+        <p>
+          Creating a new identity does not erase a sanction on the old fingerprint, and using a new
+          identity to continue the same violation is itself a violation. In a peer-to-peer network no
+          operator can guarantee that every banned device is permanently unreachable; we use layered
+          limits rather than promise an absolute block.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>5. Channels and advertising</h2>
+        <p>
+          Public channels may include a limited number of native sponsored cards between posts. Ads
+          are labelled, never cover photos or videos, never autoplay sound, and can be hidden or
+          reported. Ads are not shown in end-to-end encrypted chats or private conversations.
+        </p>
+        <p>
+          Advertising is contextual: it may use the channel topic and language, but not message
+          content, contact lists, private profile data, cross-site tracking or advertising identifiers.
+          Channel owners and advertisers receive aggregated statistics only, subject to minimum group
+          sizes and delay.
+        </p>
+        <p>
+          Advertisers are pseudonymous. Nova does not run KYC, request passports, legal-entity
+          documents, phone numbers or email addresses from advertisers. An advertiser is identified by
+          an <code>advertiser_id</code> with a prepaid balance; creatives and destination domains are
+          reviewed before delivery. Channel payouts go to a pseudonymous channel wallet after a
+          holdback. Taxes and any duties are the recipient's responsibility.
+        </p>
+        <p>
+          Channel owners are responsible for the content they publish and for configuring ad density
+          and blocked categories. Nova may pause a campaign, reject a creative, remove a channel from
+          advertising or block an <code>advertiser_id</code> and its domains for violations. Prepaid
+          funds for invalid traffic or undelivered impressions are returned to the ad balance.
+        </p>
+      </div>
+
+      <div class="sec">
+        <h2>6. Premium subscription</h2>
         <p>
           Premium is an optional paid tier billed at <b>USD 3.90 per 30 days</b>. Payment is processed
-          by <b>PaymentO</b>; we never see your card details.
+          by <b>PaymentO</b>; we never see your card details. Premium removes sponsored cards from
+          public channels.
         </p>
         <p>
           After a verified payment the relay issues a signed licence key
@@ -121,7 +185,7 @@
       </div>
 
       <div class="sec">
-        <h2>5. No warranty</h2>
+        <h2>7. No warranty</h2>
         <p>
           The app is provided "as is" and "as available", without warranties of any kind, express or
           implied, including fitness for a particular purpose and uninterrupted or error-free operation.
@@ -133,7 +197,7 @@
       </div>
 
       <div class="sec">
-        <h2>6. Limitation of liability</h2>
+        <h2>8. Limitation of liability</h2>
         <p>
           To the maximum extent permitted by law, we are not liable for indirect, incidental or
           consequential damages, or for loss of data, messages or keys. Where liability cannot be
@@ -143,19 +207,20 @@
       </div>
 
       <div class="sec">
-        <h2>7. Changes and termination</h2>
+        <h2>9. Changes and termination</h2>
         <p>
           We may update these terms as the app changes; the current version is always shown in Settings
           and at this URL. Continuing to use the app after a change means you accept the updated terms.
         </p>
         <p>
           You can stop using the service at any time and delete local data from Settings; generating a
-          new identity permanently disconnects the old one.
+          new identity permanently disconnects the old one. Deleting local data does not lift an active
+          sanction on the old fingerprint.
         </p>
       </div>
 
       <div class="sec">
-        <h2>8. Contact</h2>
+        <h2>10. Contact</h2>
         <p>
           Questions about these terms:
           <b><a href="mailto:top.seo.one@gmail.com">top.seo.one@gmail.com</a></b>

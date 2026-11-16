@@ -92,7 +92,6 @@ describe('senderKeys', () => {
     expect(first.plaintext).toBe('first');
 
     const second = await senderKeyDecrypt(recipientState, messages[1]);
-    recipientState = second.state;
     expect(second.plaintext).toBe('second');
   });
 

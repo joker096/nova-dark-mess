@@ -46,6 +46,8 @@ export interface PreKeyBundle {
     keyId: number;
     publicKey: string;
   };
+  /** ML-KEM-768 encapsulation key (base64); absent for pre-PQ identities. */
+  pqKem?: string;
 }
 
 const encoder = new TextEncoder();

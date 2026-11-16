@@ -61,7 +61,7 @@ async function main() {
     });
 
     const constName = packId.replace(/-/g, '_').toUpperCase();
-    const ts = `import { StickerPack } from '../types/messenger';
+    const ts = `import { StickerPack } from '../types/messenger.js';
 
 export const ${constName}_PACK: StickerPack = {
   id: '${meta.id}',
@@ -77,12 +77,12 @@ ${stickers.join('\n')}
 };
 `;
     await writeFile(join(OUT_DIR, `${packId}.ts`), ts, 'utf-8');
-    importLines.push(`import { ${constName}_PACK } from './${packId}';`);
+    importLines.push(`import { ${constName}_PACK } from './${packId}.js';`);
     exportLines.push(`  ${constName}_PACK,`);
     console.log(`  ${packId}.ts (${stickers.length} stickers)`);
   }
 
-  const indexTs = `import { StickerPack } from '../types/messenger';
+  const indexTs = `import { StickerPack } from '../types/messenger.js';
 ${importLines.join('\n')}
 
 export const BUILT_STICKER_PACKS: StickerPack[] = [

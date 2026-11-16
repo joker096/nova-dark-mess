@@ -159,7 +159,7 @@ const remote = (process.env.LANDING_REMOTE || '/var/www/mess.cvr.name').replace(
 const sshPort = process.env.LANDING_SSH_PORT || '22';
 const pm2App = process.env.LANDING_PM2_APP || 'mess-api';
 const pm2User = process.env.LANDING_PM2_USER || 'user0';
-const healthUrl = process.env.LANDING_HEALTH_URL || 'http://127.0.0.1:3003/api/health';
+const healthUrl = process.env.LANDING_HEALTH_URL || 'http://127.0.0.1:3002/api/health';
 const sshKey = (process.env.LANDING_SSH_KEY || '').trim();
 
 const posix = (p) => p.split(path.sep).join('/');

@@ -61,16 +61,16 @@
       </div>
       <header>
         <h1>Mess&amp;Anger — Privacy Policy</h1>
-        <div class="sub">Last updated: September 10, 2026</div>
+        <div class="sub">Last updated: November 16, 2026</div>
       </header>
 
       <div class="sec">
         <h2>The short version</h2>
         <p>
           Mess&amp;Anger is an end-to-end encrypted peer-to-peer (P2P) messenger. You do not create an account:
-          your identity is a cryptographic keypair generated on your device. We never see your message content,
-          and we collect the minimum technical data needed to relay connections, serve in-app ads, and process
-          premium purchases.
+          your identity is a cryptographic keypair generated on your device. We never see your message content.
+          Moderation uses pseudonymous reports; ads in public channels use contextual placement and aggregate
+          statistics, never an advertising profile.
         </p>
       </div>
 
@@ -99,16 +99,31 @@
             secure the connection service.
           </li>
           <li>
-            <b>In-app ad events.</b> Mess&amp;Anger shows first-party ads (created and hosted by us, with no
-            third-party advertising SDK). We record impressions and clicks per device public key to measure
-            performance. Ads are not personalized using message data, contact lists, or personal information.
+            <b>Moderation reports.</b> A report contains the target identifier (a post, comment, channel or
+            campaign), a reason code, an optional note and a case id. The note is encrypted to the moderation
+            key when it leaves the device. To limit spam, the moderation service may attach a rotating
+            reporter token that is not linked to your identity, IP address or contacts. Moderators see the
+            reported content and case history, not your encrypted chats.
           </li>
           <li>
-            <b>Payment records (premium only).</b> If you purchase a premium subscription, the payment is
-            processed by a third-party payment gateway (<b>paymento.io</b>). We store the resulting order
-            metadata: order ID, amount, currency, status, and your device public key — needed to grant and
-            verify entitlements. Card details are handled exclusively by the payment gateway; we never see
-            your full payment details.
+            <b>Sanctions.</b> A sanction is recorded against the pseudonymous fingerprint of the reported
+            identity, with a rule id, level, reason, issue time and expiry. Signed ban-list entries are
+            distributed to relays and clients so they can enforce the decision.
+          </li>
+          <li>
+            <b>In-app ad events.</b> Mess&amp;Anger shows first-party ads only in public channels, with no
+            third-party advertising SDK. Impressions and clicks are counted with short-lived blinded tokens
+            and local aggregation. We do not store an advertising ID, device ID, IP address or user key with
+            an ad event. Channel owners and advertisers receive aggregate counts, revenue and fill rate only,
+            with a minimum group size of 100 and a 24-hour delay.
+          </li>
+          <li>
+            <b>Payment records (premium and ad credits).</b> Premium purchases are processed by a third-party
+            payment gateway (<b>paymento.io</b>). We store order metadata: order ID, amount, currency, status,
+            timestamp and the device public key needed to grant and verify entitlements. Ad credits and
+            channel payouts use prepaid codes, crypto invoices or a payment link; we store campaign id,
+            amount, currency, status and a pseudonymous wallet reference. Card details are handled exclusively
+            by the payment gateway; we never see your full payment details.
           </li>
         </ul>
       </div>
@@ -119,9 +134,11 @@
           <li>Message content, attachments, or media — encrypted end-to-end, readable only by the participants.</li>
           <li>Email address, phone number, or real name.</li>
           <li>Contact lists — stored only on your device.</li>
-          <li>Third-party analytics, tracking pixels, or advertising SDKs. The app contains no external
-            analytics or tracking code.</li>
+          <li>Third-party analytics, tracking pixels, advertising IDs, cross-site profiles, or advertising
+            SDKs. The app contains no external analytics or tracking code.</li>
           <li>Cookies and tracking pixels. Sessions are device-local.</li>
+          <li>Passport, legal-entity, tax or banking documents from users, channel owners or advertisers.
+            Nova does not run KYC for ads.</li>
         </ul>
       </div>
 
@@ -137,8 +154,10 @@
       <div class="sec">
         <h2>Data retention and deletion</h2>
         <p>
-          Connection logs and ad events are kept while we operate the service. Payment order records are kept
-          as required to support subscriptions and for legitimate accounting.
+          Connection logs are kept while we operate the service. Ad events are aggregated and stripped of
+          identifiers before storage; raw events are discarded. Reports and appeal records are kept for up to
+          12 months after the case closes, then deleted or aggregated. Payment order records are kept as
+          required to support subscriptions and for legitimate accounting.
         </p>
         <p>
           You may request access to, or deletion of, any data stored against your device public key. Because
@@ -152,8 +171,11 @@
         <ul>
           <li><b>Access:</b> request the data we hold for your device key.</li>
           <li><b>Correction:</b> no personal attributes to correct beyond connection metadata.</li>
-          <li><b>Deletion:</b> request removal of connection logs, ad events, or payment records.</li>
-          <li><b>Opt-out of ads:</b> ads are the free tier's funding source; a premium subscription removes ads.</li>
+          <li><b>Deletion:</b> request removal of connection logs, ad events, or payment records, and delete
+            the local moderation outbox from the app.</li>
+          <li><b>Opt-out of ads:</b> hide individual ads, block advertisers on your device, or subscribe to
+            Premium to remove ads.</li>
+          <li><b>Appeal:</b> appeal a sanction once in the app without providing an email address.</li>
         </ul>
       </div>
 
@@ -168,7 +190,11 @@
             <b>Hosting</b> — the relay server is hosted by our provider; connection metadata is stored there
             under our control.
           </li>
-          <li>No advertising networks, no analytics vendors, no data brokers.</li>
+          <li>
+            <b>Ad payment and payout rails</b> — prepaid codes, crypto invoices or a payment link. They may
+            process their own compliance data, but Nova does not receive identity documents or KYC files.
+          </li>
+          <li>No advertising networks, no analytics vendors, no data brokers, no ad-profile resellers.</li>
         </ul>
       </div>
 

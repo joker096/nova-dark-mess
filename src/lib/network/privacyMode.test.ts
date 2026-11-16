@@ -98,3 +98,23 @@ describe('privacyMode', () => {
     expect(presenceTtlMs('long')).toBe(300_000);
   });
 });
+
+describe('privacyMode — WebRTC IP privacy', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('defaults to direct ICE (relay-only off)', () => {
+    expect(loadPrivacyPrefs().webrtcRelayOnly).toBe(false);
+  });
+
+  it('persists and reloads the relay-only opt-in', () => {
+    savePrivacyPrefs(prefs({ webrtcRelayOnly: true }));
+    expect(loadPrivacyPrefs().webrtcRelayOnly).toBe(true);
+  });
+
+  it('falls back to direct when the stored value is not a boolean', () => {
+    localStorage.setItem(PRIVACY_STORAGE_KEY, JSON.stringify({ webrtcRelayOnly: 'yes' }));
+    expect(loadPrivacyPrefs().webrtcRelayOnly).toBe(false);
+  });
+});

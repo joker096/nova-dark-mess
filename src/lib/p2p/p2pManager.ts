@@ -16,6 +16,7 @@ import {
   ratchetDecryptMessage,
   ratchetEncryptMessage,
 } from '../crypto/ratchet';
+import { encodePqSecret, generatePqKemKeyPair } from '../crypto/postQuantum';
 import { P2PConnectionState, P2PMessengerChannel } from './webrtc';
 import { P2PSignalingClient, SignalingMessage } from './signaling';
 import { MeshRelay } from './relay';
@@ -33,6 +34,10 @@ export interface PreKeyStoreState {
   previousSignedPreKeys?: SignedPreKey[];
   oneTimePreKeys: OneTimePreKey[];
   nextPreKeyId: number;
+  /** ML-KEM-768 encapsulation key advertised in bundles (base64). */
+  pqKemPublicKey?: string;
+  /** ML-KEM-768 secret key (prefixed, base64) used to decapsulate handshakes. */
+  pqKemSecretKey?: string;
 }
 
 export interface P2PManagerOptions {
@@ -151,7 +156,34 @@ export class P2PManager {
 
   public async getPreKeyBundle(): Promise<PreKeyBundle> {
     const store = await this.ensurePreKeys();
-    return createPreKeyBundle(this.identity, store.signedPreKey, store.oneTimePreKeys[0]);
+    const bundle = createPreKeyBundle(this.identity, store.signedPreKey, store.oneTimePreKeys[0]);
+    // Advertise the PQ encapsulation key so initiators run the hybrid
+    // handshake. Absent for identities created before PQ roll-out, which
+    // negotiate the classical path honestly.
+    const pqKem = await this.ensurePqKeyPair();
+    return pqKem ? { ...bundle, pqKem } : bundle;
+  }
+
+  /**
+   * Lazily generate (and persist) the ML-KEM-768 keypair. Returns only the
+   * public half; the secret half stays in the prekey store.
+   */
+  private async ensurePqKeyPair(): Promise<string | null> {
+    try {
+      const store = await this.ensurePreKeys();
+      if (store.pqKemPublicKey && store.pqKemSecretKey) {
+        return store.pqKemPublicKey;
+      }
+      const pair = generatePqKemKeyPair();
+      store.pqKemPublicKey = pair.publicKey;
+      store.pqKemSecretKey = encodePqSecret(pair.secretKeyRaw);
+      await this.persistPreKeys(store);
+      return store.pqKemPublicKey;
+    } catch (error) {
+      // PQ key generation must never break the classical path.
+      this.onError?.(error instanceof Error ? error : new Error(String(error)));
+      return null;
+    }
   }
 
   public async rotateSignedPreKey(): Promise<PreKeyBundle> {
@@ -399,12 +431,9 @@ export class P2PManager {
         throw new Error('One-time prekey already consumed');
       }
 
-      session = await createInboundRatchetSession(
-        this.identity,
-        signedPreKey,
-        oneTimePreKey,
-        payload.x3dh
-      );
+      session = await createInboundRatchetSession(this.identity, signedPreKey, oneTimePreKey, payload.x3dh, {
+        localPqSecret: store?.pqKemSecretKey,
+      });
 
       if (oneTimePreKey) {
         store.oneTimePreKeys = store.oneTimePreKeys.filter(
