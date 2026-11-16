@@ -11,6 +11,7 @@ import {
   updateCommunity,
 } from '../lib/social/communities';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 export interface CommunitiesPanelProps {
   channels?: ChannelInfo[];
@@ -51,6 +52,7 @@ export function CommunitiesPanel({
   const { t } = useLanguage();
   const [communities, setCommunities] = useState<Community[]>(() => listCommunities());
   const [isCreating, setIsCreating] = useState(false);
+  const createDialogRef = useFocusTrap<HTMLDivElement>(isCreating, () => setIsCreating(false));
   const [name, setName] = useState('');
   const [channelId, setChannelId] = useState('');
   const [discussionGroupId, setDiscussionGroupId] = useState('');
@@ -58,7 +60,7 @@ export function CommunitiesPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
-  const discussions = useMemo(discussionOptions, [isCreating]);
+  const discussions = useMemo(() => discussionOptions(), [isCreating]);
   const availableChannels = channels;
   const channelNames = useMemo(
     () => new Map(availableChannels.map((channel) => [channel.id, channel.name])),
@@ -240,9 +242,10 @@ export function CommunitiesPanel({
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
           role="dialog"
+          aria-modal="true"
           aria-label={t('communities.create')}
         >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-3">
+          <div ref={createDialogRef} className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-base text-white">
                 {editingId ? t('communities.editTitle') : t('communities.create')}

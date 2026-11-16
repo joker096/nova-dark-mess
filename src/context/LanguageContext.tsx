@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { loadLanguage } from '../i18n';
@@ -11,6 +11,8 @@ export interface LanguageItem {
   nativeName: string;
   flag: string;
 }
+
+const RTL_LANGUAGES: Language[] = ['ar'];
 
 export const SUPPORTED_LANGUAGES: LanguageItem[] = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
@@ -48,6 +50,12 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const { t, i18n } = useTranslation();
   
   const language = (i18n.language || 'ru') as Language;
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.lang = language;
+    root.dir = RTL_LANGUAGES.includes(language) ? 'rtl' : 'ltr';
+  }, [language]);
   
   const changeLanguage = useCallback((lang: Language) => {
     // Non-English locales are lazy chunks: fetch the bundle before switching so

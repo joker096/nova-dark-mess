@@ -52,6 +52,7 @@ export const NovaModal = forwardRef<HTMLDivElement, NovaModalProps>(
         showCloseButton={false}
         closeOnOverlayClick={closeOnOverlayClick}
         closeOnEscape={closeOnEscape}
+        ariaLabel={title}
         className={className}
       >
         <div

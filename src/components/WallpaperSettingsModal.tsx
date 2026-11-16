@@ -18,6 +18,7 @@ import {
 } from '../data/wallpapers';
 import { DoodleBackground } from './DoodleBackground';
 import { usePremium } from '../hooks/usePremium';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface WallpaperSettingsModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
   const [localIntensity, setLocalIntensity] = useState<number>(intensity);
   const { canUse, checkout } = usePremium();
   const premiumWallpapers = canUse('wallpaper');
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -67,7 +69,11 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wallpaper-modal-title"
         className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md p-4 text-white shadow-2xl space-y-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[92vh] flex flex-col"
       >
         {/* Modal Header */}
@@ -77,7 +83,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
               <Palette className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white leading-tight">
+              <h3 id="wallpaper-modal-title" className="font-bold text-sm text-white leading-tight">
                 Chat Background
               </h3>
               <p className="text-[10.5px] text-[#828795]">

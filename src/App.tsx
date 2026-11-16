@@ -62,6 +62,7 @@ import {
 } from './lib/social/joinRequestRelay';
 import { MOCK_CHATS } from './data/mockMessengerData';
 import { isOnboardingComplete } from './lib/onboarding';
+import { useFocusTrap } from './lib/ui/useFocusTrap';
 const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
 );
@@ -111,6 +112,10 @@ export default function App() {
   const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete());
   const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
     null,
+  );
+  const pendingInviteRef = useFocusTrap<HTMLDivElement>(
+    Boolean(pendingInvite),
+    () => setPendingInvite(null),
   );
 
   const foldersRef = useRef<{ openFolderModal: () => void } | null>(null);
@@ -764,6 +769,7 @@ export default function App() {
           onClick={() => setPendingInvite(null)}
         >
           <div
+            ref={pendingInviteRef}
             role="dialog"
             aria-modal="true"
             aria-label={t('chat.joinTitle')}

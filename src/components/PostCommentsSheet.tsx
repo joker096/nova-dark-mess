@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import type { ChannelComment, ChannelPost } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface PostCommentsSheetProps {
   post: ChannelPost;
@@ -32,10 +33,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
   const { t, language } = useLanguage();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
 
   useEffect(() => {
     return () => {
@@ -62,6 +60,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="post-comments-title"
@@ -127,7 +126,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.06] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.06] px-3 py-2.5 pb-[max(0.625rem,var(--nova-safe-bottom))]">
           <input
             ref={inputRef}
             value={draft}

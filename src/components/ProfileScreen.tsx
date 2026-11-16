@@ -36,6 +36,7 @@ import {
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaItem } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { ContactShareModal } from './ContactShareModal';
@@ -115,6 +116,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [peerSafetyInput, setPeerSafetyInput] = useState('');
   const [safetyQrUrl, setSafetyQrUrl] = useState<string | null>(null);
   const [showDeviceLinkModal, setShowDeviceLinkModal] = useState(false);
+  const qrDialogRef = useFocusTrap<HTMLDivElement>(showQrModal, () => setShowQrModal(false));
+  const safetyDialogRef = useFocusTrap<HTMLDivElement>(showSafetyModal, () =>
+    setShowSafetyModal(false),
+  );
+  const deviceLinkDialogRef = useFocusTrap<HTMLDivElement>(showDeviceLinkModal, () =>
+    setShowDeviceLinkModal(false),
+  );
   const [deviceLinkQrUrl, setDeviceLinkQrUrl] = useState<string | null>(null);
   const [deviceLinkCode, setDeviceLinkCode] = useState('');
   const [deviceLinkUrl, setDeviceLinkUrl] = useState('');
@@ -250,6 +258,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [mediaToast, setMediaToast] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const stopCameraScan = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setIsScanningCamera(false);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -367,14 +383,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       setDeviceLinkError(err instanceof Error ? err.message : 'History sync failed');
       setHistorySyncStatus('idle');
     }
-  };
-
-  const stopCameraScan = () => {
-    if (cameraStreamRef.current) {
-      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current = null;
-    }
-    setIsScanningCamera(false);
   };
 
   const startCameraScan = async () => {
@@ -565,7 +573,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-y-auto no-scrollbar pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
+    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-y-auto no-scrollbar pb-10">
       {/* Toast Notification */}
       {mediaToast && (
         <div className="pointer-events-none fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color)]/40 text-white text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
@@ -577,7 +585,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Top Header Bar */}
       <div
         data-testid="profile-header"
-        className="sticky top-0 z-30 bg-[#0b0c10]/92 backdrop-blur-md px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-2 flex items-center justify-between shrink-0"
+        className="sticky top-0 z-30 bg-[#0b0c10]/92 backdrop-blur-md px-4 pt-3 pb-2 flex items-center justify-between shrink-0"
       >
         <button
           onClick={onBack}
@@ -1345,8 +1353,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* QR Code Modal */}
       {showQrModal && (
         <div
+          ref={qrDialogRef}
           role="dialog"
           aria-modal="true"
+          aria-label="QR code"
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
@@ -1418,7 +1428,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onClick={() => setSelectedMediaIndex(null)}
           onTouchStart={handleMediaTouchStart}
           onTouchEnd={handleMediaTouchEnd}
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-[calc(env(safe-area-inset-bottom)+0.5rem)] animate-in fade-in"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 pt-[calc(var(--nova-safe-top)+0.5rem)] pb-[calc(var(--nova-safe-bottom)+0.5rem)] animate-in fade-in"
         >
           {/* Lightbox Top Bar */}
           <div
@@ -1619,8 +1629,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       )}
       {showSafetyModal && (
         <div
+          ref={safetyDialogRef}
           role="dialog"
           aria-modal="true"
+          aria-label={t('profile.safetyNumber')}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
@@ -1671,8 +1683,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       )}
       {showDeviceLinkModal && (
         <div
+          ref={deviceLinkDialogRef}
           role="dialog"
           aria-modal="true"
+          aria-label={t('profile.linkDevice')}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
