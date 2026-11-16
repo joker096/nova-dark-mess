@@ -154,7 +154,7 @@
       "markAsRead": "Mark as read",
       "markAsUnread": "Mark as unread"
     },
-    "greeting": "Hello, {{name}}"
+    "greeting": "Hej, {{name}}"
   },
   "schedule": {
     "title": "Publish time",
@@ -638,9 +638,9 @@
     "feedback": "Send Feedback",
     "rateApp": "Rate App",
     "comingSoon": "Coming Soon",
-    "termsOfService": "Terms of Service",
-    "privacyPolicy": "Privacy Policy",
-    "rerunSetup": "Run setup again"
+    "termsOfService": "Användarvillkor",
+    "privacyPolicy": "Integritetspolicy",
+    "rerunSetup": "Kör installationen igen"
   },
   "wallpaper": {
     "title": "Chat Wallpaper",
@@ -832,17 +832,17 @@
   },
   "onboarding": {
     "stepOf": "Step {{current}} of {{total}}",
-    "welcomeTitle": "Welcome to Nova",
+    "welcomeTitle": "Välkommen till Nova",
     "welcomeBody": "End-to-end encrypted messaging with no account, no phone number and no email. Your keys never leave this device.",
     "getStarted": "Get started",
-    "createOption": "Create my identity",
+    "createOption": "Skapa min identitet",
     "createOptionDesc": "Generate a new keypair and recovery phrase on this device.",
-    "restoreOption": "Restore from before",
+    "restoreOption": "Återställ från säkerhetskopia",
     "restoreOptionDesc": "Use your recovery phrase from an earlier install.",
     "nameLabel": "Your name",
     "namePlaceholder": "How should others see you?",
-    "continue": "Continue",
-    "back": "Back",
+    "continue": "Fortsätt",
+    "back": "Tillbaka",
     "identityTitle": "Your recovery phrase",
     "identityBody": "These 24 words are your account. Write them down: anyone who has them can read your messages.",
     "seedWarning": "Never share this phrase. It cannot be recovered for you.",
@@ -863,10 +863,10 @@
     "pinMismatch": "PINs do not match.",
     "skip": "Skip",
     "finish": "Finish",
-    "doneTitle": "You're all set",
+    "doneTitle": "Klart",
     "doneBody": "Your identity is ready. Messages are encrypted on this device before they leave.",
-    "startMessaging": "Start messaging",
-    "languageTitle": "Choose your language",
-    "languageBody": "Pick the language you want to use. You can change it later in Settings."
+    "startMessaging": "Börja chatta",
+    "languageTitle": "Välj språk",
+    "languageBody": "Välj språket du vill använda. Du kan ändra det senare i Inställningar."
   }
 }
