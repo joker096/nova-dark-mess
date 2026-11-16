@@ -51,7 +51,8 @@ import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLi
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
 import { buildLiveMeshSnapshot, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
-import { heartbeatPresence, fetchPresence } from './lib/p2p/presence';
+import { heartbeatPresence, fetchPresence, resolvePresenceIds } from './lib/p2p/presence';
+import { loadPrivacyPrefs } from './lib/network/privacyMode';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -144,12 +145,21 @@ export default function App() {
     return () => window.removeEventListener(GPS_FIX_EVENT, onFix);
   }, []);
 
-  // Relay presence: announce ourselves and refresh the list of online peers
-  // so the mesh map reflects who is actually reachable right now.
+  // Relay presence (strictly opt-in): announce ourselves and refresh the list
+  // of online peers so the mesh map reflects who is actually reachable right
+  // now. With presence sharing off, nothing is sent and nothing is fetched.
   const [presencePeers, setPresencePeers] = useState<string[]>([]);
+  const presencePrefs = loadPrivacyPrefs();
+  const knownFingerprints = useMemo(() => {
+    const known = new Set<string>();
+    for (const chat of MOCK_CHATS) {
+      if (chat.id && chat.id !== 'me') known.add(chat.id);
+    }
+    return [...known];
+  }, []);
   useEffect(() => {
     const fingerprint = identity?.fingerprint;
-    if (!fingerprint) return;
+    if (!fingerprint || !presencePrefs.presenceSharing) return;
     let cancelled = false;
     const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
     beat();
@@ -158,12 +168,17 @@ export default function App() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [identity?.fingerprint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity?.fingerprint, presencePrefs.presenceSharing, presencePrefs.presenceHashing, presencePrefs.presenceTtl]);
   useEffect(() => {
-    if (currentScreen !== 'mesh-map') return;
+    if (currentScreen !== 'mesh-map' || !presencePrefs.presenceSharing) {
+      setPresencePeers([]);
+      return;
+    }
     let cancelled = false;
     const refresh = async () => {
-      const peers = await fetchPresence();
+      const ids = await fetchPresence();
+      const peers = await resolvePresenceIds(ids, knownFingerprints, presencePrefs.presenceHashing);
       if (!cancelled) setPresencePeers(peers);
     };
     refresh();
@@ -172,7 +187,8 @@ export default function App() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [currentScreen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScreen, presencePrefs.presenceSharing, presencePrefs.presenceHashing, knownFingerprints]);
 
   // Real mesh map points: computed whenever the mesh-map screen mounts.
   // useMemo keyed on the screen keeps the GPS fix read out of other renders.

@@ -571,23 +571,32 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// Presence: who is online right now (in-memory, short TTL). Carries only a
-// fingerprint — the same opaque address the relay already uses. No content.
+// Presence: who is online right now (in-memory, short TTL). Carries only an
+// opaque identifier — with client-side presence hashing on, that identifier is
+// a truncated SHA-256 (`ph1.<hex>`), not the raw fingerprint. Clients may ask
+// for a per-heartbeat TTL (45 s – 5 min, clamped); nothing else is stored.
 // ───────────────────────────────────────────────────────────────────────────
 const PRESENCE_TTL_MS = 2 * 60 * 1000;
+const PRESENCE_MIN_TTL_MS = 45 * 1000;
+const PRESENCE_MAX_TTL_MS = 5 * 60 * 1000;
 const presenceMap = new Map();
 function sweepPresence() {
   const now = Date.now();
-  for (const [fp, lastSeen] of presenceMap) {
-    if (now - lastSeen > PRESENCE_TTL_MS) presenceMap.delete(fp);
+  for (const [id, entry] of presenceMap) {
+    if (now - entry.lastSeen > entry.ttlMs) presenceMap.delete(id);
   }
 }
 app.post('/api/presence', (req, res) => {
   const raw = req && req.body && req.body.fingerprint;
-  const safe = typeof raw === 'string' ? raw.replace(/[^a-zA-Z0-9_-]/g, '') : '';
+  // Allow dots so hashed ids (`ph1.<hex>`) pass the sanitizer.
+  const safe = typeof raw === 'string' ? raw.replace(/[^a-zA-Z0-9_.-]/g, '') : '';
   if (!safe) return res.status(400).json({ ok: false, reason: 'missing fingerprint' });
+  const requested = Number(req && req.body && req.body.ttlMs);
+  const ttlMs = Number.isFinite(requested)
+    ? Math.min(PRESENCE_MAX_TTL_MS, Math.max(PRESENCE_MIN_TTL_MS, requested))
+    : PRESENCE_TTL_MS;
   sweepPresence();
-  presenceMap.set(safe, Date.now());
+  presenceMap.set(safe, { lastSeen: Date.now(), ttlMs });
   res.json({ ok: true });
 });
 app.get('/api/presence', (_req, res) => {
