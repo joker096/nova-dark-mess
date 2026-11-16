@@ -30,6 +30,9 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+      - name: Check Android icon safe zone
+        run: npm run check:android-icons
+
       - name: Build
         run: npm run build
 
