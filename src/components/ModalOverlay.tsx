@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useCallback, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Maximize, Minimize, Download } from 'lucide-react';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface ModalOverlayProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface ModalOverlayProps {
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
+  ariaLabel?: string;
 }
 
 export const ModalOverlay: React.FC<ModalOverlayProps> = ({
@@ -19,40 +21,12 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
+  ariaLabel = 'Modal',
 }) => {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const previousActiveElement = useRef<HTMLElement | null>(null);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!closeOnEscape) return;
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    },
-    [closeOnEscape, onClose]
+  const overlayRef = useFocusTrap<HTMLDivElement>(
+    isOpen,
+    closeOnEscape ? onClose : undefined
   );
-
-  useEffect(() => {
-    if (isOpen) {
-      previousActiveElement.current = document.activeElement as HTMLElement;
-      document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
-      // Focus trap - focus first focusable element
-      setTimeout(() => {
-        overlayRef.current?.focus();
-      }, 0);
-    } else {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-      previousActiveElement.current?.focus();
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -64,7 +38,7 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
       className={`fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200 ${className}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Modal"
+      aria-label={ariaLabel}
     >
       {showCloseButton && (
         <button

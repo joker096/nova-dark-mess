@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import {
   X,
   Check,
@@ -67,6 +68,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   onClose,
 }) => {
   const { t } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, checkout } = usePremium();
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>(
     editingFolder ? 'create' : 'create'
@@ -129,7 +131,11 @@ export const FolderModal: React.FC<FolderModalProps> = ({
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="folder-modal-title"
         className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-sm p-4 text-white shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-3 duration-250"
       >
         {/* Modal Header */}
@@ -139,7 +145,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
               <FolderPlus className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white leading-tight">
+              <h3 id="folder-modal-title" className="font-bold text-sm text-white leading-tight">
                 {editingFolder ? t('folders.editTitle') : t('folders.title')}
               </h3>
               <p className="text-[10px] text-[#828795]">

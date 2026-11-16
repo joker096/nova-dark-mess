@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock, Trash2, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { isStoryScheduled, storyPublishAt } from '../lib/social/store';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import type { Story } from '../types/messenger';
 
 interface StoryViewerProps {
@@ -29,6 +30,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   now = Date.now(),
 }) => {
   const { t, language } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [index, setIndex] = useState(() =>
     Math.max(0, Math.min(initialIndex, stories.length - 1)),
   );
@@ -128,6 +130,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in"
       role="dialog"
       aria-modal="true"

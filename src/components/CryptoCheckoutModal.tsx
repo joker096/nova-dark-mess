@@ -9,6 +9,7 @@ import {
 import { createPremiumCheckout, activatePremiumLicense, MIN_SUBSCRIPTION_COST } from '../lib/premium';
 import { NovaButton } from '../lib/ui';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface CryptoCheckoutModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
   onSuccess,
 }) => {
   const { t } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
   const [licenseInput, setLicenseInput] = useState('');
@@ -70,7 +72,11 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
       className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crypto-checkout-title"
         className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-md text-white shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom-3 duration-250"
       >
         {/* Header */}
@@ -80,7 +86,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               <DollarSign className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white leading-tight">
+              <h3 id="crypto-checkout-title" className="font-bold text-sm text-white leading-tight">
                 {t('premium.cryptoTitle')}
               </h3>
               <p className="text-[10px] text-[#828795]">
@@ -171,7 +177,9 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               {activating ? t('premium.checking') : t('premium.activate')}
             </NovaButton>
             {activateMsg && (
-              <p className="text-[10px] text-red-400">{activateMsg}</p>
+              <p className="text-[10px] text-red-400" role="alert" aria-live="assertive">
+                {activateMsg}
+              </p>
             )}
           </div>
         </div>

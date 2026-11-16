@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import {
   ArrowLeft,
   Paperclip,
@@ -704,6 +705,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const [viewOnceMode, setViewOnceMode] = useState(false);
   const [threadRootId, setThreadRootId] = useState<string | null>(null);
+  const groupMembersRef = useFocusTrap<HTMLDivElement>(isGroupMembersOpen, () =>
+    setIsGroupMembersOpen(false),
+  );
+  const threadRef = useFocusTrap<HTMLDivElement>(Boolean(threadRootId), () =>
+    setThreadRootId(null),
+  );
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -4638,6 +4645,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           onClick={() => setIsGroupMembersOpen(false)}
         >
           <div
+            ref={groupMembersRef}
             role="dialog"
             aria-modal="true"
             aria-label={t('chat.groupMembers')}
@@ -5006,8 +5014,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       )}
       {threadRootId && (
         <div
+          ref={threadRef}
           role="dialog"
           aria-modal="true"
+          aria-label="Thread"
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] overflow-y-auto">

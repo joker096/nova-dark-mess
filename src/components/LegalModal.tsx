@@ -2,6 +2,7 @@ import React from 'react';
 import { X, ExternalLink, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { getLegalDocument, type LegalDocId } from '../lib/legal';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface LegalModalProps {
   docId: LegalDocId;
@@ -14,6 +15,7 @@ interface LegalModalProps {
  */
 export const LegalModal: React.FC<LegalModalProps> = ({ docId, onClose }) => {
   const { t } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const doc = getLegalDocument(docId);
 
   return (
@@ -23,6 +25,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ docId, onClose }) => {
       data-testid={`legal-modal-${docId}`}
     >
       <div
+        ref={dialogRef}
         onClick={(event) => event.stopPropagation()}
         className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-lg text-white shadow-2xl flex flex-col max-h-[88vh] overflow-hidden"
         role="dialog"

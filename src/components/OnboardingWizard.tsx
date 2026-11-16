@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface OnboardingWizardProps {
   onDone: () => void;
@@ -19,6 +20,7 @@ const STEP_ORDER: Step[] = ['language', 'welcome', 'choice', 'profile', 'phrase'
  */
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) => {
   const { t, language, changeLanguage, languages } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
   const { identity, restoreIdentityFromMnemonic, setPin } = useSecurity();
   const { account, updateAccount } = useAccount();
 
@@ -106,6 +108,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('app.name')}
       className="fixed inset-0 z-[100] bg-[#0b0c10] text-white flex flex-col overflow-y-auto no-scrollbar"
       data-testid="onboarding-wizard"
     >
@@ -262,7 +268,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 rows={4}
                 className={`${inputCls} font-mono text-[12.5px] resize-none`}
               />
-              {error && <p className="text-[11px] text-red-400">{error}</p>}
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
               <button
                 type="button"
                 className={primaryBtn}
@@ -303,7 +309,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 {copied ? t('onboarding.copied') : t('onboarding.copyPhrase')}
               </button>
               <p className="text-[10.5px] text-amber-400/90 leading-relaxed">{t('onboarding.seedWarning')}</p>
-              {error && <p className="text-[11px] text-red-400">{error}</p>}
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
               <button type="button" className={primaryBtn} onClick={() => setStep('security')}>
                 {t('onboarding.savedPhrase')}
               </button>
@@ -336,7 +342,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 aria-label={t('onboarding.pinConfirmLabel')}
                 className={`${inputCls} font-mono tracking-[0.4em] text-center`}
               />
-              {error && <p className="text-[11px] text-red-400">{error}</p>}
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
               <button
                 type="button"
                 className={primaryBtn}
@@ -377,7 +383,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               {identity?.fingerprint && (
                 <p className="text-[10.5px] font-mono text-white/40 break-all">{identity.fingerprint}</p>
               )}
-              {error && <p className="text-[11px] text-red-400">{error}</p>}
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
               <button type="button" className={primaryBtn} disabled={busy} onClick={finish}>
                 {t('onboarding.startMessaging')}
               </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, Calendar, X, Check, Send } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 interface ScheduleMessageModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
   onClose,
 }) => {
   const { t } = useLanguage();
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const [selectedPreset, setSelectedPreset] = useState<'5s' | '15m' | 'tonight' | 'tomorrow' | 'custom'>('5s');
   
   // Custom time inputs
@@ -67,7 +69,11 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-message-title"
         className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-sm p-4 text-white shadow-2xl space-y-4 animate-in slide-in-from-bottom-3 duration-250"
       >
         {/* Header */}
@@ -77,7 +83,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white leading-tight">
+              <h3 id="schedule-message-title" className="font-bold text-sm text-white leading-tight">
                 Schedule Message
               </h3>
               <p className="text-[10px] text-[#828795]">

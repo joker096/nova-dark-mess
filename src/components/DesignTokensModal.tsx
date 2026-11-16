@@ -3,6 +3,7 @@ import { Copy, Check, Palette, GitBranch, Terminal, FileCode2, Sparkles } from '
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeHtml } from '../lib/security/sanitize';
 import { ScrollableRow } from '../lib/ui/ScrollableRow';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
 export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
@@ -12,6 +13,7 @@ export const DesignTokensModal: React.FC<{ isOpen: boolean; onClose: () => void 
   const [activeTab, setActiveTab] = useState<'repo' | 'tokens' | 'patch'>('repo');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const tokensTabRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -170,7 +172,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 md:p-6 animate-in fade-in">
-      <div className="bg-[#121319] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('designTokens.subtitle')}
+        className="bg-[#121319] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+      >
         {/* Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#15161f]">
           <div className="flex items-center gap-3">
