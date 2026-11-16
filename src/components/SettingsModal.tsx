@@ -223,6 +223,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     savePrivacyPrefs(next);
   };
 
+  const updatePresencePref = (patch: Partial<PrivacyPrefs>) => {
+    const next = { ...privacyPrefs, ...patch };
+    setPrivacyPrefs(next);
+    savePrivacyPrefs(next);
+  };
+
   const coverTrafficActive = shouldEmitCoverTraffic(privacyPrefs, battery);
 
   const updatePref = <K extends keyof Prefs>(key: K, value: Prefs[K]) => {
@@ -731,6 +737,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     ? `Cover traffic active (battery ${Math.round(battery.level * 100)}%${battery.charging ? ', charging' : ''}).`
                     : `Cover traffic paused to save battery (${Math.round(battery.level * 100)}%).`)}
             </p>
+          )}
+          <ToggleRow
+            label={t('settings.presenceSharing')}
+            enabled={privacyPrefs.presenceSharing}
+            onToggle={() => updatePresencePref({ presenceSharing: !privacyPrefs.presenceSharing })}
+          />
+          {privacyPrefs.presenceSharing && (
+            <div className="px-1 pb-2 space-y-2">
+              <p className="text-[11px] text-[#8c919d]">{t('settings.presenceSharingHint')}</p>
+              <ToggleRow
+                label={t('settings.presenceHashing')}
+                enabled={privacyPrefs.presenceHashing}
+                onToggle={() => updatePresencePref({ presenceHashing: !privacyPrefs.presenceHashing })}
+              />
+              <div className="flex gap-1.5">
+                {(['short', 'normal', 'long'] as const).map((ttl) => (
+                  <button
+                    key={ttl}
+                    type="button"
+                    onClick={() => updatePresencePref({ presenceTtl: ttl })}
+                    className={`flex-1 py-1.5 rounded-xl border text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${
+                      privacyPrefs.presenceTtl === ttl
+                        ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-white'
+                        : 'border-white/10 text-white/60 hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    {t(`settings.presenceTtl_${ttl}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           <SectionHeader icon={<Send className="w-3.5 h-3.5" />} title={t('settings.joinOutbox')} />

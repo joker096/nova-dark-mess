@@ -320,6 +320,9 @@ describe('SettingsModal', () => {
     await waitFor(() => expect(screen.getByText(/Cover traffic paused/)).toBeTruthy());
     expect(JSON.parse(localStorage.getItem('nova_privacy_mode') ?? '{}')).toEqual({
       metadataMinimization: true,
+      presenceSharing: false,
+      presenceHashing: true,
+      presenceTtl: 'normal',
     });
     delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
   });

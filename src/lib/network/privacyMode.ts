@@ -7,8 +7,16 @@
  * `readBatteryStatus`), which keeps this module pure and testable.
  */
 
+export type PresenceTtl = 'short' | 'normal' | 'long';
+
 export interface PrivacyPrefs {
   metadataMinimization: boolean;
+  /** Share presence with the relay at all (opt-in, off by default). */
+  presenceSharing: boolean;
+  /** Hash the fingerprint before sending it, so the relay never sees the raw id. */
+  presenceHashing: boolean;
+  /** How long the relay keeps a heartbeat alive. */
+  presenceTtl: PresenceTtl;
 }
 
 export interface BatteryStatus {
@@ -18,7 +26,18 @@ export interface BatteryStatus {
 }
 
 export const PRIVACY_STORAGE_KEY = 'nova_privacy_mode';
-export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = { metadataMinimization: false };
+export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = {
+  metadataMinimization: false,
+  presenceSharing: false,
+  presenceHashing: true,
+  presenceTtl: 'normal',
+};
+
+const PRESENCE_TTLS: PresenceTtl[] = ['short', 'normal', 'long'];
+
+function parsePresenceTtl(value: unknown): PresenceTtl {
+  return PRESENCE_TTLS.includes(value as PresenceTtl) ? (value as PresenceTtl) : DEFAULT_PRIVACY_PREFS.presenceTtl;
+}
 
 /** Battery level below which cover traffic is paused while unplugged. */
 export const COVER_TRAFFIC_MIN_LEVEL = 0.2;
@@ -33,6 +52,15 @@ export function loadPrivacyPrefs(): PrivacyPrefs {
         typeof parsed.metadataMinimization === 'boolean'
           ? parsed.metadataMinimization
           : DEFAULT_PRIVACY_PREFS.metadataMinimization,
+      presenceSharing:
+        typeof parsed.presenceSharing === 'boolean'
+          ? parsed.presenceSharing
+          : DEFAULT_PRIVACY_PREFS.presenceSharing,
+      presenceHashing:
+        typeof parsed.presenceHashing === 'boolean'
+          ? parsed.presenceHashing
+          : DEFAULT_PRIVACY_PREFS.presenceHashing,
+      presenceTtl: parsePresenceTtl(parsed.presenceTtl),
     };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFS };
@@ -44,6 +72,23 @@ export function savePrivacyPrefs(prefs: PrivacyPrefs): void {
     localStorage.setItem(PRIVACY_STORAGE_KEY, JSON.stringify(prefs));
   } catch {
     void 0;
+  }
+}
+
+/**
+ * Server-side TTL for a presence heartbeat, matching the relay's sweep window.
+ * Values mirror `server.js` (`presence.ttlMs`): short 45 s, normal 2 min,
+ * long 5 min. A shorter TTL means the relay forgets you sooner after the last
+ * heartbeat; a longer one means fewer re-announcements but a bigger window.
+ */
+export function presenceTtlMs(ttl: PresenceTtl): number {
+  switch (ttl) {
+    case 'short':
+      return 45_000;
+    case 'long':
+      return 5 * 60_000;
+    default:
+      return 2 * 60_000;
   }
 }
 
