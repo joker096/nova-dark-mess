@@ -16,6 +16,8 @@
     "lint:eslint": "eslint src/ --ext .ts,.tsx",
     "test:security": "tsx scripts/security-selftest.ts",
     "audit:i18n": "tsx scripts/audit-i18n.ts",
+    "icons:android": "node scripts/generate-android-icons.mjs",
+    "check:android-icons": "node scripts/check-android-icons.mjs",
     "audit:buttons": "tsx scripts/audit-buttons.ts",
     "test": "vitest run",
     "test:watch": "vitest",
