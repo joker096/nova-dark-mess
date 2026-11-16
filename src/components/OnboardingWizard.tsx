@@ -44,15 +44,28 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     try {
       const trimmed = name.trim();
       if (trimmed) {
-        updateAccount({
-          displayName: trimmed,
-          nickname: `@${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'nova'}`,
-        });
+        try {
+          updateAccount({
+            displayName: trimmed,
+            nickname: `@${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'nova'}`,
+          });
+        } catch (e) {
+          console.error('onboarding: updateAccount failed', e);
+        }
       }
-      if (pin) await setPin(pin);
+      if (pin) {
+        try {
+          await setPin(pin);
+        } catch (e) {
+          console.error('onboarding: setPin failed', e);
+          setError(t('premium.errorGeneric'));
+          return;
+        }
+      }
       completeOnboarding(path ?? 'create');
       onDone();
-    } catch {
+    } catch (e) {
+      console.error('onboarding: finish failed', e);
       setError(t('premium.errorGeneric'));
     } finally {
       setBusy(false);

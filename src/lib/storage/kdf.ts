@@ -45,7 +45,8 @@ export async function deriveKeyFromRandomSecret(
 export async function deriveKeyFromPassphrase(
   passphrase: string,
   salt: Uint8Array,
-  params: KdfParams = DEFAULT_KDF_PARAMS
+  params: KdfParams = DEFAULT_KDF_PARAMS,
+  extractable: boolean = false,
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -65,7 +66,7 @@ export async function deriveKeyFromPassphrase(
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    false,
+    extractable,
     ['encrypt', 'decrypt']
   );
 }
