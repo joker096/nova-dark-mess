@@ -85,7 +85,7 @@ test('light theme applies an accessible palette across chats and wallpapers', as
   });
 
   expect(colors.surface).toBe('rgb(243, 245, 248)');
-  expect(colors.heading).toBe('rgb(69, 77, 90)');
+  expect(colors.heading).toBe('rgb(23, 27, 36)');
   expect(colors.wallpaper).toContain('rgb(255, 255, 255)');
   expect(colors.accent.background).toBe('rgb(194, 65, 12)');
   expect(colors.accent.color).toBe('rgb(255, 255, 255)');
