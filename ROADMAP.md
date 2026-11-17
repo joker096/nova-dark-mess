@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-16 (Phase 9 security-plan tracking added)
+Last updated: 2026-11-17 (monetization track added to the roadmap)
 
 ## Where the hardening plan stands (quick index)
 
@@ -9,6 +9,9 @@ Last updated: 2026-11-16 (Phase 9 security-plan tracking added)
   key-change journal, secure-wipe audit, XSS pass, CI scanning, external audit remain.
 - ⬜ Plan Phases 2–5 (delivery, anti-censorship, product, distribution) — not started;
   tracked as originally written in `docs/План доработки Mess&Anger Nova Dark Messenger.md`.
+- ⬜ Monetization track (ads + affiliate) — plan only; phases A–D and the
+  pre-launch checklist live in `docs/monetization-roadmap.md`;
+  rules/sanctions/auction contracts in [`docs/moderation-and-ads-plan.md`](docs/moderation-and-ads-plan.md).
 
 ## Release & CI (GitHub Actions)
 
@@ -287,6 +290,22 @@ servers, no paid services.
 - [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
   user-run signaling/relay gateways, documented but never required.
 
+## Recent changes (2026-11-17)
+
+- **Monetization track added to the roadmap.** `docs/monetization-roadmap.md`
+  turns the ads/affiliate strategy into phases A–D with a pre-launch
+  checklist: only channel feeds and the channel catalog in the MVP, 50% revenue
+  share to channel admins, context-of-channel targeting, three affiliate
+  loops (platform CPA, mini-app referral program, admin affiliate buttons),
+  RF legal contour (`erid`/ORD/EERI plus the 3% ad levy), the admin dashboard
+  spec and the guardrails that roll an ad load back. It links to
+  [`docs/moderation-and-ads-plan.md`](docs/moderation-and-ads-plan.md) for the technical contracts so the two
+  documents do not drift, and states the boundaries explicitly: ads never
+  enter 1:1 chats, groups, calls or pushes, and the ad server stays an
+  optional add-on — the app must work fully with monetization compiled out.
+  Only the client prototype exists today (`src/lib/ads/`,
+  `SponsoredPostCard.tsx`); nothing server-side is implemented.
+
 ## Recent changes (2026-11-16)
 
 - **Roadmap restructured: Phase 9 added** to track the external
@@ -414,3 +433,53 @@ premium payment flow are now marked `[x]`.
 - Group chat of 10 members works over LAN with no signaling server.
 - No PII is present in any persisted storage key or network payload (audited via `tests/` + manual review).
 - All user-facing strings pass i18n parity tests (`src/lib/i18n.test.ts`).
+
+## Monetization track (new)
+
+Ads + affiliate monetization is tracked in `docs/monetization-roadmap.md`
+(product, inventory, revenue share, economics, RF legal contour, admin
+dashboard, phases), with the technical contracts — rule catalog, sanctions,
+creative review, data model, auction API, anti-fraud — in
+[`docs/moderation-and-ads-plan.md`](docs/moderation-and-ads-plan.md)
+(§15 auction, §22 moderation stages 0–5, §31 what is already shipped).
+Moderation ships **before** the first ad,
+not alongside it.
+
+Scope boundaries that are not up for negotiation:
+
+- **Never** ads in 1:1 chats, groups, calls or push notifications; no reading
+  of message content for targeting (the architecture makes it impossible).
+- The ad server is an **optional, self-hostable add-on**, outside the message
+  delivery path; an app built with monetization off must stay fully
+  functional and make no ad network calls.
+- No `IDFA`/`GAID`, no third-party ad SDKs, no per-user identifiers beyond a
+  daily-salted HMAC used for frequency caps.
+- Ads are one line of revenue next to Premium (already shipped), paid channel
+  subscriptions and in-app currency — never the whole basket.
+
+Phases (each gated on the checklist in §12 of the doc):
+
+- [ ] **A. Validation** (weeks 1–6) — hand-sold sponsored posts in 20–50 top
+  channels with manual ORD marking, one CPA aggregator, basic channel stats,
+  public ads constitution. First money, real CPM demand, zero ad-server code.
+  Spec: [`docs/monetization-phase-a-spec.md`](docs/monetization-phase-a-spec.md)
+  (channel criteria, price list, deal funnel, erid procedure, gate criteria).
+- [ ] **B. MVP platform** (months 2–4) — ad server with sponsored post,
+  server-enforced frequency caps, second-price auction, 50% rev share and
+  payouts, admin dashboard v1, automatic `erid`, promoted channels in the
+  catalog. Spec: [`docs/monetization-phase-b-spec.md`](docs/monetization-phase-b-spec.md)
+  (data model, `/slot` + `/events` API, caps, ledger, ORD outbox, tests).
+- [ ] **C. Ecosystem** (months 4–8) — self-serve advertiser cabinet, rewarded
+  ads in mini-apps plus in-app currency, mini-app affiliate program, sponsored
+  sticker packs, ads in stories, Premium turns ads off.
+- [ ] **D. Optimization** (months 8–12) — ML ranking and predicted CTR,
+  external/programmatic demand, gifting, chat-list experiments only behind a
+  holdout.
+
+Already in the repo: the client-side prototype only — `src/lib/ads/` (types,
+local dismiss/block/journal), `src/components/SponsoredPostCard.tsx`, and the
+Settings → Ads section. Premium suppression exists on-device already as the
+`ads_free` Premium feature (`src/lib/premium.ts`; `ChannelScreen` checks
+`canUse('ads_free')` before rendering the slot), but it has no server-side
+billing yet. No server caps, auction, payouts, dashboard, `erid` or affiliate
+attribution either.
