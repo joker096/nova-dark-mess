@@ -4673,7 +4673,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>{t('attachment.poll', 'Poll')}</span>
+              <span>{t('common.poll')}</span>
             </button>
             <button
               type="button"
