@@ -18,6 +18,7 @@ import {
   ChevronUp,
   ChevronDown,
   ListFilter,
+  Lock,
   X,
   MoreHorizontal,
   Palette,
@@ -42,6 +43,7 @@ import {
   UserMinus,
   ShieldCheck,
   VolumeX,
+  RefreshCw,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -56,6 +58,7 @@ import {
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
+import { VirtualizedList } from './VirtualizedList';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
 import { WallpaperSettingsModal } from './WallpaperSettingsModal';
 import { ScheduleMessageModal } from './ScheduleMessageModal';
@@ -67,9 +70,11 @@ import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
+import { ACCENT_COLORS, applyAccentColor } from '../lib/ui/appearance';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
 import { secureWipeMessage } from '../lib/security/secureWipe';
+import { dbInstance } from '../lib/storage/db';
 import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
@@ -109,7 +114,9 @@ import { ReceiptManager } from '../lib/p2p/receipts';
 import { enqueueJoinPayload, JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
 import { getThreadMessages } from '../lib/messaging/threads';
 import { editMessage } from '../lib/messaging/messageLifecycle';
+import { markChatRead } from '../lib/messaging/unread';
 import { playSound, vibrate } from '../lib/notifications/sounds';
+import type { PeerKeyChange } from '../lib/security/peerKeyJournal';
 
 const DEMO_PEER_BUNDLE_PREFIX = 'nova_demo_peer_bundle_';
 
@@ -140,6 +147,8 @@ interface ScheduledMessageItem {
 
 const EMOJI_OPTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉'];
 const QUICK_SEARCH_CHIPS = ["Harry's", 'Sunday', 'hang out', 'Rebecca', 'photos', 'dinner', 'voice', 'remember'];
+const isVideoMediaUrl = (url: string) =>
+  /^data:video\//i.test(url) || /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i.test(url);
 
 // Premium outgoing bubble themes (additive — default theme keeps the current design untouched)
 const PREMIUM_THEMES: Record<string, { label: string; grad: string; shadow: string; border: string }> = {
@@ -157,7 +166,7 @@ type RoomEnvelope =
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenProfile }) => {
   const { t } = useLanguage();
-  const { encryptAndSendMessage, identity } = useSecurity();
+  const { encryptAndSendMessage, checkPeerKey, identity } = useSecurity();
   const { checkout, canUse } = usePremium();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
@@ -170,6 +179,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     direction: 'send' | 'receive';
   } | null>(null);
   const completedTransfersRef = useRef<Set<string>>(new Set());
+  const expiredCleanupRef = useRef<WeakSet<ChatMessage>>(new WeakSet());
   const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
   const [groupMembers, setGroupMembers] = useState<string[]>(
     chatItem?.type === 'group' ? chatItem.members ?? [] : [],
@@ -213,6 +223,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       return msg;
     });
   });
+  const messagesRef = useRef(messages);
+  const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
+  const [peerFingerprint, setPeerFingerprint] = useState<string | null>(null);
+  const [loadedMessagesChatId, setLoadedMessagesChatId] = useState(chatId);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const appendSystemMessage = (text: string) => {
     const message = {
@@ -579,6 +597,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   useEffect(() => {
     registerCreatedGroups();
+    setPeerKeyChanges([]);
+    setPeerFingerprint(null);
     setMessages((CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
         return {
@@ -591,21 +611,134 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       }
       return msg;
     }));
+    setLoadedMessagesChatId(chatId);
   }, [chatId]);
 
+  const keyChangedLabel = t('chat.e2eeKeyChanged');
   useEffect(() => {
+    if (!identity || chatItem?.type !== 'direct') return;
+
+    let active = true;
+    void checkPeerKey(chatId)
+      .then(({ peerFingerprint: fingerprint, history }) => {
+        if (!active) return;
+
+        setPeerFingerprint((current) => (current === fingerprint ? current : fingerprint));
+        setPeerKeyChanges((current) =>
+          current.length === history.length &&
+          current.every((change, index) => change.id === history[index]?.id)
+            ? current
+            : history,
+        );
+
+        const securityMessages: ChatMessage[] = history.map((change) => {
+          const signingKeyChanged =
+            change.previousSigningKeyId !== change.currentSigningKeyId;
+          const previousKey = signingKeyChanged
+            ? change.previousSigningKeyId
+            : change.previousIdentityKeyId;
+          const currentKey = signingKeyChanged
+            ? change.currentSigningKeyId
+            : change.currentIdentityKeyId;
+
+          return {
+            id: change.id,
+            senderId: 'other',
+            text: `${keyChangedLabel}: ${previousKey.slice(-8)} → ${currentKey.slice(-8)}`,
+            time: new Date(change.changedAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            createdAt: change.changedAt,
+            system: true,
+          };
+        });
+        const existingIds = new Set(
+          (CONVERSATION_HISTORIES[chatId] ?? []).map((message) => message.id),
+        );
+        const missingMessages = securityMessages.filter((message) => !existingIds.has(message.id));
+        if (missingMessages.length === 0) return;
+
+        appendConversationHistory(chatId, missingMessages);
+        setMessages((current) => {
+          const currentIds = new Set(current.map((message) => message.id));
+          return [
+            ...current,
+            ...missingMessages.filter((message) => !currentIds.has(message.id)),
+          ];
+        });
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          triggerPinnedToast(error instanceof Error ? error.message : String(error));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    chatId,
+    chatItem?.type,
+    checkPeerKey,
+    identity,
+    keyChangedLabel,
+    triggerPinnedToast,
+  ]);
+
+  useEffect(() => {
+    if (loadedMessagesChatId !== chatId) return;
+    const unreadIds = messages
+      .filter((message) => message.senderId === 'other' && !message.isRead)
+      .map((message) => message.id);
+    if (unreadIds.length === 0) return;
+
+    markChatRead(chatId);
+    const unreadIdSet = new Set(unreadIds);
+    setMessages((current) =>
+      current.map((message) =>
+        unreadIdSet.has(message.id) ? { ...message, isRead: true } : message,
+      ),
+    );
+  }, [chatId, loadedMessagesChatId, messages]);
+
+  useEffect(() => {
+    let active = true;
     const timer = setInterval(() => {
       const now = Date.now();
-      setMessages((prev) => {
-        prev.forEach((m) => {
-          if (m.expiresAt && m.expiresAt <= now) secureWipeMessage(m);
-        });
-        const next = prev.filter((m) => !m.expiresAt || m.expiresAt > now);
-        return next.length === prev.length ? prev : next;
+      const expired = messagesRef.current.filter(
+        (message) => message.expiresAt !== undefined && message.expiresAt <= now,
+      );
+      if (expired.length === 0) return;
+
+      const expiredIds = new Set(expired.map((message) => message.id));
+      expired.forEach((message) => {
+        if (expiredCleanupRef.current.has(message)) return;
+        expiredCleanupRef.current.add(message);
+        secureWipeMessage(message);
+        if (dbInstance.isReady()) {
+          void dbInstance.deleteEncryptedMessage(message.id).catch((error: unknown) => {
+            console.error('Failed to remove expired encrypted message:', error);
+            if (active) {
+              triggerPinnedToast(
+                `Expired message storage cleanup failed: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+              );
+            }
+          });
+        }
       });
+      CONVERSATION_HISTORIES[chatId] = (CONVERSATION_HISTORIES[chatId] ?? []).filter(
+        (message) => !expiredIds.has(message.id),
+      );
+      setMessages((current) => current.filter((message) => !expiredIds.has(message.id)));
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [chatId, triggerPinnedToast]);
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -632,19 +765,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   // Sync chat colour theme to global accent CSS variable (menu icons, highlights, etc.)
   useEffect(() => {
-    const ACCENT_COLORS: Record<'default' | 'sapphire' | 'amethyst' | 'emerald', string> = {
-      default: '#ff4e18',
-      sapphire: '#3B82F6',
-      amethyst: '#8B5CF6',
-      emerald: '#10B981',
-    };
-    const root = document.documentElement;
-    root.style.setProperty('--nova-accent-color', ACCENT_COLORS[chatTheme]);
-    try {
-      localStorage.setItem('nova_accent_color', ACCENT_COLORS[chatTheme]);
-    } catch {
-      void 0;
-    }
+    applyAccentColor(ACCENT_COLORS[chatTheme]);
   }, [chatTheme]);
 
   // In-chat search state
@@ -680,6 +801,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   });
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const moreMenuPanelRef = useRef<HTMLDivElement | null>(null);
+  const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [mediaLightbox, setMediaLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const mediaLightboxRef = useFocusTrap<HTMLDivElement>(Boolean(mediaLightbox), () =>
+    setMediaLightbox(null),
+  );
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVideoCallMinimized, setIsVideoCallMinimized] = useState(false);
   const [callMode, setCallMode] = useState<MediaCallMode>('video');
@@ -694,7 +822,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   // Pinned Messages Carousel State
   const [isPinnedCarouselOpen, setIsPinnedCarouselOpen] = useState(false);
+  const [isProtectionOpen, setIsProtectionOpen] = useState(false);
   const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesListWrapperRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -763,7 +893,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const isDraggingRef = useRef(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressFiredRef = useRef(false);
   const pointerStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -777,9 +906,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
   const pinnedMessages = messages.filter((m) => m.isPinned);
 
+  // Pixel height of the messages scroll viewport, used to size the virtualized
+  // list window. Measured from the list wrapper so it follows resizes.
+  const [messagesViewportHeight, setMessagesViewportHeight] = useState(600);
+  useEffect(() => {
+    const node = messagesListWrapperRef.current;
+    if (!node) return;
+    setMessagesViewportHeight(node.clientHeight || 600);
+    const ro = new ResizeObserver(() => {
+      setMessagesViewportHeight(node.clientHeight || 600);
+    });
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
+
   const scrollToBottom = () => {
     if (!searchQuery.trim()) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const node = messagesScrollRef.current;
+      if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
     }
   };
 
@@ -898,6 +1042,57 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeReactionMsgId, isAttachmentMenuOpen, isEmojiPickerOpen]);
 
+  useEffect(() => {
+    if (!mediaLightbox) return;
+    const handleMediaKeys = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        setMediaLightbox((current) =>
+          current
+            ? { ...current, index: (current.index - 1 + current.urls.length) % current.urls.length }
+            : current,
+        );
+      } else if (event.key === 'ArrowRight') {
+        setMediaLightbox((current) =>
+          current
+            ? { ...current, index: (current.index + 1) % current.urls.length }
+            : current,
+        );
+      }
+    };
+    window.addEventListener('keydown', handleMediaKeys);
+    return () => window.removeEventListener('keydown', handleMediaKeys);
+  }, [mediaLightbox]);
+
+  useLayoutEffect(() => {
+    if (!isMoreMenuOpen) {
+      setMoreMenuPosition(null);
+      return;
+    }
+    const anchor = moreMenuAnchorRef.current;
+    if (!anchor) return;
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const panelWidth = moreMenuPanelRef.current?.offsetWidth ?? 256;
+      const panelHeight = moreMenuPanelRef.current?.offsetHeight ?? 320;
+      const left = Math.min(
+        Math.max(rect.right - panelWidth, 8),
+        Math.max(8, window.innerWidth - panelWidth - 8),
+      );
+      const top =
+        rect.bottom + panelHeight + 8 > window.innerHeight
+          ? Math.max(8, rect.top - panelHeight - 8)
+          : rect.bottom + 8;
+      setMoreMenuPosition({ top, left });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isMoreMenuOpen]);
+
   // The send-options sheet belongs next to the button that opened it, not to
   // the whole composer block, so anchor it to the trigger box.
   useLayoutEffect(() => {
@@ -958,11 +1153,77 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     return false;
   });
 
+  // Groups consecutive messages from the same sender into visual blocks and
+  // inserts day separators ("Today", "Yesterday", DD.MM.YYYY). In search
+  // mode grouping is disabled so every match keeps its full context.
+  type ChatRenderItem =
+    | { type: 'message'; msg: ChatMessage; groupStart: boolean }
+    | { type: 'date'; label: string }
+    | { type: 'unread'; label: string };
+
+  // First message the contact sent that hasn't been read yet. Everything from
+  // that point on (inclusive) is "new" for this session and gets an unread
+  // divider so the user can see where they left off.
+  const firstUnreadId = useMemo(() => {
+    const unread = messages.find((m) => m.senderId === 'other' && !m.isRead);
+    return unread ? unread.id : null;
+  }, [messages]);
+
+  const unreadCount = useMemo(
+    () => messages.filter((m) => m.senderId === 'other' && !m.isRead).length,
+    [messages],
+  );
+
+  const formatDateSeparator = (ts: number): string => {
+    const d = new Date(ts);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const toDateKey = (date: Date) =>
+      `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    if (toDateKey(d) === toDateKey(today)) return t('chat.dateToday');
+    if (toDateKey(d) === toDateKey(yesterday)) return t('chat.dateYesterday');
+    return d.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   // Displayed messages: in 'filtered' mode, only matches are shown. In 'context' mode, the full timeline is shown.
   const displayedMessages =
     isSearchOpen && searchQuery.trim() && searchFilterMode === 'filtered'
       ? matchingMessages
       : messages;
+
+  const renderedMessages = useMemo<ChatRenderItem[]>(() => {
+    const list = displayedMessages;
+    const items: ChatRenderItem[] = [];
+    let prevSender: string | null = null;
+    let prevDateKey: string | null = null;
+    let unreadDividerShown = !firstUnreadId;
+
+    for (const msg of list) {
+      const ts = msg.createdAt ?? Date.parse(msg.time);
+      const dateKey = Number.isFinite(ts) ? `${new Date(ts).getFullYear()}-${new Date(ts).getMonth()}-${new Date(ts).getDate()}` : null;
+
+      if (dateKey && dateKey !== prevDateKey) {
+        items.push({ type: 'date', label: formatDateSeparator(ts) });
+        prevDateKey = dateKey;
+      }
+
+      if (firstUnreadId && !unreadDividerShown && msg.id === firstUnreadId) {
+        items.push({ type: 'unread', label: t('common.unread') });
+        unreadDividerShown = true;
+      }
+
+      const groupStart = prevSender !== msg.senderId;
+      items.push({ type: 'message', msg, groupStart });
+      prevSender = msg.senderId;
+    }
+
+    return items;
+  }, [displayedMessages, t, firstUnreadId]);
 
   const scrollToMessage = (msgId: string) => {
     const el = document.getElementById(`msg-${msgId}`);
@@ -1595,7 +1856,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setHighlightedMsgId(msg.id);
     setTimeout(() => {
       mainInputRef.current?.focus();
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const node = messagesScrollRef.current;
+      if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
     }, 60);
   };
 
@@ -1647,6 +1909,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     // The clone is taken before the secure wipe, which mutates the object.
     const index = messages.findIndex((m) => m.id === msgId);
     const removed = index >= 0 ? { ...messages[index] } : undefined;
+    if (forEveryone && dbInstance.isReady()) {
+      void dbInstance.deleteEncryptedMessage(msgId).catch((error: unknown) => {
+        console.error('Failed to remove deleted encrypted message:', error);
+        triggerPinnedToast(
+          `Deleted message storage cleanup failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+    }
 
     // Start the collapse animation on the original bubble (it keeps its
     // content while it fades). The message is wiped and physically removed
@@ -2206,7 +2478,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       images: currentAttachment?.images,
       document: currentAttachment?.document,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now(),
       isRead: false,
+      deliveryStatus: 'queued',
       expiresAt: disappearAfter ? Date.now() + disappearAfter * 1000 : viewOnceMode ? Date.now() + 5000 : undefined,
             viewOnce: viewOnceMode || undefined,
       replyTo: activeReply
@@ -2221,15 +2495,41 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setMessages((prev) => [...prev, newMessage]);
     playSound('outgoing');
     if (text) {
-      if (isGroupChat) {
-        void groupManager.sendText(text).catch((err) => {
-          console.warn('Group message encryption failed:', err);
-        });
-      } else {
-        void encryptAndSendMessage(chatId, text).catch((err) => {
-          console.warn('Message encryption failed:', err);
-        });
-      }
+      const promise = isGroupChat
+        ? groupManager.sendText(text)
+        : encryptAndSendMessage(chatId, text, {
+            messageId,
+            expiresAt: newMessage.expiresAt,
+          });
+      void promise.then(() => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, deliveryStatus: 'sent' as const } : m
+          )
+        );
+        // Simulated delivery → read lifecycle (real transport replaces these timers).
+        setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId ? { ...m, deliveryStatus: 'delivered' as const } : m
+            )
+          );
+        }, 700);
+        setTimeout(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId ? { ...m, deliveryStatus: 'read' as const, isRead: true } : m
+            )
+          );
+        }, 1400);
+      }).catch((err) => {
+        console.warn('Message send failed:', err);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, deliveryStatus: 'error' as const } : m
+          )
+        );
+      });
     }
     if (currentAttachment?.document) {
       startLocalFileTransfer(
@@ -2243,23 +2543,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }
     setReplyingTo(null);
     setStagedAttachment(null);
-
-    if (isGroupChat) {
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-        );
-      }, 500);
-      appendConversationHistory(chatId, [newMessage]);
-      return;
-    }
-
-    // Transition read status after 500ms
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-      );
-    }, 500);
 
     if (sendSilently) {
       appendConversationHistory(chatId, [newMessage]);
@@ -2323,6 +2606,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     }, 2600);
   };
 
+  const handleRetrySend = (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg) return;
+    const reply = msg.replyTo ? msg : null;
+    handleSendMessage(msg.text ?? undefined, reply);
+    // Remove the failed duplicate after the optimistic re-send is queued.
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  };
+
   // Context-aware Smart Reply suggestions based on the last received message content.
   // They only make sense right after an incoming message: suggesting "For sure!"
   // under your own message replies to nothing.
@@ -2347,15 +2639,103 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   }, [lastReceivedMessage, dismissedSmartReplyMsgId]);
   const shouldShowSmartReplies = smartReplies.length > 0 && !inputText.trim();
 
-  // ID of the latest message sent by 'me' that has been read by Katie
-  const latestReadSentMsgId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].senderId === 'me' && messages[i].isRead) {
-        return messages[i].id;
-      }
-    }
-    return null;
-  }, [messages]);
+  // Renders the delivery/status icon for an outgoing message bubble based on
+  // deliveryStatus (queued → sent → delivered → read, or error with retry).
+  const renderMessageStatus = (msg: ChatMessage) => {
+    const status = msg.deliveryStatus ?? (msg.isRead ? 'read' : 'sent');
+    const isError = status === 'error';
+    const isSending = status === 'queued';
+    const isDelivered = status === 'delivered';
+    const isRead = status === 'read';
+    return (
+      <span
+        className="flex items-center gap-1.5 text-[10px] font-mono select-none"
+        title={
+          isError
+            ? t('common.failed')
+            : isSending
+            ? t('common.sending')
+            : isRead || isDelivered
+            ? t('common.read')
+            : t('common.sent')
+        }
+      >
+        {isError ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRetrySend(msg.id);
+            }}
+            className="flex items-center gap-1 text-[var(--nova-accent-color, #ff4e18)] hover:text-[var(--nova-accent-color, #ff5d2b)] transition cursor-pointer"
+            title={t('common.retry')}
+            aria-label={`${t('common.retry')}: ${msg.text ?? ''}`}
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span className="text-[9px]">{t('common.retry')}</span>
+          </button>
+        ) : isSending ? (
+          <span className="inline-flex items-center text-[#8c919d] animate-in fade-in duration-150">
+            <Clock className="w-3 h-3 animate-pulse" />
+            <span className="text-[9px] pl-0.5">{t('common.sending')}</span>
+          </span>
+        ) : (
+          <>
+            {isRead || isDelivered ? (
+              <span className={`inline-flex items-center animate-in zoom-in-75 duration-200 font-bold ${isRead ? 'text-sky-400/90' : 'text-white/60'}`}>
+                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
+              </span>
+            ) : (
+              <span className="inline-flex items-center text-white/60 animate-in fade-in duration-150">
+                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
+              </span>
+            )}
+          </>
+        )}
+      </span>
+    );
+  };
+
+  const renderMessageMedia = (msg: ChatMessage) => {
+    const urls = msg.images;
+    if (!urls?.length) return null;
+    return (
+      <div className="grid grid-cols-2 gap-2 mb-2.5">
+        {urls.map((url, index) => {
+          const isVideo = isVideoMediaUrl(url);
+          return (
+            <button
+              key={`${msg.id}-${index}`}
+              type="button"
+              data-testid={`chat-media-${msg.id}-${index}`}
+              aria-label={`Open media ${index + 1}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setMediaLightbox({ urls, index });
+              }}
+              className="relative h-36 overflow-hidden rounded-[16px] border border-white/10 bg-[#232530] p-0 text-left cursor-zoom-in"
+            >
+              {isVideo ? (
+                <>
+                  <video src={url} muted preload="metadata" className="h-full w-full object-cover" />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+                    <Video className="h-7 w-7 drop-shadow" />
+                  </span>
+                </>
+              ) : (
+                <img
+                  src={url}
+                  alt=""
+                  className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   const sharedMediaCount = useMemo(() => {
     const urls = new Set<string>();
@@ -2649,6 +3029,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   <Search className="w-3 h-3" />
                 </button>
 
+                {/* End-to-End Encryption / Protection of this chat */}
+                <button
+                  onClick={() => setIsProtectionOpen(true)}
+                  data-testid="e2ee-badge"
+                  className="w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition cursor-pointer active:scale-95"
+                  title={t('chat.e2eeBadgeTitle')}
+                  aria-label={t('chat.e2eeCardTitle')}
+                >
+                  <ShieldCheck className="w-3 h-3" />
+                </button>
+
                 {/* Voice Call Toggle Button */}
                 <button
                   onClick={handleStartVoiceCall}
@@ -2711,6 +3102,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 {/* More menu */}
                 <div className="relative">
                   <button
+                    ref={moreMenuAnchorRef}
                     onClick={() => setIsMoreMenuOpen((prev) => !prev)}
                     aria-haspopup="menu"
                     aria-expanded={isMoreMenuOpen}
@@ -2734,94 +3126,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     )}
                   </button>
 
-                  {isMoreMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsMoreMenuOpen(false)}
-                      />
-                      <div
-                        role="menu"
-                        className="absolute right-0 top-full mt-2 w-64 z-50 bg-[#151621]/98 border border-white/10 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
-                      >
-                        <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                          {t('chat.chatActions')}
-                        </div>
-                        <button
-                          onClick={() => {
-                            onOpenProfile();
-                            setIsMoreMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                        >
-                          <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>{t('chat.contactInfo')}</span>
-                        </button>
-                        {isGroupChat && (
-                          <button
-                            onClick={() => {
-                              setIsGroupMembersOpen(true);
-                              setIsMoreMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                          >
-                            <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                            <span>{t('chat.groupMembers')}</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setActiveHeaderTab('gallery');
-                            setIsMoreMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                        >
-                          <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>{t('chat.mediaLinks')}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsWallpaperModalOpen(true);
-                            setIsMoreMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                        >
-                          <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>{t('chat.appearance')}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleCycleChatTheme();
-                            setIsMoreMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                          <span>{t('chat.chatTheme')}</span>
-                        </button>
-                        {scheduledMessages.length > 0 && (
-                          <button
-                            onClick={() => {
-                              setIsScheduleModalOpen(true);
-                              setIsMoreMenuOpen(false);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
-                          >
-                            <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
-                            <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
-                          </button>
-                        )}
-                        <div className="h-px bg-white/10 my-1" />
-                        <button
-                          onClick={() => setIsMoreMenuOpen(false)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/60 hover:bg-white/5 transition cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Close</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </>
@@ -2861,6 +3165,139 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       )}
 
       {/* DISMISSIBLE PINNED MESSAGES CAROUSEL */}
+      {isProtectionOpen && (
+        <div
+          data-testid="protection-card"
+          className="fixed inset-0 z-40 flex items-end justify-center sm:items-center px-0 sm:px-4 pb-0 sm:pb-0"
+          role="dialog"
+          aria-label={t('chat.e2eeCardTitle')}
+          onClick={() => setIsProtectionOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-sm bg-[#151622]/95 backdrop-blur-xl border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl shadow-black/70 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-300">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-white tracking-tight">
+                  {t('chat.e2eeCardTitle')}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProtectionOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                title={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* End-to-end encryption status */}
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-300 shrink-0">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white">
+                  {t('chat.e2eeEncrypted')}
+                </p>
+                <p className="text-[11px] text-[#8c919d] mt-0.5">
+                  {t('chat.e2eeEncryptedDesc', { name: profile.name })}
+                </p>
+              </div>
+            </div>
+
+            {/* Contact verification */}
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/15 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-white">
+                    {t('chat.e2eeVerification')}
+                  </p>
+                  <span
+                    data-testid="protection-verified"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-[var(--nova-warning-text)] border border-amber-500/30"
+                  >
+                    {t('chat.e2eeUnverified')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#8c919d] mt-0.5">
+                  {t('chat.e2eeVerifyDesc')}
+                </p>
+                <p className="text-[10px] font-mono text-[#8c919d] mt-1 break-all">
+                  {peerFingerprint ?? '—'}
+                </p>
+              </div>
+            </div>
+
+            {peerKeyChanges.length > 0 && (
+              <div
+                data-testid="peer-key-change-history"
+                className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-2"
+              >
+                <p className="text-xs font-semibold text-[var(--nova-warning-text)] mb-2">
+                  {keyChangedLabel}
+                </p>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {[...peerKeyChanges].reverse().map((change) => (
+                    <div
+                      key={change.id}
+                      data-testid="peer-key-change-entry"
+                      className="text-[10px] text-[var(--nova-text-secondary)]"
+                    >
+                      <p>{new Date(change.changedAt).toLocaleString()}</p>
+                      <p className="font-mono break-all">
+                        {change.previousFingerprint} → {change.currentFingerprint}
+                      </p>
+                      {change.previousSigningKeyId !== change.currentSigningKeyId && (
+                        <p className="font-mono break-all text-[var(--nova-text-muted)]">
+                          {change.previousSigningKeyId} → {change.currentSigningKeyId}
+                        </p>
+                      )}
+                      {change.previousIdentityKeyId !== change.currentIdentityKeyId && (
+                        <p className="font-mono break-all text-[var(--nova-text-muted)]">
+                          {change.previousIdentityKeyId} → {change.currentIdentityKeyId}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Disappearing messages / key status */}
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/70 shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-white">
+                    {t('chat.e2eeDisappearing')}
+                  </p>
+                  <span
+                    data-testid="protection-disappearing"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                  >
+                    {disappearAfter > 0
+                      ? t('chat.sendOptions.seconds', { count: disappearAfter })
+                      : t('chat.e2eeDisappearingOff')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isPinnedCarouselOpen && (
         <div className="px-3 -mt-1 mb-2 shrink-0 relative z-30 animate-in slide-in-from-top-2 fade-in duration-200">
           <div className="bg-[#151622]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl shadow-black/70">
@@ -3005,17 +3442,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
         </span>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div
-        ref={messagesScrollRef}
-        onClick={() => setActiveReactionMsgId(null)}
-        onScroll={(event) => {
-          const node = event.currentTarget;
-          const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-          setShowScrollToBottom(distanceFromBottom > 120);
-        }}
-        className="flex-1 overflow-y-auto px-4 py-2 space-y-3 relative z-10 no-scrollbar"
-      >
+      {/* Banners above the (virtualized) message list */}
+      <div className="shrink-0 space-y-2 px-4 pt-2 relative z-10">
         {/* Empty Search Results State */}
         {isSearchOpen && searchQuery.trim() && matchingMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in">
@@ -3090,8 +3518,60 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             </button>
           </div>
         )}
+      </div>
 
-        {displayedMessages.map((msg) => {
+      {/* Messages Scroll Area (virtualized) */}
+      <div ref={messagesListWrapperRef} className="flex-1 flex flex-col min-h-0 relative z-10">
+        <VirtualizedList
+          items={renderedMessages}
+          itemHeight={72}
+          height={messagesViewportHeight}
+          containerRef={messagesScrollRef}
+          onScroll={(event) => {
+            const node = event.currentTarget;
+            const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+            setShowScrollToBottom(distanceFromBottom > 120);
+          }}
+          onClick={() => setActiveReactionMsgId(null)}
+          className="flex-1 px-4 py-2 space-y-3 no-scrollbar"
+          getItemKey={(it) =>
+            it.type === 'date'
+              ? `date-${it.label}`
+              : it.type === 'unread'
+                ? 'unread'
+                : `msg-${it.msg.id}`
+          }
+          renderItem={(item, _idx) => {
+          if (item.type === 'date') {
+            return (
+              <div
+                key={`date-${item.label}`}
+                className="flex justify-center my-3"
+              >
+                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-[#8c919d]">
+                  {item.label}
+                </span>
+              </div>
+            );
+          }
+
+          if (item.type === 'unread') {
+            return (
+              <div
+                key="unread-divider"
+                data-testid="unread-divider"
+                className="flex items-center gap-3 my-2"
+              >
+                <div className="flex-1 h-px bg-[var(--nova-accent-color,#ff4e18)]/50" />
+                <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-wide uppercase">
+                  {item.label}
+                </span>
+                <div className="flex-1 h-px bg-[var(--nova-accent-color,#ff4e18)]/50" />
+              </div>
+            );
+          }
+
+          const msg = item.msg;
           const isMine = msg.senderId === 'me';
           const isPickerOpen = activeReactionMsgId === msg.id;
           const isHighlighted = highlightedMsgId === msg.id;
@@ -3145,7 +3625,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             <div
               key={msg.id}
               id={`msg-${msg.id}`}
-              className={`flex flex-col relative transition-all duration-300 ${
+              className={`flex flex-col relative transition-all duration-300 ${item.groupStart ? 'mt-2' : 'mt-0'} ${
                 isMine ? 'items-end' : 'items-start'
               } ${isDeleting ? 'msg-deleting' : ''}`}
             >
@@ -3319,13 +3799,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     touchAction: 'pan-y',
                   }}
-                  className={`relative group touch-manipulation cursor-pointer transition-all duration-300 select-none ${
-                    isPickerOpen ? 'scale-[1.02] ring-2 ring-[var(--nova-accent-color, #ff4e18)]/50' : 'active:scale-[0.99]'
-                  } ${
+                  className={`relative group touch-manipulation cursor-pointer transition-all duration-150 select-none active:scale-[0.99] ${
                     isCurrentSearchMatch
                       ? 'ring-2 ring-[var(--nova-accent-color, #ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[24px]'
                       : isHighlighted
-                      ? 'ring-2 ring-[var(--nova-accent-color, #ff4e18)] shadow-[0_0_22px_rgba(255,78,24,0.6)] rounded-[24px]'
+                      ? 'shadow-[0_0_18px_rgba(255,78,24,0.28)] rounded-[24px]'
                       : hasWordMatch
                       ? 'ring-1 ring-[var(--nova-accent-color, #ff4e18)]/40 rounded-[24px]'
                       : ''
@@ -3609,37 +4087,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             <Reply className="w-2.5 h-2.5" />
                             <span className="text-[9.5px]">Reply</span>
                           </button>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-white/75 font-mono">{msg.time}</span>
-                            {msg.isRead ? (
-                              <span
-                                title={t('common.read')}
-                                className="inline-flex items-center text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.8)] animate-in zoom-in-75 duration-200 font-bold"
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
-                              </span>
-                            ) : (
-                              <span
-                                title={t('common.sent')}
-                                className="inline-flex items-center text-white/50 animate-in fade-in duration-150"
-                              >
-                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
-                              </span>
-                            )}
-                            {msg.id === latestReadSentMsgId && (
-                              <span
-                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
-                                title={t('common.read')}
-                              >
-                                <img
-                                  src={profile.avatar}
-                                  alt="Seen"
-                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
-                                />
-                                <span className="text-[9px] font-semibold text-white/90 hidden sm:inline">Seen</span>
-                              </span>
-                            )}
-                          </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-white/75 font-mono">{msg.time}</span>
+                              {renderMessageStatus(msg)}
+                            </div>
                         </div>
                       </div>
                     ) : (
@@ -3669,22 +4120,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </p>
                           </div>
                         )}
-                        {msg.images && msg.images.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-2 rounded-[16px] overflow-hidden">
-                            {msg.images.map((imgUrl, idx) => (
-                              <div
-                                key={idx}
-                                className="rounded-[14px] overflow-hidden h-36 bg-black/20 border border-white/10 relative group cursor-pointer"
-                              >
-                                <img
-                                  src={imgUrl}
-                                  alt=""
-                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {renderMessageMedia(msg)}
                         {msg.document && (
                           <div className="flex items-center gap-3 p-3 bg-black/25 rounded-2xl border border-white/10 mb-2">
                             <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
@@ -3783,34 +4219,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
-                            {msg.isRead ? (
-                              <span
-                                title={t('common.read')}
-                                className="inline-flex items-center text-sky-200 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)] animate-in zoom-in-75 duration-200 font-bold"
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
-                              </span>
-                            ) : (
-                              <span
-                                title={t('common.sent')}
-                                className="inline-flex items-center text-white/60 animate-in fade-in duration-150"
-                              >
-                                <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
-                              </span>
-                            )}
-                            {msg.id === latestReadSentMsgId && (
-                              <span
-                                className="inline-flex items-center gap-1 pl-1 ml-0.5 border-l border-white/20 animate-in fade-in zoom-in-75 duration-200 select-none"
-                                title={t('common.read')}
-                              >
-                                <img
-                                  src={profile.avatar}
-                                  alt="Seen"
-                                  className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-white/60 shadow-sm"
-                                />
-                                <span className="text-[9px] font-semibold text-white/95 hidden sm:inline">Seen</span>
-                              </span>
-                            )}
+                            {renderMessageStatus(msg)}
                           </div>
                         </div>
                       </div>
@@ -3909,22 +4318,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </p>
                         </div>
                       )}
-                      {msg.images && msg.images.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2.5">
-                          {msg.images.map((imgUrl, idx) => (
-                            <div
-                              key={idx}
-                              className="rounded-[16px] overflow-hidden h-36 bg-[#232530] border border-white/5 relative group cursor-pointer"
-                            >
-                              <img
-                                src={imgUrl}
-                                alt=""
-                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {renderMessageMedia(msg)}
 
                       {msg.voiceNote && (
                         <div className="mb-1">
@@ -4030,7 +4424,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
               </div>
             </div>
           );
-        })}
+          }}
+        />
 
         {isTyping && (
           <div className="flex items-start animate-in fade-in duration-200">
@@ -4059,8 +4454,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {showScrollToBottom && (
@@ -4071,10 +4464,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
           }}
           className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition hover:brightness-110 active:scale-95"
-          aria-label="Scroll to latest messages"
+          aria-label={`Scroll to ${unreadCount} new message${unreadCount === 1 ? '' : 's'}`}
           title="Scroll to latest messages"
         >
           <ChevronDown className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span
+              data-testid="scroll-to-bottom-count"
+              className="absolute -top-1.5 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-[var(--nova-accent-color,#ff4e18)] text-[10px] font-bold flex items-center justify-center leading-none"
+              aria-hidden="true"
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       )}
 
@@ -5050,6 +5452,180 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
           </div>
         </div>
       )}
+      {isMoreMenuOpen &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)} />
+            <div
+              ref={moreMenuPanelRef}
+              role="menu"
+              aria-label={t('chat.chatActions')}
+              style={{ top: moreMenuPosition?.top ?? 8, left: moreMenuPosition?.left ?? 8 }}
+              className="fixed z-50 max-h-[calc(100vh-1rem)] w-64 overflow-y-auto rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150"
+            >
+              <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                {t('chat.chatActions')}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenProfile();
+                  setIsMoreMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <span>{t('chat.contactInfo')}</span>
+              </button>
+              {isGroupChat && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsGroupMembersOpen(true);
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                  <span>{t('chat.groupMembers')}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveHeaderTab('gallery');
+                  setIsMoreMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <span>{t('chat.mediaLinks')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsWallpaperModalOpen(true);
+                  setIsMoreMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+              >
+                <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <span>{t('chat.appearance')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleCycleChatTheme();
+                  setIsMoreMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <span>{t('chat.chatTheme')}</span>
+              </button>
+              {scheduledMessages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsScheduleModalOpen(true);
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                  <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
+                </button>
+              )}
+              <div className="h-px bg-white/10 my-1" />
+              <button
+                type="button"
+                onClick={() => setIsMoreMenuOpen(false)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/60 hover:bg-white/5 transition cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Close</span>
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
+      {mediaLightbox &&
+        createPortal(
+          <div
+            ref={mediaLightboxRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Media viewer"
+            data-theme-preserve="dark"
+            tabIndex={-1}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 text-white backdrop-blur-md"
+          >
+            <button
+              type="button"
+              aria-label="Close media viewer"
+              onClick={() => setMediaLightbox(null)}
+              className="absolute right-4 top-4 z-20 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="absolute inset-0" onClick={() => setMediaLightbox(null)} />
+            <div className="relative z-10 flex max-h-full max-w-full items-center gap-3" onClick={(event) => event.stopPropagation()}>
+              {mediaLightbox.urls.length > 1 && (
+                <button
+                  type="button"
+                  aria-label="Previous media"
+                  onClick={() =>
+                    setMediaLightbox((current) =>
+                      current
+                        ? { ...current, index: (current.index - 1 + current.urls.length) % current.urls.length }
+                        : current,
+                    )
+                  }
+                  className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {isVideoMediaUrl(mediaLightbox.urls[mediaLightbox.index]) ? (
+                <video
+                  src={mediaLightbox.urls[mediaLightbox.index]}
+                  controls
+                  playsInline
+                  aria-label={`Media ${mediaLightbox.index + 1}`}
+                  className="max-h-[85vh] max-w-[85vw] rounded-xl bg-black"
+                />
+              ) : (
+                <img
+                  src={mediaLightbox.urls[mediaLightbox.index]}
+                  alt={`Media ${mediaLightbox.index + 1}`}
+                  className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
+                />
+              )}
+              {mediaLightbox.urls.length > 1 && (
+                <button
+                  type="button"
+                  aria-label="Next media"
+                  onClick={() =>
+                    setMediaLightbox((current) =>
+                      current
+                        ? { ...current, index: (current.index + 1) % current.urls.length }
+                        : current,
+                    )
+                  }
+                  className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            {mediaLightbox.urls.length > 1 && (
+              <span className="absolute bottom-5 z-20 text-xs text-white/70">
+                {mediaLightbox.index + 1} / {mediaLightbox.urls.length}
+              </span>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

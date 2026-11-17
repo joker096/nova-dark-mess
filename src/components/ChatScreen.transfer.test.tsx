@@ -15,6 +15,10 @@ vi.mock('../context/LanguageContext', () => ({
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => ({
     encryptAndSendMessage: vi.fn(async () => ({ encryptedPayload: {}, plaintext: '' })),
+    checkPeerKey: vi.fn(async () => ({
+      peerFingerprint: 'nova_pk_peer12345678',
+      history: [],
+    })),
     identity: { fingerprint: 'nova_pk_test1234567890' },
   }),
 }));

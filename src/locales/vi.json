@@ -409,7 +409,19 @@
     "mediaLinks": "Media, tệp, liên kết",
     "appearance": "Giao diện trò chuyện",
     "chatTheme": "Chủ đề trò chuyện",
-    "scheduledCount": "Đã hẹn ({{count}})"
+    "scheduledCount": "Đã hẹn ({{count}})",
+    "dateToday": "Today",
+    "dateYesterday": "Yesterday",
+    "e2eeBadgeTitle": "This chat is end-to-end encrypted",
+    "e2eeCardTitle": "Protection of this chat",
+    "e2eeEncrypted": "End-to-end encrypted",
+    "e2eeEncryptedDesc": "Only you and {{name}} can read these messages. Nova can't see them.",
+    "e2eeVerification": "Contact verification",
+    "e2eeUnverified": "Not verified",
+    "e2eeVerifyDesc": "Compare the security code with your contact in person or over a trusted channel.",
+    "e2eeDisappearing": "Disappearing messages",
+    "e2eeDisappearingOff": "Off",
+    "e2eeKeyChanged": "Security code changed"
   },
   "stories": {
     "title": "Truyện",

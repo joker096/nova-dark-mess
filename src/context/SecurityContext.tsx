@@ -8,6 +8,7 @@ import {
   createSignedPreKey,
   deriveIdentityFromMnemonic,
   isValidMnemonic,
+  verifyPreKeyBundle,
 } from '../lib/crypto/identity';
 import {
   RatchetMessagePayload,
@@ -30,6 +31,7 @@ import {
 } from '../lib/storage/identityStore';
 import { deriveKeyFromRandomSecret, deriveKeyFromPassphrase } from '../lib/storage/kdf';
 import { generateTOTPSecret, verifyTOTPCode } from '../lib/p2p/totp';
+import { getPeerKeyChanges, observePeerKey, type PeerKeyChange } from '../lib/security/peerKeyJournal';
 
 export interface SecurityContextType {
   identity: UserIdentity | null;
@@ -48,8 +50,13 @@ export interface SecurityContextType {
   unlock: () => void;
   encryptAndSendMessage: (
     chatId: string,
-    text: string
+    text: string,
+    options?: { messageId?: string; expiresAt?: number }
   ) => Promise<{ encryptedPayload: RatchetMessagePayload; plaintext: string }>;
+  checkPeerKey: (chatId: string) => Promise<{
+    peerFingerprint: string;
+    history: PeerKeyChange[];
+  }>;
   decryptIncomingMessage: (chatId: string, payload: RatchetMessagePayload) => Promise<string>;
   enable2FA: (secret: string, inputCode: string) => Promise<boolean>;
   disable2FA: () => void;
@@ -129,7 +136,7 @@ async function getOrCreateDemoPeerBundle(chatId: string): Promise<PreKeyBundle> 
     try {
       return JSON.parse(existing) as PreKeyBundle;
     } catch {
-      localStorage.removeItem(storageKey);
+      throw new Error(`Stored peer key bundle for "${chatId}" is corrupted.`);
     }
   }
 
@@ -174,6 +181,28 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setRatchetSessions((prev) => ({ ...prev, [chatId]: session }));
   }, []);
 
+  const checkPeerKey = useCallback(
+    (chatId: string) =>
+      runSerialized(async () => {
+        const bundle = await getOrCreateDemoPeerBundle(chatId);
+        if (!verifyPreKeyBundle(bundle)) {
+          throw new Error('Peer pre-key bundle failed verification.');
+        }
+
+        await observePeerKey(chatId, {
+          fingerprint: bundle.fingerprint,
+          signingKey: bundle.signingKey,
+          identityKey: bundle.identityKey,
+        });
+
+        return {
+          peerFingerprint: bundle.fingerprint,
+          history: getPeerKeyChanges(chatId),
+        };
+      }),
+    [runSerialized]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -195,6 +224,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { passphrase, salt } = getOrCreateStorageCredentials();
         const masterKey = await deriveKeyFromRandomSecret(passphrase, salt);
         await dbInstance.initializeWithKey(masterKey);
+        await dbInstance.purgeExpiredMessages();
         storageReadyRef.current = true;
       } catch (err) {
         console.warn('Encrypted local storage is unavailable:', err);
@@ -262,11 +292,21 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const encryptAndSendMessage = useCallback(
-    (chatId: string, text: string) =>
+    (chatId: string, text: string, options?: { messageId?: string; expiresAt?: number }) =>
       runSerialized(async () => {
         const activeIdentity =
           identity ?? (readyPromiseRef.current ? (await readyPromiseRef.current).identity : null);
         if (!activeIdentity) throw new Error('Identity not initialized');
+
+        const bundle = await getOrCreateDemoPeerBundle(chatId);
+        if (!verifyPreKeyBundle(bundle)) {
+          throw new Error('Peer pre-key bundle failed verification.');
+        }
+        await observePeerKey(chatId, {
+          fingerprint: bundle.fingerprint,
+          signingKey: bundle.signingKey,
+          identityKey: bundle.identityKey,
+        });
 
         let session: RatchetState | undefined = sessionsRef.current[chatId];
         if (!session && storageReadyRef.current) {
@@ -276,7 +316,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         let x3dhHeader: X3DHHeader | undefined;
         if (!session) {
-          const bundle = await getOrCreateDemoPeerBundle(chatId);
           const outbound = await createOutboundRatchetSession(activeIdentity, bundle);
           session = outbound.state;
           x3dhHeader = outbound.header;
@@ -290,19 +329,17 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           x3dhHeader
         );
 
-        rememberSession(chatId, updatedState);
-
         if (storageReadyRef.current) {
-          await dbInstance.saveSession(chatId, updatedState).catch(() => undefined);
-          await dbInstance
-            .saveEncryptedMessage(
-              chatId,
-              `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-              JSON.stringify(payload)
-            )
-            .catch(() => undefined);
+          await dbInstance.saveEncryptedMessageWithSession(
+            chatId,
+            options?.messageId ?? `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            JSON.stringify(payload),
+            updatedState,
+            options?.expiresAt,
+          );
         }
 
+        rememberSession(chatId, updatedState);
         return { encryptedPayload: payload, plaintext: text };
       }),
     [identity, rememberSession, runSerialized]
@@ -494,6 +531,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         removePin,
         unlock,
         encryptAndSendMessage,
+        checkPeerKey,
         decryptIncomingMessage,
         enable2FA,
         disable2FA,

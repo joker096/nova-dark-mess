@@ -3,6 +3,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import { ChatScreen } from './ChatScreen';
+import { CONVERSATION_HISTORIES } from '../data/mockMessengerData';
+
+const peerKeyMock = vi.hoisted(() => ({
+  result: null as null | {
+    peerFingerprint: string;
+    history: Array<{
+      id: string;
+      chatId: string;
+      previousFingerprint: string;
+      currentFingerprint: string;
+      previousSigningKeyId: string;
+      currentSigningKeyId: string;
+      previousIdentityKeyId: string;
+      currentIdentityKeyId: string;
+      changedAt: number;
+    }>;
+  },
+}));
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -15,6 +33,10 @@ vi.mock('../context/LanguageContext', () => ({
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => ({
     encryptAndSendMessage: vi.fn(async () => ({ encryptedPayload: {}, plaintext: '' })),
+    checkPeerKey: vi.fn(async () => peerKeyMock.result ?? {
+      peerFingerprint: 'nova_pk_peer12345678',
+      history: [],
+    }),
     identity: { fingerprint: 'nova_pk_test1234567890' },
   }),
 }));
@@ -31,7 +53,24 @@ vi.mock('./AudioWaveformPlayer', () => ({
   AudioWaveformPlayer: vi.fn(() => null),
 }));
 vi.mock('./VoiceMemoInput', () => ({
-  VoiceMemoInput: vi.fn(() => null),
+  VoiceMemoInput: vi.fn(
+    ({ onSendVoiceMemo }: { onSendVoiceMemo: (note: { duration: string; durationSeconds: number; waveform: number[]; audioUrl: string }) => void }) => (
+      <button
+        type="button"
+        data-testid="test-send-voice-note"
+        onClick={() =>
+          onSendVoiceMemo({
+            duration: '0:01',
+            durationSeconds: 1,
+            waveform: [35],
+            audioUrl: 'blob:voice-test',
+          })
+        }
+      >
+        Send test voice note
+      </button>
+    ),
+  ),
   VoiceMemoInputHandle: Symbol('VoiceMemoInputHandle'),
 }));
 vi.mock('./WallpaperSettingsModal', () => ({
@@ -91,6 +130,13 @@ const pointer = (
 describe('ChatScreen - message rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    peerKeyMock.result = null;
+  });
+
+  afterEach(() => {
+    CONVERSATION_HISTORIES.katie = (CONVERSATION_HISTORIES.katie ?? []).filter(
+      (message) => !message.id.startsWith('peer-key-change-test-'),
+    );
   });
 
   it('renders message bubbles with ids for gesture targeting', () => {
@@ -108,11 +154,104 @@ describe('ChatScreen - message rendering', () => {
     });
   });
 
+  it('surfaces changed peer keys in the chat and protection history', async () => {
+    const change = {
+      id: 'peer-key-change-test-300',
+      chatId: 'katie',
+      previousFingerprint: 'nova_pk_old12345678',
+      currentFingerprint: 'nova_pk_new12345678',
+      previousSigningKeyId: 'old-signing-id',
+      currentSigningKeyId: 'new-signing-id',
+      previousIdentityKeyId: 'old-identity-id',
+      currentIdentityKeyId: 'new-identity-id',
+      changedAt: 300,
+    };
+    peerKeyMock.result = {
+      peerFingerprint: change.currentFingerprint,
+      history: [change],
+    };
+
+    renderChat();
+
+    expect(await screen.findByText(/chat\.e2eeKeyChanged:/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('e2ee-badge'));
+    expect(await screen.findByTestId('peer-key-change-history')).toBeTruthy();
+    expect(screen.getByText('nova_pk_old12345678 → nova_pk_new12345678')).toBeTruthy();
+  });
+
+  it('marks incoming messages read when opening the conversation', async () => {
+    renderChat();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('unread-divider')).toBeNull();
+      expect(localStorage.getItem('nova_read_chats_v1')).toContain('katie');
+    });
+  });
+
+  it('shows a double check for a read message without a seen label or avatar', () => {
+    renderChat();
+    const status = within(getBubble('m3')).getByTitle('common.read');
+
+    expect(status.querySelector('svg.lucide-check-check')).toBeTruthy();
+    expect(status.querySelector('img[alt="Seen"]')).toBeNull();
+    expect(status.textContent).not.toContain('Seen');
+  });
+
+  it('opens message photos in a dismissible media viewer', () => {
+    renderChat();
+    fireEvent.click(screen.getByTestId('chat-media-m2-0'));
+
+    const viewer = screen.getByRole('dialog', { name: 'Media viewer' });
+    expect(within(viewer).getByRole('img', { name: 'Media 1' })).toBeTruthy();
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Next media' }));
+    expect(within(viewer).getByRole('img', { name: 'Media 2' })).toBeTruthy();
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Close media viewer' }));
+    expect(screen.queryByRole('dialog', { name: 'Media viewer' })).toBeNull();
+  });
+
+  it('opens video attachments with native playback controls', () => {
+    const imageMessage = CONVERSATION_HISTORIES.katie.find((message) => message.id === 'm2');
+    if (!imageMessage?.images) throw new Error('Test fixture m2 has no media');
+    const originalImages = imageMessage.images;
+    imageMessage.images = ['https://media.example.test/clip.mp4'];
+
+    try {
+      renderChat();
+      fireEvent.click(screen.getByTestId('chat-media-m2-0'));
+      expect(screen.getByRole('dialog', { name: 'Media viewer' }).querySelector('video[controls]')).toBeTruthy();
+    } finally {
+      imageMessage.images = originalImages;
+    }
+  });
+
+  it('renders chat action menu in a top-level portal and closes it from the menu', () => {
+    renderChat();
+    fireEvent.click(screen.getByRole('button', { name: 'chat.chatActions' }));
+
+    const menu = screen.getByRole('menu', { name: 'chat.chatActions' });
+    expect(menu.parentElement).toBe(document.body);
+    expect(menu.className).toContain('fixed');
+    expect(menu.className).toContain('z-50');
+    fireEvent.click(within(menu).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('menu', { name: 'chat.chatActions' })).toBeNull();
+  });
+
   it('renders reply and forward quick actions on messages', () => {
     renderChat();
     const bubble = getBubble();
     expect(within(bubble).getByTitle('Reply to message')).toBeTruthy();
     expect(within(bubble).getByTitle('Forward message')).toBeTruthy();
+  });
+
+  it('uses a subtle highlight instead of an outer frame when replying to a message', () => {
+    renderChat();
+    const bubble = getBubble();
+
+    fireEvent.click(within(bubble).getByTitle('Reply to message'));
+
+    expect(bubble.className).not.toContain('ring-2');
+    expect(bubble.className).toContain('shadow-[0_0_18px_rgba(255,78,24,0.28)]');
+    expect(screen.getByPlaceholderText('chat.replyingToName')).toBeTruthy();
   });
 });
 
@@ -225,6 +364,15 @@ describe('ChatScreen - send button interactions', () => {
     expect(screen.queryByText('Do not send on right click')).toBeNull();
     expect((input as HTMLInputElement).value).toBe('Do not send on right click');
   });
+
+  it('adds a recorded voice note to the conversation when sent', () => {
+    renderChat();
+    const sentVoiceBubblesBefore = screen.queryAllByTestId(/^bubble-m-/).length;
+
+    fireEvent.click(screen.getByTestId('test-send-voice-note'));
+
+    expect(screen.getAllByTestId(/^bubble-m-/)).toHaveLength(sentVoiceBubblesBefore + 1);
+  });
 });
 
 describe('ChatScreen - long press and double tap', () => {
@@ -247,6 +395,7 @@ describe('ChatScreen - long press and double tap', () => {
     });
 
     expect(screen.getByTitle('React with ❤️')).toBeTruthy();
+    expect(bubble.className).not.toContain('ring-2');
   });
 
   it('cancels the long press when the pointer moves vertically', () => {
