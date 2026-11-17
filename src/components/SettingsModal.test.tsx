@@ -83,7 +83,11 @@ describe('SettingsModal', () => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
     document.documentElement.style.fontSize = '';
+    document.documentElement.style.colorScheme = '';
+    document.documentElement.style.removeProperty('--nova-accent-color');
     document.body.className = '';
+    document.body.style.backgroundColor = '';
+    document.body.style.color = '';
     securityMock.identity = null;
     securityMock.is2FAEnabled = false;
     securityMock.totpSecret = null;
@@ -117,13 +121,23 @@ describe('SettingsModal', () => {
     expect(saved.notificationSound).toBe(false);
   });
 
-  it('persists and applies the light theme immediately', () => {
+  it('offers light mode and applies a high-contrast accent palette', () => {
     renderSettings();
     fireEvent.click(screen.getByRole('button', { name: 'settings.themeLight' }));
 
     expect(localStorage.getItem('nova_app_theme')).toBe('light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-    expect(document.body.className).toContain('bg-[#f5f5f7]');
+    expect(document.documentElement.style.colorScheme).toBe('light');
+    expect(document.documentElement.style.getPropertyValue('--nova-accent-color')).toBe('#c2410c');
+    expect(document.body.style.backgroundColor).toBe('var(--nova-canvas)');
+  });
+
+  it('restores a previously selected light theme', () => {
+    localStorage.setItem('nova_app_theme', 'light');
+    renderSettings();
+
+    expect(localStorage.getItem('nova_app_theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
   it('applies and persists the selected font size', () => {

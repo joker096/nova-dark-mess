@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Sun, Moon, Monitor, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
@@ -35,7 +35,9 @@ import {
   FONT_SIZE_KEY,
   FontSize,
   applyAppTheme,
+  applyAccentColor,
   applyFontSize,
+  readAppTheme,
 } from '../lib/ui/appearance';
 
 interface SettingsModalProps {
@@ -129,14 +131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const { identity, is2FAEnabled, totpSecret, enable2FA, disable2FA, exportEncryptedBackup, importEncryptedBackup, pinEnabled, setPin, verifyPin, removePin, clearLocalEncryptedData } = useSecurity();
-  const [appTheme, setAppTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    try {
-      const saved = localStorage.getItem('nova_app_theme');
-      return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
-    } catch {
-      return 'system';
-    }
-  });
+  const [appTheme, setAppTheme] = useState<'light' | 'dark' | 'system'>(readAppTheme);
   const [chatColorTheme, setChatColorTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
     try {
       const saved = localStorage.getItem(CHAT_THEME_KEY);
@@ -188,11 +183,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   useEffect(() => {
     applyAppTheme(appTheme);
     applyFontSize(prefs.fontSize);
-    document.documentElement.style.setProperty('--nova-accent-color', ACCENT_COLORS[chatColorTheme]);
+    applyAccentColor(ACCENT_COLORS[chatColorTheme]);
     try {
       localStorage.setItem(APP_THEME_KEY, appTheme);
       localStorage.setItem(FONT_SIZE_KEY, prefs.fontSize);
-      localStorage.setItem('nova_accent_color', ACCENT_COLORS[chatColorTheme]);
     } catch { void 0; }
   }, [appTheme, chatColorTheme, prefs.fontSize]);
 
@@ -588,7 +582,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   }`}
                 >
                   {opt.icon}
-                  <span className="text-[12px] font-medium">{opt.value === 'light' ? t('settings.themeLight') : opt.value === 'dark' ? t('settings.themeDark') : t('settings.themeSystem')}</span>
+                  <span className="text-[12px] font-medium">
+                    {opt.value === 'light'
+                      ? t('settings.themeLight')
+                      : opt.value === 'dark'
+                        ? t('settings.themeDark')
+                        : t('settings.themeSystem')}
+                  </span>
                 </button>
               ))}
             </div>

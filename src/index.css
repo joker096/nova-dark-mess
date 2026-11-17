@@ -6,10 +6,14 @@
 
 :root {
   --nova-accent-color: #ff4e18;
+  --nova-canvas: #0c0d11;
+  --nova-text-primary: #f3f4f6;
+  --nova-warning-text: #fcd34d;
   --nova-safe-top: env(safe-area-inset-top, 0px);
   --nova-safe-bottom: env(safe-area-inset-bottom, 0px);
   --nova-safe-left: env(safe-area-inset-left, 0px);
   --nova-safe-right: env(safe-area-inset-right, 0px);
+  --nova-warning-text: #92400e;
 }
 
 /* The Android shell pads the native content view with WindowInsets, so the
@@ -31,10 +35,139 @@ html.native-safe-insets {
 
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #0c0d11;
-    color: #f3f4f6;
+    background-color: var(--nova-canvas);
+    color: var(--nova-text-primary);
     overscroll-behavior: none;
   }
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --nova-canvas: #f3f5f8;
+  --nova-surface: #ffffff;
+  --nova-surface-raised: #e9edf3;
+  --nova-surface-high: #dfe5ed;
+  --nova-text-primary: #171b24;
+  --nova-text-secondary: #454d5a;
+  --nova-text-muted: #566071;
+  --nova-border-color: rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --nova-surface: #171820;
+  --nova-surface-raised: #20222b;
+  --nova-surface-high: #282a36;
+  --nova-text-secondary: #8c919d;
+  --nova-text-muted: #6b707d;
+  --nova-border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Neutral utility classes are remapped for light mode; media calls opt out. */
+html[data-theme='light']
+  :is(
+    [class^='bg-[#0'],
+    [class*=' bg-[#0']
+  ):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: var(--nova-canvas) !important;
+}
+
+html[data-theme='light']
+  :is(
+    [class^='bg-[#1'],
+    [class*=' bg-[#1']
+  ):not([class^='bg-[#10b981]']):not([class*=' bg-[#10b981]']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: var(--nova-surface) !important;
+}
+
+html[data-theme='light']
+  :is(
+    [class^='bg-[#2'],
+    [class*=' bg-[#2']
+  ):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: var(--nova-surface-raised) !important;
+}
+
+html[data-theme='light']
+  :is(
+    [class*='hover:bg-[#0'],
+    [class*='hover:bg-[#1'],
+    [class*='hover:bg-[#2']
+  ):hover:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: var(--nova-surface-raised) !important;
+}
+
+html[data-theme='light'] [class~='from-[#0b0c10]'],
+html[data-theme='light'] [class~='to-[#0b0c10]'],
+html[data-theme='light'] [class~='from-[#12131c]'],
+html[data-theme='light'] [class~='via-[#12131c]'],
+html[data-theme='light'] [class~='to-[#14151d]'],
+html[data-theme='light'] [class~='to-[#15161f]'],
+html[data-theme='light'] [class~='via-[#151b1d]'],
+html[data-theme='light'] [class~='via-[#1a1620]'] {
+  --tw-gradient-from: var(--nova-surface);
+  --tw-gradient-via: var(--nova-surface-raised);
+  --tw-gradient-to: var(--nova-canvas);
+}
+
+html[data-theme='light'] [data-theme-wallpaper] {
+  --tw-gradient-from: var(--nova-surface) !important;
+  --tw-gradient-via: var(--nova-surface-raised) !important;
+  --tw-gradient-to: var(--nova-canvas) !important;
+}
+
+html[data-theme='light']
+  :is(
+    [class*='text-white'],
+    [class*='text-[#5'],
+    [class*='text-[#6'],
+    [class*='text-[#7'],
+    [class*='text-[#8'],
+    [class*='text-[#9']
+  ):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: var(--nova-text-secondary) !important;
+}
+
+html[data-theme='light']
+  :is([class*='text-[#a'], [class*='text-[#b'], [class*='text-[#c']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: var(--nova-text-muted) !important;
+}
+
+html[data-theme='light'] [class*='border-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  border-color: var(--nova-border-color) !important;
+}
+
+html[data-theme='light'] [class*='bg-white/']:not([class*='hover:bg-white/']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: rgba(15, 23, 42, 0.045) !important;
+}
+
+html[data-theme='light'] [class~='bg-black/10']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/20']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/25']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/30']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/35']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/40']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/45']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class~='bg-black/50']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+html[data-theme='light'] [class*='hover:bg-white/']:hover:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] [class*='hover:bg-black/']:hover:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme='light'] :is([class~='bg-[var(--nova-accent-color)]'], [class^='bg-red-'], [class*=' bg-red-'], [class^='bg-emerald-'], [class*=' bg-emerald-'], [class^='bg-green-'], [class*=' bg-green-'], [class^='bg-blue-'], [class*=' bg-blue-'], [class^='bg-purple-'], [class*=' bg-purple-'], [class^='bg-violet-'], [class*=' bg-violet-'], [class^='bg-rose-'], [class*=' bg-rose-'], [class^='bg-amber-'], [class*=' bg-amber-'])
+  [class*='text-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *),
+html[data-theme='light'] :is([class~='bg-[var(--nova-accent-color)]'], [class^='bg-red-'], [class*=' bg-red-'], [class^='bg-emerald-'], [class*=' bg-emerald-'], [class^='bg-green-'], [class*=' bg-green-'], [class^='bg-blue-'], [class*=' bg-blue-'], [class^='bg-purple-'], [class*=' bg-purple-'], [class^='bg-violet-'], [class*=' bg-violet-'], [class^='bg-rose-'], [class*=' bg-rose-'], [class^='bg-amber-'], [class*=' bg-amber-'])[class*='text-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.36);
 }
 
 /* System UI safe areas (notch, status bar, gesture bar).
