@@ -5,6 +5,7 @@ const FIRST_INSTALL_KEY = 'nova_first_install_ts';
 const PREMIUM_LICENSE_KEY = 'nova_premium_license';
 const PREMIUM_VERIFIED_AT_KEY = 'nova_premium_verified_at';
 const PENDING_ORDER_KEY = 'nova_premium_pending_order';
+const PENDING_GIFT_ORDER_KEY = 'nova_premium_pending_gift_order';
 const DEVICE_KEY = 'nova_device_id';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -13,6 +14,7 @@ const LICENSE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 export const MIN_SUBSCRIPTION_COST = 390; // ~3.90 USD equivalent (30 days)
 
 const DEVICE_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+const GIFT_CODE_PATTERN = /^NOVA-GIFT-[A-Za-z0-9_-]{32}$/;
 
 interface LicensePayload {
   v: number;
@@ -49,16 +51,6 @@ function decodeBase64Url(value: string): string {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return new TextDecoder().decode(bytes);
-}
-
-function encodeBase64Url(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  const base64 = btoa(binary);
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function randomHex(byteCount = 16): string {
@@ -264,6 +256,10 @@ export interface PendingOrder {
   createdAt: number;
 }
 
+export interface PendingGiftOrder extends PendingOrder {
+  contactId: string;
+}
+
 export function savePendingOrder(order: PendingOrder) {
   writeStorage(PENDING_ORDER_KEY, JSON.stringify(order));
 }
@@ -282,6 +278,32 @@ export function loadPendingOrder(): PendingOrder | null {
 
 export function clearPendingOrder() {
   removeStorage(PENDING_ORDER_KEY);
+}
+
+function savePendingGiftOrder(order: PendingGiftOrder) {
+  writeStorage(PENDING_GIFT_ORDER_KEY, JSON.stringify(order));
+}
+
+function loadPendingGiftOrder(): PendingGiftOrder | null {
+  try {
+    const raw = readStorage(PENDING_GIFT_ORDER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingGiftOrder;
+    if (
+      !parsed ||
+      typeof parsed.orderId !== 'string' ||
+      typeof parsed.url !== 'string' ||
+      typeof parsed.contactId !== 'string' ||
+      !Number.isFinite(parsed.createdAt)
+    ) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingPremiumGiftOrder() {
+  removeStorage(PENDING_GIFT_ORDER_KEY);
 }
 
 export function openPaymentUrl(url: string): boolean {
@@ -411,6 +433,90 @@ export async function createPremiumCheckout(options: CheckoutOptions = {}): Prom
   return { ok: false, error: result === 'pending' ? 'waiting for payment' : 'checkout failed' };
 }
 
+export interface PremiumGiftPurchaseResult {
+  ok: boolean;
+  giftCode?: string;
+  error?: string;
+}
+
+export async function purchasePremiumGiftCode(
+  contactId: string,
+  options: CheckoutOptions = {},
+): Promise<PremiumGiftPurchaseResult> {
+  if (!contactId) return { ok: false, error: 'contact required' };
+
+  let pending = loadPendingGiftOrder();
+  const isResumingOrder = Boolean(pending);
+  if (pending && pending.contactId !== contactId) {
+    return { ok: false, error: 'another gift pending' };
+  }
+  if (!pending) {
+    const response = await apiFetch('/api/premium/gift/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ device: getDeviceId() }),
+    });
+    const data = response.json as { ok?: boolean; orderId?: string; url?: string };
+    if (!response.ok || !data.ok || !data.orderId || !data.url) {
+      return { ok: false, error: 'checkout unavailable' };
+    }
+    pending = {
+      orderId: String(data.orderId),
+      url: String(data.url),
+      contactId,
+      createdAt: Date.now(),
+    };
+    savePendingGiftOrder(pending);
+  }
+
+  if (isResumingOrder) {
+    const response = await apiFetch(
+      `/api/premium/order/${encodeURIComponent(pending.orderId)}?device=${encodeURIComponent(getDeviceId())}`,
+    );
+    if (response.status === 403 || response.status === 404) {
+      clearPendingPremiumGiftOrder();
+      return { ok: false, error: 'checkout failed' };
+    }
+    if (!response.ok && response.status !== 0 && response.status !== 429) {
+      return { ok: false, error: 'checkout failed' };
+    }
+    if (response.json.status === 'paid') {
+      const giftCode = response.json.giftCode;
+      return typeof giftCode === 'string' && GIFT_CODE_PATTERN.test(giftCode)
+        ? { ok: true, giftCode }
+        : { ok: false, error: 'gift code unavailable' };
+    }
+  }
+
+  if (!openPaymentUrl(pending.url)) {
+    return { ok: false, error: 'payment window blocked' };
+  }
+
+  const intervalMs = options.pollIntervalMs ?? 3000;
+  const timeoutMs = options.pollTimeoutMs ?? 10 * 60 * 1000;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const response = await apiFetch(
+      `/api/premium/order/${encodeURIComponent(pending.orderId)}?device=${encodeURIComponent(getDeviceId())}`,
+    );
+    if (response.status === 403 || response.status === 404) {
+      clearPendingPremiumGiftOrder();
+      return { ok: false, error: 'checkout failed' };
+    }
+    if (response.json.status === 'paid') {
+      const giftCode = response.json.giftCode;
+      if (typeof giftCode === 'string' && GIFT_CODE_PATTERN.test(giftCode)) {
+        return { ok: true, giftCode };
+      }
+      return { ok: false, error: 'gift code unavailable' };
+    }
+    if (!response.ok && response.status !== 0 && response.status !== 429) {
+      return { ok: false, error: 'checkout failed' };
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return { ok: false, error: 'waiting for payment' };
+}
+
 export interface ActivateResult {
   ok: boolean;
   error?: string;
@@ -419,20 +525,40 @@ export interface ActivateResult {
 
 export async function activatePremiumLicense(license: string, device?: string): Promise<ActivateResult> {
   const normalized = license.trim();
-  const payload = normalized ? parseStoredLicense(normalized) : null;
-  if (!normalized || !payload) return { ok: false, error: 'invalid license' };
-  if (Date.now() > payload.exp + LICENSE_GRACE_MS) return { ok: false, error: 'license expired' };
   const deviceId = device || getDeviceId();
+  let licenseToVerify = normalized;
+
+  if (normalized.startsWith('NOVA-GIFT-')) {
+    if (!GIFT_CODE_PATTERN.test(normalized)) return { ok: false, error: 'invalid gift code' };
+    const currentLicense = getStoredLicense();
+    const redeemed = await apiFetch('/api/premium/gift/redeem', {
+      method: 'POST',
+      body: JSON.stringify({
+        code: normalized,
+        device: deviceId,
+        ...(currentLicense ? { currentLicense } : {}),
+      }),
+    });
+    const data = redeemed.json;
+    if (!redeemed.ok || !data.ok || typeof data.license !== 'string') {
+      return { ok: false, error: String(data.error || 'gift code rejected') };
+    }
+    licenseToVerify = data.license;
+  }
+
+  const payload = licenseToVerify ? parseStoredLicense(licenseToVerify) : null;
+  if (!payload) return { ok: false, error: 'invalid license' };
+  if (Date.now() > payload.exp + LICENSE_GRACE_MS) return { ok: false, error: 'license expired' };
   if (payload.d !== deviceId) return { ok: false, error: 'device mismatch' };
   const response = await apiFetch(
-    `/api/premium/status?license=${encodeURIComponent(normalized)}&device=${encodeURIComponent(deviceId)}`,
+    `/api/premium/status?license=${encodeURIComponent(licenseToVerify)}&device=${encodeURIComponent(deviceId)}`,
   );
   const data = response.json;
   if (!response.ok || !data.ok) {
     return { ok: false, error: String(data.error || 'license rejected') };
   }
   const expiresAt = Number(data.expiresAt);
-  storeLicense(normalized, Number.isFinite(expiresAt) ? expiresAt : Date.now() + 30 * DAY_MS);
+  storeLicense(licenseToVerify, Number.isFinite(expiresAt) ? expiresAt : Date.now() + 30 * DAY_MS);
   return { ok: true, expiresAt };
 }
 

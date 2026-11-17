@@ -94,6 +94,7 @@ const PREMIUM_PLANS = {
 };
 const ORDERS_DIR = process.env.ORDERS_DIR ? path.resolve(process.env.ORDERS_DIR) : path.join(__dirname, 'orders');
 const LICENSES_DIR = process.env.LICENSES_DIR ? path.resolve(process.env.LICENSES_DIR) : path.join(__dirname, 'licenses');
+const GIFTS_DIR = process.env.GIFTS_DIR ? path.resolve(process.env.GIFTS_DIR) : path.join(__dirname, 'gifts');
 const PAID_STATUSES = new Set([7, 8]);
 const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
@@ -319,14 +320,16 @@ async function paymentoVerify(token) {
   }
 }
 
-function issueLicense({ device, plan, orderId }) {
+function issueLicense({ device, plan, orderId, expiresAt }) {
   if (!PREMIUM_LICENSE_SECRET) {
     throw new Error('PREMIUM_LICENSE_SECRET is not configured');
   }
   const p = PREMIUM_PLANS[plan];
   if (!p) throw new Error('unknown plan');
   if (!device) throw new Error('device required');
-  const exp = Date.now() + p.days * 24 * 60 * 60 * 1000;
+  const exp = Number.isFinite(expiresAt)
+    ? Number(expiresAt)
+    : Date.now() + p.days * 24 * 60 * 60 * 1000;
   const payload = { v: 1, d: String(device), p: plan, o: orderId, exp };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
@@ -365,6 +368,70 @@ function saveOrder(order) {
   writeAtomic(path.join(ORDERS_DIR, `${safeFileId(order.orderId)}.json`), JSON.stringify(order, null, 2));
 }
 
+function giftCodeHash(code) {
+  return crypto.createHash('sha256').update(code).digest('hex');
+}
+
+function giftEncryptionKey() {
+  if (!PREMIUM_LICENSE_SECRET) throw new Error('PREMIUM_LICENSE_SECRET is not configured');
+  return crypto.createHash('sha256').update(`nova-premium-gift:v1:${PREMIUM_LICENSE_SECRET}`).digest();
+}
+
+function encryptGiftCode(code) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', giftEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(code, 'utf8'), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString('base64url');
+}
+
+function decryptGiftCode(encrypted) {
+  const payload = Buffer.from(String(encrypted || ''), 'base64url');
+  if (payload.length <= 28) throw new Error('invalid encrypted gift code');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', giftEncryptionKey(), payload.subarray(0, 12));
+  decipher.setAuthTag(payload.subarray(12, 28));
+  return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]).toString('utf8');
+}
+
+function saveGift(gift) {
+  writeAtomic(
+    path.join(GIFTS_DIR, `${gift.codeHash}.json`),
+    JSON.stringify(gift, null, 2),
+  );
+}
+
+function loadGift(codeHash) {
+  const file = path.join(GIFTS_DIR, `${codeHash}.json`);
+  if (!fs.existsSync(file)) return null;
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function ensureGiftEntitlement(order) {
+  if (!order.giftCodeHash || !order.giftCodeEncrypted) {
+    const code = `NOVA-GIFT-${crypto.randomBytes(24).toString('base64url')}`;
+    order.giftCodeHash = giftCodeHash(code);
+    order.giftCodeEncrypted = encryptGiftCode(code);
+    saveOrder(order);
+  }
+  const code = decryptGiftCode(order.giftCodeEncrypted);
+  if (giftCodeHash(code) !== order.giftCodeHash) throw new Error('gift code hash mismatch');
+  const existing = loadGift(order.giftCodeHash);
+  if (!existing) {
+    saveGift({
+      codeHash: order.giftCodeHash,
+      orderId: order.orderId,
+      plan: order.plan,
+      status: 'available',
+      createdAt: new Date().toISOString(),
+    });
+  } else if (existing.orderId !== order.orderId || existing.codeHash !== order.giftCodeHash) {
+    throw new Error('gift entitlement does not match order');
+  }
+  return code;
+}
+
+const GIFT_CODE_PATTERN = /^NOVA-GIFT-[A-Za-z0-9_-]{32}$/;
+const redeemingGifts = new Set();
+
 function amountsMatch(order, verified) {
   if (!verified || !Number.isFinite(Number(verified.amount)) || Number(verified.amount) <= 0) return false;
   const expected = Number(order.amount);
@@ -376,11 +443,16 @@ function amountsMatch(order, verified) {
 
 const fulfillingOrders = new Set();
 async function fulfillOrder(orderId) {
-  if (!orderId || fulfillingOrders.has(orderId)) return null;
+  if (!orderId) return null;
+  if (fulfillingOrders.has(orderId)) return loadOrder(orderId);
   fulfillingOrders.add(orderId);
   try {
     const order = loadOrder(orderId);
-    if (!order || order.license) return order || null;
+    if (
+      !order ||
+      order.license ||
+      (order.kind === 'gift' && order.status === 'paid' && order.giftCodeHash)
+    ) return order || null;
     if (!order.token || !PAYMENTO_API_KEY) return order;
     let verified;
     try {
@@ -397,14 +469,21 @@ async function fulfillOrder(orderId) {
       return order;
     }
     const fresh = loadOrder(orderId) || order;
-    if (fresh.license) return fresh;
-    const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
+    if (
+      fresh.license ||
+      (fresh.kind === 'gift' && fresh.status === 'paid' && fresh.giftCodeHash)
+    ) return fresh;
+    if (fresh.kind === 'gift') {
+      ensureGiftEntitlement(fresh);
+    } else {
+      const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
+      fresh.license = license;
+      fresh.expiresAt = expiresAt;
+    }
     fresh.status = 'paid';
-    fresh.license = license;
-    fresh.expiresAt = expiresAt;
     fresh.paidAt = new Date().toISOString();
     saveOrder(fresh);
-    console.log('[paymento] license issued', { orderId: fresh.orderId });
+    console.log(fresh.kind === 'gift' ? '[paymento] premium gift issued' : '[paymento] license issued', { orderId: fresh.orderId });
     return fresh;
   } finally {
     fulfillingOrders.delete(orderId);
@@ -498,6 +577,43 @@ app.post('/api/premium/checkout', async (req, res) => {
   }
 });
 
+app.post('/api/premium/gift/checkout', async (req, res) => {
+  try {
+    const ip = req.ip || 'unknown';
+    if (!checkoutLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+    const device = String((req.body && req.body.device) || '');
+    const plan = PREMIUM_PLANS.premium;
+    if (!DEVICE_PATTERN.test(device)) return res.status(400).json({ ok: false, error: 'invalid device' });
+    if (!PAYMENTO_API_KEY) return res.status(503).json({ ok: false, error: 'payments disabled' });
+    if (!PREMIUM_LICENSE_SECRET) return res.status(503).json({ ok: false, error: 'gift service unavailable' });
+    const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
+    const order = {
+      orderId,
+      kind: 'gift',
+      plan: plan.id,
+      device,
+      amount: plan.price,
+      currency: plan.currency,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    saveOrder(order);
+    const returnUrl = PAYMENTO_RETURN_URL || (req.headers.origin ? `${req.headers.origin}/premium.html` : '');
+    const { token, paymentUrl } = await paymentoCreate({
+      amount: plan.price,
+      currency: plan.currency,
+      orderId,
+      returnUrl,
+    });
+    order.token = token;
+    saveOrder(order);
+    res.json({ ok: true, orderId, url: paymentUrl });
+  } catch (err) {
+    console.error('[paymento] gift checkout failed', { error: String(err && err.message ? err.message : err) });
+    res.status(502).json({ ok: false, error: 'payment provider error' });
+  }
+});
+
 app.get('/api/premium/order/:orderId', async (req, res) => {
   const ip = req.ip || 'unknown';
   if (!orderLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
@@ -510,27 +626,99 @@ app.get('/api/premium/order/:orderId', async (req, res) => {
   if (order.license) {
     return res.json({ ok: true, status: 'paid', license: order.license, expiresAt: order.expiresAt });
   }
+  if (order.kind === 'gift' && order.status === 'paid' && order.giftCodeEncrypted) {
+    try {
+      return res.json({ ok: true, status: 'paid', giftCode: decryptGiftCode(order.giftCodeEncrypted) });
+    } catch (err) {
+      console.error('[paymento] gift code decrypt failed', { orderId: order.orderId, error: String(err && err.message ? err.message : err) });
+      return res.status(500).json({ ok: false, error: 'gift code unavailable' });
+    }
+  }
   if (order.token && PAYMENTO_API_KEY) {
     try {
-      const v = await paymentoVerify(order.token);
-      if (PAID_STATUSES.has(v.status) && amountsMatch(order, v)) {
-        const fresh = loadOrder(req.params.orderId) || order;
-        if (!fresh.license) {
-          const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
-          fresh.status = 'paid';
-          fresh.license = license;
-          fresh.expiresAt = expiresAt;
-          fresh.paidAt = new Date().toISOString();
-          saveOrder(fresh);
-        }
+      const fresh = await fulfillOrder(order.orderId);
+      if (!fresh) return res.status(404).json({ ok: false, error: 'order not found' });
+      if (fresh.kind === 'gift' && fresh.status === 'paid' && fresh.giftCodeEncrypted) {
+        return res.json({ ok: true, status: 'paid', giftCode: decryptGiftCode(fresh.giftCodeEncrypted) });
+      }
+      if (fresh.license) {
         return res.json({ ok: true, status: 'paid', license: fresh.license, expiresAt: fresh.expiresAt });
       }
-      return res.json({ ok: true, status: 'pending', paymentStatus: v.status });
+      return res.json({ ok: true, status: fresh.status, paymentStatus: fresh.providerStatus });
     } catch (err) {
-      return res.json({ ok: true, status: order.status, error: String(err && err.message ? err.message : err) });
+      console.error('[paymento] order fulfillment failed', { orderId: order.orderId, error: String(err && err.message ? err.message : err) });
+      return res.status(502).json({ ok: false, error: 'payment verification failed' });
     }
   }
   return res.json({ ok: true, status: order.status });
+});
+
+app.post('/api/premium/gift/redeem', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  const code = String((req.body && req.body.code) || '').trim();
+  const device = String((req.body && req.body.device) || '');
+  if (!GIFT_CODE_PATTERN.test(code)) {
+    return res.status(400).json({ ok: false, error: 'invalid gift code' });
+  }
+  if (!DEVICE_PATTERN.test(device)) {
+    return res.status(400).json({ ok: false, error: 'invalid device' });
+  }
+
+  const codeHash = giftCodeHash(code);
+  try {
+    let gift = loadGift(codeHash);
+    if (!gift || gift.codeHash !== codeHash) {
+      return res.status(400).json({ ok: false, error: 'invalid gift code' });
+    }
+    if (gift.status === 'redeemed') {
+      if (gift.device !== device || typeof gift.license !== 'string') {
+        return res.status(409).json({ ok: false, error: 'gift code already redeemed' });
+      }
+      const verified = verifyLicense(gift.license);
+      if (!verified || verified.expired) {
+        return res.status(400).json({ ok: false, error: 'gift code expired' });
+      }
+      return res.json({ ok: true, license: gift.license, expiresAt: verified.payload.exp });
+    }
+    if (gift.status !== 'available') {
+      return res.status(409).json({ ok: false, error: 'gift code unavailable' });
+    }
+    if (redeemingGifts.has(codeHash)) {
+      return res.status(409).json({ ok: false, error: 'gift code redemption in progress' });
+    }
+
+    redeemingGifts.add(codeHash);
+    gift = loadGift(codeHash);
+    if (!gift || gift.status !== 'available') {
+      return res.status(409).json({ ok: false, error: 'gift code unavailable' });
+    }
+    const current = verifyLicense(String((req.body && req.body.currentLicense) || ''));
+    const currentExpiry =
+      current && !current.expired && current.payload.d === device && current.payload.p === gift.plan
+        ? Number(current.payload.exp)
+        : 0;
+    const newExpiry =
+      Math.max(Date.now(), currentExpiry) + PREMIUM_PLANS[gift.plan].days * 24 * 60 * 60 * 1000;
+    const { license, expiresAt } = issueLicense({
+      device,
+      plan: gift.plan,
+      orderId: `gift_${gift.orderId}`,
+      expiresAt: newExpiry,
+    });
+    gift.status = 'redeemed';
+    gift.device = device;
+    gift.license = license;
+    gift.expiresAt = expiresAt;
+    gift.redeemedAt = new Date().toISOString();
+    saveGift(gift);
+    return res.json({ ok: true, license, expiresAt });
+  } catch (err) {
+    console.error('[premium] gift redemption failed', { codeHash, error: String(err && err.message ? err.message : err) });
+    return res.status(500).json({ ok: false, error: 'gift redemption failed' });
+  } finally {
+    redeemingGifts.delete(codeHash);
+  }
 });
 
 app.post('/api/premium/activate', (req, res) => {
