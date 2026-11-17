@@ -2,8 +2,14 @@
 /// <reference types="@testing-library/jest-dom" />
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { PinLockScreen } from './PinLockScreen';
+
+const securityMock = vi.hoisted(() => ({
+  pinHash: null as string | null,
+  pinLockoutUntil: null as number | null,
+  verifyPin: vi.fn(async (_pin: string) => true),
+}));
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -15,9 +21,10 @@ vi.mock('../context/LanguageContext', () => ({
 }));
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => ({
-    verifyPin: vi.fn(async () => true),
+    verifyPin: securityMock.verifyPin,
     setPin: vi.fn(async () => {}),
-    pinHash: null as string | null,
+    pinHash: securityMock.pinHash,
+    pinLockoutUntil: securityMock.pinLockoutUntil,
   }),
 }));
 
@@ -34,6 +41,9 @@ function findByClass(root: Element | Document, substring: string): HTMLElement |
 describe('PinLockScreen visual snapshot', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    securityMock.pinHash = null;
+    securityMock.pinLockoutUntil = null;
+    securityMock.verifyPin.mockResolvedValue(true);
   });
 
   it('renders lock screen container with dark bg, blur and center layout', () => {
@@ -96,5 +106,30 @@ describe('PinLockScreen visual snapshot', () => {
     expect(cancel).toBeInTheDocument();
     expect(cancel.className).toContain('bg-[var(--nova-accent-color)]/10');
     expect(cancel.className).toContain('text-[var(--nova-accent-color)]');
+  });
+
+  it('verifies a 4-digit passcode and unlocks the app', async () => {
+    const onUnlock = vi.fn();
+    securityMock.pinHash = 'stored-pin-hash';
+    render(<PinLockScreen onUnlock={onUnlock} />);
+
+    const numpad = screen.getByRole('button', { name: '1' }).parentElement!;
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(within(numpad).getByRole('button', { name: digit }));
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'common.unlock' }));
+
+    await waitFor(() => expect(onUnlock).toHaveBeenCalledTimes(1));
+    expect(securityMock.verifyPin).toHaveBeenCalledWith('1234');
+  });
+
+  it('disables passcode entry during a persisted lockout', () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    securityMock.pinLockoutUntil = Date.now() + 30_000;
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: '1' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'common.unlock' })).toBeDisabled();
+    expect(screen.getByRole('alert').textContent).toContain('30s');
   });
 });
