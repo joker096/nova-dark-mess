@@ -4141,16 +4141,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                           </div>
                         )}
                         {editingMsgId === msg.id ? (
-                          <div className="flex flex-col gap-2 w-full min-w-[260px]">
-                            <input
-                              type="text"
+                          <div className="flex w-full min-w-0 max-w-full flex-col gap-2">
+                            <textarea
+                              rows={Math.min(4, Math.max(1, editingText.split('\n').length))}
                               value={editingText}
                               onChange={(e) => setEditingText(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSaveEdit();
+                                }
                                 if (e.key === 'Escape') handleCancelEdit();
                               }}
-                              className="w-full bg-black/25 text-white text-[14px] rounded-lg px-2 py-1.5 focus:outline-none border border-white/20 focus:border-white/40"
+                              className="w-full min-w-0 resize-none break-words rounded-lg bg-black/25 px-2 py-1.5 text-[14px] leading-relaxed text-white outline-none focus:outline-none focus:ring-0"
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
@@ -4864,7 +4867,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             <Paperclip className="w-4 h-4" />
           </button>
 
-          <div className="flex-1 bg-[#181920]/95 border border-white/10 focus-within:border-[var(--nova-accent-color, #ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+          <div className="flex-1 bg-[#181920]/95 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
             <input
               ref={mainInputRef}
               type="text"
