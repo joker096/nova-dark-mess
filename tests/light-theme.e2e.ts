@@ -65,6 +65,27 @@ test('light theme applies an accessible palette across chats and wallpapers', as
     probe.className = 'bg-[#08090d] text-white';
     document.body.append(probe);
 
+    // Status text picks its shade from the theme, so probe the utility classes
+    // directly instead of hunting for a rendered badge.
+    const statusColor = (classes: string) => {
+      const node = document.createElement('span');
+      node.className = classes;
+      node.textContent = 'x';
+      document.body.append(node);
+      const color = getComputedStyle(node).color;
+      node.remove();
+      return color;
+    };
+
+    const placeholderProbe = document.createElement('input');
+    placeholderProbe.className = 'placeholder-white/30';
+    placeholderProbe.placeholder = 'Search';
+    document.body.append(placeholderProbe);
+
+    const borderProbe = document.createElement('div');
+    borderProbe.className = 'border border-[#17181e]';
+    document.body.append(borderProbe);
+
     const result = {
       surface: getComputedStyle(main).backgroundColor,
       heading: getComputedStyle(heading).color,
@@ -74,6 +95,13 @@ test('light theme applies an accessible palette across chats and wallpapers', as
         color: getComputedStyle(accent).color,
       },
       composerControls,
+      status: {
+        danger: statusColor('text-red-400'),
+        success: statusColor('text-emerald-400'),
+        warning: statusColor('text-amber-400'),
+      },
+      placeholder: getComputedStyle(placeholderProbe, '::placeholder').color,
+      darkBorder: getComputedStyle(borderProbe).borderTopColor,
       preservedCallSurface: {
         background: getComputedStyle(probe).backgroundColor,
         color: getComputedStyle(probe).color,
@@ -81,6 +109,8 @@ test('light theme applies an accessible palette across chats and wallpapers', as
     };
 
     probe.remove();
+    placeholderProbe.remove();
+    borderProbe.remove();
     return result;
   });
 
@@ -94,6 +124,16 @@ test('light theme applies an accessible palette across chats and wallpapers', as
     expect(control.background).toBe('rgb(255, 255, 255)');
     expect(control.icon).toBe('rgb(69, 77, 90)');
   }
+  expect(colors.status).toEqual({
+    danger: 'rgb(185, 28, 28)',
+    success: 'rgb(4, 120, 87)',
+    warning: 'rgb(180, 83, 9)',
+  });
+  for (const status of Object.values(colors.status)) {
+    expect(contrastRatio(status, colors.surface)).toBeGreaterThanOrEqual(4.5);
+  }
+  expect(colors.placeholder).toBe('rgba(23, 27, 36, 0.45)');
+  expect(colors.darkBorder).toBe('rgba(15, 23, 42, 0.14)');
   expect(contrastRatio(colors.heading, colors.surface)).toBeGreaterThanOrEqual(4.5);
   expect(contrastRatio(colors.accent.color, colors.accent.background)).toBeGreaterThanOrEqual(
     4.5,
