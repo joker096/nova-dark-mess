@@ -29,6 +29,19 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import {
+  generateRoutingKeyPair,
+  openRoutingEnvelope,
+  routingPublicKey,
+  sealRoutingEnvelope,
+} from './src/lib/anon/routing.js';
+import { isQueuePublicKey, verifyQueueCommand } from './src/lib/anon/signing.js';
+import {
+  isInviteToken,
+  isPowChallenge,
+  isPowSolution,
+  verifyPow,
+} from './src/lib/anon/spam.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -908,6 +921,599 @@ app.get('/api/relay/:destination', (req, res) => {
   }
   return res.json({ envelopes });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Anonymous queue relay (v1): one-way, fixed-size packets, TTL, no identity.
+// In-memory for v1; suitable for development and small deployments. For
+// production persistence, back this with the same disk pattern as /api/relay.
+// ───────────────────────────────────────────────────────────────────────────
+const ANON_QUEUE_TTL_DEFAULT_MS = 14 * 24 * 60 * 60 * 1000;
+const ANON_QUEUE_TTL_MAX_MS = 21 * 24 * 60 * 60 * 1000;
+const ANON_PACKET_TTL_DEFAULT_MS = 24 * 60 * 60 * 1000;
+const ANON_MAX_PACKETS_PER_QUEUE = 200;
+const ANON_REPORT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const ANON_MAX_REPORTS = 10000;
+const ANON_PACKET_PROFILES = new Set([4096, 16384, 65536]);
+const ANON_ROUTING_MAX_AGE_MS = 5 * 60 * 1000;
+const ANON_ROUTING_FUTURE_SKEW_MS = 60 * 1000;
+const ANON_COMMAND_MAX_AGE_MS = 5 * 60 * 1000;
+const ANON_COMMAND_FUTURE_SKEW_MS = 60 * 1000;
+const anonQueues = new Map();
+const anonAbuseReports = new Map();
+const anonRoutingNonces = new Map();
+const anonCommandNonces = new Map();
+
+// Routing key: clients seal proxy-hop commands to this X25519 key, so the
+// proxy only forwards opaque envelopes. Pin the public key on clients.
+let ANON_ROUTING_PRIVATE_KEY = (process.env.ANON_ROUTING_PRIVATE_KEY || '').trim();
+let ANON_ROUTING_PUBLIC_KEY = '';
+let ANON_ROUTING_ENABLED = false;
+if (ANON_ROUTING_PRIVATE_KEY) {
+  try {
+    ANON_ROUTING_PUBLIC_KEY = routingPublicKey(ANON_ROUTING_PRIVATE_KEY);
+    ANON_ROUTING_ENABLED = true;
+  } catch (err) {
+    console.error('[anon] invalid ANON_ROUTING_PRIVATE_KEY', {
+      error: String(err && err.message ? err.message : err),
+    });
+  }
+} else {
+  const generated = generateRoutingKeyPair();
+  ANON_ROUTING_PRIVATE_KEY = generated.privateKey;
+  ANON_ROUTING_PUBLIC_KEY = generated.publicKey;
+  ANON_ROUTING_ENABLED = true;
+  console.warn(
+    '[anon] ANON_ROUTING_PRIVATE_KEY not set; generated an ephemeral routing key. Set it for stable proxy mode.',
+  );
+  console.log(`[anon] routing public key: ${ANON_ROUTING_PUBLIC_KEY}`);
+}
+
+const anonRateBuckets = new Map();
+function anonRateLimit(key, max, windowMs) {
+  const now = Date.now();
+  const bucket = anonRateBuckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    anonRateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
+}
+function anonClientKey(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function anonHash(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function anonRandomToken() {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function anonRandomId(prefix, bytes) {
+  return `${prefix}_${crypto.randomBytes(bytes).toString('hex')}`;
+}
+
+function anonDecodeBase64(value) {
+  try {
+    return Buffer.from(value, 'base64');
+  } catch {
+    return null;
+  }
+}
+
+function anonCleanup() {
+  const now = Date.now();
+  for (const [queueId, queue] of anonQueues) {
+    if (now > queue.expiresAt) {
+      anonQueues.delete(queueId);
+      continue;
+    }
+    for (const [packetId, packet] of queue.packets) {
+      if (now > packet.expiresAt) queue.packets.delete(packetId);
+    }
+  }
+  for (const [nonce, expiresAt] of anonRoutingNonces) {
+    if (now > expiresAt) anonRoutingNonces.delete(nonce);
+  }
+  for (const [nonce, expiresAt] of anonCommandNonces) {
+    if (now > expiresAt) anonCommandNonces.delete(nonce);
+  }
+  for (const [reportId, report] of anonAbuseReports) {
+    if (now > report.expiresAt) anonAbuseReports.delete(reportId);
+  }
+}
+
+setInterval(anonCleanup, 60 * 1000).unref?.();
+
+function anonVerifyCommand(queue, action, fields, auth) {
+  if (!queue.signingPublicKey) return null;
+  if (
+    !auth ||
+    typeof auth.signature !== 'string' ||
+    typeof auth.signedAt !== 'number' ||
+    typeof auth.commandNonce !== 'string'
+  ) {
+    return { status: 400, body: { ok: false, reason: 'MISSING_SIGNATURE' } };
+  }
+  const now = Date.now();
+  if (
+    auth.signedAt < now - ANON_COMMAND_MAX_AGE_MS ||
+    auth.signedAt > now + ANON_COMMAND_FUTURE_SKEW_MS
+  ) {
+    return { status: 400, body: { ok: false, reason: 'STALE_COMMAND' } };
+  }
+  if (anonCommandNonces.has(auth.commandNonce)) {
+    return { status: 409, body: { ok: false, reason: 'REPLAYED_COMMAND' } };
+  }
+  const valid = verifyQueueCommand(
+    queue.signingPublicKey,
+    {
+      action,
+      ...fields,
+      signedAt: auth.signedAt,
+      commandNonce: auth.commandNonce,
+    },
+    auth.signature,
+  );
+  if (!valid) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_SIGNATURE' } };
+  }
+  anonCommandNonces.set(auth.commandNonce, now + ANON_COMMAND_MAX_AGE_MS);
+  return null;
+}
+
+function anonCreateQueue(ttlMs, signingPublicKey, pow) {
+  const requestedTtl = Number(ttlMs);
+  const ttl = Number.isFinite(requestedTtl)
+    ? Math.min(ANON_QUEUE_TTL_MAX_MS, Math.max(60 * 1000, requestedTtl))
+    : ANON_QUEUE_TTL_DEFAULT_MS;
+  const effectiveSigningPublicKey =
+    typeof signingPublicKey === 'string' && isQueuePublicKey(signingPublicKey)
+      ? signingPublicKey
+      : signingPublicKey === undefined
+        ? undefined
+        : null;
+  if (signingPublicKey !== undefined && !effectiveSigningPublicKey) {
+    return { status: 400, body: { ok: false, reason: 'INVALID_SIGNING_KEY' } };
+  }
+  if (pow !== undefined && !isPowChallenge(pow)) {
+    return { status: 400, body: { ok: false, reason: 'INVALID_POW_CHALLENGE' } };
+  }
+  const queueId = anonRandomId('q', 16);
+  const senderToken = anonRandomToken();
+  const recipientToken = anonRandomToken();
+  const inviteToken = anonRandomToken();
+  const now = Date.now();
+  anonQueues.set(queueId, {
+    queueId,
+    senderTokenHash: anonHash(senderToken),
+    recipientTokenHash: anonHash(recipientToken),
+    signingPublicKey: effectiveSigningPublicKey || null,
+    pow: pow || null,
+    powUsed: false,
+    inviteTokenHash: anonHash(inviteToken),
+    createdAt: now,
+    expiresAt: now + ttl,
+    packets: new Map(),
+  });
+  return {
+    status: 201,
+    body: { ok: true, queueId, senderToken, recipientToken, inviteToken, expiresAt: now + ttl },
+  };
+}
+
+function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
+  if (typeof queueId !== 'string' || typeof senderToken !== 'string' || typeof packet !== 'string') {
+    return { status: 400, body: { ok: false, reason: 'missing fields' } };
+  }
+  const queue = anonQueues.get(queueId);
+  if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
+  const now = Date.now();
+  if (now > queue.expiresAt) {
+    anonQueues.delete(queueId);
+    return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
+  }
+  if (anonHash(senderToken) !== queue.senderTokenHash) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_SENDER_TOKEN' } };
+  }
+  // One-time invite: the first enqueue must present the invite token and the
+  // relay burns it, so a leaked invite cannot establish a second contact.
+  if (queue.inviteTokenHash !== null) {
+    if (!isInviteToken(inviteToken)) {
+      return { status: 400, body: { ok: false, reason: 'INVITE_TOKEN_REQUIRED' } };
+    }
+    if (anonHash(inviteToken) !== queue.inviteTokenHash) {
+      return { status: 403, body: { ok: false, reason: 'INVALID_INVITE_TOKEN' } };
+    }
+    queue.inviteTokenHash = null;
+  }
+  const authError = anonVerifyCommand(
+    queue,
+    'enqueue',
+    { queueId, token: senderToken, packet, pow },
+    auth,
+  );
+  if (authError) return authError;
+  if (queue.pow && !queue.powUsed) {
+    if (!isPowSolution(pow)) {
+      return { status: 400, body: { ok: false, reason: 'POW_REQUIRED' } };
+    }
+    if (!verifyPow(queue.pow, pow)) {
+      return { status: 403, body: { ok: false, reason: 'INVALID_POW' } };
+    }
+    queue.powUsed = true;
+  }
+  const bytes = anonDecodeBase64(packet);
+  if (!bytes) return { status: 400, body: { ok: false, reason: 'INVALID_PACKET' } };
+  if (!ANON_PACKET_PROFILES.has(bytes.length)) {
+    return { status: 400, body: { ok: false, reason: 'PACKET_TOO_LARGE' } };
+  }
+  if (queue.packets.size >= ANON_MAX_PACKETS_PER_QUEUE) {
+    return { status: 429, body: { ok: false, reason: 'QUEUE_FULL' } };
+  }
+  const packetId = anonRandomId('p', 12);
+  const expiresAt = now + ANON_PACKET_TTL_DEFAULT_MS;
+  queue.packets.set(packetId, {
+    packetId,
+    payload: packet,
+    createdAt: now,
+    expiresAt,
+  });
+  return { status: 202, body: { ok: true, packetId, expiresAt } };
+}
+
+function anonPoll(queueId, recipientToken, limit, auth) {
+  if (typeof queueId !== 'string' || typeof recipientToken !== 'string') {
+    return { status: 400, body: { ok: false, reason: 'missing fields' } };
+  }
+  const queue = anonQueues.get(queueId);
+  if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
+  const now = Date.now();
+  if (now > queue.expiresAt) {
+    anonQueues.delete(queueId);
+    return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
+  }
+  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
+  }
+  const authError = anonVerifyCommand(queue, 'poll', { queueId, token: recipientToken, limit }, auth);
+  if (authError) return authError;
+  const max = Math.min(100, Math.max(1, Number(limit) || 32));
+  const packets = [];
+  for (const packet of queue.packets.values()) {
+    if (now > packet.expiresAt) continue;
+    packets.push({
+      packetId: packet.packetId,
+      payload: packet.payload,
+      createdAt: packet.createdAt,
+      expiresAt: packet.expiresAt,
+    });
+    if (packets.length >= max) break;
+  }
+  return { status: 200, body: { ok: true, packets, nextCursor: null } };
+}
+
+function anonAck(queueId, recipientToken, packetIds, auth) {
+  if (typeof queueId !== 'string' || typeof recipientToken !== 'string' || !Array.isArray(packetIds)) {
+    return { status: 400, body: { ok: false, reason: 'missing fields' } };
+  }
+  const queue = anonQueues.get(queueId);
+  if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
+  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
+  }
+  const authError = anonVerifyCommand(queue, 'ack', { queueId, token: recipientToken, packetIds }, auth);
+  if (authError) return authError;
+  for (const id of packetIds) {
+    if (typeof id === 'string') queue.packets.delete(id);
+  }
+  return { status: 200, body: { ok: true } };
+}
+
+function anonDeleteQueue(queueId, recipientToken, auth) {
+  if (typeof queueId !== 'string' || typeof recipientToken !== 'string') {
+    return { status: 400, body: { ok: false, reason: 'missing fields' } };
+  }
+  const queue = anonQueues.get(queueId);
+  if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
+  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
+  }
+  const authError = anonVerifyCommand(queue, 'delete_queue', { queueId, token: recipientToken }, auth);
+  if (authError) return authError;
+  anonQueues.delete(queueId);
+  return { status: 200, body: { ok: true } };
+}
+
+app.post('/api/anon/queues', (req, res) => {
+  anonCleanup();
+  if (!anonRateLimit(`create:${anonClientKey(req)}`, 20, 60 * 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const result = anonCreateQueue(req.body?.ttlMs, req.body?.signingPublicKey, req.body?.pow);
+  return res.status(result.status).json(result.body);
+});
+
+app.post('/api/anon/enqueue', (req, res) => {
+  anonCleanup();
+  if (!anonRateLimit(`enqueue:${anonClientKey(req)}`, 100, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const { queueId, senderToken, packet, pow, inviteToken, signature, signedAt, commandNonce } = req.body || {};
+  const result = anonEnqueue(queueId, senderToken, packet, {
+    signature,
+    signedAt,
+    commandNonce,
+  }, pow, inviteToken);
+  return res.status(result.status).json(result.body);
+});
+
+app.post('/api/anon/poll', (req, res) => {
+  anonCleanup();
+  if (!anonRateLimit(`poll:${anonClientKey(req)}`, 100, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const { queueId, recipientToken, limit, signature, signedAt, commandNonce } = req.body || {};
+  const result = anonPoll(queueId, recipientToken, limit, {
+    signature,
+    signedAt,
+    commandNonce,
+  });
+  return res.status(result.status).json(result.body);
+});
+
+app.post('/api/anon/ack', (req, res) => {
+  anonCleanup();
+  const { queueId, recipientToken, packetIds, signature, signedAt, commandNonce } = req.body || {};
+  const result = anonAck(queueId, recipientToken, packetIds, {
+    signature,
+    signedAt,
+    commandNonce,
+  });
+  return res.status(result.status).json(result.body);
+});
+
+app.post('/api/anon/queues/delete', (req, res) => {
+  anonCleanup();
+  const { queueId, recipientToken, signature, signedAt, commandNonce } = req.body || {};
+  const result = anonDeleteQueue(queueId, recipientToken, {
+    signature,
+    signedAt,
+    commandNonce,
+  });
+  return res.status(result.status).json(result.body);
+});
+
+app.get('/api/anon/routing-key', (req, res) => {
+  if (!ANON_ROUTING_ENABLED) {
+    return res.status(503).json({ ok: false, reason: 'ROUTING_NOT_CONFIGURED' });
+  }
+  return res.json({
+    ok: true,
+    version: 1,
+    algorithm: 'x25519-hkdf-sha256-aes-256-gcm',
+    publicKey: ANON_ROUTING_PUBLIC_KEY,
+  });
+});
+
+// Sealed routing endpoint. The relay decrypts the envelope locally; the proxy
+// never sees queue IDs or bearer tokens.
+app.post('/api/anon/route', async (req, res) => {
+  anonCleanup();
+  if (!ANON_ROUTING_ENABLED) {
+    return res.status(503).json({ ok: false, reason: 'ROUTING_NOT_CONFIGURED' });
+  }
+  if (!anonRateLimit(`route:${anonClientKey(req)}`, 240, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+
+  let route;
+  try {
+    route = await openRoutingEnvelope(ANON_ROUTING_PRIVATE_KEY, req.body?.envelope);
+  } catch {
+    return res.status(400).json({ ok: false, reason: 'INVALID_ENVELOPE' });
+  }
+
+  const now = Date.now();
+  if (
+    typeof route.iat !== 'number' ||
+    !Number.isFinite(route.iat) ||
+    typeof route.nonce !== 'string' ||
+    route.nonce.length < 16 ||
+    route.nonce.length > 128
+  ) {
+    return res.status(400).json({ ok: false, reason: 'INVALID_ENVELOPE' });
+  }
+  if (
+    route.iat < now - ANON_ROUTING_MAX_AGE_MS ||
+    route.iat > now + ANON_ROUTING_FUTURE_SKEW_MS
+  ) {
+    return res.status(400).json({ ok: false, reason: 'STALE_ENVELOPE' });
+  }
+  if (anonRoutingNonces.has(route.nonce)) {
+    return res.status(409).json({ ok: false, reason: 'REPLAYED_ENVELOPE' });
+  }
+  anonRoutingNonces.set(route.nonce, now + ANON_ROUTING_MAX_AGE_MS);
+
+  if (route.action === 'report') {
+    if (!anonRateLimit(`route-report:${anonClientKey(req)}`, 60, 60 * 60 * 1000)) {
+      return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+    }
+    const report = route.report;
+    if (
+      !report ||
+      typeof report !== 'object' ||
+      report.v !== 1 ||
+      typeof report.reportId !== 'string' ||
+      !/^[0-9a-f]{32}$/.test(report.reportId) ||
+      typeof report.queueIdHash !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(report.queueIdHash) ||
+      typeof report.signingKeyHash !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(report.signingKeyHash) ||
+      !['spam', 'harassment', 'illegal'].includes(report.category)
+    ) {
+      return res.status(400).json({ ok: false, reason: 'INVALID_REPORT' });
+    }
+    const existing = anonAbuseReports.get(report.reportId);
+    if (existing) {
+      const matches =
+        existing.queueIdHash === report.queueIdHash &&
+        existing.signingKeyHash === report.signingKeyHash &&
+        existing.category === report.category;
+      return matches
+        ? res.json({ ok: true, duplicate: true })
+        : res.status(409).json({ ok: false, reason: 'REPORT_ID_CONFLICT' });
+    }
+    if (anonAbuseReports.size >= ANON_MAX_REPORTS) {
+      return res.status(503).json({ ok: false, reason: 'REPORT_STORE_FULL' });
+    }
+    anonAbuseReports.set(report.reportId, {
+      reportId: report.reportId,
+      queueIdHash: report.queueIdHash,
+      signingKeyHash: report.signingKeyHash,
+      category: report.category,
+      expiresAt: now + ANON_REPORT_TTL_MS,
+    });
+    return res.status(201).json({ ok: true });
+  }
+
+  if (route.action === 'create') {
+    if (!anonRateLimit(`route-create:${anonClientKey(req)}`, 20, 60 * 60 * 1000)) {
+      return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+    }
+    if (typeof route.replyPublicKey !== 'string') {
+      return res.status(400).json({ ok: false, reason: 'INVALID_REPLY_KEY' });
+    }
+    const created = anonCreateQueue(route.ttlMs, route.signingPublicKey, route.pow);
+    if (created.status !== 201) {
+      return res.status(created.status).json(created.body);
+    }
+    try {
+      const envelope = await sealRoutingEnvelope(route.replyPublicKey, {
+        action: 'create',
+        queueId: created.body.queueId,
+        senderToken: created.body.senderToken,
+        recipientToken: created.body.recipientToken,
+        inviteToken: created.body.inviteToken,
+        expiresAt: created.body.expiresAt,
+      });
+      return res.status(created.status).json({ ok: true, envelope });
+    } catch {
+      return res.status(400).json({ ok: false, reason: 'INVALID_REPLY_KEY' });
+    }
+  }
+
+  if (typeof route.queueId !== 'string' || typeof route.token !== 'string') {
+    return res.status(400).json({ ok: false, reason: 'INVALID_ENVELOPE' });
+  }
+
+  let result;
+  switch (route.action) {
+    case 'enqueue':
+      if (!anonRateLimit(`route-enqueue:${route.queueId}`, 100, 60 * 1000)) {
+        return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+      }
+      result = anonEnqueue(route.queueId, route.token, route.packet, {
+        signature: route.signature,
+        signedAt: route.signedAt,
+        commandNonce: route.commandNonce,
+      }, route.pow, route.inviteToken);
+      break;
+    case 'poll':
+      if (!anonRateLimit(`route-poll:${route.queueId}`, 100, 60 * 1000)) {
+        return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+      }
+      result = anonPoll(route.queueId, route.token, route.limit, {
+        signature: route.signature,
+        signedAt: route.signedAt,
+        commandNonce: route.commandNonce,
+      });
+      break;
+    case 'ack':
+      if (!anonRateLimit(`route-ack:${route.queueId}`, 120, 60 * 1000)) {
+        return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+      }
+      result = anonAck(route.queueId, route.token, route.packetIds, {
+        signature: route.signature,
+        signedAt: route.signedAt,
+        commandNonce: route.commandNonce,
+      });
+      break;
+    default:
+      return res.status(400).json({ ok: false, reason: 'UNKNOWN_ACTION' });
+  }
+
+  return res.status(result.status).json(result.body);
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Proxy hop (phase C): the proxy knows the caller's IP and an opaque relay id
+// from a server-side allowlist. It forwards a sealed routing envelope it cannot
+// decrypt, so it never sees queue IDs, bearer tokens, or packet contents.
+// Configure with ANON_PROXY_TARGETS="relay1=https://r1.example,relay2=..."
+// ───────────────────────────────────────────────────────────────────────────
+const ANON_PROXY_TARGETS = new Map(
+  (process.env.ANON_PROXY_TARGETS || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const idx = entry.indexOf('=');
+      return idx > 0 ? [entry.slice(0, idx).trim(), entry.slice(idx + 1).trim()] : null;
+    })
+    .filter(Boolean),
+);
+const ANON_PROXY_ENABLED = ANON_PROXY_TARGETS.size > 0;
+
+function anonProxyTarget(rawId) {
+  if (typeof rawId !== 'string') return null;
+  return ANON_PROXY_TARGETS.get(rawId) || null;
+}
+
+async function anonForward(targetBase, pathSuffix, body) {
+  const url = `${targetBase.replace(/\/+$/, '')}${pathSuffix}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  });
+  let result = null;
+  try {
+    result = await res.json();
+  } catch {
+    result = null;
+  }
+  return { status: res.status, body: result || { ok: false, reason: 'UPSTREAM_ERROR' } };
+}
+
+app.post('/api/anon/hop', async (req, res) => {
+  if (!ANON_PROXY_ENABLED) {
+    return res.status(503).json({ ok: false, reason: 'PROXY_NOT_CONFIGURED' });
+  }
+  if (!anonRateLimit(`hop:${anonClientKey(req)}`, 240, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const target = anonProxyTarget(req.body?.relay);
+  if (!target) return res.status(400).json({ ok: false, reason: 'UNKNOWN_RELAY' });
+  const envelope = req.body?.envelope;
+  if (!envelope || typeof envelope !== 'object') {
+    return res.status(400).json({ ok: false, reason: 'INVALID_ENVELOPE' });
+  }
+
+  // The proxy cannot decrypt this envelope; only the destination relay can.
+  try {
+    const result = await anonForward(target, '/api/anon/route', { envelope });
+    return res.status(result.status).json(result.body);
+  } catch {
+    return res.status(502).json({ ok: false, reason: 'UPSTREAM_UNREACHABLE' });
+  }
+});
+
 
 // ───────────────────────────────────────────────────────────────────────────
 // Boot
