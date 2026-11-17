@@ -572,6 +572,7 @@
     "privacy": "プライバシー",
     "advertising": "Advertising",
     "adsPrivacyHint": "The sponsored card is chosen by channel topic and language. We don't use your chats, interests or an advertising ID. Hidden ads and blocked advertisers stay on this device.",
+    "adsPremiumOff": "Premium が有効です — チャンネルの広告はオフになります。",
     "adsHidden": "Hidden ads",
     "adsBlocked": "Blocked advertisers",
     "adsReset": "Reset ad settings",

@@ -63,7 +63,11 @@ const renderSettings = (onClose = vi.fn(), onOpenAnalytics?: () => void) => {
     premium: premiumMock.premium,
     loading: false,
     checkout: premiumMock.checkout,
-    canUse: (feature: string) => (feature === 'chat_themes' ? premiumMock.canUseThemes : false),
+    canUse: (feature: string) => {
+      if (feature === 'chat_themes') return premiumMock.canUseThemes;
+      if (feature === 'ads_free') return premiumMock.premium;
+      return false;
+    },
     freeDaysRemaining: () => premiumMock.freeDays,
     minSubscriptionCost: 390,
   });
@@ -186,6 +190,18 @@ describe('SettingsModal', () => {
     renderSettings();
     fireEvent.click(screen.getByRole('button', { name: /settings.premiumUpgrade/ }));
     expect(premiumMock.checkout).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the Premium ads-off notice without a subscription', () => {
+    renderSettings();
+    expect(screen.queryByTestId('ads-premium-off')).toBeNull();
+  });
+
+  it('shows the Premium ads-off notice in the ads section', () => {
+    premiumMock.premium = true;
+    renderSettings();
+    expect(screen.getByTestId('ads-premium-off')).toBeTruthy();
+    expect(screen.getByText('settings.adsPremiumOff')).toBeTruthy();
   });
 
   it('clears cached chats and shows feedback', () => {

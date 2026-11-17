@@ -13,12 +13,16 @@ vi.mock('../context/LanguageContext', () => ({
   }),
 }));
 
+// Premium grants every sold feature, including `ads_free`, so the ads slot is
+// the only thing that changes between the two states below.
+const premiumState = vi.hoisted(() => ({ active: false }));
+
 vi.mock('../hooks/usePremium', () => ({
   usePremium: () => ({
-    premium: false,
+    premium: premiumState.active,
     loading: false,
     checkout: vi.fn(),
-    canUse: () => false,
+    canUse: () => premiumState.active,
     freeDaysRemaining: () => 0,
     minSubscriptionCost: 390,
   }),
@@ -49,6 +53,7 @@ const posts: ChannelPost[] = Array.from({ length: 5 }, (_, index) => ({
 
 describe('ChannelScreen sponsored slot', () => {
   beforeEach(() => {
+    premiumState.active = false;
     localStorage.clear();
     class MockIntersectionObserver {
       observe() {}
@@ -78,6 +83,26 @@ describe('ChannelScreen sponsored slot', () => {
     expect(screen.getByTestId('sponsored-post-card')).toBeTruthy();
     expect(screen.getByTestId('channel-sponsored-slot')).toBeTruthy();
     expect(screen.getByText('ads.nativeLabel')).toBeTruthy();
+  });
+
+  it('hides the sponsored slot for Premium subscribers', () => {
+    premiumState.active = true;
+    render(
+      <ChannelScreen
+        onBack={() => {}}
+        channelId={channel.id}
+        channels={[channel]}
+        posts={posts}
+        now={NOW}
+      />,
+    );
+
+    expect(screen.queryByTestId('channel-sponsored-slot')).toBeNull();
+    expect(screen.queryByTestId('sponsored-post-card')).toBeNull();
+    expect(screen.queryByText('ads.nativeLabel')).toBeNull();
+    // The feed itself must stay untouched without ads.
+    expect(screen.getByText('Post 1')).toBeTruthy();
+    expect(screen.getByText('Post 5')).toBeTruthy();
   });
 
   it('restores the slot after local ad preferences are reset', async () => {

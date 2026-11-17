@@ -572,6 +572,7 @@
     "privacy": "गोपनीयता",
     "advertising": "Advertising",
     "adsPrivacyHint": "The sponsored card is chosen by channel topic and language. We don't use your chats, interests or an advertising ID. Hidden ads and blocked advertisers stay on this device.",
+    "adsPremiumOff": "Premium सक्रिय है — चैनलों में विज्ञापन बंद हैं।",
     "adsHidden": "Hidden ads",
     "adsBlocked": "Blocked advertisers",
     "adsReset": "Reset ad settings",

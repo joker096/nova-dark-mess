@@ -572,6 +572,7 @@
     "privacy": "Privacidade",
     "advertising": "Advertising",
     "adsPrivacyHint": "The sponsored card is chosen by channel topic and language. We don't use your chats, interests or an advertising ID. Hidden ads and blocked advertisers stay on this device.",
+    "adsPremiumOff": "O Premium está ativo — os anúncios nos canais estão desativados.",
     "adsHidden": "Hidden ads",
     "adsBlocked": "Blocked advertisers",
     "adsReset": "Reset ad settings",
