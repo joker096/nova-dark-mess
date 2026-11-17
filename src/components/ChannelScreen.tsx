@@ -134,7 +134,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onInitialCommentsHandled,
 }) => {
   const { t, language } = useLanguage();
-  const { checkout, canUse, premium } = usePremium();
+  const { checkout, canUse } = usePremium();
   const fallbackChannels = useMemo(() => [createDefaultChannel()], []);
   const availableChannels = channels ?? fallbackChannels;
   const channel = availableChannels.find((item) => item.id === channelId) ?? availableChannels[0];
@@ -596,7 +596,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const demoCampaign = useMemo(() => getDemoCampaign(language), [language]);
   const showSponsoredCard =
     !query &&
-    !premium &&
+    !canUse('ads_free') &&
     !channel.isOwned &&
     channel.visibility !== 'private' &&
     displayPosts.length >= 5 &&

@@ -832,6 +832,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             <p className="text-[11px] leading-relaxed text-[#8c919d]">
               {t('settings.adsPrivacyHint')}
             </p>
+            {canUse('ads_free') && (
+              <p
+                className="flex items-start gap-1.5 rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2 py-1.5 text-[11px] font-medium text-white/80"
+                data-testid="ads-premium-off"
+              >
+                <Check className="mt-0.5 h-3 w-3 shrink-0 text-[var(--nova-accent-color)]" />
+                <span>{t('settings.adsPremiumOff')}</span>
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2">
                 <span className="text-[10px] text-[#8c919d]">{t('settings.adsHidden')}</span>

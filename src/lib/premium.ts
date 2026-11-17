@@ -187,13 +187,15 @@ export type PremiumFeature =
   | 'chat_themes'
   | 'wallpaper'
   | 'date_picker'
-  | 'premium_stickers';
+  | 'premium_stickers'
+  | 'ads_free';
 
 export const PREMIUM_FEATURES: readonly PremiumFeature[] = [
   'chat_themes',
   'wallpaper',
   'date_picker',
   'premium_stickers',
+  'ads_free',
 ];
 
 export function canUseFeature(feature: PremiumFeature): boolean {
