@@ -65,7 +65,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
     }
   };
 
-  const digits = '1234567890'.split('');
+  const digits = '123456789'.split('');
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0c10] flex flex-col items-center justify-center p-6 text-white backdrop-blur-sm">
@@ -117,6 +117,14 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
               {d}
             </button>
           ))}
+          <div className="w-full h-14" aria-hidden="true" />
+          <button
+            disabled={isLockedOut || isVerifying}
+            onClick={() => handleDigit('0')}
+            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            0
+          </button>
           <button
             disabled={isLockedOut || isVerifying}
             onClick={handleBackspace}
@@ -124,13 +132,6 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
             aria-label={t('common.backspace') ?? 'Backspace'}
           >
             <span className="text-[var(--nova-accent-color)]">⌫</span>
-          </button>
-          <button
-            disabled={isLockedOut || isVerifying}
-            onClick={() => handleDigit('0')}
-            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
-          >
-            0
           </button>
         </div>
 
