@@ -862,6 +862,11 @@
     "openOnline": "Otwórz pełną wersję"
   },
   "onboarding": {
+    "backupFileLabel": "Plik kopii zapasowej",
+    "restoreBackupBody": "Wybierz plik .nova-backup i wpisz jego hasło, aby przywrócić tożsamość i zaszyfrowane dane.",
+    "backupPassphrase": "Hasło kopii zapasowej (co najmniej 8 znaków)",
+    "backupConfirmPassphrase": "Potwierdź hasło kopii zapasowej",
+    "backupSetupBody": "Kopia zawiera Twoją tożsamość i zaszyfrowane dane lokalne. Wybierz osobne hasło i przechowuj plik oraz hasło offline.",
     "stepOf": "Krok {{current}} z {{total}}",
     "welcomeTitle": "Witamy w Nova",
     "welcomeBody": "Kompleksowo szyfrowane wiadomości bez konta, numeru telefonu i adresu e-mail. Twoje klucze nigdy nie opuszczają tego urządzenia.",

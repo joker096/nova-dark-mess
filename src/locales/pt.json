@@ -862,6 +862,11 @@
     "openOnline": "Abra a versão completa"
   },
   "onboarding": {
+    "backupFileLabel": "Arquivo de backup",
+    "restoreBackupBody": "Selecione um arquivo .nova-backup e digite a senha para restaurar a identidade e os dados criptografados.",
+    "backupPassphrase": "Senha do backup (mínimo de 8 caracteres)",
+    "backupConfirmPassphrase": "Confirme a senha do backup",
+    "backupSetupBody": "Este backup inclui sua identidade e os dados locais criptografados. Escolha uma senha separada e mantenha o arquivo e a senha offline.",
     "stepOf": "Etapa {{current}} de {{total}}",
     "welcomeTitle": "Bem-vindo ao Nova",
     "welcomeBody": "Mensagens criptografadas de ponta a ponta sem conta, número de telefone e e-mail. Suas chaves nunca saem deste dispositivo.",

@@ -862,6 +862,11 @@
     "openOnline": "Tam sürümü aç"
   },
   "onboarding": {
+    "backupFileLabel": "Yedek dosyası",
+    "restoreBackupBody": "Kimliğinizi ve şifrelenmiş verileri geri yüklemek için bir .nova-backup dosyası seçip parolasını girin.",
+    "backupPassphrase": "Yedek parolası (en az 8 karakter)",
+    "backupConfirmPassphrase": "Yedek parolasını doğrulayın",
+    "backupSetupBody": "Bu yedek kimliğinizi ve şifrelenmiş yerel verileri içerir. Ayrı bir parola belirleyin; dosyayı ve parolayı çevrimdışı saklayın.",
     "stepOf": "Adım {{current}} / {{total}}",
     "welcomeTitle": "Nova'ya hoş geldiniz",
     "welcomeBody": "Hesap, telefon numarası ve e-posta olmadan uçtan uca şifreli mesajlaşma. Anahtarlarınız bu cihazdan çıkmaz.",

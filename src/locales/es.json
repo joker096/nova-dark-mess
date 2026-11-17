@@ -865,6 +865,11 @@
     "openOnline": "Abrir versión completa"
   },
   "onboarding": {
+    "backupFileLabel": "Archivo de copia de seguridad",
+    "restoreBackupBody": "Selecciona un archivo .nova-backup e introduce su frase de contraseña para restaurar la identidad y los datos cifrados.",
+    "backupPassphrase": "Frase de contraseña de la copia (8 caracteres o más)",
+    "backupConfirmPassphrase": "Confirma la frase de contraseña de la copia",
+    "backupSetupBody": "Esta copia incluye tu identidad y los datos locales cifrados. Elige una frase de contraseña distinta y guarda el archivo y la frase sin conexión.",
     "stepOf": "Paso {{current}} de {{total}}",
     "welcomeTitle": "Bienvenido a Nova",
     "welcomeBody": "Mensajería cifrada de extremo a extremo sin cuenta, teléfono ni correo. Tus claves no salen de este dispositivo.",

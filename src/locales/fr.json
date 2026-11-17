@@ -862,6 +862,11 @@
     "openOnline": "Ouvrir la version complète"
   },
   "onboarding": {
+    "backupFileLabel": "Fichier de sauvegarde",
+    "restoreBackupBody": "Sélectionnez un fichier .nova-backup et saisissez sa phrase secrète pour restaurer l'identité et les données chiffrées.",
+    "backupPassphrase": "Phrase secrète de sauvegarde (8 caractères minimum)",
+    "backupConfirmPassphrase": "Confirmer la phrase secrète de sauvegarde",
+    "backupSetupBody": "Cette sauvegarde contient votre identité et vos données locales chiffrées. Choisissez une phrase secrète distincte et conservez le fichier et la phrase hors ligne.",
     "stepOf": "Étape {{current}} de {{total}}",
     "welcomeTitle": "Bienvenue sur Nova",
     "welcomeBody": "Messagerie cryptée de bout en bout sans compte, sans numéro de téléphone et sans e-mail. Vos clés ne quittent jamais cet appareil.",

@@ -862,6 +862,11 @@
     "openOnline": "Öppna den fullständiga versionen"
   },
   "onboarding": {
+    "backupFileLabel": "Säkerhetskopieringsfil",
+    "restoreBackupBody": "Välj en .nova-backup-fil och ange lösenfrasen för att återställa identiteten och krypterade data.",
+    "backupPassphrase": "Lösenfras för säkerhetskopian (minst 8 tecken)",
+    "backupConfirmPassphrase": "Bekräfta lösenfrasen",
+    "backupSetupBody": "Säkerhetskopian innehåller din identitet och krypterade lokala data. Välj en separat lösenfras och förvara filen och lösenfrasen offline.",
     "stepOf": "Steg {{current}} av {{total}}",
     "welcomeTitle": "Välkommen till Nova",
     "welcomeBody": "End-to-end-krypterade meddelanden utan konto, inget telefonnummer och ingen e-post. Dina nycklar lämnar aldrig den här enheten.",

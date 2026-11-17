@@ -862,6 +862,11 @@
     "openOnline": "打开完整版"
   },
   "onboarding": {
+    "backupFileLabel": "备份文件",
+    "restoreBackupBody": "选择 .nova-backup 文件并输入密码，以恢复已保存的身份和加密数据。",
+    "backupPassphrase": "备份密码（至少 8 个字符）",
+    "backupConfirmPassphrase": "确认备份密码",
+    "backupSetupBody": "此备份包含你的身份和已加密的本地数据。请设置独立密码，并将文件和密码离线保存。",
     "stepOf": "第 {{current}} 步（共 {{total}} 步）",
     "welcomeTitle": "欢迎来到Nova",
     "welcomeBody": "端到端加密消息传递，无需帐户、电话号码和电子邮件。您的钥匙永远不会离开此设备。",
