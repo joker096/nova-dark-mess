@@ -75,7 +75,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
         </div>
         <h2 className="text-xl font-bold text-white">{isSetting ? t('settings.passcodeLock') : t('common.passcodeLock')}</h2>
         <p className="text-sm text-[#8c919d] text-center mb-6">
-          {isSetting ? t('settings.passcodeCreate') : t('settings.passcodeEnter')}
+          {isSetting ? t('common.passcodeCreate') : t('common.passcodeEnter')}
         </p>
 
         {/* PIN dots */}

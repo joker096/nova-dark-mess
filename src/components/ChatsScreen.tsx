@@ -932,7 +932,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         setIsFolderModalOpen(true);
                       }}
                       className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#20222c] hover:bg-[var(--nova-accent-color)] text-white/70 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm border border-white/10 cursor-pointer"
-                      aria-label={t('settings.editFolder') ?? `Edit folder ${folder.name}`}
+                      aria-label={t('common.editFolder') ?? `Edit folder ${folder.name}`}
                       title={t('common.edit')}
                     >
                       <Settings className="w-2.5 h-2.5" />
