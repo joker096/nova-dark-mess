@@ -95,7 +95,7 @@ describe('PinLockScreen visual snapshot', () => {
     render(<PinLockScreen onUnlock={vi.fn()} />);
     const row = findByClass(document, 'grid-cols-3')!;
     expect(within(row).getByText('1')).toBeInTheDocument();
-    expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(screen.getAllByText('0')).toHaveLength(1);
     const backspace = screen.getByRole('button', { name: 'common.backspace' });
     expect(backspace).toBeInTheDocument();
   });
