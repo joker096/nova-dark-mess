@@ -11,6 +11,8 @@
     "noPeers": "ライブピアはまだありません。オンラインのピアとチャットを開いたり、ライブ位置を共有したりできます。"
   },
   "common": {
+    "unlockWithBiometric": "指紋でロック解除",
+    "biometricFailed": "指紋を認識できません",
     "search": "検索",
     "searchChats": "チャットを検索する",
     "searchMessages": "メッセージを検索する",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "クリップボードに共有されました"
   },
   "settings": {
+    "biometricUnlock": "指紋ロック解除",
+    "biometricHint": "この端末の指紋または顔センサーで Nova のロックを解除します。",
+    "biometricEnabled": "指紋ロック解除を有効にしました",
+    "biometricDisabled": "指紋ロック解除を無効にしました",
+    "biometricUnavailable": "この端末には指紋・顔センサーがありません。",
+    "lockOnHide": "アプリを離れるときにロック",
+    "pinLength": "パスコードの桁数",
+    "lockLocalNote": "パスコードと指紋の確認はこの端末内だけで行われ、サーバーには送信されません。",
     "joinOutbox": "参加リクエストの配信",
     "joinOutboxPending": "{{count}} 人がピアを待っています",
     "joinOutboxEmpty": "何もキューにありませんでした",

@@ -11,6 +11,8 @@
     "noPeers": "Nie ma jeszcze żadnych partnerów na żywo. Otwórz czat z innym użytkownikiem online lub udostępnij lokalizację na żywo."
   },
   "common": {
+    "unlockWithBiometric": "Odblokuj odciskiem palca",
+    "biometricFailed": "Nie rozpoznano odcisku",
     "search": "Szukaj",
     "searchChats": "Wyszukaj czaty",
     "searchMessages": "Wyszukaj wiadomości",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Udostępnione w schowku"
   },
   "settings": {
+    "biometricUnlock": "Odblokowanie odciskiem palca",
+    "biometricHint": "Odblokuj Nova odciskiem palca lub twarzą z czujnika tego urządzenia.",
+    "biometricEnabled": "Odblokowanie odciskiem włączone",
+    "biometricDisabled": "Odblokowanie odciskiem wyłączone",
+    "biometricUnavailable": "To urządzenie nie ma czujnika odcisku palca ani twarzy.",
+    "lockOnHide": "Blokuj po wyjściu z aplikacji",
+    "pinLength": "Długość kodu",
+    "lockLocalNote": "Kod i weryfikacja odcisku pozostają na tym urządzeniu. Nic nie jest wysyłane na serwer.",
     "joinOutbox": "Dołącz do prośby o dostawę",
     "joinOutboxPending": "{{count}} czeka na partnera",
     "joinOutboxEmpty": "Nic nie stało w kolejce",

@@ -11,6 +11,8 @@
     "noPeers": "Ainda não há pares ativos. Abra um bate-papo com um colega on-line ou compartilhe a localização ao vivo."
   },
   "common": {
+    "unlockWithBiometric": "Desbloquear com digital",
+    "biometricFailed": "Digital não reconhecida",
     "search": "Pesquisar",
     "searchChats": "Pesquisar bate-papos",
     "searchMessages": "Pesquisar mensagens",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Compartilhado na área de transferência"
   },
   "settings": {
+    "biometricUnlock": "Desbloqueio com digital",
+    "biometricHint": "Desbloqueie o Nova com o sensor de digital ou de rosto deste dispositivo.",
+    "biometricEnabled": "Desbloqueio com digital ativado",
+    "biometricDisabled": "Desbloqueio com digital desativado",
+    "biometricUnavailable": "Este dispositivo não tem sensor de digital nem de rosto.",
+    "lockOnHide": "Bloquear ao sair do app",
+    "pinLength": "Comprimento do código",
+    "lockLocalNote": "O código e a verificação da digital ficam neste dispositivo. Nada é enviado a um servidor.",
     "joinOutbox": "Junte-se à entrega de solicitação",
     "joinOutboxPending": "{{count}} esperando por um par",
     "joinOutboxEmpty": "Nada na fila",

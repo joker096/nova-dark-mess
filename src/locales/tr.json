@@ -11,6 +11,8 @@
     "noPeers": "Henüz çevrimiçi eş yok. Çevrimiçi biriyle sohbet aç veya konumunu paylaş."
   },
   "common": {
+    "unlockWithBiometric": "Parmak iziyle aç",
+    "biometricFailed": "Parmak izi tanınmadı",
     "search": "Ara",
     "searchChats": "Sohbetleri ara",
     "searchMessages": "Mesajları ara",
@@ -508,6 +510,14 @@
     "sharedToClipboard": "Panoya kopyalandı"
   },
   "settings": {
+    "biometricUnlock": "Parmak iziyle kilit açma",
+    "biometricHint": "Nova'yı bu cihazın parmak izi veya yüz sensörüyle açın.",
+    "biometricEnabled": "Parmak iziyle kilit açma açık",
+    "biometricDisabled": "Parmak iziyle kilit açma kapalı",
+    "biometricUnavailable": "Bu cihazda parmak izi veya yüz sensörü yok.",
+    "lockOnHide": "Uygulamadan ayrılınca kilitle",
+    "pinLength": "Kod uzunluğu",
+    "lockLocalNote": "Kod ve parmak izi kontrolü bu cihazda kalır. Sunucuya hiçbir şey gönderilmez.",
     "joinOutbox": "Katılma isteği teslimi",
     "joinOutboxPending": "{{count}} eş bekliyor",
     "joinOutboxEmpty": "Kuyruk boş",

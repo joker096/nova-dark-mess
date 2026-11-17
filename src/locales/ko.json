@@ -11,6 +11,8 @@
     "noPeers": "아직 실시간 동료가 없습니다. 온라인 동료와 채팅을 시작하거나 실시간 위치를 공유하세요."
   },
   "common": {
+    "unlockWithBiometric": "지문으로 잠금 해제",
+    "biometricFailed": "지문을 인식하지 못했습니다",
     "search": "검색",
     "searchChats": "채팅 검색",
     "searchMessages": "메시지 검색",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "클립보드에 공유됨"
   },
   "settings": {
+    "biometricUnlock": "지문 잠금 해제",
+    "biometricHint": "이 기기의 지문 또는 얼굴 센서로 Nova 잠금을 해제하세요.",
+    "biometricEnabled": "지문 잠금 해제 켜짐",
+    "biometricDisabled": "지문 잠금 해제 꺼짐",
+    "biometricUnavailable": "이 기기에는 지문 또는 얼굴 센서가 없습니다.",
+    "lockOnHide": "앱을 떠날 때 잠금",
+    "pinLength": "암호 길이",
+    "lockLocalNote": "암호와 지문 확인은 이 기기에만 남으며 서버로 전송되지 않습니다.",
     "joinOutbox": "가입요청 전달",
     "joinOutboxPending": "{{count}}명이 피어를 기다리고 있습니다.",
     "joinOutboxEmpty": "대기 중인 항목이 없습니다.",

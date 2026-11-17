@@ -130,7 +130,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
-  const { identity, is2FAEnabled, totpSecret, enable2FA, disable2FA, exportEncryptedBackup, importEncryptedBackup, pinEnabled, setPin, verifyPin, removePin, clearLocalEncryptedData } = useSecurity();
+  const {
+    identity,
+    is2FAEnabled,
+    totpSecret,
+    enable2FA,
+    disable2FA,
+    exportEncryptedBackup,
+    importEncryptedBackup,
+    pinEnabled,
+    setPin,
+    verifyPin,
+    removePin,
+    clearLocalEncryptedData,
+    pinLength,
+    setPinLength,
+    lockOnHide,
+    setLockOnHide,
+    biometricSupported,
+    biometricEnabled,
+    enableBiometric,
+    disableBiometric,
+  } = useSecurity();
   const [appTheme, setAppTheme] = useState<'light' | 'dark' | 'system'>(readAppTheme);
   const [chatColorTheme, setChatColorTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
     try {
@@ -176,7 +197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [clearDataConfirm, setClearDataConfirm] = useState(false);
   const [clearDataPin, setClearDataPin] = useState('');
   const [cacheMsg, setCacheMsg] = useState<string | null>(null);
-  const [aboutMsg, setAboutMsg] = useState<string | null>(null);
+  const [aboutMsg, _setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
 
@@ -364,11 +385,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       setBackupMsg('Choose a .nova-backup file');
       return;
     }
+    if (importPassphrase.length < 8) {
+      setBackupMsg(t('settings.passphraseTooShort'));
+      return;
+    }
     setBackupBusy(true);
     setBackupMsg(null);
     try {
       const text = await source.text();
-      await importEncryptedBackup(text, importPassphrase || 'nova_backup');
+      await importEncryptedBackup(text, importPassphrase);
       setBackupMsg('Backup imported');
       setBackupModal(null);
       setImportFile(null);
@@ -423,15 +448,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     setPinInput('');
   };
 
+  const verifyPinWithFeedback = async (value: string): Promise<boolean | null> => {
+    try {
+      return await verifyPin(value);
+    } catch (error) {
+      setPinMsg(error instanceof Error ? error.message : String(error));
+      return null;
+    }
+  };
+
   const handleConfirmPin = async () => {
-    if (pinInput.length < 4) {
+    if (pinInput.length < pinLength) {
       setPinMsg(t('settings.passcodeTooShort'));
       return;
     }
     if (isRemovingPin) {
-      const ok = await verifyPin(pinInput);
+      const ok = await verifyPinWithFeedback(pinInput);
+      if (ok === null) return;
       if (ok) {
-        await removePin();
+        try {
+          await removePin();
+        } catch (error) {
+          setPinMsg(error instanceof Error ? error.message : String(error));
+          return;
+        }
         setPinInput('');
         setIsRemovingPin(false);
         setPinMsg(t('settings.passcodeRemoved'));
@@ -443,13 +483,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       return;
     }
     if (!pinEnabled) {
-      await setPin(pinInput);
+      try {
+        await setPin(pinInput);
+      } catch (error) {
+        setPinMsg(error instanceof Error ? error.message : String(error));
+        return;
+      }
       setPinInput('');
       setIsCreatingPin(false);
       setPinMsg(t('settings.passcodeSet'));
       setTimeout(() => setPinMsg(null), 2000);
     } else {
-      const ok = await verifyPin(pinInput);
+      const ok = await verifyPinWithFeedback(pinInput);
+      if (ok === null) return;
       if (ok) {
         setPinInput('');
         setPinMsg(t('settings.passcodeVerified'));
@@ -466,6 +512,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     setPinMsg(null);
     setIsCreatingPin(false);
     setIsRemovingPin(false);
+  };
+
+  const handleToggleBiometric = async () => {
+    if (biometricEnabled) {
+      disableBiometric();
+      setPinMsg(t('settings.biometricDisabled'));
+      setTimeout(() => setPinMsg(null), 2200);
+      return;
+    }
+    const enabled = await enableBiometric();
+    setPinMsg(t(enabled ? 'settings.biometricEnabled' : 'settings.biometricUnavailable'));
+    setTimeout(() => setPinMsg(null), 2600);
   };
 
   const eraseAllData = async () => {
@@ -485,7 +543,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       return;
     }
     if (pinEnabled) {
-      const ok = await verifyPin(clearDataPin);
+      const ok = await verifyPinWithFeedback(clearDataPin);
+      if (ok === null) return;
       if (!ok) {
         setPinMsg(t('settings.incorrectPasscode'));
         setClearDataPin('');
@@ -960,7 +1019,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   inputMode="numeric"
                   autoComplete="off"
                   value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, pinLength))}
                   className="w-[70px] bg-white/[0.03] border border-white/10 rounded-xl px-2 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="0000"
                 />
@@ -968,7 +1027,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               <button
                 type="button"
                 onClick={handleConfirmPin}
-                disabled={(pinInput.length < 4)}
+                disabled={pinInput.length < pinLength}
                 className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
               >
                 {isRemovingPin
@@ -989,6 +1048,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   {pinMsg}
                 </div>
               )}
+            </div>
+          )}
+
+          {pinEnabled && (
+            <div className="space-y-1.5 px-1 pb-1">
+              <ToggleRow
+                label={t('settings.biometricUnlock')}
+                enabled={biometricEnabled}
+                onToggle={() => void handleToggleBiometric()}
+              />
+              <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
+                {biometricSupported ? t('settings.biometricHint') : t('settings.biometricUnavailable')}
+              </p>
+              <ToggleRow
+                label={t('settings.lockOnHide')}
+                enabled={lockOnHide}
+                onToggle={() => setLockOnHide(!lockOnHide)}
+              />
+              <div className="flex items-center justify-between px-1 py-1.5">
+                <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
+                <div className="flex items-center gap-1">
+                  {[4, 6].map((length) => (
+                    <button
+                      key={length}
+                      type="button"
+                      onClick={() => setPinLength(length)}
+                      aria-pressed={pinLength === length}
+                      className={`h-6 w-8 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                        pinLength === length
+                          ? 'bg-[var(--nova-accent-color)] text-white'
+                          : 'bg-white/[0.06] text-white/60 hover:text-white'
+                      }`}
+                    >
+                      {length}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1343,12 +1440,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 onClick={backupModal.mode === 'export' ? handleExportBackup : handleImportBackup}
                 disabled={
                   backupBusy ||
-                  (backupModal.mode === 'import' && !importFile && !importCloudBlob) ||
+                  (backupModal.mode === 'import' &&
+                    (!importFile && !importCloudBlob || importPassphrase.length < 8)) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
                 }
                 className={`flex-1 py-2 rounded-xl text-[12px] font-medium text-white transition cursor-pointer ${
                   backupBusy ||
-                  (backupModal.mode === 'import' && !importFile && !importCloudBlob) ||
+                  (backupModal.mode === 'import' &&
+                    (!importFile && !importCloudBlob || importPassphrase.length < 8)) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
                     ? 'bg-white/[0.05] border border-white/10 text-white/40 cursor-not-allowed'
                     : 'bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2e)] border border-[var(--nova-accent-color)]/30 shadow-md shadow-[var(--nova-accent-color)]/25'

@@ -11,6 +11,8 @@
     "noPeers": "Aún no hay pares en línea. Abre un chat con alguien conectado o comparte tu ubicación."
   },
   "common": {
+    "unlockWithBiometric": "Desbloquear con huella",
+    "biometricFailed": "Huella no reconocida",
     "search": "Buscar",
     "searchChats": "Buscar chats",
     "searchMessages": "Buscar mensajes",
@@ -510,6 +512,14 @@
     "sharedToClipboard": "Compartido al portapapeles"
   },
   "settings": {
+    "biometricUnlock": "Desbloqueo con huella",
+    "biometricHint": "Desbloquea Nova con el sensor de huella o de rostro de este dispositivo.",
+    "biometricEnabled": "Desbloqueo con huella activado",
+    "biometricDisabled": "Desbloqueo con huella desactivado",
+    "biometricUnavailable": "Este dispositivo no tiene sensor de huella ni de rostro.",
+    "lockOnHide": "Bloquear al salir de la app",
+    "pinLength": "Longitud del código",
+    "lockLocalNote": "El código y la comprobación de huella se quedan en este dispositivo. No se envía nada a un servidor.",
     "joinOutbox": "Entrega de solicitudes",
     "joinOutboxPending": "{{count}} esperando un par",
     "joinOutboxEmpty": "Nada en cola",

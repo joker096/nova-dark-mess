@@ -11,6 +11,8 @@
     "noPeers": "Nessun peer live ancora. Apri una chat con un collega online o condividi la posizione dal vivo."
   },
   "common": {
+    "unlockWithBiometric": "Sblocca con impronta",
+    "biometricFailed": "Impronta non riconosciuta",
     "search": "Cerca",
     "searchChats": "Cerca chat",
     "searchMessages": "Cerca messaggi",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Condiviso negli appunti"
   },
   "settings": {
+    "biometricUnlock": "Sblocco con impronta",
+    "biometricHint": "Sblocca Nova con il sensore di impronte o del volto di questo dispositivo.",
+    "biometricEnabled": "Sblocco con impronta attivato",
+    "biometricDisabled": "Sblocco con impronta disattivato",
+    "biometricUnavailable": "Questo dispositivo non ha un sensore di impronte o del volto.",
+    "lockOnHide": "Blocca quando esci dall'app",
+    "pinLength": "Lunghezza del codice",
+    "lockLocalNote": "Il codice e la verifica dell'impronta restano su questo dispositivo. Nulla viene inviato a un server.",
     "joinOutbox": "Partecipa alla consegna della richiesta",
     "joinOutboxPending": "{{count}} in attesa di un peer",
     "joinOutboxEmpty": "Niente in coda",

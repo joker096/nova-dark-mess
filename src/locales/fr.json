@@ -11,6 +11,8 @@
     "noPeers": "Pas encore de pairs en direct. Ouvrez une discussion avec un homologue en ligne ou partagez votre position en direct."
   },
   "common": {
+    "unlockWithBiometric": "Déverrouiller par empreinte",
+    "biometricFailed": "Empreinte non reconnue",
     "search": "Rechercher",
     "searchChats": "Rechercher des discussions",
     "searchMessages": "Rechercher des messages",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Partagé dans le presse-papiers"
   },
   "settings": {
+    "biometricUnlock": "Déverrouillage par empreinte",
+    "biometricHint": "Déverrouillez Nova avec le capteur d'empreinte ou de visage de cet appareil.",
+    "biometricEnabled": "Déverrouillage par empreinte activé",
+    "biometricDisabled": "Déverrouillage par empreinte désactivé",
+    "biometricUnavailable": "Cet appareil n'a pas de capteur d'empreinte ni de visage.",
+    "lockOnHide": "Verrouiller en quittant l'application",
+    "pinLength": "Longueur du code",
+    "lockLocalNote": "Le code et la vérification d'empreinte restent sur cet appareil. Rien n'est envoyé à un serveur.",
     "joinOutbox": "Rejoindre la livraison de la demande",
     "joinOutboxPending": "{{count}} en attente d'un pair",
     "joinOutboxEmpty": "Rien en file d'attente",
