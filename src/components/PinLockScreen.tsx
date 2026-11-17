@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Lock, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
@@ -8,25 +8,62 @@ interface PinLockScreenProps {
   onSetPin?: () => void;
 }
 
-export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSetPin }) => {
+export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin }) => {
   const { t } = useLanguage();
-  const { pinHash } = useSecurity();
+  const { pinHash, verifyPin, pinLockoutUntil } = useSecurity();
   const [pin, setPinInput] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isSetting] = useState(!pinHash);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const isLockedOut = pinLockoutUntil !== null && pinLockoutUntil > now;
+  const remainingSeconds = isLockedOut ? Math.ceil((pinLockoutUntil - now) / 1000) : 0;
+
+  useEffect(() => {
+    if (pinLockoutUntil === null) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= pinLockoutUntil) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [pinLockoutUntil]);
 
   const handleDigit = (digit: string) => {
-    setError(false);
-    if (pin.length < 6) {
+    setError(null);
+    if (!isLockedOut && !isVerifying && pin.length < 6) {
       setPinInput(pin + digit);
     }
   };
 
   const handleBackspace = () => {
-    setError(false);
-    setPinInput(pin.slice(0, -1));
+    setError(null);
+    if (!isLockedOut && !isVerifying) setPinInput(pin.slice(0, -1));
   };
 
+  const handleUnlock = async () => {
+    if (pin.length < 4 || isLockedOut || isVerifying) return;
+    setIsVerifying(true);
+    setError(null);
+    try {
+      if (await verifyPin(pin)) {
+        setPinInput('');
+        onUnlock();
+      } else {
+        setPinInput('');
+        setError(t('common.passcodeError'));
+      }
+    } catch (verificationError) {
+      setPinInput('');
+      setError(
+        verificationError instanceof Error
+          ? verificationError.message
+          : String(verificationError),
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const digits = '1234567890'.split('');
 
@@ -57,10 +94,14 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSetPin }) => {
           ))}
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 text-xs text-red-400 mb-4 animate-pulse">
+        {(error || isLockedOut) && (
+          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 mb-4 animate-pulse">
             <AlertCircle className="w-3 h-3" />
-            <span>{t('common.passcodeError')}</span>
+            <span>
+              {isLockedOut
+                ? `${error ?? t('common.passcodeError')} (${remainingSeconds}s)`
+                : error}
+            </span>
           </div>
         )}
 
@@ -69,26 +110,40 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSetPin }) => {
           {digits.map((d) => (
             <button
               key={d}
+              disabled={isLockedOut || isVerifying}
               onClick={() => handleDigit(d)}
-              className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95"
+              className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
             >
               {d}
             </button>
           ))}
           <button
+            disabled={isLockedOut || isVerifying}
             onClick={handleBackspace}
-            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white/60 hover:bg-white/10 transition active:scale-95"
+            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white/60 hover:bg-white/10 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
             aria-label={t('common.backspace') ?? 'Backspace'}
           >
             <span className="text-[var(--nova-accent-color)]">⌫</span>
           </button>
           <button
+            disabled={isLockedOut || isVerifying}
             onClick={() => handleDigit('0')}
-            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95"
+            className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-medium text-white hover:bg-white/10 transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
           >
             0
           </button>
         </div>
+
+        {!isSetting && (
+          <button
+            type="button"
+            onClick={() => void handleUnlock()}
+            disabled={pin.length < 4 || isLockedOut || isVerifying}
+            className="w-full py-3 rounded-xl bg-[var(--nova-accent-color)] text-white text-sm font-semibold transition active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {t('common.unlock')}
+          </button>
+        )}
 
         {isSetting && onSetPin && (
           <button

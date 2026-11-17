@@ -32,6 +32,11 @@ import {
 import { deriveKeyFromRandomSecret, deriveKeyFromPassphrase } from '../lib/storage/kdf';
 import { generateTOTPSecret, verifyTOTPCode } from '../lib/p2p/totp';
 import { getPeerKeyChanges, observePeerKey, type PeerKeyChange } from '../lib/security/peerKeyJournal';
+import {
+  clearPinFailures,
+  getPinLockoutUntil,
+  recordPinFailure,
+} from '../lib/security/pinAttemptLimiter';
 
 export interface SecurityContextType {
   identity: UserIdentity | null;
@@ -41,6 +46,7 @@ export interface SecurityContextType {
   totpSecret: string | null;
   pinEnabled: boolean;
   pinHash: string | null;
+  pinLockoutUntil: number | null;
   isLocked: boolean;
   ratchetSessions: Record<string, RatchetState>;
   regenerateIdentity: () => Promise<UserIdentity>;
@@ -156,6 +162,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [ratchetSessions, setRatchetSessions] = useState<Record<string, RatchetState>>({});
   const [pinEnabled, setPinEnabled] = useState(false);
   const [pinHash, setPinHash] = useState<string | null>(null);
+  const [pinLockoutUntil, setPinLockoutUntil] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
   const sessionsRef = useRef<Record<string, RatchetState>>({});
@@ -262,10 +269,14 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIs2FAEnabled(enabled);
         try {
           const storedPinHash = localStorage.getItem(PIN_HASH_KEY);
-          const storedPinEnabled = localStorage.getItem(PIN_ENABLED_KEY);
           if (storedPinHash) setPinHash(storedPinHash);
-          setPinEnabled(storedPinEnabled === 'true');
-        } catch { /* ignore */ }
+          const enabledPin = Boolean(storedPinHash);
+          setPinEnabled(enabledPin);
+          setIsLocked(enabledPin);
+          setPinLockoutUntil(getPinLockoutUntil());
+        } catch (error) {
+          console.error('Unable to load PIN protection state:', error);
+        }
         setIsInitialized(true);
       })
       .catch(() => {
@@ -277,6 +288,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!pinEnabled || !pinHash) return;
+    const lockWhenHidden = () => {
+      if (document.visibilityState === 'hidden') setIsLocked(true);
+    };
+    document.addEventListener('visibilitychange', lockWhenHidden);
+    return () => document.removeEventListener('visibilitychange', lockWhenHidden);
+  }, [pinEnabled, pinHash]);
 
   const regenerateIdentity = useCallback(async (): Promise<UserIdentity> => {
     const nextIdentity = await createAnonymousIdentity();
@@ -474,27 +494,42 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setPin = useCallback(async (pin: string): Promise<void> => {
     const hash = await hashPin(pin);
-    try {
-      localStorage.setItem(PIN_HASH_KEY, hash);
-      localStorage.setItem(PIN_ENABLED_KEY, 'true');
-    } catch { /* ignore */ }
+    clearPinFailures();
+    localStorage.setItem(PIN_HASH_KEY, hash);
+    localStorage.setItem(PIN_ENABLED_KEY, 'true');
     setPinHash(hash);
     setPinEnabled(true);
+    setPinLockoutUntil(null);
   }, [hashPin]);
 
-  const verifyPin = useCallback(async (pin: string): Promise<boolean> => {
-    if (!pinHash) return false;
-    const hash = await hashPin(pin);
-    return hash === pinHash;
-  }, [hashPin, pinHash]);
+  const verifyPin = useCallback(
+    (pin: string): Promise<boolean> =>
+      runSerialized(async () => {
+        if (!pinHash) return false;
+        const lockedUntil = getPinLockoutUntil();
+        setPinLockoutUntil(lockedUntil);
+        if (lockedUntil !== null) return false;
+
+        const hash = await hashPin(pin);
+        if (hash === pinHash) {
+          clearPinFailures();
+          setPinLockoutUntil(null);
+          return true;
+        }
+
+        setPinLockoutUntil(recordPinFailure());
+        return false;
+      }),
+    [hashPin, pinHash, runSerialized]
+  );
 
   const removePin = useCallback(async (): Promise<void> => {
-    try {
-      localStorage.removeItem(PIN_HASH_KEY);
-      localStorage.removeItem(PIN_ENABLED_KEY);
-    } catch { /* ignore */ }
+    clearPinFailures();
+    localStorage.removeItem(PIN_HASH_KEY);
+    localStorage.removeItem(PIN_ENABLED_KEY);
     setPinHash(null);
     setPinEnabled(false);
+    setPinLockoutUntil(null);
     setIsLocked(false);
   }, []);
 
@@ -511,7 +546,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     clearStoredIdentity();
     setIs2FAEnabled(false);
     setTotpSecret(generateTOTPSecret());
-  }, []);
+    await removePin();
+  }, [removePin]);
 
   return (
     <SecurityContext.Provider
@@ -523,6 +559,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         totpSecret,
         pinEnabled,
         pinHash,
+        pinLockoutUntil,
         isLocked,
         ratchetSessions,
         regenerateIdentity,
