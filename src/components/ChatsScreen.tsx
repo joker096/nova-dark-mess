@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
-import { NovaBadge } from '../lib/ui';
 import { useAccount } from '../hooks/useAccount';
 import {
   Search,
@@ -19,7 +18,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  CURRENT_USER,
   MOCK_STORIES,
   MOCK_CHATS,
   CONVERSATION_HISTORIES,
@@ -47,6 +45,7 @@ import { JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
 import { buildGlobalSearchIndex } from '../lib/search/buildSearchIndex';
 import { searchGlobal } from '../lib/search/globalSearch';
 import { useLanguage } from '../context/LanguageContext';
+import { CHAT_READ_EVENT, loadReadChats, markChatRead } from '../lib/messaging/unread';
 
 interface ChatsScreenProps {
   onSelectChat: (chatId: string) => void;
@@ -57,6 +56,7 @@ interface ChatsScreenProps {
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
   onOpenPremium?: () => void;
+  onOpenAnonymous?: () => void;
   onOpenFolders?: () => void;
   activeChatId?: string;
   activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'mesh-map';
@@ -120,6 +120,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onOpenProfile,
     onOpenSettings,
     onOpenPremium,
+    onOpenAnonymous,
     onOpenFolders,
     onOpenMeshMap,
     activeChatId,
@@ -135,6 +136,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   } = props;
   const { t } = useLanguage();
   const { account } = useAccount();
+  const [readChats, setReadChats] = useState(loadReadChats);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -261,6 +263,12 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     // joinVersion refreshes the badges when the relay delivers a request.
   }, [joinVersion, groupVersion, activeChatId, localFingerprint]);
 
+  useEffect(() => {
+    const onReadChange = () => setReadChats(loadReadChats());
+    window.addEventListener(CHAT_READ_EVENT, onReadChange);
+    return () => window.removeEventListener(CHAT_READ_EVENT, onReadChange);
+  }, []);
+
   const handleJoinDecision = (chatId: string, fingerprint: string, approved: boolean) => {
     const roles = decideJoinRequest({
       groupId: chatId,
@@ -310,7 +318,10 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     } else {
       matchedList = MOCK_CHATS.filter((c) => folder.chatIds.includes(c.id));
     }
-    const totalUnread = matchedList.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+    const totalUnread = matchedList.reduce(
+      (acc, c) => acc + (readChats.has(c.id) ? 0 : c.unreadCount || 0),
+      0,
+    );
     if (totalUnread > 0) return `${totalUnread}`;
     if (matchedList.length > 0 && folder.filterType === 'custom') return `${matchedList.length}`;
     return null;
@@ -420,6 +431,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   ];
 
   const handleChatClick = (chatId: string, isChannel?: boolean) => {
+    markChatRead(chatId);
     if (isChannel || chatId === 'kyiv-channel') {
       onOpenChannel();
     } else {
@@ -459,7 +471,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         </div>
       )}
 
-      {/* Top Header: User Greeting */}
+      {/* Top Header: Account nickname */}
       <div className="pt-3 px-5 pb-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
@@ -468,36 +480,39 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             aria-label={t('profile.title')}
             title={t('profile.title')}
           >
-            <img
-              src={account.avatar}
-              alt={account.displayName}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
+            {account.avatar && (
+              <img
+                src={account.avatar}
+                alt={account.displayName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            )}
             <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
               {account.displayName.slice(0, 2).toUpperCase()}
             </div>
           </button>
           <div>
             <h1 className="text-[17px] font-bold text-white tracking-tight leading-tight">
-              {t('chats.greeting', { name: account.displayName })}
+              {account.nickname}
             </h1>
-            <div
-              className="flex items-center gap-1.5 mt-0.5"
-              aria-label={t('chats.unreadBadge', { count: CURRENT_USER.unreadTotal })}
-            >
-              <span className="text-[11px] text-[#828795] font-normal leading-tight">
-                {t('chats.unreadCount')}
-              </span>
-              <NovaBadge value={CURRENT_USER.unreadTotal} max={99} variant="accent" />
-            </div>
           </div>
         </div>
 
         {/* Action icons on right */}
         <div className="flex items-center gap-2">
+          {onOpenAnonymous && (
+            <button
+              onClick={onOpenAnonymous}
+              className="w-9 h-9 rounded-full bg-[#181921] hover:bg-[var(--nova-accent-color)] hover:text-white border border-white/5 flex items-center justify-center text-white/80 transition cursor-pointer active:scale-90 shadow-md"
+              aria-label="Contacts"
+              title="Contacts"
+            >
+              <UserRound className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setNewChatModalOpen(true)}
             className="w-9 h-9 rounded-full bg-[#181921] hover:bg-[var(--nova-accent-color)] hover:text-white border border-white/5 flex items-center justify-center text-white/80 transition cursor-pointer active:scale-90 shadow-md"
@@ -659,6 +674,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     </div>
                     {matchedChats.map((chat) => {
                       const isSelected = activeChatId === chat.id;
+                      const unreadCount = readChats.has(chat.id) ? 0 : chat.unreadCount || 0;
                       const query = searchQuery.toLowerCase().trim();
                       const nameMatches = chat.name.toLowerCase().includes(query);
                       const snippetMatches = chat.snippet.toLowerCase().includes(query);
@@ -755,9 +771,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                                     <Pin className="w-3.5 h-3.5 fill-current rotate-45" />
                                   </div>
                                 )}
-                                {chat.unreadCount && (
-                                  <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
-                                    {chat.unreadCount}
+                                {unreadCount > 0 && (
+                                  <div data-testid={`unread-${chat.id}`} className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
+                                    {unreadCount}
                                   </div>
                                 )}
                               </div>
@@ -974,6 +990,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             ) : (
               categoryChats.map((chat) => {
                 const isSelected = activeChatId === chat.id;
+                const unreadCount = readChats.has(chat.id) ? 0 : chat.unreadCount || 0;
                 return (
                 <div
                   key={chat.id}
@@ -1070,9 +1087,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                             {t('chats.joinWaiting')}
                           </span>
                         )}
-                        {chat.unreadCount && (
-                          <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
-                            {chat.unreadCount}
+                        {unreadCount > 0 && (
+                          <div data-testid={`unread-${chat.id}`} className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30">
+                            {unreadCount}
                           </div>
                         )}
                       </div>
@@ -1179,7 +1196,32 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4"
           >
             <h3 className="font-bold text-base text-white">Start New Conversation</h3>
-            <p className="text-xs text-[#8c919d]">Choose a contact from your address book or create a group:</p>
+            <p className="text-xs text-[#8c919d]">
+              Add someone with a link or QR code, or create a group:
+            </p>
+            {onOpenAnonymous && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNewChatModalOpen(false);
+                  onOpenAnonymous();
+                }}
+                className="w-full rounded-xl border border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/10 p-3 text-left transition hover:bg-[var(--nova-accent-color)]/20"
+                aria-label="Add a new contact with a link or QR code"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]">
+                    <UserRound className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-xs font-semibold text-white">Add a new contact</span>
+                    <span className="mt-0.5 block text-[10px] font-normal text-white/60">
+                      Share a link or QR code — no setup required
+                    </span>
+                  </span>
+                </span>
+              </button>
+            )}
             <div className="space-y-2">
               <button
                 onClick={() => {
