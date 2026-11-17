@@ -11,6 +11,8 @@
     "noPeers": "Chưa có peer trực tuyến. Mở trò chuyện với người đang online hoặc chia sẻ vị trí."
   },
   "common": {
+    "unlockWithBiometric": "Mở khóa bằng vân tay",
+    "biometricFailed": "Không nhận diện được vân tay",
     "search": "Tìm kiếm",
     "searchChats": "Tìm chat",
     "searchMessages": "Tìm tin nhắn",
@@ -508,6 +510,14 @@
     "sharedToClipboard": "Đã sao chép vào bộ nhớ tạm"
   },
   "settings": {
+    "biometricUnlock": "Mở khóa bằng vân tay",
+    "biometricHint": "Mở Nova bằng cảm biến vân tay hoặc khuôn mặt trên thiết bị này.",
+    "biometricEnabled": "Đã bật mở khóa bằng vân tay",
+    "biometricDisabled": "Đã tắt mở khóa bằng vân tay",
+    "biometricUnavailable": "Thiết bị này không có cảm biến vân tay hoặc khuôn mặt.",
+    "lockOnHide": "Khóa khi rời khỏi ứng dụng",
+    "pinLength": "Độ dài mã",
+    "lockLocalNote": "Mã và bước kiểm tra vân tay chỉ nằm trên thiết bị này. Không có gì được gửi lên máy chủ.",
     "joinOutbox": "Gửi yêu cầu tham gia",
     "joinOutboxPending": "{{count}} đang chờ kết nối",
     "joinOutboxEmpty": "Hàng đợi trống",

@@ -37,6 +37,13 @@ import {
   getPinLockoutUntil,
   recordPinFailure,
 } from '../lib/security/pinAttemptLimiter';
+import {
+  clearBiometricCredential,
+  getBiometricCredentialId,
+  isBiometricSupported,
+  registerBiometricCredential,
+  verifyBiometricCredential,
+} from '../lib/security/biometric';
 
 export interface SecurityContextType {
   identity: UserIdentity | null;
@@ -47,6 +54,18 @@ export interface SecurityContextType {
   pinEnabled: boolean;
   pinHash: string | null;
   pinLockoutUntil: number | null;
+  /** Optional platform-authenticator (fingerprint / face) unlock. */
+  biometricSupported: boolean;
+  biometricEnabled: boolean;
+  /** Whether the app re-locks when it goes to the background. */
+  lockOnHide: boolean;
+  /** Required passcode length in digits (4 or 6). */
+  pinLength: number;
+  enableBiometric: () => Promise<boolean>;
+  disableBiometric: () => void;
+  unlockWithBiometric: () => Promise<boolean>;
+  setLockOnHide: (enabled: boolean) => void;
+  setPinLength: (length: number) => void;
   isLocked: boolean;
   ratchetSessions: Record<string, RatchetState>;
   regenerateIdentity: () => Promise<UserIdentity>;
@@ -85,6 +104,8 @@ const TOTP_SECRET_SETTING = 'totp_secret';
 const TOTP_ENABLED_SETTING = 'totp_enabled';
 const PIN_HASH_KEY = 'nova_pin_hash';
 const PIN_ENABLED_KEY = 'nova_pin_enabled';
+const LOCK_ON_HIDE_KEY = 'nova_lock_on_hide';
+const PIN_LENGTH_KEY = 'nova_pin_length';
 
 export { PIN_HASH_KEY, PIN_ENABLED_KEY };
 
@@ -164,6 +185,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [pinHash, setPinHash] = useState<string | null>(null);
   const [pinLockoutUntil, setPinLockoutUntil] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [lockOnHide, setLockOnHideState] = useState(true);
+  const [pinLength, setPinLengthState] = useState(4);
 
   const sessionsRef = useRef<Record<string, RatchetState>>({});
   const storageReadyRef = useRef(false);
@@ -210,6 +235,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [runSerialized]
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    void isBiometricSupported().then((available) => {
+      if (!cancelled) setBiometricSupported(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
 
@@ -274,6 +308,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setPinEnabled(enabledPin);
           setIsLocked(enabledPin);
           setPinLockoutUntil(getPinLockoutUntil());
+          const storedLength = Number(localStorage.getItem(PIN_LENGTH_KEY) ?? '4');
+          setPinLengthState(storedLength === 6 ? 6 : 4);
+          setLockOnHideState(localStorage.getItem(LOCK_ON_HIDE_KEY) !== 'false');
+          setBiometricEnabled(Boolean(getBiometricCredentialId()));
         } catch (error) {
           console.error('Unable to load PIN protection state:', error);
         }
@@ -290,13 +328,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   useEffect(() => {
-    if (!pinEnabled || !pinHash) return;
+    if (!pinEnabled || !pinHash || !lockOnHide) return;
     const lockWhenHidden = () => {
       if (document.visibilityState === 'hidden') setIsLocked(true);
     };
     document.addEventListener('visibilitychange', lockWhenHidden);
     return () => document.removeEventListener('visibilitychange', lockWhenHidden);
-  }, [pinEnabled, pinHash]);
+  }, [lockOnHide, pinEnabled, pinHash]);
 
   const regenerateIdentity = useCallback(async (): Promise<UserIdentity> => {
     const nextIdentity = await createAnonymousIdentity();
@@ -537,6 +575,39 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsLocked(false);
   }, []);
 
+  const enableBiometric = useCallback(async (): Promise<boolean> => {
+    const id = await registerBiometricCredential();
+    if (!id) return false;
+    setBiometricEnabled(true);
+    return true;
+  }, []);
+
+  const disableBiometric = useCallback((): void => {
+    clearBiometricCredential();
+    setBiometricEnabled(false);
+  }, []);
+
+  const unlockWithBiometric = useCallback(async (): Promise<boolean> => {
+    const ok = await verifyBiometricCredential();
+    if (ok) setIsLocked(false);
+    return ok;
+  }, []);
+
+  const setLockOnHide = useCallback((enabled: boolean): void => {
+    try {
+      localStorage.setItem(LOCK_ON_HIDE_KEY, enabled ? 'true' : 'false');
+    } catch { void 0; }
+    setLockOnHideState(enabled);
+  }, []);
+
+  const setPinLength = useCallback((length: number): void => {
+    const next = length === 6 ? 6 : 4;
+    try {
+      localStorage.setItem(PIN_LENGTH_KEY, String(next));
+    } catch { void 0; }
+    setPinLengthState(next);
+  }, []);
+
   const clearLocalEncryptedData = useCallback(async () => {
     if (storageReadyRef.current) {
       await dbInstance.clearAll();
@@ -567,6 +638,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         verifyPin,
         removePin,
         unlock,
+        biometricSupported,
+        biometricEnabled,
+        enableBiometric,
+        disableBiometric,
+        unlockWithBiometric,
+        lockOnHide,
+        setLockOnHide,
+        pinLength,
+        setPinLength,
         encryptAndSendMessage,
         checkPeerKey,
         decryptIncomingMessage,

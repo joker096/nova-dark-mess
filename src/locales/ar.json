@@ -11,6 +11,8 @@
     "noPeers": "لا يوجد أقران متصلون بعد. افتح محادثة مع قرين متصل أو شارك موقعك."
   },
   "common": {
+    "unlockWithBiometric": "فتح ببصمة الإصبع",
+    "biometricFailed": "لم يتم التعرف على البصمة",
     "search": "بحث",
     "searchChats": "بحث في المحادثات",
     "searchMessages": "بحث في الرسائل",
@@ -516,6 +518,14 @@
     "sharedToClipboard": "تم النسخ إلى الحافظة"
   },
   "settings": {
+    "biometricUnlock": "فتح القفل ببصمة الإصبع",
+    "biometricHint": "افتح Nova بمستشعر البصمة أو الوجه في هذا الجهاز.",
+    "biometricEnabled": "تم تفعيل الفتح ببصمة الإصبع",
+    "biometricDisabled": "تم إيقاف الفتح ببصمة الإصبع",
+    "biometricUnavailable": "لا يوجد مستشعر بصمة أو وجه في هذا الجهاز.",
+    "lockOnHide": "القفل عند مغادرة التطبيق",
+    "pinLength": "طول الرمز",
+    "lockLocalNote": "يبقى الرمز والتحقق من البصمة على هذا الجهاز، ولا يُرسل شيء إلى أي خادم.",
     "joinOutbox": "تسليم طلبات الانضمام",
     "joinOutboxPending": "{{count}} في انتظار الاتصال",
     "joinOutboxEmpty": "لا شيء في قائمة الانتظار",

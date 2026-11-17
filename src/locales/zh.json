@@ -11,6 +11,8 @@
     "noPeers": "还没有实时同行。与在线同伴聊天，或共享实时位置。"
   },
   "common": {
+    "unlockWithBiometric": "指纹解锁",
+    "biometricFailed": "指纹无法识别",
     "search": "搜索",
     "searchChats": "搜索聊天记录",
     "searchMessages": "搜索消息",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "共享到剪贴板"
   },
   "settings": {
+    "biometricUnlock": "指纹解锁",
+    "biometricHint": "使用此设备的指纹或面部传感器解锁 Nova。",
+    "biometricEnabled": "已开启指纹解锁",
+    "biometricDisabled": "已关闭指纹解锁",
+    "biometricUnavailable": "此设备没有指纹或面部传感器。",
+    "lockOnHide": "离开应用时锁定",
+    "pinLength": "密码长度",
+    "lockLocalNote": "密码和指纹验证都保留在此设备上，不会发送到服务器。",
     "joinOutbox": "加入请求交付",
     "joinOutboxPending": "{{count}} 正在等待同伴",
     "joinOutboxEmpty": "没有排队",

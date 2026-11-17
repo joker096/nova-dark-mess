@@ -11,6 +11,8 @@
     "noPeers": "Inga livekamrater än. Öppna en chatt med en peer online eller dela live-plats."
   },
   "common": {
+    "unlockWithBiometric": "Lås upp med fingeravtryck",
+    "biometricFailed": "Fingeravtrycket kändes inte igen",
     "search": "Sök",
     "searchChats": "Sök chattar",
     "searchMessages": "Sök meddelanden",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Delad till urklipp"
   },
   "settings": {
+    "biometricUnlock": "Upplåsning med fingeravtryck",
+    "biometricHint": "Lås upp Nova med enhetens fingeravtrycks- eller ansiktssensor.",
+    "biometricEnabled": "Upplåsning med fingeravtryck på",
+    "biometricDisabled": "Upplåsning med fingeravtryck av",
+    "biometricUnavailable": "Den här enheten har ingen fingeravtrycks- eller ansiktssensor.",
+    "lockOnHide": "Lås när du lämnar appen",
+    "pinLength": "Kodens längd",
+    "lockLocalNote": "Koden och fingeravtryckskontrollen stannar på den här enheten. Inget skickas till en server.",
     "joinOutbox": "Gå med förfrågan leverans",
     "joinOutboxPending": "{{count}} väntar på en kamrat",
     "joinOutboxEmpty": "Inget köade",

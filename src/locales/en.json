@@ -11,6 +11,8 @@
     "noPeers": "No live peers yet. Open a chat with an online peer, or share live location."
   },
   "common": {
+    "unlockWithBiometric": "Unlock with fingerprint",
+    "biometricFailed": "Fingerprint not recognized",
     "search": "Search",
     "searchChats": "Search chats",
     "searchMessages": "Search messages",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Shared to clipboard"
   },
   "settings": {
+    "biometricUnlock": "Fingerprint unlock",
+    "biometricHint": "Unlock Nova with the fingerprint or face sensor on this device.",
+    "biometricEnabled": "Fingerprint unlock enabled",
+    "biometricDisabled": "Fingerprint unlock disabled",
+    "biometricUnavailable": "No fingerprint or face sensor is available on this device.",
+    "lockOnHide": "Lock when you leave the app",
+    "pinLength": "Passcode length",
+    "lockLocalNote": "The passcode and fingerprint check stay on this device. Nothing is sent to a server.",
     "joinOutbox": "Join request delivery",
     "joinOutboxPending": "{{count}} waiting for a peer",
     "joinOutboxEmpty": "Nothing queued",

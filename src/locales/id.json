@@ -11,6 +11,8 @@
     "noPeers": "Belum ada peer online. Buka chat dengan peer online atau bagikan lokasi langsung."
   },
   "common": {
+    "unlockWithBiometric": "Buka dengan sidik jari",
+    "biometricFailed": "Sidik jari tidak dikenali",
     "search": "Cari",
     "searchChats": "Cari obrolan",
     "searchMessages": "Cari pesan",
@@ -508,6 +510,14 @@
     "sharedToClipboard": "Disalin ke papan klip"
   },
   "settings": {
+    "biometricUnlock": "Buka kunci dengan sidik jari",
+    "biometricHint": "Buka Nova dengan sensor sidik jari atau wajah di perangkat ini.",
+    "biometricEnabled": "Buka kunci dengan sidik jari aktif",
+    "biometricDisabled": "Buka kunci dengan sidik jari nonaktif",
+    "biometricUnavailable": "Perangkat ini tidak memiliki sensor sidik jari atau wajah.",
+    "lockOnHide": "Kunci saat meninggalkan aplikasi",
+    "pinLength": "Panjang kode",
+    "lockLocalNote": "Kode dan pemeriksaan sidik jari tetap di perangkat ini. Tidak ada yang dikirim ke server.",
     "joinOutbox": "Pengiriman permintaan bergabung",
     "joinOutboxPending": "{{count}} menunggu peer",
     "joinOutboxEmpty": "Tidak ada dalam antrean",

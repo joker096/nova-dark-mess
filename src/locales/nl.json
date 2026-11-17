@@ -11,6 +11,8 @@
     "noPeers": "Nog geen live peers. Open een chat met een online peer of deel een live locatie."
   },
   "common": {
+    "unlockWithBiometric": "Ontgrendelen met vingerafdruk",
+    "biometricFailed": "Vingerafdruk niet herkend",
     "search": "Zoeken",
     "searchChats": "Zoek chats",
     "searchMessages": "Zoek berichten",
@@ -570,6 +572,14 @@
     "sharedToClipboard": "Gedeeld op klembord"
   },
   "settings": {
+    "biometricUnlock": "Ontgrendelen met vingerafdruk",
+    "biometricHint": "Ontgrendel Nova met de vingerafdruk- of gezichtssensor van dit apparaat.",
+    "biometricEnabled": "Ontgrendelen met vingerafdruk aan",
+    "biometricDisabled": "Ontgrendelen met vingerafdruk uit",
+    "biometricUnavailable": "Dit apparaat heeft geen vingerafdruk- of gezichtssensor.",
+    "lockOnHide": "Vergrendelen als je de app verlaat",
+    "pinLength": "Lengte van de code",
+    "lockLocalNote": "De code en de vingerafdrukcontrole blijven op dit apparaat. Er wordt niets naar een server gestuurd.",
     "joinOutbox": "Sluit u aan bij de levering van verzoeken",
     "joinOutboxPending": "{{count}} wacht op een peer",
     "joinOutboxEmpty": "Niets in de wachtrij",

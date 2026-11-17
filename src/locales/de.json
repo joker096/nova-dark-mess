@@ -11,6 +11,8 @@
     "noPeers": "Noch keine aktiven Peers. Öffne einen Chat mit einem Online-Peer oder teile deinen Standort."
   },
   "common": {
+    "unlockWithBiometric": "Mit Fingerabdruck entsperren",
+    "biometricFailed": "Fingerabdruck nicht erkannt",
     "search": "Suche",
     "searchChats": "Chats durchsuchen",
     "searchMessages": "Nachrichten durchsuchen",
@@ -508,6 +510,14 @@
     "sharedToClipboard": "In die Zwischenablage kopiert"
   },
   "settings": {
+    "biometricUnlock": "Entsperren per Fingerabdruck",
+    "biometricHint": "Nova mit dem Fingerabdruck- oder Gesichtssensor dieses Geräts entsperren.",
+    "biometricEnabled": "Entsperren per Fingerabdruck aktiviert",
+    "biometricDisabled": "Entsperren per Fingerabdruck deaktiviert",
+    "biometricUnavailable": "Auf diesem Gerät ist kein Fingerabdruck- oder Gesichtssensor verfügbar.",
+    "lockOnHide": "Sperren, wenn du die App verlässt",
+    "pinLength": "Länge des Codes",
+    "lockLocalNote": "Code und Fingerabdruckprüfung bleiben auf diesem Gerät. Es wird nichts an einen Server gesendet.",
     "joinOutbox": "Beitrittsanfragen-Zustellung",
     "joinOutboxPending": "{{count}} warten auf einen Peer",
     "joinOutboxEmpty": "Nichts in der Warteschlange",
