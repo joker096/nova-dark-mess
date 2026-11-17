@@ -164,7 +164,7 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
               type="text"
               value={licenseInput}
               onChange={(e) => setLicenseInput(e.target.value)}
-              placeholder="MA1...."
+              placeholder="MA1… / NOVA-GIFT-…"
               className="w-full bg-[#1b1c28] border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
             />
             <NovaButton
