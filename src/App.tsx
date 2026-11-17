@@ -513,6 +513,7 @@ export default function App() {
             onOpenChannel={openChannel}
             onOpenProfile={() => openProfile(account.id)}
             onOpenMeshMap={() => navigate('mesh-map')}
+            onOpenAnonymous={() => navigate('anonymous')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenPremium={() => setIsPremiumOpen(true)}
             activeChatId={activeChatId}

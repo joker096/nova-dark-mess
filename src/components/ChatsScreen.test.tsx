@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ChatsScreen } from './ChatsScreen';
+import { loadAccount } from '../lib/account/account';
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -39,6 +40,7 @@ const renderChats = (extra: Record<string, unknown> = {}) =>
 describe('ChatsScreen - mobile bottom navigation (localized)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.removeItem('nova_read_chats_v1');
   });
 
   it('renders six bottom-nav tabs with localized keys and moves analytics to settings', () => {
@@ -52,6 +54,26 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
   });
 
+  it('shows only the nickname beside the avatar, without greeting or unread text', () => {
+    renderChats();
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(loadAccount().nickname);
+    expect(screen.queryByText('chats.greeting')).toBeNull();
+    expect(screen.queryByText('chats.unreadCount')).toBeNull();
+  });
+
+  it('clears a chat unread badge when that conversation is opened', () => {
+    const onSelectChat = vi.fn();
+    renderChats({ onSelectChat });
+
+    expect(screen.getByTestId('unread-katie').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: /Chat with Katie Rogers/ }));
+
+    expect(screen.queryByTestId('unread-katie')).toBeNull();
+    expect(localStorage.getItem('nova_read_chats_v1')).toContain('katie');
+    expect(onSelectChat).toHaveBeenCalledWith('katie');
+  });
+
   it('calls onOpenFolders when Folders tab clicked', () => {
     renderChats();
     fireEvent.click(screen.getByRole('button', { name: 'folders' }));
@@ -62,6 +84,25 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     renderChats();
     fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
     expect(onOpenMeshMap).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the isolated anonymous messenger when the header action is clicked', () => {
+    const onOpenAnonymous = vi.fn();
+    renderChats({ onOpenAnonymous });
+    fireEvent.click(screen.getByRole('button', { name: 'Contacts' }));
+    expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers an invite-based add-contact action in the new conversation dialog', () => {
+    const onOpenAnonymous = vi.fn();
+    renderChats({ onOpenAnonymous });
+
+    fireEvent.click(screen.getByRole('button', { name: 'chats.newChat' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add a new contact with a link or QR code' }),
+    );
+
+    expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
   });
 
 });
