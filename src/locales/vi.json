@@ -862,6 +862,11 @@
     "openOnline": "Mở bản đầy đủ"
   },
   "onboarding": {
+    "backupFileLabel": "Tệp sao lưu",
+    "restoreBackupBody": "Chọn tệp .nova-backup và nhập mật khẩu để khôi phục danh tính cùng dữ liệu đã mã hóa.",
+    "backupPassphrase": "Mật khẩu sao lưu (ít nhất 8 ký tự)",
+    "backupConfirmPassphrase": "Xác nhận mật khẩu sao lưu",
+    "backupSetupBody": "Bản sao lưu này chứa danh tính và dữ liệu cục bộ đã mã hóa. Hãy chọn mật khẩu riêng và giữ tệp cùng mật khẩu ngoại tuyến.",
     "stepOf": "Bước {{current}} / {{total}}",
     "welcomeTitle": "Chào mừng đến với Nova",
     "welcomeBody": "Nhắn tin mã hóa đầu-cuối, không tài khoản, không số điện thoại, không email. Khóa của bạn ở lại thiết bị này.",

@@ -862,6 +862,11 @@
     "openOnline": "Volledige versie openen"
   },
   "onboarding": {
+    "backupFileLabel": "Back-upbestand",
+    "restoreBackupBody": "Selecteer een .nova-backup-bestand en voer het wachtwoord in om je identiteit en versleutelde gegevens te herstellen.",
+    "backupPassphrase": "Back-upwachtwoord (minimaal 8 tekens)",
+    "backupConfirmPassphrase": "Bevestig het back-upwachtwoord",
+    "backupSetupBody": "Deze back-up bevat je identiteit en versleutelde lokale gegevens. Kies een apart wachtwoord en bewaar het bestand en wachtwoord offline.",
     "stepOf": "Stap {{current}} van {{total}}",
     "welcomeTitle": "Welkom bij Nova",
     "welcomeBody": "End-to-end gecodeerde berichtenuitwisseling zonder account, zonder telefoonnummer en zonder e-mail. Je sleutels verlaten dit apparaat nooit.",

@@ -862,6 +862,11 @@
     "openOnline": "Buka versi lengkap"
   },
   "onboarding": {
+    "backupFileLabel": "File cadangan",
+    "restoreBackupBody": "Pilih file .nova-backup dan masukkan kata sandinya untuk memulihkan identitas serta data terenkripsi.",
+    "backupPassphrase": "Kata sandi cadangan (minimal 8 karakter)",
+    "backupConfirmPassphrase": "Konfirmasi kata sandi cadangan",
+    "backupSetupBody": "Cadangan ini berisi identitas dan data lokal terenkripsi Anda. Pilih kata sandi terpisah dan simpan file serta kata sandi secara offline.",
     "stepOf": "Langkah {{current}} dari {{total}}",
     "welcomeTitle": "Selamat datang di Nova",
     "welcomeBody": "Pesan terenkripsi ujung-ke-ujung tanpa akun, nomor telepon, atau email. Kunci Anda tetap di perangkat ini.",

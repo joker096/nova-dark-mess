@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Copy, KeyRound, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, Download, KeyRound, ShieldCheck, Sparkles, Upload, UserRound } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
+import { normalizeNickname } from '../lib/account/account';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
@@ -10,9 +11,9 @@ interface OnboardingWizardProps {
   onDone: () => void;
 }
 
-type Step = 'language' | 'welcome' | 'choice' | 'profile' | 'phrase' | 'security' | 'done';
+type Step = 'language' | 'nickname' | 'welcome' | 'choice' | 'phrase' | 'restoreBackup' | 'security' | 'backup' | 'done';
 
-const STEP_ORDER: Step[] = ['language', 'welcome', 'choice', 'profile', 'phrase', 'security', 'done'];
+const STEP_ORDER: Step[] = ['language', 'nickname', 'welcome', 'choice', 'phrase', 'restoreBackup', 'security', 'backup', 'done'];
 
 /**
  * First-launch setup. Replaces the "Hello, Joseph" fallback: a new install has to
@@ -21,40 +22,53 @@ const STEP_ORDER: Step[] = ['language', 'welcome', 'choice', 'profile', 'phrase'
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) => {
   const { t, language, changeLanguage, languages } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
-  const { identity, restoreIdentityFromMnemonic, setPin } = useSecurity();
-  const { account, updateAccount } = useAccount();
+  const { identity, restoreIdentityFromMnemonic, setPin, exportEncryptedBackup, importEncryptedBackup } = useSecurity();
+  const { updateAccount } = useAccount();
 
   const [step, setStep] = useState<Step>('language');
   const [path, setPath] = useState<OnboardingPath | null>(null);
-  const [name, setName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [phraseInput, setPhraseInput] = useState('');
   const [pin, setPinValue] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
+  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [backupPassphrase, setBackupPassphrase] = useState('');
+  const [backupPassphraseConfirm, setBackupPassphraseConfirm] = useState('');
   const [error, setError] = useState('');
+  const [afterNickname, setAfterNickname] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const words = useMemo(
     () => (identity?.mnemonic ? identity.mnemonic.split(' ') : []),
-    [identity?.mnemonic],
+    [identity],
   );
+  const normalizedNickname = useMemo(() => {
+    try {
+      return normalizeNickname(nickname);
+    } catch {
+      return '';
+    }
+  }, [nickname]);
   const stepIndex = STEP_ORDER.indexOf(step) + 1;
 
   const finish = async () => {
     setBusy(true);
     setError('');
     try {
-      const trimmed = name.trim();
-      if (trimmed) {
-        try {
-          updateAccount({
-            displayName: trimmed,
-            nickname: `@${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'nova'}`,
-          });
-        } catch (e) {
-          console.error('onboarding: updateAccount failed', e);
-        }
+      // A restored identity can reach this screen without a nickname, so send the
+      // user back to pick one instead of failing on save.
+      const accountNickname = normalizedNickname;
+      if (!accountNickname) {
+        setStep('nickname');
+        setAfterNickname('done');
+        return;
       }
+      updateAccount({
+        displayName: accountNickname.slice(1),
+        nickname: accountNickname,
+        phone: '',
+      });
       if (pin) {
         try {
           await setPin(pin);
@@ -68,7 +82,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       onDone();
     } catch (e) {
       console.error('onboarding: finish failed', e);
-      setError(t('premium.errorGeneric'));
+      setError(e instanceof Error ? e.message : t('premium.errorGeneric'));
     } finally {
       setBusy(false);
     }
@@ -80,11 +94,83 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     try {
       await restoreIdentityFromMnemonic(phraseInput);
       setPath('restore');
-      setStep('profile');
+      setStep('security');
     } catch {
       setError(t('onboarding.restoreFailed'));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const restoreFromBackupFile = async () => {
+    if (!backupFile) {
+      setError(t('onboarding.restoreFailed'));
+      return;
+    }
+    if (backupPassphrase.length < 8) {
+      setError(t('settings.passphraseTooShort'));
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await importEncryptedBackup(await backupFile.text(), backupPassphrase);
+      setPath('restore');
+      setBackupFile(null);
+      setBackupPassphrase('');
+      setStep('security');
+    } catch (e) {
+      console.error('onboarding: backup restore failed', e);
+      setError(e instanceof Error ? e.message : t('onboarding.restoreFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveOnboardingBackup = async () => {
+    if (backupPassphrase.length < 8) {
+      setError(t('settings.passphraseTooShort'));
+      return;
+    }
+    if (backupPassphrase !== backupPassphraseConfirm) {
+      setError(t('onboarding.backupPassphraseMismatch'));
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const blob = await exportEncryptedBackup(backupPassphrase, []);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `nova_backup_${new Date().toISOString().slice(0, 10)}.nova-backup`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setBackupPassphrase('');
+      setBackupPassphraseConfirm('');
+      setStep('done');
+    } catch (e) {
+      console.error('onboarding: backup export failed', e);
+      setError(e instanceof Error ? e.message : t('premium.errorGeneric'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const goBack = () => {
+    setError('');
+    if (step === 'restoreBackup') {
+      setStep('choice');
+    } else if (step === 'security') {
+      setStep(path === 'restore' ? 'choice' : 'phrase');
+    } else if (step === 'backup') {
+      setStep('security');
+    } else if (step === 'phrase' && path === 'restore') {
+      setStep('choice');
+    } else {
+      setStep(STEP_ORDER[STEP_ORDER.indexOf(step) - 1] ?? 'welcome');
     }
   };
 
@@ -121,10 +207,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
           {step !== 'welcome' && (
             <button
               type="button"
-              onClick={() => {
-                setError('');
-                setStep(step === 'phrase' && path === 'restore' ? 'choice' : STEP_ORDER[STEP_ORDER.indexOf(step) - 1] ?? 'welcome');
-              }}
+              onClick={goBack}
               className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition cursor-pointer"
               aria-label={t('onboarding.back')}
             >
@@ -171,7 +254,36 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   </button>
                 ))}
               </div>
-              <button type="button" className={primaryBtn} onClick={() => setStep('welcome')}>
+              <button type="button" className={primaryBtn} onClick={() => setStep('nickname')}>
+                {t('onboarding.continue')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {step === 'nickname' && (
+            <div className="space-y-4" data-testid="onboarding-nickname">
+              <h2 className="text-lg font-bold">{t('onboarding.nameLabel')}</h2>
+              <input
+                autoFocus
+                value={nickname}
+                onChange={(event) => setNickname(event.target.value)}
+                placeholder={t('onboarding.namePlaceholder')}
+                className={inputCls}
+                maxLength={32}
+                aria-label={t('onboarding.nameLabel')}
+              />
+              <p className="text-[11px] text-white/50">{t('onboarding.nicknameHint')}</p>
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={!normalizedNickname}
+                onClick={() => {
+                  const next = afterNickname ?? 'welcome';
+                  setAfterNickname(null);
+                  setStep(next);
+                }}
+              >
                 {t('onboarding.continue')}
                 <ArrowRight className="w-4 h-4" />
               </button>
@@ -200,7 +312,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 onClick={() => {
                   setPath('create');
                   setError('');
-                  setStep('profile');
+                  setStep('phrase');
                 }}
                 className="w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start"
               >
@@ -225,30 +337,22 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   <span className="block text-[11.5px] text-white/55 mt-0.5">{t('onboarding.restoreOptionDesc')}</span>
                 </span>
               </button>
-            </div>
-          )}
-
-          {step === 'profile' && (
-            <div className="space-y-4" data-testid="onboarding-profile">
-              <h2 className="text-lg font-bold">{t('onboarding.nameLabel')}</h2>
-              <input
-                autoFocus
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t('onboarding.namePlaceholder')}
-                className={inputCls}
-                maxLength={40}
-                aria-label={t('onboarding.nameLabel')}
-              />
-              <p className="text-[11px] text-white/40">{t('onboarding.createOptionDesc')}</p>
               <button
                 type="button"
-                className={primaryBtn}
-                disabled={!name.trim()}
-                onClick={() => setStep(path === 'restore' ? 'security' : 'phrase')}
+                onClick={() => {
+                  setPath('restore');
+                  setBackupFile(null);
+                  setBackupPassphrase('');
+                  setError('');
+                  setStep('restoreBackup');
+                }}
+                className="w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start"
               >
-                {t('onboarding.continue')}
-                <ArrowRight className="w-4 h-4" />
+                <Upload className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+                <span>
+                  <span className="block text-sm font-semibold text-white">{t('settings.importBackup')}</span>
+                  <span className="block text-[11.5px] text-white/55 mt-0.5">{t('onboarding.restoreBackupBody')}</span>
+                </span>
               </button>
             </div>
           )}
@@ -284,7 +388,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   setPhraseInput('');
                   setError('');
                   setPath('create');
-                  setStep('profile');
+                  setStep('phrase');
                 }}
               >
                 {t('onboarding.createOption')}
@@ -312,6 +416,50 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
               <button type="button" className={primaryBtn} onClick={() => setStep('security')}>
                 {t('onboarding.savedPhrase')}
+              </button>
+            </div>
+          )}
+
+          {step === 'restoreBackup' && (
+            <div className="space-y-3" data-testid="onboarding-restore-backup">
+              <h2 className="text-lg font-bold">{t('settings.importBackup')}</h2>
+              <p className="text-[12px] leading-relaxed text-white/60">{t('onboarding.restoreBackupBody')}</p>
+              <label className="block text-[11px] font-medium text-white/70" htmlFor="onboarding-backup-file">
+                {t('onboarding.backupFileLabel')}
+              </label>
+              <input
+                id="onboarding-backup-file"
+                type="file"
+                accept=".nova-backup"
+                aria-label={t('onboarding.backupFileLabel')}
+                onChange={(event) => {
+                  setBackupFile(event.target.files?.[0] ?? null);
+                  setError('');
+                }}
+                className="w-full text-xs text-white/70 file:mr-3 file:rounded-xl file:border file:border-white/10 file:bg-white/[0.05] file:px-3 file:py-2 file:text-xs file:text-white/80"
+              />
+              <label className="block text-[11px] font-medium text-white/70" htmlFor="onboarding-restore-passphrase">
+                {t('onboarding.backupPassphrase')}
+              </label>
+              <input
+                id="onboarding-restore-passphrase"
+                type="password"
+                autoComplete="new-password"
+                value={backupPassphrase}
+                onChange={(event) => {
+                  setBackupPassphrase(event.target.value);
+                  setError('');
+                }}
+                className={inputCls}
+              />
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={busy || !backupFile || backupPassphrase.length < 8}
+                onClick={restoreFromBackupFile}
+              >
+                {t('settings.importBackup')}
               </button>
             </div>
           )}
@@ -352,7 +500,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                     setError(t('onboarding.pinMismatch'));
                     return;
                   }
-                  setStep('done');
+                  setStep('backup');
                 }}
               >
                 {t('onboarding.continue')}
@@ -365,6 +513,62 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   setPinValue('');
                   setPinConfirm('');
                   setError('');
+                  setStep('backup');
+                }}
+              >
+                {t('onboarding.skip')}
+              </button>
+            </div>
+          )}
+
+          {step === 'backup' && (
+            <div className="space-y-3" data-testid="onboarding-backup">
+              <h2 className="text-lg font-bold">{t('settings.exportBackup')}</h2>
+              <p className="text-[12px] leading-relaxed text-white/60">{t('onboarding.backupSetupBody')}</p>
+              <label className="block text-[11px] font-medium text-white/70" htmlFor="onboarding-backup-passphrase">
+                {t('onboarding.backupPassphrase')}
+              </label>
+              <input
+                id="onboarding-backup-passphrase"
+                type="password"
+                autoComplete="new-password"
+                value={backupPassphrase}
+                onChange={(event) => {
+                  setBackupPassphrase(event.target.value);
+                  setError('');
+                }}
+                className={inputCls}
+              />
+              <label className="block text-[11px] font-medium text-white/70" htmlFor="onboarding-backup-confirm">
+                {t('onboarding.backupConfirmPassphrase')}
+              </label>
+              <input
+                id="onboarding-backup-confirm"
+                type="password"
+                autoComplete="new-password"
+                value={backupPassphraseConfirm}
+                onChange={(event) => {
+                  setBackupPassphraseConfirm(event.target.value);
+                  setError('');
+                }}
+                className={inputCls}
+              />
+              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={busy || backupPassphrase.length < 8}
+                onClick={saveOnboardingBackup}
+              >
+                <Download className="w-4 h-4" />
+                {t('settings.exportBackup')}
+              </button>
+              <button
+                type="button"
+                className={ghostBtn}
+                onClick={() => {
+                  setBackupPassphrase('');
+                  setBackupPassphraseConfirm('');
                   setStep('done');
                 }}
               >

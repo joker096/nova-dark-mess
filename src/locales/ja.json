@@ -862,6 +862,11 @@
     "openOnline": "フルバージョンを開く"
   },
   "onboarding": {
+    "backupFileLabel": "バックアップファイル",
+    "restoreBackupBody": ".nova-backup ファイルを選択し、パスフレーズを入力して本人確認情報と暗号化データを復元します。",
+    "backupPassphrase": "バックアップ用パスフレーズ（8文字以上）",
+    "backupConfirmPassphrase": "バックアップ用パスフレーズを確認",
+    "backupSetupBody": "このバックアップには本人確認情報と暗号化されたローカルデータが含まれます。別のパスフレーズを設定し、ファイルとパスフレーズをオフラインで保管してください。",
     "stepOf": "ステップ {{current}} / {{total}}",
     "welcomeTitle": "Nova へようこそ",
     "welcomeBody": "アカウント、電話番号、電子メールを必要としない、エンドツーエンドの暗号化されたメッセージング。キーがこのデバイスから離れることはありません。",

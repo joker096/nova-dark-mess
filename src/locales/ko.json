@@ -862,6 +862,11 @@
     "openOnline": "정식 버전 열기"
   },
   "onboarding": {
+    "backupFileLabel": "백업 파일",
+    "restoreBackupBody": ".nova-backup 파일을 선택하고 암호 문구를 입력해 신원 정보와 암호화된 데이터를 복원하세요.",
+    "backupPassphrase": "백업 암호 문구(8자 이상)",
+    "backupConfirmPassphrase": "백업 암호 문구 확인",
+    "backupSetupBody": "이 백업에는 신원 정보와 암호화된 로컬 데이터가 포함됩니다. 별도의 암호 문구를 정하고 파일과 암호 문구를 오프라인에 보관하세요.",
     "stepOf": "{{total}} 중 {{current}}단계",
     "welcomeTitle": "Nova에 오신 것을 환영합니다",
     "welcomeBody": "계정, 전화번호, 이메일이 필요 없는 종단 간 암호화된 메시징입니다. 귀하의 열쇠는 이 장치를 떠나지 않습니다.",
