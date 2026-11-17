@@ -27,6 +27,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     >
       {/* 1. Underlying Dark Gradient Layer */}
       <div
+        data-theme-wallpaper
         className={`absolute inset-0 bg-gradient-to-br ${selectedConfig.gradientBg} transition-all duration-700`}
       />
 

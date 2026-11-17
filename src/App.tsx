@@ -47,7 +47,14 @@ import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
 import { useSocialData } from './hooks/useSocialData';
 import { KYIV_CHANNEL_ID } from './lib/social/store';
-import { applyAppTheme, applyFontSize, readAppTheme, readFontSize } from './lib/ui/appearance';
+import {
+  ACCENT_COLORS,
+  applyAccentColor,
+  applyAppTheme,
+  applyFontSize,
+  readAppTheme,
+  readFontSize,
+} from './lib/ui/appearance';
 import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
@@ -258,18 +265,14 @@ export default function App() {
   }, [identity?.fingerprint]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('nova_accent_color');
-      if (saved) {
-        document.documentElement.style.setProperty('--nova-accent-color', saved);
-      } else {
-        document.documentElement.style.setProperty('--nova-accent-color', '#ff4e18');
-      }
-      } catch {
-        void 0;
-      }
     applyAppTheme(readAppTheme());
     applyFontSize(readFontSize());
+    try {
+      const saved = localStorage.getItem('nova_accent_color') || ACCENT_COLORS.default;
+      applyAccentColor(saved);
+    } catch {
+      applyAccentColor(ACCENT_COLORS.default);
+    }
     applyContactOverrides();
   }, []);
 
