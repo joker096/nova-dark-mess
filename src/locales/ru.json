@@ -264,7 +264,19 @@
     "mediaLinks": "Медиа, файлы, ссылки",
     "appearance": "Оформление чата",
     "chatTheme": "Тема чата",
-    "scheduledCount": "Отложенные ({{count}})"
+    "scheduledCount": "Отложенные ({{count}})",
+    "dateToday": "Сегодня",
+    "dateYesterday": "Вчера",
+    "e2eeBadgeTitle": "Этот чат защищён сквозным шифрованием",
+    "e2eeCardTitle": "Защита этого чата",
+    "e2eeEncrypted": "Сквозное шифрование",
+    "e2eeEncryptedDesc": "Только вы и {{name}} можете читать эти сообщения. Nova не имеет к ним доступа.",
+    "e2eeVerification": "Верификация контакта",
+    "e2eeUnverified": "Не подтверждено",
+    "e2eeVerifyDesc": "Сравните код безопасности с контактом при встрече или по доверенному каналу.",
+    "e2eeDisappearing": "Исчезающие сообщения",
+    "e2eeDisappearingOff": "Выкл.",
+    "e2eeKeyChanged": "Код безопасности изменён"
   },
   "stories": {
     "title": "Истории",

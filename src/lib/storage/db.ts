@@ -13,6 +13,7 @@ export interface StoredEncryptedMessage {
   chatId: string;
   encryptedData: EncryptedData;
   timestamp: number;
+  expiresAt?: number;
 }
 
 interface StoredEncryptedRecord {
@@ -22,7 +23,13 @@ interface StoredEncryptedRecord {
 }
 
 export interface DatabaseSnapshot {
-  messages: Array<{ id: string; chatId: string; timestamp: number; payload: string }>;
+  messages: Array<{
+    id: string;
+    chatId: string;
+    timestamp: number;
+    payload: string;
+    expiresAt?: number;
+  }>;
   sessions: Array<{ key: string; value: unknown }>;
   prekeys: Array<{ key: string; value: unknown }>;
   settings: Array<{ key: string; value: unknown }>;
@@ -118,13 +125,23 @@ export class EncryptedDatabase {
     return new Promise((resolve, reject) => {
       const tx = this.db!.transaction(storeName, 'readwrite');
       const req = tx.objectStore(storeName).delete(key);
-      req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Database delete transaction aborted'));
     });
   }
 
-  public async saveEncryptedMessage(chatId: string, messageId: string, payloadJson: string): Promise<void> {
+  public async saveEncryptedMessage(
+    chatId: string,
+    messageId: string,
+    payloadJson: string,
+    expiresAt?: number,
+  ): Promise<void> {
     if (!this.db || !this.masterKey) throw new Error('DB not initialized');
+    if (expiresAt !== undefined && !Number.isFinite(expiresAt)) {
+      throw new Error('Message expiration must be a finite timestamp.');
+    }
     const encryptedData = await encryptAESGCM(payloadJson, this.masterKey);
 
     return new Promise((resolve, reject) => {
@@ -134,15 +151,57 @@ export class EncryptedDatabase {
         chatId,
         encryptedData,
         timestamp: Date.now(),
+        expiresAt,
       };
       const req = tx.objectStore(STORE_MESSAGES).put(record);
-      req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Message write transaction aborted'));
     });
   }
 
-  public async getEncryptedMessages(chatId: string): Promise<string[]> {
+  public async saveEncryptedMessageWithSession(
+    chatId: string,
+    messageId: string,
+    payloadJson: string,
+    session: unknown,
+    expiresAt?: number,
+  ): Promise<void> {
     if (!this.db || !this.masterKey) throw new Error('DB not initialized');
+    if (expiresAt !== undefined && !Number.isFinite(expiresAt)) {
+      throw new Error('Message expiration must be a finite timestamp.');
+    }
+
+    const updatedAt = Date.now();
+    const [encryptedData, encryptedSessionData] = await Promise.all([
+      encryptAESGCM(payloadJson, this.masterKey),
+      encryptAESGCM(JSON.stringify(session), this.masterKey),
+    ]);
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction([STORE_MESSAGES, STORE_SESSIONS], 'readwrite');
+      tx.objectStore(STORE_MESSAGES).put({
+        id: messageId,
+        chatId,
+        encryptedData,
+        timestamp: updatedAt,
+        expiresAt,
+      } satisfies StoredEncryptedMessage);
+      tx.objectStore(STORE_SESSIONS).put({
+        key: chatId,
+        encryptedData: encryptedSessionData,
+        updatedAt,
+      } satisfies StoredEncryptedRecord);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Encrypted message transaction aborted'));
+    });
+  }
+
+  public async getEncryptedMessages(chatId: string, now = Date.now()): Promise<string[]> {
+    if (!this.db || !this.masterKey) throw new Error('DB not initialized');
+    await this.purgeExpiredMessages(now);
 
     return new Promise((resolve, reject) => {
       const tx = this.db!.transaction(STORE_MESSAGES, 'readonly');
@@ -162,6 +221,32 @@ export class EncryptedDatabase {
         }
       };
       req.onerror = () => reject(req.error);
+    });
+  }
+
+  public deleteEncryptedMessage(messageId: string): Promise<void> {
+    return this.deleteRecord(STORE_MESSAGES, messageId);
+  }
+
+  public async purgeExpiredMessages(now = Date.now()): Promise<void> {
+    if (!this.db) throw new Error('DB not initialized');
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(STORE_MESSAGES, 'readwrite');
+      const request = tx.objectStore(STORE_MESSAGES).openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const record = cursor.value as StoredEncryptedMessage;
+        if (record.expiresAt !== undefined && record.expiresAt <= now) {
+          cursor.delete();
+        }
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Expired-message purge transaction aborted'));
     });
   }
 
@@ -208,6 +293,7 @@ export class EncryptedDatabase {
 
   public async exportSnapshot(): Promise<DatabaseSnapshot> {
     if (!this.db || !this.masterKey) throw new Error('DB not initialized');
+    await this.purgeExpiredMessages();
 
     const messages = await new Promise<DatabaseSnapshot['messages']>((resolve, reject) => {
       const tx = this.db!.transaction(STORE_MESSAGES, 'readonly');
@@ -222,6 +308,7 @@ export class EncryptedDatabase {
               chatId: record.chatId,
               timestamp: record.timestamp,
               payload: await decryptAESGCM(record.encryptedData, this.masterKey!),
+              expiresAt: record.expiresAt,
             });
           }
           resolve(output);
@@ -258,7 +345,12 @@ export class EncryptedDatabase {
     await this.clearAll();
 
     for (const message of snapshot.messages) {
-      await this.saveEncryptedMessage(message.chatId, message.id, message.payload);
+      await this.saveEncryptedMessage(
+        message.chatId,
+        message.id,
+        message.payload,
+        message.expiresAt,
+      );
     }
     for (const session of snapshot.sessions) {
       await this.saveSession(session.key, session.value);
@@ -269,6 +361,7 @@ export class EncryptedDatabase {
     for (const setting of snapshot.settings) {
       await this.saveSetting(setting.key, setting.value);
     }
+    await this.purgeExpiredMessages();
   }
 
   private async clearStores(storeNames: string[]): Promise<void> {
