@@ -33,6 +33,9 @@ const MeshMapScreen = lazy(() =>
 const SettingsModal = lazy(() =>
   import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal })),
 );
+const AnonymousMessengerScreen = lazy(() =>
+  import('./components/AnonymousMessengerScreen').then((m) => ({ default: m.AnonymousMessengerScreen })),
+);
 const CryptoCheckoutModal = lazy(() =>
   import('./components/CryptoCheckoutModal').then((m) => ({ default: m.CryptoCheckoutModal })),
 );
@@ -76,7 +79,7 @@ const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
 );
 
-type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map';
+type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous';
 
 export default function App() {
   const { t } = useLanguage();
@@ -122,6 +125,7 @@ export default function App() {
   const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
     null,
   );
+  const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
   const pendingInviteRef = useFocusTrap<HTMLDivElement>(
     Boolean(pendingInvite),
     () => setPendingInvite(null),
@@ -326,11 +330,17 @@ export default function App() {
     });
   }, []);
 
-  // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
-  // stay offline: they carry an id, not an account lookup.
+  // Deep links are handled locally; contact invites carry one-time payloads
+  // in the fragment, never in the request path or query.
   const handleTarget = useCallback(
     (target: DeepLinkTarget, link: string) => {
       if (!target || target.type === 'device-link') return;
+
+      if (target.type === 'contact-invite') {
+        setPendingContactInvite(target.code);
+        navigate('anonymous');
+        return;
+      }
 
       if (target.type === 'chat') {
         // An invite link asks first: joining a group is never silent.
@@ -469,6 +479,14 @@ export default function App() {
               links={liveMesh.links.length > 0 ? liveMesh.links : undefined}
             />
           </div>
+        );
+      case 'anonymous':
+        return (
+          <AnonymousMessengerScreen
+            onBack={goBack}
+            initialInvite={pendingContactInvite}
+            onInviteConsumed={() => setPendingContactInvite(null)}
+          />
         );
       case 'chat-katie':
       case 'chats':

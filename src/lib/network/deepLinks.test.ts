@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildDeepLink,
+  buildContactInviteUrl,
   parseDeepLink,
   parseDeepLinkFromHash,
 } from './deepLinks';
@@ -16,6 +17,26 @@ describe('parseDeepLink', () => {
       id: 'channel-kyiv',
     });
     expect(parseDeepLink('nova://profile/kurt')).toEqual({ type: 'profile', id: 'kurt' });
+  });
+
+  it('parses and builds contact invitation links', () => {
+    const target = { type: 'contact-invite' as const, code: 'eyJ2IjoxfQ' };
+    const link = buildDeepLink(target);
+
+    expect(link).toBe('nova://contact/eyJ2IjoxfQ');
+    expect(parseDeepLink(link)).toEqual(target);
+    expect(parseDeepLinkFromHash(`#${link}`)).toEqual(target);
+    expect(buildContactInviteUrl(target.code)).toBe(
+      'https://mess.cvr.name/#nova://contact/eyJ2IjoxfQ',
+    );
+    expect(parseDeepLink('nova://contact/unsafe?relay=https://example.com')).toBeNull();
+    expect(() => buildContactInviteUrl('invalid/code')).toThrow('Contact invite code is invalid.');
+    expect(() => buildContactInviteUrl(target.code, 'ftp://localhost:3000')).toThrow(
+      'Contact invite links must use HTTPS.',
+    );
+    expect(buildContactInviteUrl(target.code, 'http://localhost:3000')).toContain(
+      'http://localhost:3000/#nova://contact/',
+    );
   });
 
   it('parses the same targets as universal links', () => {
