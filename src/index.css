@@ -133,6 +133,64 @@ html[data-theme='light']
   color: var(--nova-text-muted) !important;
 }
 
+/* Pure white is the primary ink in the dark theme, so it has to become the
+   primary ink here as well; otherwise headings drop to the secondary grey.
+   Text sitting on a filled accent or status chip stays white. */
+html[data-theme='light']
+  [class~='text-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *):not(
+    :is(
+      [class~='bg-[var(--nova-accent-color)]'],
+      [class*=' bg-[var(--nova-accent-color)]'],
+      [class*='bg-red-'],
+      [class*='bg-rose-'],
+      [class*='bg-emerald-'],
+      [class*='bg-green-'],
+      [class*='bg-amber-'],
+      [class*='bg-sky-'],
+      [class*='bg-blue-'],
+      [class*='bg-violet-'],
+      [class*='bg-purple-'],
+      [class*='bg-[#10b981]']
+    )
+    *
+  ) {
+  color: var(--nova-text-primary) !important;
+}
+
+/* Placeholders stay a hint, but a white veil disappears on a white field. */
+html[data-theme='light'] [class*='placeholder-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *)::placeholder {
+  color: rgba(23, 27, 36, 0.45) !important;
+}
+
+/* Status colours are tuned for a near-black canvas: the 300-500 pastels sink
+   into white, so the light theme walks them down to their readable depths. */
+html[data-theme='light']
+  :is([class*='text-red-'], [class*='text-rose-'], [class*='text-pink-']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #b91c1c !important;
+}
+html[data-theme='light']
+  :is([class*='text-emerald-'], [class*='text-green-'], [class*='text-teal-']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #047857 !important;
+}
+html[data-theme='light']
+  :is([class*='text-amber-'], [class*='text-yellow-'], [class*='text-orange-']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #b45309 !important;
+}
+html[data-theme='light']
+  :is([class*='text-sky-'], [class*='text-blue-'], [class*='text-cyan-'], [class*='text-indigo-']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #1d4ed8 !important;
+}
+html[data-theme='light']
+  :is([class*='text-violet-'], [class*='text-purple-'], [class*='text-fuchsia-']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: #6d28d9 !important;
+}
+
+/* Borders written as dark hex values read as hairline ink on white. */
+html[data-theme='light']
+  :is([class*='border-[#0'], [class*='border-[#1'], [class*='border-[#2']):not([class*='border-[#10b981]']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  border-color: var(--nova-border-color) !important;
+}
+
 html[data-theme='light'] [class*='border-white']:not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
   border-color: var(--nova-border-color) !important;
 }
