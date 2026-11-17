@@ -253,7 +253,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <Paperclip className="w-4 h-4" />
         </NovaButton>
 
-        <div className="flex-1 bg-[#181920]/95 border border-white/10 focus-within:border-[var(--nova-accent-color, #ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+        <div className="flex-1 bg-[#181920]/95 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
           <input
             ref={mainInputRef}
             type="text"
