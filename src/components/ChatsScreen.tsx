@@ -872,6 +872,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35" />
+                  {/* Extra band behind the avatar + name so labels stay legible on
+                      bright covers, where the full-card scrim is not enough. */}
+                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 via-black/55 to-transparent" />
 
                   <div className="absolute top-2 left-2 h-5 min-w-5 px-1 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-semibold text-white flex items-center justify-center border border-white/15">
                     {isStoryScheduled(story, now) ? <Clock className="w-3 h-3" /> : story.unreadCount}
@@ -885,7 +888,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <span className="text-[11px] font-medium text-white/90 text-center truncate max-w-[76px] leading-tight drop-shadow">
+                    <span className="text-[11px] font-medium text-white text-center truncate max-w-[76px] leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
                       {story.name}
                     </span>
                   </div>
