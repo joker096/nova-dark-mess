@@ -88,9 +88,9 @@ describe('App - desktop navigation rail', () => {
     expect(screen.queryByTestId('chats-screen')).toBeNull();
   });
 
-  it('renders a Folders button in the desktop rail', () => {
+  it('renders a Folders button in the desktop rail', async () => {
     render(<App />);
-    const foldersBtns = screen.getAllByRole('button', { name: 'folders' });
+    const foldersBtns = await screen.findAllByRole('button', { name: 'folders' });
     expect(foldersBtns.length).toBeGreaterThanOrEqual(1);
   });
 
