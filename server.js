@@ -843,23 +843,60 @@ app.get('/api/health', (_req, res) => {
 const PRESENCE_TTL_MS = 2 * 60 * 1000;
 const PRESENCE_MIN_TTL_MS = 45 * 1000;
 const PRESENCE_MAX_TTL_MS = 5 * 60 * 1000;
+const PRESENCE_MAX_ENTRIES = 5000;
 const presenceMap = new Map();
+const presenceLimiter = createRateLimiter({ max: 30, windowMs: 60_000 });
+const presenceKeys = new Map();
 function sweepPresence() {
   const now = Date.now();
   for (const [id, entry] of presenceMap) {
     if (now - entry.lastSeen > entry.ttlMs) presenceMap.delete(id);
   }
 }
+app.post('/api/presence/register', (req, res) => {
+  const fingerprint = req && req.body && req.body.fingerprint;
+  const publicKey = req && req.body && req.body.publicKey;
+  if (!fingerprint || !publicKey) {
+    return res.status(400).json({ ok: false, reason: 'missing fingerprint or publicKey' });
+  }
+  const safe = typeof fingerprint === 'string' ? fingerprint.replace(/[^a-zA-Z0-9_.-]/g, '') : '';
+  if (!safe) return res.status(400).json({ ok: false, reason: 'invalid fingerprint' });
+  presenceKeys.set(safe, publicKey);
+  res.json({ ok: true });
+});
+
 app.post('/api/presence', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!presenceLimiter(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
   const raw = req && req.body && req.body.fingerprint;
-  // Allow dots so hashed ids (`ph1.<hex>`) pass the sanitizer.
   const safe = typeof raw === 'string' ? raw.replace(/[^a-zA-Z0-9_.-]/g, '') : '';
   if (!safe) return res.status(400).json({ ok: false, reason: 'missing fingerprint' });
+  const signature = req && req.body && req.body.signature;
+  if (!signature) return res.status(401).json({ ok: false, reason: 'missing signature' });
+  const publicKey = presenceKeys.get(safe);
+  if (!publicKey) return res.status(401).json({ ok: false, reason: 'unknown fingerprint' });
+  try {
+    const key = crypto.createPublicKey({ key: publicKey, format: 'pem', type: 'spki' });
+    const verified = crypto.verify(
+      'sha256',
+      Buffer.from(safe),
+      key,
+      Buffer.from(signature, 'base64')
+    );
+    if (!verified) return res.status(401).json({ ok: false, reason: 'invalid signature' });
+  } catch {
+    return res.status(401).json({ ok: false, reason: 'invalid signature' });
+  }
   const requested = Number(req && req.body && req.body.ttlMs);
   const ttlMs = Number.isFinite(requested)
     ? Math.min(PRESENCE_MAX_TTL_MS, Math.max(PRESENCE_MIN_TTL_MS, requested))
     : PRESENCE_TTL_MS;
   sweepPresence();
+  if (!presenceMap.has(safe) && presenceMap.size >= PRESENCE_MAX_ENTRIES) {
+    return res.status(429).json({ ok: false, reason: 'presence full' });
+  }
   presenceMap.set(safe, { lastSeen: Date.now(), ttlMs });
   res.json({ ok: true });
 });
