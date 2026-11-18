@@ -2482,62 +2482,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       appendConversationHistory(chatId, [newMessage]);
       return;
     }
-
-    // Katie begins real-time typing after 750ms
-    setTimeout(() => {
-      setTypingActivity('typing');
-      setIsTyping(true);
-    }, 750);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-      const responses = currentAttachment?.images
-        ? [
-            "Love these photos! Looks so fun ✨",
-            "Awesome shots, saving these right away! 📸",
-            "Can't wait to catch up, thanks for sharing!",
-          ]
-        : currentAttachment?.document
-        ? [
-            "Got the document! Reviewing it now 📄",
-            "Thanks for sharing this file, looks great!",
-            "Saved it, see you Sunday!",
-          ]
-        : [
-            "Sounds awesome! Let's definitely do that.",
-            "Perfect, I'll text John now and let you know what he says!",
-            "Can't wait to catch up, it's been way too long! 🎉",
-            "Deal! Let's meet at 7pm then.",
-          ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      setMessages((prev) => {
-        const lastUserMsg = prev[prev.length - 1];
-        return [
-          ...prev,
-          {
-            id: 'm-' + (Date.now() + 1),
-            senderId: 'other',
-            text: randomResponse,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            replyTo:
-              lastUserMsg && lastUserMsg.senderId === 'me'
-                ? {
-                    id: lastUserMsg.id,
-                    text:
-                      lastUserMsg.text ||
-                      (lastUserMsg.document
-                        ? t('chat.documentPreview', { name: lastUserMsg.document.name })
-                        : lastUserMsg.voiceNote
-                        ? t('chat.voiceMessage')
-                        : t('chat.photoAttachment')),
-                    senderName: t('common.you'),
-                  }
-                : undefined,
-          },
-        ];
-      });
-    }, 2600);
   };
 
   const handleRetrySend = (messageId: string) => {

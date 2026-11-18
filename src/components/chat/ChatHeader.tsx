@@ -230,7 +230,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 onClick={onOpenProfile}
                 className="flex flex-col items-center min-w-0 cursor-pointer focus:outline-none group"
               >
-                <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
                   {profile.name}
                 </span>
                 <button
@@ -273,7 +273,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 ) : (
                   <div className="flex items-center gap-1 mt-0.5 select-none">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
-                    <span className="text-[10px] text-[#868b98] font-normal leading-none">
+                    <span className="max-w-[132px] truncate whitespace-nowrap text-[10px] text-[#868b98] font-normal leading-none">
                       {profile.status}
                     </span>
                   </div>
@@ -281,7 +281,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               </button>
 
               {/* Header Menu Tabs: [ Chat | Gallery ] */}
-              <div className="flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
+              <div className="hidden sm:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
                 <button
                   onClick={() => setActiveHeaderTab('chat')}
                   className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
@@ -325,6 +325,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 <Search className="w-3 h-3" />
               </NovaButton>
 
+              {/* Secondary controls stay off the narrow header; the same actions
+                  remain reachable from the chat action menu. */}
+              <div className="hidden sm:flex items-center gap-1">
               {/* Wallpaper Settings Button */}
               <NovaButton
                 variant={isWallpaperModalOpen ? 'accent' : 'ghost'}
@@ -388,6 +391,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               >
                 {isTyping ? <Mic className="w-3 h-3 text-[var(--nova-accent-color,#ff4e18)]" /> : <Sparkles className="w-3 h-3 text-[var(--nova-accent-color,#ff4e18)]" />}
               </NovaButton>
+              </div>
 
               <button
                 onClick={onOpenProfile}
