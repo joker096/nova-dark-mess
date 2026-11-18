@@ -139,7 +139,7 @@ export async function observePeerKey(
   }
 
   const change: PeerKeyChange = {
-    id: `peer-key-change-${changedAt}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `peer-key-change-${changedAt}-${crypto.randomUUID()}`,
     chatId,
     previousFingerprint: previous.fingerprint,
     currentFingerprint: current.fingerprint,

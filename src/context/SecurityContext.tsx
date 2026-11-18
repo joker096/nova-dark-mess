@@ -90,7 +90,13 @@ export interface SecurityContextType {
   checkPeerKey: (chatId: string) => Promise<{
     peerFingerprint: string;
     history: PeerKeyChange[];
+    isDemoPeer: boolean;
   }>;
+  /** True when this chat still uses the locally generated demo peer bundle instead of a key received over the real P2P transport. */
+  isDemoPeer: (chatId: string) => boolean;
+  setPeerFingerprint: (chatId: string, fingerprint: string) => void;
+  /** chatId → peer fingerprint known to the real P2P transport (empty until a peer is added). */
+  peerFingerprintsByChat: Record<string, string>;
   decryptIncomingMessage: (chatId: string, payload: RatchetMessagePayload) => Promise<string>;
   enable2FA: (secret: string, inputCode: string) => Promise<boolean>;
   disable2FA: () => void;
@@ -206,6 +212,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [lockOnHide, setLockOnHideState] = useState(true);
   const [pinLength, setPinLengthState] = useState(6);
   const [p2pManager, setP2pManagerState] = useState<P2PManager | null>(null);
+  const [peerFingerprintsByChat, setPeerFingerprintsByChatState] = useState<Record<string, string>>(
+    {},
+  );
 
   const sessionsRef = useRef<Record<string, RatchetState>>({});
   const storageReadyRef = useRef(false);
@@ -233,7 +242,29 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const checkPeerKey = useCallback(
     (chatId: string) =>
       runSerialized(async () => {
-        const bundle = await getOrCreateDemoPeerBundle(chatId);
+        let bundle: PreKeyBundle;
+        let isDemo = true;
+
+        // When a real P2P transport is wired and we know the peer fingerprint for
+        // this chat, use the bundle received over the transport instead of the
+        // locally generated demo peer bundle. This is what makes safety numbers
+        // verify a remote contact's key rather than a key this device generated
+        // itself (F1.3).
+        if (p2pManager) {
+          const fingerprint = peerFingerprintsByChat[chatId];
+          if (fingerprint) {
+            const realBundle = p2pManager.getPeerBundle(fingerprint);
+            if (realBundle) {
+              bundle = realBundle;
+              isDemo = false;
+            }
+          }
+        }
+
+        if (isDemo) {
+          bundle = await getOrCreateDemoPeerBundle(chatId);
+        }
+
         if (!verifyPreKeyBundle(bundle)) {
           throw new Error('Peer pre-key bundle failed verification.');
         }
@@ -247,9 +278,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return {
           peerFingerprint: bundle.fingerprint,
           history: getPeerKeyChanges(chatId),
+          isDemoPeer: isDemo,
         };
       }),
-    [runSerialized]
+    [runSerialized, p2pManager, peerFingerprintsByChat]
   );
 
   useEffect(() => {
@@ -671,6 +703,20 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setP2pManagerState(manager);
   }, []);
 
+  const setPeerFingerprint = useCallback((chatId: string, fingerprint: string): void => {
+    setPeerFingerprintsByChatState((prev) => ({ ...prev, [chatId]: fingerprint }));
+  }, []);
+
+  const isDemoPeer = useCallback((chatId: string): boolean => {
+    // When no real P2P transport is wired, every chat uses the locally generated
+    // demo peer bundle, so its keys cannot be verified against a remote contact.
+    if (!p2pManager) return true;
+    const fingerprint = peerFingerprintsByChat[chatId];
+    if (!fingerprint) return true;
+    // A real bundle is registered for this peer: not a demo peer.
+    return p2pManager.getPeerBundle(fingerprint) === null;
+  }, [p2pManager, peerFingerprintsByChat]);
+
   const clearLocalEncryptedData = useCallback(async () => {
     if (storageReadyRef.current) {
       await dbInstance.clearAll();
@@ -712,6 +758,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setPinLength,
         p2pManager,
         setP2PManager: setP2pManagerState,
+        peerFingerprintsByChat,
+        setPeerFingerprint,
+        isDemoPeer,
         encryptAndSendMessage,
         checkPeerKey,
         decryptIncomingMessage,
