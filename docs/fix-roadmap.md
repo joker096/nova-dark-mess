@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Fix Roadmap
 
-Last updated: 2026-11-18 (F4.3–F4.4 applied)
+Last updated: 2026-11-18 (F1.1 complete)
 
 Status: **active**. This document tracks the defects found in the 2026-11-18
 repository audit. It is additive to `ROADMAP.md` (product plan) and
@@ -17,7 +17,7 @@ item is done only when its acceptance check is green in CI on a normal branch.
 |---|---|---|---|---|
 | Types | `npx tsc --noEmit` | pass | pass | pass |
 | Lint | `npx eslint src/ --ext .ts,.tsx` | fail — 23 errors, 25 warnings | pass — 0 errors, 28 warnings | pass — 0 errors, 28 warnings |
-| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1029 passed (132 files) |
+| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1031 passed (133 files) |
 | Dependencies (runtime) | `npm audit --omit=dev --audit-level=moderate` | fail | pass | pass |
 | Dependencies (toolchain) | `npm audit --audit-level=moderate` | fail — 11 high | fail — 11 high, no upstream patch | pass — `npm audit fix --force` cleared the 11 highs; `package-lock.json` regenerated |
 | Build | `npm run build` | pass; main chunk 778 kB (>500 kB warning) | pass; main chunk 778 kB (unchanged) | pass; main chunk 252.7 kB (ChatScreen/ChatsScreen/ChannelScreen lazy via F4.4, no >500 kB warning) |
@@ -107,7 +107,7 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
 
 ## F1 — Make the product do what the docs claim (P0, 1–2 weeks)
 
-- [ ] **F1.1 Wire a real 1:1 transport into the chat UI.** _(partial — done 2026-11-18)_
+- [x] **F1.1 Wire a real 1:1 transport into the chat UI.** _(done 2026-11-18)_
   Evidence: `SecurityContext.tsx:359` calls `getOrCreateDemoPeerBundle(chatId)`
   and encrypts to that locally generated peer; the ciphertext is written to
   IndexedDB and never leaves the device. `ChatScreen.tsx:2510` faked
@@ -126,8 +126,12 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `ChatScreen.handleSendMessage`; `SecurityContext.encryptAndSendMessage` now
   accepts an optional `P2PManager` (via `setP2PManager()`) and delivers through
   `p2pManager.sendMessage()` when wired, falling back to the demo peer bundle
-  for the offline showcase. The demo peer remains the default until a real
-  transport is configured — full two-client e2e exchange still pending.
+  for the offline showcase. `App.tsx` instantiates `P2PManager` once the local
+  identity is ready, wiring a `P2PSignalingClient` (BroadcastChannel bus) and a
+  `MeshRelay`. `src/lib/p2p/p2pManager.e2e.test.ts` proves two peers exchange an
+  encrypted message over the relay with prekey bundles exchanged over the
+  signaling bus. Full WebRTC direct connection requires a signaling URL in
+  production; the relay path is the default transport.
 
 - [x] **F1.2 Fix anonymous file receive (profile mismatch).** _(done 2026-11-18)_
   Evidence: `AnonymousMessengerScreen.tsx:1353` sends chunks with the `'large'`
