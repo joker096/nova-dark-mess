@@ -933,6 +933,11 @@ const ANON_PACKET_TTL_DEFAULT_MS = 24 * 60 * 60 * 1000;
 const ANON_MAX_PACKETS_PER_QUEUE = 200;
 const ANON_REPORT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const ANON_MAX_REPORTS = 10000;
+// Reports are hash-only, but they drive creation blocks, so they have to
+// survive a restart — otherwise every deploy hands spammers a clean slate.
+const ANON_REPORTS_DIR = process.env.ANON_REPORTS_DIR
+  ? path.resolve(process.env.ANON_REPORTS_DIR)
+  : path.join(__dirname, 'anon-reports');
 // Creation budget per signing key: one invite holder cannot mint queues in bulk
 // just by changing proxy client key or IP.
 const ANON_CREATE_PER_SIGNING_KEY = 10; // queues per signing key per hour
@@ -1035,6 +1040,92 @@ function anonSpamUnindexReport(reportId, signingKeyHash) {
   if (ids.size === 0) anonSpamReportsByKey.delete(signingKeyHash);
 }
 
+function anonReportFile(reportId) {
+  return path.join(ANON_REPORTS_DIR, `${reportId}.json`);
+}
+
+function anonPersistReport(record) {
+  try {
+    writeAtomic(anonReportFile(record.reportId), JSON.stringify(record));
+    return true;
+  } catch (err) {
+    // Memory-only mode keeps the relay serving if the disk is read-only.
+    console.warn('[anon] could not persist report', {
+      error: String(err && err.message ? err.message : err),
+    });
+    return false;
+  }
+}
+
+function anonForgetReportFile(reportId) {
+  try {
+    fs.unlinkSync(anonReportFile(reportId));
+  } catch (err) {
+    if (err && err.code !== 'ENOENT') {
+      console.warn('[anon] could not delete report file', {
+        error: String(err && err.message ? err.message : err),
+      });
+    }
+  }
+}
+
+function anonStoreReport(record) {
+  anonAbuseReports.set(record.reportId, record);
+  if (record.category === 'spam') anonSpamIndexReport(record.reportId, record.signingKeyHash);
+}
+
+function anonIsStoredReport(value) {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof value.reportId === 'string' &&
+      /^[0-9a-f]{32}$/.test(value.reportId) &&
+      typeof value.queueIdHash === 'string' &&
+      /^[0-9a-f]{64}$/.test(value.queueIdHash) &&
+      typeof value.signingKeyHash === 'string' &&
+      /^[0-9a-f]{64}$/.test(value.signingKeyHash) &&
+      ['spam', 'harassment', 'illegal'].includes(value.category) &&
+      Number.isFinite(value.expiresAt),
+  );
+}
+
+// Reload reports written by earlier runs so the spam block survives restarts.
+// Files are named by report id, so a retry after a restart is still a duplicate.
+function anonLoadReports() {
+  let files;
+  try {
+    if (!fs.existsSync(ANON_REPORTS_DIR)) return 0;
+    files = fs.readdirSync(ANON_REPORTS_DIR).filter((name) => /^[0-9a-f]{32}\.json$/.test(name));
+  } catch (err) {
+    console.warn('[anon] could not read reports directory', {
+      error: String(err && err.message ? err.message : err),
+    });
+    return 0;
+  }
+  const now = Date.now();
+  let loaded = 0;
+  for (const name of files) {
+    let record = null;
+    try {
+      record = JSON.parse(fs.readFileSync(path.join(ANON_REPORTS_DIR, name), 'utf8'));
+    } catch {
+      record = null;
+    }
+    if (!anonIsStoredReport(record)) {
+      anonForgetReportFile(name.slice(0, -'.json'.length));
+      continue;
+    }
+    if (now > record.expiresAt) {
+      anonForgetReportFile(record.reportId);
+      continue;
+    }
+    if (anonAbuseReports.size >= ANON_MAX_REPORTS) break;
+    anonStoreReport(record);
+    loaded += 1;
+  }
+  return loaded;
+}
+
 function anonHash(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
@@ -1075,12 +1166,14 @@ function anonCleanup() {
   for (const [reportId, report] of anonAbuseReports) {
     if (now > report.expiresAt) {
       anonAbuseReports.delete(reportId);
+      anonForgetReportFile(reportId);
       if (report.category === 'spam') anonSpamUnindexReport(reportId, report.signingKeyHash);
     }
   }
 }
 
 setInterval(anonCleanup, 60 * 1000).unref?.();
+const anonReportsLoaded = anonLoadReports();
 
 function anonVerifyCommand(queue, action, fields, auth) {
   if (!queue.signingPublicKey) return null;
@@ -1435,14 +1528,16 @@ app.post('/api/anon/route', async (req, res) => {
     if (anonAbuseReports.size >= ANON_MAX_REPORTS) {
       return res.status(503).json({ ok: false, reason: 'REPORT_STORE_FULL' });
     }
-    anonAbuseReports.set(report.reportId, {
+    const record = {
       reportId: report.reportId,
       queueIdHash: report.queueIdHash,
       signingKeyHash: report.signingKeyHash,
       category: report.category,
+      receivedAt: now,
       expiresAt: now + ANON_REPORT_TTL_MS,
-    });
-    if (report.category === 'spam') anonSpamIndexReport(report.reportId, report.signingKeyHash);
+    };
+    anonPersistReport(record);
+    anonStoreReport(record);
     return res.status(201).json({ ok: true });
   }
 
@@ -1594,6 +1689,7 @@ app.listen(PORT, () => {
   console.log(`  landing  →  http://localhost:${PORT}/`);
   console.log(`  IPN      →  http://localhost:${PORT}/api/paymento/ipn  (HTTP POST)`);
   console.log(`  receipts →  ${RECEIPTS_DIR}`);
+  console.log(`  reports  →  ${ANON_REPORTS_DIR} (${anonReportsLoaded} loaded)`);
 });
 
 export default app;
