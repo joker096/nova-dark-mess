@@ -10,14 +10,28 @@ import {
   ArrowLeft,
   Crown,
 } from 'lucide-react';
-import { ChatsScreen } from './components/ChatsScreen';
-import { ChatScreen } from './components/ChatScreen';
-import { NovaIconButton, NovaTooltip, NovaBadge } from './lib/ui';
-import { ChannelScreen } from './components/ChannelScreen';
+import {
+  NovaIconButton,
+  NovaTooltip,
+  NovaBadge,
+} from './lib/ui';
 import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
+
+// ChatScreen and ChatsScreen are the two heaviest entry points; load them on
+// demand so the initial bundle stays small. MeshMap, Settings, Profile and
+// Anonymous are already lazy below.
+const ChatScreen = lazy(() =>
+  import('./components/ChatScreen').then((m) => ({ default: m.ChatScreen })),
+);
+const ChatsScreen = lazy(() =>
+  import('./components/ChatsScreen').then((m) => ({ default: m.ChatsScreen })),
+);
+const ChannelScreen = lazy(() =>
+  import('./components/ChannelScreen').then((m) => ({ default: m.ChannelScreen })),
+);
 
 // Secondary screens and the settings modal are loaded on demand, so their code
 // (qr-code rendering, analytics charts, crypto backup UI) stays out of the

@@ -337,6 +337,33 @@ button,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Light theme: surfaces built from dark hex utilities are remapped to light
+   ones, so literal white text inside them becomes invisible. Accent buttons,
+   colored badges and dark media overlays keep their white text. */
+html[data-theme='light']
+  .nova-chat-surface
+  :is([class~='text-white'], [class~='text-white/90'], [class~='text-white/80'])
+  :not([class*='bg-[var(--nova-accent-color']):not([class*='bg-red-']):not([class*='bg-emerald-']):not([class*='bg-sky-']):not([class*='bg-black/']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: var(--nova-text-primary);
+}
+
+html[data-theme='light']
+  .nova-chat-surface
+  :is([class~='text-white/70'], [class~='text-white/60'], [class~='text-white/50'], [class~='text-white/40'])
+  :not([class*='bg-[var(--nova-accent-color']):not([class*='bg-red-']):not([class*='bg-emerald-']):not([class*='bg-sky-']):not([class*='bg-black/']):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *) {
+  color: var(--nova-text-secondary);
+}
+
+/* A disabled primary action must read as unavailable, not as a pale version of
+   a live button whose label has become unreadable. */
+button:disabled[class*='bg-[var(--nova-accent-color'] {
+  background-color: var(--nova-surface-raised) !important;
+  border-color: var(--nova-border-color) !important;
+  color: var(--nova-text-muted) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
 /* ── Interaction states ─────────────────────────────────────────────────────
    Every clickable surface should answer a press and every text field should
    answer focus. Component utilities (active:scale-95, focus:ring-*, …) stay
