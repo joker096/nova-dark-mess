@@ -12,6 +12,8 @@ import {
   receiveInboxPackets,
   receiveContactMessages,
   receiveContactOffers,
+  failoverInbox,
+  inviteFromInbox,
   migrateInbox,
   receiveInboxMessages,
   rotateInbox,
@@ -258,6 +260,46 @@ describe('anonymous contact pairing', () => {
     expect(messages.map((message) => message.body)).toEqual(['still here']);
     // Nothing was left behind on the old relay for this queue.
     expect(() => r1.poll(migration!.inbox.queueId, migration!.inbox.recipientToken)).toThrow();
+  });
+
+  it('moves a live queue off a relay that failed before its rotation window', async () => {
+    const r1 = new InMemoryAnonRelay();
+    const r2 = new InMemoryAnonRelay();
+    const transportFor = (relayUrl: string) => (relayUrl === 'https://r2.example' ? r2 : r1);
+
+    const alice = await createInvitation(r1, 'https://r1.example', undefined, 8);
+    const aliceInbox = {
+      ...alice!.inbox,
+      relays: [
+        { id: 'r1', url: 'https://r1.example' },
+        { id: 'r2', url: 'https://r2.example' },
+      ],
+    };
+    const bob = await acceptInvitation(r1, alice!.invite);
+    const [bobOffer] = await receiveContactOffers(r1, aliceInbox);
+    const aliceContact = contactFromOffer(aliceInbox, bobOffer)!;
+
+    // The queue is fresh, so a scheduled rotation would refuse to move it.
+    expect(await rotateInbox(transportFor, aliceInbox, Date.now())).toBeNull();
+
+    const migration = await failoverInbox(transportFor, aliceInbox, [aliceContact], Date.now());
+    expect(migration).not.toBeNull();
+    expect(migration!.notified).toBe(1);
+    expect(migration!.inbox.relayUrl).toBe('https://r2.example');
+    expect(migration!.inbox.queueId).not.toBe(aliceInbox.queueId);
+    // Identity survives failover, so contacts and block lists still match.
+    expect(contactIdentity(inviteFromInbox(migration!.inbox))).toBe(contactIdentity(alice!.invite));
+    expect(migration!.inbox.signingKey).not.toBe(aliceInbox.signingKey);
+
+    // Bob is told over his own queue and keeps writing to the new relay.
+    const [moved] = await receiveContactOffers(r1, bob!.contact.inbox);
+    expect(moved.relayUrl).toBe('https://r2.example');
+    await sendContactMessage(r2, contactFromOffer(bob!.contact.inbox, moved)!, 'after failover');
+    const messages = await receiveContactMessages(r2, {
+      ...aliceContact,
+      inbox: migration!.inbox,
+    });
+    expect(messages.map((message) => message.body)).toEqual(['after failover']);
   });
 
   it('keeps a blocked contact blocked after it moves to another relay', async () => {

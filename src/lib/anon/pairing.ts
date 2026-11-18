@@ -188,10 +188,13 @@ export async function rotateInbox(
   transportFor: (relayUrl: string) => InboxTransport | Promise<InboxTransport>,
   inbox: LocalInbox,
   now: number = Date.now(),
+  options: { force?: boolean } = {},
 ): Promise<LocalInbox | null> {
   const relays = inbox.relays;
   if (!relays || relays.length < 2) return null;
-  if (!shouldRotateQueue(inbox.createdAt, now, DEFAULT_QUEUE_ROTATION_MS)) return null;
+  if (!options.force && !shouldRotateQueue(inbox.createdAt, now, DEFAULT_QUEUE_ROTATION_MS)) {
+    return null;
+  }
   const current: RelayEndpoint =
     relays.find((relay) => relay.url === inbox.relayUrl) ?? { id: inbox.relayUrl, url: inbox.relayUrl };
   const next = nextRelay(current, relays);
@@ -201,7 +204,10 @@ export async function rotateInbox(
   // made the advertised challenge differ from the stored one, so every first
   // contact to a rotated inbox failed with "Invalid proof of work".
   const pow = createPowChallenge(inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY);
-  const created = await transport.createQueue(Math.max(0, inbox.expiresAt - now), pow);
+  // Keep the remaining lifetime when it is meaningful, otherwise let the relay
+  // apply its own default: a failed-over queue is often already past it.
+  const remaining = inbox.expiresAt - now;
+  const created = await transport.createQueue(remaining > 60_000 ? remaining : undefined, pow);
   if (!created) return null;
   const secret = x25519.utils.randomSecretKey();
   const publicKey = x25519.getPublicKey(secret);
@@ -261,8 +267,9 @@ export async function migrateInbox(
   inbox: LocalInbox,
   contacts: Contact[],
   now: number = Date.now(),
+  options: { force?: boolean } = {},
 ): Promise<InboxMigration | null> {
-  const rotated = await rotateInbox(transportFor, inbox, now);
+  const rotated = await rotateInbox(transportFor, inbox, now, options);
   if (!rotated) return null;
   const transports = new Map<string, InboxTransport>();
   let notified = 0;
@@ -277,6 +284,23 @@ export async function migrateInbox(
     if (await sendInboxMigration(transport, contact, rotated)) notified += 1;
   }
   return { inbox: rotated, notified, failed: contacts.length - notified };
+}
+
+/**
+ * Moves a live queue off a relay that stopped answering, without waiting for
+ * the rotation window, and announces the new invite to every contact.
+ *
+ * The old queue stays where it was and simply expires: nothing is deleted on a
+ * relay that cannot be reached anyway, and a contact that missed the notice
+ * still has a working queue until then.
+ */
+export function failoverInbox(
+  transportFor: (relayUrl: string) => InboxTransport | Promise<InboxTransport>,
+  inbox: LocalInbox,
+  contacts: Contact[],
+  now: number = Date.now(),
+): Promise<InboxMigration | null> {
+  return migrateInbox(transportFor, inbox, contacts, now, { force: true });
 }
 
 export function encodeContactOffer(invite: AnonInvite): string {
