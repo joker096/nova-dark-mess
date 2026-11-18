@@ -6,6 +6,8 @@ import {
   acceptInvitation,
   ackInboxPackets,
   contactFromOffer,
+  contactIdentity,
+  isBlockedContact,
   createInvitation,
   receiveInboxPackets,
   receiveContactMessages,
@@ -256,6 +258,63 @@ describe('anonymous contact pairing', () => {
     expect(messages.map((message) => message.body)).toEqual(['still here']);
     // Nothing was left behind on the old relay for this queue.
     expect(() => r1.poll(migration!.inbox.queueId, migration!.inbox.recipientToken)).toThrow();
+  });
+
+  it('keeps a blocked contact blocked after it moves to another relay', async () => {
+    const r1 = new InMemoryAnonRelay();
+    const r2 = new InMemoryAnonRelay();
+    const alice = await createInvitation(r1, 'https://r1.example', undefined, 8);
+    const bob = await acceptInvitation(r1, alice!.invite);
+    expect(bob).not.toBeNull();
+
+    const [bobOffer] = await receiveContactOffers(r1, alice!.inbox);
+    const aliceContact = contactFromOffer(alice!.inbox, bobOffer)!;
+    // Alice blocks Bob; the entry is keyed on his identity, not his queue key.
+    const bobIdentity = contactIdentity(aliceContact.peerInvite);
+    expect(blockSender(bobIdentity)).toBe(true);
+    expect(isBlockedContact(bobOffer)).toBe(true);
+
+    // Bob moves his inbox to r2 and announces the new invite.
+    const bobInbox = {
+      ...bob!.contact.inbox,
+      relays: [
+        { id: 'r1', url: 'https://r1.example' },
+        { id: 'r2', url: 'https://r2.example' },
+      ],
+    };
+    bobInbox.createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    const migration = await migrateInbox(
+      (relayUrl) => (relayUrl === 'https://r2.example' ? r2 : r1),
+      bobInbox,
+      // Bob notifies Alice by writing into the queue he already has for her.
+      [bob!.contact],
+      Date.now(),
+    );
+    expect(migration).not.toBeNull();
+    expect(migration!.notified).toBe(1);
+
+    const [movedBob] = await receiveInboxMessages(r1, alice!.inbox).then((messages) =>
+      messages.flatMap((message) => (message.offer ? [message.offer] : [])),
+    );
+    expect(movedBob.queueId).toBe(migration!.inbox.queueId);
+    expect(queueSigningPublicKey(movedBob.signingKey)).not.toBe(queueSigningPublicKey(bobOffer.signingKey));
+    // Different queue key, same identity: the block still applies and pairing stays refused.
+    expect(contactIdentity(movedBob)).toBe(bobIdentity);
+    expect(isBlockedContact(movedBob)).toBe(true);
+    expect(await acceptInvitation(r1, movedBob)).toBeNull();
+  });
+
+  it('falls back to the queue key for invites without an identity key', async () => {
+    const relay = new InMemoryAnonRelay();
+    const alice = await createInvitation(relay, 'http://localhost');
+    const legacy = { ...alice!.invite } as Record<string, unknown>;
+    delete legacy.identityKey;
+
+    expect(contactIdentity(legacy as never)).toBe(
+      queueSigningPublicKey(alice!.invite.signingKey),
+    );
+    expect(blockSender(contactIdentity(legacy as never))).toBe(true);
+    expect(isBlockedContact(legacy as never)).toBe(true);
   });
 
   it('reports contacts it could not notify instead of hiding them', async () => {

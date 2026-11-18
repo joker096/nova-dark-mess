@@ -12,6 +12,8 @@ import {
   inviteFromInbox,
   prepareInvitationAcceptance,
   receiveInboxPackets,
+  contactIdentity,
+  isBlockedContact,
   sendContactOffer,
   sendContactMessage,
   type Contact,
@@ -381,12 +383,11 @@ export const AnonymousMessengerScreen: React.FC<{
     [configuredSettings],
   );
   const selectedContact = state.contacts.find((entry) => entry.id === selectedContactId) ?? null;
-  const selectedSigningPublicKey = selectedContact
-    ? queueSigningPublicKey(selectedContact.contact.peerInvite.signingKey)
+  // Blocks follow the contact's identity key, which survives a queue rotation.
+  const selectedContactKey = selectedContact
+    ? contactIdentity(selectedContact.contact.peerInvite)
     : '';
-  const selectedContactBlocked = Boolean(
-    selectedSigningPublicKey && isBlocked(selectedSigningPublicKey),
-  );
+  const selectedContactBlocked = Boolean(selectedContactKey && isBlocked(selectedContactKey));
   const currentInvite = inviteCodeForInbox(state.pendingInbox);
   const inviteLink = currentInvite
     ? buildContactInviteUrl(currentInvite, publicAppUrl())
@@ -552,7 +553,7 @@ export const AnonymousMessengerScreen: React.FC<{
       batches.set(current.pendingInbox.queueId, { inbox: current.pendingInbox });
     }
     for (const entry of current.contacts) {
-      if (!isBlocked(queueSigningPublicKey(entry.contact.peerInvite.signingKey))) {
+      if (!isBlocked(contactIdentity(entry.contact.peerInvite))) {
         batches.set(entry.contact.inbox.queueId, { inbox: entry.contact.inbox, contactId: entry.id });
       }
     }
@@ -632,7 +633,7 @@ export const AnonymousMessengerScreen: React.FC<{
             setError('Unexpected message in a pending invite inbox; it was left unacknowledged.');
             continue;
           }
-          if (isBlocked(queueSigningPublicKey(packet.offer.signingKey))) {
+          if (isBlockedContact(packet.offer)) {
             const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
             bucket.packetIds.push(packet.packetId);
             acknowledgements.set(inbox.queueId, bucket);
@@ -691,10 +692,10 @@ export const AnonymousMessengerScreen: React.FC<{
   }, [isBusy, pendingInboxForPolling, transport]);
 
   const toggleSelectedContactBlock = () => {
-    if (!selectedSigningPublicKey) return;
+    if (!selectedContactKey) return;
     const changed = selectedContactBlocked
-      ? unblockSender(selectedSigningPublicKey)
-      : blockSender(selectedSigningPublicKey);
+      ? unblockSender(selectedContactKey)
+      : blockSender(selectedContactKey);
     if (!changed) {
       setError('Could not update the local block list.');
       return;
@@ -704,14 +705,18 @@ export const AnonymousMessengerScreen: React.FC<{
   };
 
   const reportSelectedContact = async () => {
-    if (!selectedContact || !selectedSigningPublicKey) return;
+    if (!selectedContact) return;
+    // The relay verifies reports against the key that created the queue, which
+    // rotation replaces, so this one deliberately is not the contact identity.
+    const queueSigningKey = queueSigningPublicKey(selectedContact.contact.peerInvite.signingKey);
+    if (!queueSigningKey) return;
     setIsBusy(true);
     setError('');
     setStatus('');
     try {
       const report = await recordAbuseReport({
         queueId: selectedContact.contact.peerInvite.queueId,
-        signingPublicKey: selectedSigningPublicKey,
+        signingPublicKey: queueSigningKey,
         category: reportCategory,
       });
       if (!report) throw new Error('Could not create an anonymous abuse report.');
