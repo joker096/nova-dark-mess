@@ -18,6 +18,9 @@ coverage/
 # PaymentO IPN receipts (server.js) — local audit ledger, never commit
 receipts/
 
+# Anonymous abuse reports (server.js) — hash-only, but still server state
+anon-reports/
+
 # Auto-downloaded gitleaks binary (scripts/check-secrets.js)
 tools/gitleaks/
 
