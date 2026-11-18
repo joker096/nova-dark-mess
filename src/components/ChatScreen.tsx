@@ -3218,10 +3218,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <p className="text-xs font-semibold text-white">
                     {t('chat.e2eeVerification')}
                   </p>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/20">
+                    {t('chat.e2eeDemo')}
+                  </span>
                   <span
                     data-testid="protection-verified"
                     className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-[var(--nova-warning-text)] border border-amber-500/30"

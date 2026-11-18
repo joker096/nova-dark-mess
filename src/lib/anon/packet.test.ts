@@ -5,6 +5,7 @@ import {
   decodeFixedPacket,
   encodeFixedFileChunks,
   encodeFixedPacket,
+  profileForPacketSize,
   profileSize,
 } from './packet';
 
@@ -27,6 +28,15 @@ describe('anon packet framing', () => {
     expect(() => encodeFixedPacket(tooBig, 'small')).toThrow();
   });
 
+  it('recovers the profile from the wire length', () => {
+    expect(profileForPacketSize(profileSize('small'))).toBe('small');
+    expect(profileForPacketSize(profileSize('standard'))).toBe('standard');
+    expect(profileForPacketSize(profileSize('large'))).toBe('large');
+    expect(() => profileForPacketSize(profileSize('large') + 8)).toThrow(
+      'Unexpected packet length',
+    );
+  });
+
   it('rejects invalid packet lengths', () => {
     const broken = new Uint8Array(10);
     expect(() => decodeFixedPacket(broken, 'small')).toThrow();
@@ -45,21 +55,26 @@ describe('anon packet framing', () => {
     expect(control.length).toBe(profileSize('small'));
   });
 
-  it('splits files into fixed-size packets and reassembles chunks out of order', () => {
-    const chunkSize = profileSize('small') - 4;
-    const file = Uint8Array.from({ length: chunkSize + 1 }, (_, index) => index % 256);
-    const chunks = encodeFixedFileChunks(file, 'small');
+  it.each([
+    ['small', profileSize('small')],
+    ['standard', profileSize('standard')],
+    ['large', profileSize('large')],
+  ] as const)('splits and reassembles a file with the %s profile', (profile, size) => {
+    const chunkSize = size - 4;
+    const file = Uint8Array.from({ length: chunkSize * 2 + 7 }, (_, index) => index % 256);
+    const chunks = encodeFixedFileChunks(file, profile);
 
-    expect(chunks).toHaveLength(2);
-    expect(chunks.every((chunk) => chunk.packet.length === profileSize('small'))).toBe(true);
-    expect(decodeFixedFileChunks([...chunks].reverse(), 'small')).toEqual(file);
+    expect(chunks.every((chunk) => chunk.packet.length === size)).toBe(true);
+    expect(decodeFixedFileChunks([...chunks].reverse(), profile)).toEqual(file);
   });
 
-  it('represents an empty file with one padded block', () => {
-    const chunks = encodeFixedFileChunks(new Uint8Array(), 'small');
-    expect(chunks).toHaveLength(1);
-    expect(chunks[0].packet.length).toBe(profileSize('small'));
-    expect(decodeFixedFileChunks(chunks, 'small')).toEqual(new Uint8Array());
+  it('represents an empty file with one padded block per profile', () => {
+    for (const profile of ['small', 'standard', 'large'] as const) {
+      const chunks = encodeFixedFileChunks(new Uint8Array(), profile);
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0].packet.length).toBe(profileSize(profile));
+      expect(decodeFixedFileChunks(chunks, profile)).toEqual(new Uint8Array());
+    }
   });
 
   it('rejects missing, duplicate, or malformed file chunks', () => {
