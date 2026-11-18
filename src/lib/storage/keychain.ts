@@ -22,6 +22,8 @@ export interface Keychain {
 const SERVICE = 'nova-dark-messenger';
 const LEGACY_PREFIX = 'nova_keychain_';
 
+export { SERVICE as KEYCHAIN_SERVICE };
+
 type Invoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 
 let invokePromise: Promise<Invoke> | null = null;

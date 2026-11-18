@@ -39,6 +39,13 @@ import {
 } from '../lib/security/pinAttemptLimiter';
 import { createKeychain } from '../lib/storage/keychain';
 import { checkPin, hashPin } from '../lib/security/pinHash';
+import {
+  wrapMasterKey,
+  unwrapMasterKey,
+  storeWrappedMasterKey,
+  removeWrappedMasterKey,
+  hasWrappedMasterKey,
+} from '../lib/security/vaultKey';
 import { P2PManager } from '../lib/p2p/p2pManager';
 
 const KEYCHAIN_SERVICE = 'nova-dark-messenger';
@@ -69,9 +76,15 @@ export interface SecurityContextType {
   pinLength: number;
   /** Optional P2P transport manager for real 1:1 message delivery (F1.1). */
   p2pManager: P2PManager | null;
+  /** True when a PIN-wrapped master key exists at rest (F2.2). */
+  vaultWrapped: boolean;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => void;
   unlockWithBiometric: () => Promise<boolean>;
+  /** Decrypts the PIN-wrapped master key into memory. Returns false on wrong PIN. */
+  unlockVault: (pin: string) => Promise<boolean>;
+  /** Returns the decrypted master key passphrase, or null if the vault is locked. */
+  getUnwrappedMasterKey: () => string | null;
   setLockOnHide: (enabled: boolean) => void;
   setPinLength: (length: number) => void;
   setP2PManager: (manager: P2PManager) => void;
@@ -124,6 +137,9 @@ const PIN_LENGTH_KEY = 'nova_pin_length';
 
 export { PIN_HASH_KEY, PIN_ENABLED_KEY };
 
+/** Decrypted master key (passphrase) held in memory only after a correct PIN. */
+let unwrappedMasterKey: string | null = null;
+
 function randomBase64(length: number): string {
   return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(length))));
 }
@@ -139,16 +155,23 @@ function base64ToBytes(value: string): Uint8Array {
 
 async function getOrCreateStorageCredentials(): Promise<{ passphrase: string; salt: Uint8Array }> {
   const kc = createKeychain();
-  let passphrase = await kc.get(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY);
-  if (!passphrase) {
-    passphrase = randomBase64(32);
-    await kc.set(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY, passphrase);
-  }
-
   let salt = await kc.get(KEYCHAIN_SERVICE, STORAGE_SALT_KEY);
   if (!salt) {
     salt = randomBase64(16);
     await kc.set(KEYCHAIN_SERVICE, STORAGE_SALT_KEY, salt);
+  }
+
+  // When the vault is unlocked (PIN entered), use the in-memory decrypted
+  // passphrase instead of reading the raw master key from the keychain
+  // (F2.2: PIN wraps the vault key).
+  if (unwrappedMasterKey) {
+    return { passphrase: unwrappedMasterKey, salt: base64ToBytes(salt) };
+  }
+
+  let passphrase = await kc.get(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY);
+  if (!passphrase) {
+    passphrase = randomBase64(32);
+    await kc.set(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY, passphrase);
   }
 
   return { passphrase, salt: base64ToBytes(salt) };
@@ -206,6 +229,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [pinEnabled, setPinEnabled] = useState(false);
   const [pinHash, setPinHash] = useState<string | null>(null);
   const [pinLockoutUntil, setPinLockoutUntil] = useState<number | null>(null);
+  const [vaultWrappedState, setVaultWrappedState] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -602,6 +626,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPinHash(hash);
     setPinEnabled(true);
     setPinLockoutUntil(null);
+
+    // F2.2: wrap the raw master key with a key derived from the PIN, then drop
+    // the unwrapped copy from the keychain so it cannot be read at rest.
+    const currentMasterKey = await kc.get(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY);
+    if (currentMasterKey) {
+      const wrapped = await wrapMasterKey(pin, currentMasterKey);
+      await storeWrappedMasterKey(wrapped);
+      await kc.remove(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY);
+    }
   }, []);
 
   const verifyPin = useCallback(
@@ -639,6 +672,16 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         clearPinFailures();
         setPinLockoutUntil(null);
+
+        // F2.2: unwrap the PIN-wrapped master key into memory so message
+        // decryption can proceed. The plaintext passphrase lives only in RAM.
+        if (await hasWrappedMasterKey()) {
+          const unwrapped = await unwrapMasterKey(pin);
+          if (unwrapped) {
+            unwrappedMasterKey = unwrapped;
+          }
+        }
+
         return true;
       }),
     [pinHash, runSerialized]
@@ -650,6 +693,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await kc.remove(KEYCHAIN_SERVICE, PIN_HASH_KEY);
     await kc.remove(KEYCHAIN_SERVICE, PIN_ENABLED_KEY);
     await kc.remove(KEYCHAIN_SERVICE, PIN_SALT_KEY);
+    await removeWrappedMasterKey();
+    unwrappedMasterKey = null;
     try {
       localStorage.removeItem(PIN_HASH_KEY);
       localStorage.removeItem(PIN_ENABLED_KEY);
@@ -717,6 +762,18 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return p2pManager.getPeerBundle(fingerprint) === null;
   }, [p2pManager, peerFingerprintsByChat]);
 
+  const unlockVault = useCallback(async (pin: string): Promise<boolean> => {
+    if (!(await hasWrappedMasterKey())) return false;
+    const unwrapped = await unwrapMasterKey(pin);
+    if (!unwrapped) return false;
+    unwrappedMasterKey = unwrapped;
+    return true;
+  }, []);
+
+  const getUnwrappedMasterKey = useCallback((): string | null => {
+    return unwrappedMasterKey;
+  }, []);
+
   const clearLocalEncryptedData = useCallback(async () => {
     if (storageReadyRef.current) {
       await dbInstance.clearAll();
@@ -728,6 +785,18 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTotpSecret(generateTOTPSecret());
     await removePin();
   }, [removePin]);
+
+  // Keep the vault-wrapped flag in sync with whether a PIN-wrapped master key
+  // exists at rest (F2.2).
+  useEffect(() => {
+    let cancelled = false;
+    void hasWrappedMasterKey().then((wrapped) => {
+      if (!cancelled) setVaultWrappedState(wrapped);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pinEnabled]);
 
   return (
     <SecurityContext.Provider
@@ -761,6 +830,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         peerFingerprintsByChat,
         setPeerFingerprint,
         isDemoPeer,
+        vaultWrapped: vaultWrappedState,
+        unlockVault,
+        getUnwrappedMasterKey,
         encryptAndSendMessage,
         checkPeerKey,
         decryptIncomingMessage,
