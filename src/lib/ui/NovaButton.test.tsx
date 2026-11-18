@@ -24,7 +24,9 @@ describe('NovaButton', () => {
     render(<NovaButton variant="accent" onClick={vi.fn()}>Accent</NovaButton>);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
-    expect(btn.className).toContain('text-white');
+    // Explicit white, not `text-white`: the light theme remaps `text-white` to
+    // dark ink, which would disappear on this accent fill.
+    expect(btn.className).toContain('text-[#ffffff]');
   });
 
   it('applies accent-ghost variant styles', () => {
