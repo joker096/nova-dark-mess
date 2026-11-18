@@ -207,7 +207,7 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `android:allowBackup` is not disabled yet; and the PIN does not wrap the vault
   key.
 
-- [ ] **F2.2 Make the PIN meaningfully protect the vault.**
+- [x] **F2.2 Make the PIN meaningfully protect the vault.** _(done 2026-11-18, partial on mobile)_
   Evidence: `SecurityContext.tsx:524–527` hashes the PIN with the **fixed salt**
   `'nova-pin-v1'`, default length 4, stores the hash in `localStorage` and
   compares with `===`. 10 000 candidates are brute-forced offline in seconds;
@@ -222,10 +222,16 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   migration landed (`src/lib/security/pinHash.ts`, 4 tests); the hash and salt
   are written through `createKeychain()` instead of `localStorage`, and the
   pre-migration fixed-salt hash is still accepted once and then replaced.
-  Still open: the PIN only gates the screen — it does not unlock a wrapping key,
-  so a copied storage dump still yields the vault.
-  Honest caveat: on desktop this now lands in the OS credential store, but on
-  Android/iOS `createKeychain()` still falls back to `localStorage` (see F2.1).
+  `src/lib/security/vaultKey.ts` wraps the IndexedDB master key
+  (`STORAGE_SECRET_KEY`) with an Argon2id-derived wrapping key from the PIN.
+  `setPin()` wraps the raw master key and drops it from the keychain;
+  `verifyPin()` unwraps it into RAM-only memory via `unlockVault()` /
+  `getUnwrappedMasterKey()`; `removePin()` deletes the wrapped copy.
+  `src/lib/security/vaultKey.test.ts` covers wrap/unwrap, wrong-PIN rejection,
+  missing-key, persistence, and removal (7 tests).
+  Still open: **mobile has no native keychain yet** — Android/iOS `createKeychain()`
+  falls back to `localStorage` (see F2.1), so the wrapped key and PIN salt are
+  still readable from a rooted device or an Android backup.
 
 - [x] **F2.3 Remove silent weak-randomness fallbacks.** _(done 2026-11-18)_
   Evidence: `src/lib/social/groupInvites.ts:16–20` and

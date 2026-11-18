@@ -35,7 +35,7 @@ describe('UI visual snapshot - NovaButton', () => {
         Accent
       </NovaButton>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11] w-10 h-10 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95">Accent</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11] w-10 h-10 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[#ffffff] border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95">Accent</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
     expect(btn.className).toContain('w-10 h-10');
