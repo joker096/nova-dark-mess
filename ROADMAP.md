@@ -341,6 +341,13 @@ servers, no paid services.
   self-hosted TURN, call quality indicators.
 - [ ] **Resumable file transfers** across app restarts (persist transfer state).
 - [ ] **Backup verification**: dry-run restore, checksum, "test restore" button.
+  `verifyEncryptedBackup()` in `src/lib/storage/backup.ts` decrypts and validates
+  a `.nova-backup` file without applying it (dry-run), returning `true` when the
+  passphrase is correct and the structure is valid. AES-GCM authentication
+  provides implicit checksum verification — corrupted ciphertext is rejected.
+  Tests in `src/lib/storage/backup.kdf.test.ts` cover valid/wrong passphrase,
+  garbage input, bad magic, and dry-run idempotency. Remaining: a UI "test
+  restore" button in the backup/restore dialog.
 - [ ] **Performance**: media cache with eviction, image thumbnails, faster cold start
   on low-end Android.
 - [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
