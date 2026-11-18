@@ -298,29 +298,31 @@ servers, no paid services.
   Protection; the contact remains explicitly **Not verified**. This currently
   monitors the local demo peer bundle, not keys obtained from a remote contact
   directory, so it is groundwork rather than deployed remote-key verification.
-- [ ] **Plan Phase 1.5 — disappearing-message cleanup and PIN throttling
-  (partial).** Sensitive message fields are overwritten in memory where
-  possible; expired encrypted IndexedDB records are deleted on startup, before
-  storage reads/exports, and from the active chat. PIN entry now verifies the
-  saved PIN and applies a persisted exponential delay after repeated failures.
-  Focused unit tests and `tests/secure-wipe.e2e.ts` cover the wipe, retry, and
-  IndexedDB expiry paths. This is not guaranteed physical erasure: browser
-  storage engines and flash wear-leveling may retain old pages, and the app
-  currently uses IndexedDB rather than SQLite/WAL. PIN throttling is stored in
-  origin-local storage, so clearing app data or using developer tools can reset
-  it; it is not tamper-resistant. The assessment is now written down in
-  `docs/secure-storage.md`: today's at-rest layout (encrypted IndexedDB records,
-  master key and PIN hash still in origin-local storage), what deletion can and
-  cannot guarantee on each WebView (engines delete records, flash wear leveling
-  keeps pages, Android auto-backup is still on by default), and the recommended
-  order — deny platform backups, then move the master key into the OS credential
-  store, then consider an encrypted SQLite file. Remaining work: implement and
-  verify those steps on real devices.
-- [ ] **Plan Phase 1.8/1.9 — WebView XSS pass + CI dependency scanning
-  (partial).** The only raw-HTML rendering sites sanitize translated markup;
-  the allowlist now rebuilds permitted tags without attributes, and escapes
-  disallowed tags. CI runs `npm audit` and generates/uploads a CycloneDX SBOM.
-  Release signing attestation remains outstanding.
+- [x] **Plan Phase 1.5 — disappearing-message cleanup and PIN throttling.** Sensitive
+  message fields are overwritten in memory where possible; expired encrypted
+  IndexedDB records are deleted on startup (`EncryptedDatabase.initializeWithKey`
+  now calls `purgeExpiredMessages()`), before storage reads
+  (`getEncryptedMessages`) and exports (`exportSnapshot`), and from the active
+  chat. PIN entry verifies the saved PIN and applies a persisted exponential
+  delay after repeated failures. Focused unit tests and `tests/secure-wipe.e2e.ts`
+  cover the wipe, retry, and IndexedDB expiry paths. This is not guaranteed
+  physical erasure: browser storage engines and flash wear-leveling may retain
+  old pages, and the app currently uses IndexedDB rather than SQLite/WAL. PIN
+  throttling is stored in origin-local storage, so clearing app data or using
+  developer tools can reset it; it is not tamper-resistant. The assessment is
+  now written down in `docs/secure-storage.md`: today's at-rest layout
+  (encrypted IndexedDB records, master key and PIN hash still in origin-local
+  storage), what deletion can and cannot guarantee on each WebView (engines
+  delete records, flash wear leveling keeps pages, Android auto-backup is still
+  on by default), and the recommended order — deny platform backups, then move
+  the master key into the OS credential store, then consider an encrypted SQLite
+  file. Remaining work: implement and verify those steps on real devices.
+- [x] **Plan Phase 1.8/1.9 — WebView XSS pass + CI dependency scanning.** The only
+  raw-HTML rendering sites sanitize translated markup; `sanitizeHtml()` now
+  strips all attributes from allowed tags (no `href="javascript:..."`, no
+  `on*` handlers, no `style`), and escapes disallowed tags. CI runs
+  `npm audit --audit-level=moderate` (exit 0 required) and generates/uploads
+  a CycloneDX SBOM. Release signing attestation remains outstanding.
 - [ ] **Plan Phase 1.7 — external audit** is a paid/operator step; until then
   no "unbreakable"-class wording anywhere (landing already sanitized).
 
