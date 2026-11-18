@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createEncryptedBackupBlob,
   restoreEncryptedBackup,
+  verifyEncryptedBackup,
   type BackupPayload,
 } from './backup';
 import { DEFAULT_ARGON2ID_PARAMS } from './kdf';
@@ -93,5 +94,50 @@ describe('.nova-backup KDF', () => {
     await expect(
       restoreEncryptedBackup(JSON.stringify(evil), 'x'),
     ).rejects.toThrow('Unsupported backup key derivation parameters');
+  });
+
+  describe('verifyEncryptedBackup (dry-run restore)', () => {
+    it('returns true for a valid backup with correct passphrase', async () => {
+      const blob = await createEncryptedBackupBlob(payload, 'correct horse battery');
+      const ok = await verifyEncryptedBackup(await blobText(blob), 'correct horse battery');
+      expect(ok).toBe(true);
+    });
+
+    it('returns false for a valid backup with wrong passphrase', async () => {
+      const blob = await createEncryptedBackupBlob(payload, 'correct horse battery');
+      const ok = await verifyEncryptedBackup(await blobText(blob), 'wrong passphrase');
+      expect(ok).toBe(false);
+    });
+
+    it('returns false for garbage input', async () => {
+      const ok = await verifyEncryptedBackup('not json at all', 'anything');
+      expect(ok).toBe(false);
+    });
+
+    it('returns false for a valid-format backup with wrong magic', async () => {
+      const evil = {
+        magic: 'NOT_A_BACKUP',
+        version: 2,
+        kdf: DEFAULT_ARGON2ID_PARAMS,
+        salt: 'AAAAAAAAAAAAAAAAAAAAAA==',
+        ciphertext: 'AAAA',
+        iv: 'AAAA',
+        exportedAt: '',
+      };
+      const ok = await verifyEncryptedBackup(JSON.stringify(evil), 'x');
+      expect(ok).toBe(false);
+    });
+
+    it('does not mutate any state (dry-run)', async () => {
+      const blob = await createEncryptedBackupBlob(payload, 'correct horse battery');
+      const fileText = await blobText(blob);
+      const ok1 = await verifyEncryptedBackup(fileText, 'correct horse battery');
+      const ok2 = await verifyEncryptedBackup(fileText, 'correct horse battery');
+      expect(ok1).toBe(true);
+      expect(ok2).toBe(true);
+      // The same input should still restore successfully afterwards.
+      const restored = await restoreEncryptedBackup(fileText, 'correct horse battery');
+      expect(restored.identity.fingerprint).toBe('nova_pk_test');
+    });
   });
 });

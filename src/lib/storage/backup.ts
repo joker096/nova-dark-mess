@@ -105,6 +105,40 @@ export async function restoreEncryptedBackup(
   backupFileContent: string,
   passphrase: string
 ): Promise<BackupPayload> {
+  const payload = await decryptBackupPayload(backupFileContent, passphrase);
+  if (!payload || typeof payload.version !== 'number' || !payload.identity) {
+    throw new Error('Backup payload is invalid');
+  }
+  return payload;
+}
+
+/**
+ * Dry-run restore: decrypts and validates the backup file without applying it.
+ * Returns `true` when the passphrase is correct and the backup structure is
+ * valid, `false` otherwise. Use this for a "test restore" button — the user
+ * can confirm a backup is readable before relying on it.
+ */
+export async function verifyEncryptedBackup(
+  backupFileContent: string,
+  passphrase: string
+): Promise<boolean> {
+  try {
+    await decryptBackupPayload(backupFileContent, passphrase);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Shared decryption used by both restoreEncryptedBackup and
+ * verifyEncryptedBackup. Returns the raw payload or throws on any failure
+ * (bad file format, bad passphrase, corrupted ciphertext).
+ */
+async function decryptBackupPayload(
+  backupFileContent: string,
+  passphrase: string
+): Promise<BackupPayload> {
   let file: Partial<BackupFile> & { saltHex?: string };
   try {
     file = JSON.parse(backupFileContent);
