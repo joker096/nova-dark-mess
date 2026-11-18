@@ -107,11 +107,11 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
 
 ## F1 — Make the product do what the docs claim (P0, 1–2 weeks)
 
-- [ ] **F1.1 Wire a real 1:1 transport into the chat UI.**
+- [ ] **F1.1 Wire a real 1:1 transport into the chat UI.** _(partial — done 2026-11-18)_
   Evidence: `SecurityContext.tsx:359` calls `getOrCreateDemoPeerBundle(chatId)`
   and encrypts to that locally generated peer; the ciphertext is written to
-  IndexedDB and never leaves the device. `ChatScreen.tsx:2510` fakes
-  delivered/read with timers, `ChatScreen.tsx:1566` fabricates peer replies with
+  IndexedDB and never leaves the device. `ChatScreen.tsx:2510` faked
+  delivered/read with timers, `ChatScreen.tsx:1566` fabricated peer replies with
   `Math.random()`. `P2PManager` is never instantiated by UI code, so the tested
   ratchet/WebRTC/relay layers are unreachable from the app. `tests/send-message.e2e.ts`
   only asserts the local bubble.
@@ -122,6 +122,12 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   Acceptance: two browser contexts that add each other exchange a message that
   arrives as ciphertext over a transport and decrypts on the other side; an e2e
   test proves it. Failure to deliver shows `error`, not `read`.
+  Outcome: the fake Katie auto-reply and typing timers were removed from
+  `ChatScreen.handleSendMessage`; `SecurityContext.encryptAndSendMessage` now
+  accepts an optional `P2PManager` (via `setP2PManager()`) and delivers through
+  `p2pManager.sendMessage()` when wired, falling back to the demo peer bundle
+  for the offline showcase. The demo peer remains the default until a real
+  transport is configured — full two-client e2e exchange still pending.
 
 - [x] **F1.2 Fix anonymous file receive (profile mismatch).** _(done 2026-11-18)_
   Evidence: `AnonymousMessengerScreen.tsx:1353` sends chunks with the `'large'`
