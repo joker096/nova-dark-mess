@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnonymousMessengerScreen } from './AnonymousMessengerScreen';
 import { generateQueueSigningKeyPair, queueSigningPublicKey } from '../lib/anon/signing';
+import { FAILOVER_AFTER_FAILURES } from '../lib/anon/relayHealth';
 
 const mocks = vi.hoisted(() => ({
   db: {
@@ -17,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   sendContactOffer: vi.fn(),
   sendContactMessage: vi.fn(),
   failoverInbox: vi.fn(),
+  migrateInbox: vi.fn(),
+  checkTorRunning: vi.fn(),
   toDataURL: vi.fn(),
   purchasePremiumGiftCode: vi.fn(),
   clearPendingPremiumGiftOrder: vi.fn(),
@@ -52,6 +55,15 @@ vi.mock('../lib/anon/pairing', async (importOriginal) => {
     sendContactOffer: mocks.sendContactOffer,
     sendContactMessage: mocks.sendContactMessage,
     failoverInbox: mocks.failoverInbox,
+    migrateInbox: mocks.migrateInbox,
+  };
+});
+
+vi.mock('../lib/anon/tor', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/anon/tor')>();
+  return {
+    ...actual,
+    checkTorRunning: mocks.checkTorRunning,
   };
 });
 
@@ -115,6 +127,8 @@ describe('AnonymousMessengerScreen', () => {
     mocks.sendContactOffer.mockResolvedValue(true);
     mocks.sendContactMessage.mockResolvedValue({ ok: true });
     mocks.failoverInbox.mockResolvedValue(null);
+    mocks.migrateInbox.mockResolvedValue(null);
+    mocks.checkTorRunning.mockResolvedValue({ ok: true, port: 9050 });
     mocks.toDataURL.mockResolvedValue('data:image/png;base64,qr');
     mocks.purchasePremiumGiftCode.mockResolvedValue({
       ok: true,
@@ -216,6 +230,66 @@ describe('AnonymousMessengerScreen', () => {
     );
   });
 
+  it('saves Tor settings only when the local SOCKS listener answers', async () => {
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: 'http://abcdefghijklmnopqrstuvwxyz234567.onion',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: true,
+      },
+      contacts: [],
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+
+    await waitFor(() => expect(mocks.checkTorRunning).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mocks.db.saveSetting).toHaveBeenCalledWith(
+        'anon_messenger_state_v1',
+        expect.objectContaining({ settings: expect.objectContaining({ tor: true }) }),
+      ),
+    );
+  });
+
+  it('rejects Tor settings when the SOCKS listener is not reachable', async () => {
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: 'http://abcdefghijklmnopqrstuvwxyz234567.onion',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: true,
+      },
+      contacts: [],
+    });
+
+    mocks.checkTorRunning.mockResolvedValueOnce({
+      ok: false,
+      port: 9050,
+      error: 'connection refused',
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+
+    await waitFor(() => expect(mocks.checkTorRunning).toHaveBeenCalledTimes(1));
+    expect(mocks.db.saveSetting).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByText(/Tor is not answering on 127.0.0.1:9050/)).toBeInTheDocument(),
+    );
+  });
+
   it('polls a queue on the relay that hosts it, not on the primary relay', async () => {
     const signingKey = generateQueueSigningKeyPair().privateKey;
     mocks.db.loadSetting.mockResolvedValue({
@@ -302,6 +376,106 @@ describe('AnonymousMessengerScreen', () => {
     // The queue moved with its contacts, not the whole app's relay.
     expect(mocks.failoverInbox.mock.calls[0][1]).toMatchObject({ queueId: contact.inbox.queueId });
     expect(mocks.failoverInbox.mock.calls[0][2]).toHaveLength(1);
+  });
+
+  it('rotates a due contact queue to the next relay on schedule', async () => {
+    const { contact, state } = stateWithContact('peer');
+    mocks.db.loadSetting.mockResolvedValue({
+      ...state,
+      settings: {
+        ...state.settings,
+        extraRelays: 'https://other-relay.example',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+      },
+      contacts: [
+        {
+          id: 'peer',
+          contact: {
+            ...contact,
+            inbox: {
+              ...contact.inbox,
+              relays: [
+                { id: 'https://relay.example', url: 'https://relay.example' },
+                { id: 'https://other-relay.example', url: 'https://other-relay.example' },
+              ],
+              createdAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+            },
+          },
+          messages: [],
+        },
+      ],
+    });
+    const rotatedInbox = {
+      ...contact.inbox,
+      relayUrl: 'https://other-relay.example',
+      queueId: 'q_00000000000000000000000000000005',
+    };
+    mocks.migrateInbox.mockResolvedValue({ inbox: rotatedInbox, notified: 1, failed: 0 });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+
+    await waitFor(() => expect(mocks.migrateInbox).toHaveBeenCalledTimes(1));
+    expect(mocks.migrateInbox.mock.calls[0][2]).toHaveLength(1);
+    await waitFor(() =>
+      expect(mocks.db.saveSetting).toHaveBeenCalledWith(
+        'anon_messenger_state_v1',
+        expect.objectContaining({
+          contacts: expect.arrayContaining([
+            expect.objectContaining({
+              contact: expect.objectContaining({
+                inbox: expect.objectContaining({
+                  relayUrl: 'https://other-relay.example',
+                  queueId: 'q_00000000000000000000000000000005',
+                }),
+              }),
+            }),
+          ]),
+        }),
+      ),
+    );
+  });
+
+  it('seeds relay failures from storage and fails over sooner', async () => {
+    const { contact, state } = stateWithContact('peer');
+    const stateWithRelays = {
+      ...state,
+      contacts: [
+        {
+          ...state.contacts[0],
+          contact: {
+            ...state.contacts[0].contact,
+            inbox: {
+              ...state.contacts[0].contact.inbox,
+              relays: [
+                { id: 'https://relay.example', url: 'https://relay.example' },
+                { id: 'https://other-relay.example', url: 'https://other-relay.example' },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    mocks.db.loadSetting.mockResolvedValueOnce(stateWithRelays);
+    mocks.db.loadSetting.mockResolvedValue({
+      'https://relay.example': { failures: FAILOVER_AFTER_FAILURES - 1 },
+    });
+    mocks.receiveInboxPackets.mockRejectedValue(new Error('relay unreachable'));
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+
+    await waitFor(() => expect(mocks.failoverInbox).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mocks.db.saveSetting).toHaveBeenCalledWith(
+        'anon_relay_failures_v1',
+        { 'https://relay.example': { failures: FAILOVER_AFTER_FAILURES } },
+      ),
+    );
   });
 
   it('persists decrypted messages before acknowledging relay packets', async () => {

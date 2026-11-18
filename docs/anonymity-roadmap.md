@@ -81,10 +81,10 @@ does not meet full Phase B/C acceptance.
 | Spam controls | `src/lib/anon/spam.js` + `spam.d.ts` provide PoW and one-time invite tokens (`createInviteToken`, `isInviteToken`); `server.js` verifies first-contact challenges, burns invite tokens on first enqueue, and accepts hash-only reports through sealed routing. `src/lib/anon/blocks.ts` keeps reports locally and makes uploads retryable; `pairing.ts` rejects invitations and filters offers from blocked senders. | Reports persist on the relay (one hash-only file per report id, TTL cleanup, reloaded at boot); creation is limited per signing key (10/hour) and blocked at 3 live spam reports for that key, while enqueueing on existing queues is unaffected. Report counts are unauthenticated hash-only, so blocking is a speed bump, not a ban. |
 | Groups | `src/lib/anon/groups.ts` is a fan-out helper with `sendEncryptedGroupMessage` (AES-256-GCM group envelope under a shared key, one copy per member queue, capped at `MAX_FANOUT_MEMBERS`) and `distributeGroupSession` (sends the current/rotated key as a 1:1 sealed message). `src/lib/anon/groupSession.ts` adds key generation/rotation, encrypt/open, strict parsing and monotonic adoption; a removed member cannot open messages sealed after rotation. | No MLS, no dedicated group relay, no app UI/integration, and no post-compromise security/per-sender ratchet. |
 | Push | `src/lib/anon/push.ts` has types, a sanitizer, `registerPush` / `fetchPushHint`, a per-queue token helper (`pushTokenForQueue`) and a hint poller (`createPushHintPoller`) that respects visibility/online state and backs off per token; `AnonymousMessengerScreen` registers one opaque token per queue and polls hints for pending and contact queues. Server endpoints `POST /api/anon/push/register` (stores only `pushToken -> queueId`) + `GET /api/anon/push/hint` (empty "check the relay") are rate-limited, TTL'd, and cleaned up; `ANON_PUSH_WEBHOOK_URL` forwards a wake-up containing only the provider token (no queue, sender or content) to a UnifiedPush/FCM/APNs bridge. | No native FCM/APNs SDK in the app and no Android background receiver, so delivery requires an operator bridge or UnifiedPush distributor and the app must poll on wake; push is disabled when a proxy is configured to avoid leaking the direct IP. |
-| Multi-relay | `src/lib/anon/relays.ts` has selection/rotation helpers; `src/lib/anon/relayHealth.ts` counts consecutive transport failures per relay and `failoverInbox` moves a live queue to the next relay before its rotation window, announcing the new invite to contacts; `rotateInbox(transportFor, …)` creates the rotated queue on the *next* relay, `migrateInbox` sends the new invite to every contact over that contact's existing queue, and an invite now carries an `identityKey` (the first queue's public key) that rotation preserves, so local blocks and contact recognition survive the move. | Scheduled rotation is not triggered by the app yet (failover covers outages only), failure counters are in-memory and reset on restart, and a contact that missed the failover notice keeps writing to the old queue until it expires; `identityKey` is now bound to the queue key by an Ed25519 `identitySignature` (unsigned or forged claims fall back to the queue key), but a sender who starts a fresh inbox is still a new identity for block lists. |
-| Tor/mixnet | `src/lib/anon/tor.ts` validates `.onion` endpoints and builds a fetch-compatible Tor client (`createTorFetch`) that sends requests through a loopback SOCKS5 bridge implemented in `src-tauri/src/anon_net.rs`; `createAnonTransport({ tor: true })` routes the direct and proxy transports through it, tests cover URL rules, port forwarding, failures and end-to-end queue creation, and the app has a Tor toggle that validates `.onion` relay/proxy URLs and disables push while active. | No mixnet; plain `http://` onion endpoints only (Tor authenticates and encrypts the onion circuit itself); requires a running Tor SOCKS listener and the Tauri shell. |
+| Multi-relay | `src/lib/anon/relays.ts` has selection/rotation helpers; `src/lib/anon/relayHealth.ts` counts consecutive transport failures per relay and `failoverInbox` moves a live queue to the next relay before its rotation window, announcing the new invite to contacts; `rotateInbox(transportFor, …)` creates the rotated queue on the *next* relay, `migrateInbox` sends the new invite to every contact over that contact's existing queue, and an invite now carries an `identityKey` (the first queue's public key) that rotation preserves, so local blocks and contact recognition survive the move. | App-triggered scheduled rotation moves due queues to the next relay on each inbox check (`rotateQueuesIfDue`, announced to contacts via `migrateInbox`); failover still covers outages. Failure counters persist to encrypted IndexedDB (`anon_relay_failures_v1`) across restart and clear on a single successful probe; a contact that misses a notice keeps writing to the old queue until it expires; `identityKey` is now bound to the queue key by an Ed25519 `identitySignature` (unsigned or forged claims fall back to the queue key), but a sender who starts a fresh inbox is still a new identity for block lists. |
+| Tor/mixnet | `src/lib/anon/tor.ts` validates `.onion` endpoints and builds a fetch-compatible Tor client (`createTorFetch`) that sends requests through a loopback SOCKS5 bridge implemented in `src-tauri/src/anon_net.rs`; `createAnonTransport({ tor: true })` routes the direct and proxy transports through it, tests cover URL rules, port forwarding, failures and end-to-end queue creation, and the app has a Tor toggle that validates `.onion` relay/proxy URLs, disables push while active, and verifies the local SOCKS listener answers (`anon_tor_check`) before allowing Tor mode. Per-relay round-trip latency is recorded (`src/lib/anon/relayLatency.ts`) for the privacy/performance trade-off. | No mixnet; plain `http://` onion endpoints only (Tor authenticates and encrypts the onion circuit itself); requires the Tauri shell. |
 | Fuzzing | `src/lib/anon/fuzz.test.ts` covers packet parsing; `src/lib/anon/fuzz.relay.test.ts` fuzzes relay commands, tokens, limits and signatures with a seeded PRNG, and `src/lib/anon/storage.test.ts` pins storage/TTL/ACK invariants and command timestamp/nonce binding. | No independent audit. |
-| App integration | `AnonymousMessengerScreen` is reachable from the new-conversation dialog through an explicit add-contact action. It supports manually pinned proxy configuration, invite create/accept, text messaging, manual inbox checks, local blocking, battery-aware cover traffic via `DummyTrafficScheduler` (opt-in, off by default), and encrypted IndexedDB persistence of queue secrets and history. Incoming packets are persisted before ACK. Explicit abuse-report submissions send only hashes and a category inside the sealed proxy envelope. The screen explains the relay setup and invite/accept/check-inbox steps. | Experimental screen is separate from ordinary chat history; text-only, manual polling, no background sync, and no scheduled rotation (only failover on repeated relay failures). |
+| App integration | `AnonymousMessengerScreen` is reachable from the new-conversation dialog through an explicit add-contact action. It supports manually pinned proxy configuration, invite create/accept, text messaging, manual inbox checks, local blocking, battery-aware cover traffic via `DummyTrafficScheduler` (opt-in, off by default), and encrypted IndexedDB persistence of queue secrets and history. Incoming packets are persisted before ACK. Explicit abuse-report submissions send only hashes and a category inside the sealed proxy envelope. The screen explains the relay setup and invite/accept/check-inbox steps. | Experimental screen is separate from ordinary chat history; text-only, manual polling, no background sync. |
 | Threat model | `docs/threat-model.md` now has an "Anonymous queue layer" section with per-component visibility and honest limits; `docs/anonymity-audit.md` records the detailed per-party table, severity-tagged findings, storage invariants and a reproducible relay-build recipe. | The audit is internal, not independent. |
 
 Current phase status: A-B partial (protocol, fixed packets, sealed session,
@@ -101,10 +101,9 @@ invites, local block lists, in-app blocking, and hash-only reports through the
 sealed proxy route, verified report targets, per-key creation budget); H helper
 (selection/rotation plus `migrateInbox` that moves a queue to the next relay and
 notifies contacts over their existing queues; relay list and per-relay transports
-in the app; failure counters plus `failoverInbox` wired to polling; scheduled
-rotation still not triggered automatically); I
+in the app; failure counters plus `failoverInbox` wired to polling; scheduled rotation triggered on each inbox check); I
 partial (Tor endpoint selector plus a native SOCKS5 bridge and a Tor fetch client
-in `createAnonTransport`; no app toggle or mixnet); J partial (packet and
+in `createAnonTransport`; Tor-running check before enabling Tor mode; no mixnet); J partial (packet and
 relay-command fuzz, storage invariants, internal metadata audit with a
 reproducible build recipe and residual-risk disclosure; no independent audit).
 
@@ -402,10 +401,9 @@ invites, rotation re-signing, forged signatures, unsigned claims and the legacy
 fallback. A sender who creates a brand new inbox is still a stranger, so
 blocking remains a speed bump rather than a ban.
 
-Missing: scheduled rotation is not triggered by the app yet (failover covers
-outages only), failure counters are in-memory and reset on restart, and a
-contact that missed the failover notice keeps writing to the old queue until it
-expires.
+Missing: a contact that misses a rotation or failover notice keeps writing to
+the old queue until it expires. Failure counters now persist across restart
+(`anon_relay_failures_v1`) and are cleared on a single successful probe.
 
 ## 11. Phase I — Optional strong anonymity transports
 
@@ -436,9 +434,11 @@ command payload, custom port, bridge failure, queue creation end to end and
 error responses. The app has a Tor toggle in the advanced network settings: it
 requires `.onion` relay/proxy URLs (plain `http://` onion is now accepted by
 `isAllowedRelayUrl`), passes `tor: true` to every per-relay transport, and
-disables push registration/polling while active. Residual: no mixnet and no
-measured battery/latency copy beyond the toggle hint; Tor needs a running
-SOCKS listener and the native Tauri shell.
+disables push registration/polling while active, and verifies the local SOCKS
+listener answers (`anon_tor_check`) before allowing Tor mode. Per-relay
+round-trip latency is recorded (`src/lib/anon/relayLatency.ts`) so the
+privacy/performance trade-off is measurable. Residual: no mixnet; Tor needs
+the native Tauri shell.
 
 ## 12. Phase J — Verification, audit and release
 

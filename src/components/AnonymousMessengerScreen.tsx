@@ -14,6 +14,7 @@ import {
   receiveInboxPackets,
   contactIdentity,
   failoverInbox,
+  migrateInbox,
   isBlockedContact,
   sendContactOffer,
   sendContactMessage,
@@ -34,7 +35,7 @@ import {
 import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
 import { createPushHintPoller, pushTokenForQueue, registerPush } from '../lib/anon/push';
-import { isOnionUrl } from '../lib/anon/tor';
+import { checkTorRunning, isOnionUrl } from '../lib/anon/tor';
 import { sendAnonMessage } from '../lib/anon/session';
 import { uint8ToBase64 } from '../lib/anon/packet';
 import {
@@ -43,7 +44,11 @@ import {
   parseFileEnvelope,
   type FileEnvelope,
 } from '../lib/anon/fileTransfer';
-import type { RelayEndpoint } from '../lib/anon/relays';
+import {
+  DEFAULT_QUEUE_ROTATION_MS,
+  shouldRotateQueue,
+  type RelayEndpoint,
+} from '../lib/anon/relays';
 import {
   noteRelayFailure,
   noteRelaySuccess,
@@ -62,6 +67,7 @@ import {
 import { clearPendingPremiumGiftOrder, purchasePremiumGiftCode } from '../lib/premium';
 
 const STORAGE_KEY = 'anon_messenger_state_v1';
+const FAILURES_KEY = 'anon_relay_failures_v1';
 const MAX_STORED_MESSAGES = 500;
 const DEFAULT_PUBLIC_APP_URL = 'https://mess.cvr.name';
 
@@ -288,6 +294,7 @@ export const AnonymousMessengerScreen: React.FC<{
         relayUrl: 'URL relay',
         extraRelays: 'Дополнительные relay (через запятую или с новой строки)',
         relayMoved: 'Relay не отвечает — очередь перенесена на другой relay.',
+        queueRotated: 'Очередь ротирована на следующий relay.',
         proxyUrl: 'URL proxy',
         relayId: 'ID relay для proxy',
         relayKey: 'Закреплённый публичный ключ X25519 relay',
@@ -297,6 +304,8 @@ export const AnonymousMessengerScreen: React.FC<{
         torRouting: 'Подключение через Tor (.onion)',
         torHint:
           'Все адреса relay и proxy должны быть http://…onion. Нужен запущенный Tor (порт 9050) и нативное приложение Tauri.',
+        torUnavailable:
+          'Tor не отвечает на 127.0.0.1:9050. Запустите Tor (Tor Browser, Orbot или демон) и повторите сохранение.',
         attachFile: 'Отправить файл',
         fileFailed: 'Файл повреждён или не прошёл проверку SHA-256.',
         fileTooLarge: 'Файл слишком большой для анонимной передачи (до 2 МБ).',
@@ -357,6 +366,7 @@ export const AnonymousMessengerScreen: React.FC<{
         relayUrl: 'Relay URL',
         extraRelays: 'Extra relays (comma-separated or one per line)',
         relayMoved: 'The relay stopped answering, so the queue moved to another relay.',
+        queueRotated: 'Queue rotated to the next relay.',
         proxyUrl: 'Proxy URL',
         relayId: 'Relay ID at proxy',
         relayKey: 'Pinned relay X25519 public key',
@@ -366,6 +376,8 @@ export const AnonymousMessengerScreen: React.FC<{
         torRouting: 'Route through Tor (.onion)',
         torHint:
           'All relay and proxy URLs must be http://…onion. Requires a running Tor (port 9050) and the native Tauri app.',
+        torUnavailable:
+          'Tor is not answering on 127.0.0.1:9050. Start Tor (Tor Browser, Orbot, or a local daemon) and retry saving.',
         attachFile: 'Send a file',
         fileFailed: 'The file was corrupted or failed its SHA-256 check.',
         fileTooLarge: 'File is too large for anonymous transfer (2 MB max).',
@@ -462,6 +474,11 @@ export const AnonymousMessengerScreen: React.FC<{
         setState(next);
         setSettingsForm(next.settings);
         setSelectedContactId(next.contacts[0]?.id ?? null);
+        const storedFailures = await dbInstance.loadSetting<RelayFailureMap>(FAILURES_KEY);
+        if (storedFailures) {
+          relayFailuresRef.current = storedFailures;
+          lastPersistedRef.current = storedFailures;
+        }
       } catch (loadError) {
         if (!cancelled) setError(friendlyError(loadError));
       } finally {
@@ -486,6 +503,19 @@ export const AnonymousMessengerScreen: React.FC<{
     await dbInstance.saveSetting(STORAGE_KEY, next);
     stateRef.current = next;
     setState(next);
+  }, []);
+
+  const lastPersistedRef = useRef<RelayFailureMap | null>(null);
+  const persistFailures = useCallback(async (next: RelayFailureMap) => {
+    if (!dbInstance.isReady()) return;
+    if (
+      lastPersistedRef.current &&
+      JSON.stringify(lastPersistedRef.current) === JSON.stringify(next)
+    ) {
+      return;
+    }
+    lastPersistedRef.current = next;
+    await dbInstance.saveSetting(FAILURES_KEY, next);
   }, []);
 
   const configuredSettings = state.settings;
@@ -572,6 +602,13 @@ export const AnonymousMessengerScreen: React.FC<{
         'Enter a valid HTTPS relay URL. If using a proxy, also enter its URL, relay ID, and 32-byte base64url key.',
       );
       return;
+    }
+    if (nextSettings.tor) {
+      const torCheck = await checkTorRunning({});
+      if (!torCheck.ok) {
+        setError(labels.torUnavailable);
+        return;
+      }
     }
     setIsBusy(true);
     try {
@@ -721,6 +758,7 @@ export const AnonymousMessengerScreen: React.FC<{
           : entry,
       ),
     });
+    await persistFailures(relayFailuresRef.current);
     return true;
   };
 
@@ -963,7 +1001,10 @@ export const AnonymousMessengerScreen: React.FC<{
       for (const queueId of stalledQueues) {
         if (await failoverQueue(queueId)) moved = true;
       }
-      if (moved) setStatus(labels.relayMoved);
+      const rotated = await rotateQueuesIfDue(Date.now());
+      await persistFailures(relayFailuresRef.current);
+      if (rotated) setStatus(labels.queueRotated);
+      else if (moved) setStatus(labels.relayMoved);
       else if (!ackSucceeded) setStatus(labels.ackFailed);
       else if (changed) setStatus(labels.pollSaved);
       else setStatus(labels.emptyInbox);
@@ -973,6 +1014,59 @@ export const AnonymousMessengerScreen: React.FC<{
       pollingRef.current = false;
       setIsBusy(false);
     }
+  };
+
+  /**
+   * Rotates every one of our queues whose rotation window passed onto the next
+   * configured relay, announcing the move to the contacts that write to it.
+   * Runs on each inbox check so queues are re-created on a schedule instead of
+   * only when a relay dies (failover covers outages).
+   */
+  const rotateQueuesIfDue = async (now: number = Date.now()): Promise<boolean> => {
+    if (!configuredSettings || !transport) return false;
+    const current = stateRef.current;
+    const queues = new Map<string, { inbox: LocalInbox; owners: Contact[] }>();
+    const register = (inbox: LocalInbox | undefined, owner?: Contact) => {
+      if (!inbox || inbox.expiresAt <= now || (inbox.relays?.length ?? 0) < 2) return;
+      const bucket = queues.get(inbox.queueId);
+      if (bucket) {
+        if (owner) bucket.owners.push(owner);
+      } else {
+        queues.set(inbox.queueId, { inbox, owners: owner ? [owner] : [] });
+      }
+    };
+    register(current.pendingInbox);
+    for (const entry of current.contacts) register(entry.contact.inbox, entry.contact);
+
+    let changed = false;
+    let latest = current;
+    for (const { inbox, owners } of queues.values()) {
+      if (!shouldRotateQueue(inbox.createdAt, now, DEFAULT_QUEUE_ROTATION_MS)) continue;
+      const migration = await migrateInbox(
+        (relayUrl) => {
+          const relayTransport = getTransport(relayUrl);
+          if (!relayTransport) throw new Error(labels.relayUnavailable);
+          return relayTransport;
+        },
+        inbox,
+        owners,
+        now,
+      );
+      if (!migration) continue;
+      changed = true;
+      latest = {
+        ...latest,
+        pendingInbox:
+          latest.pendingInbox?.queueId === inbox.queueId ? migration.inbox : latest.pendingInbox,
+        contacts: latest.contacts.map((entry) =>
+          entry.contact.inbox.queueId === inbox.queueId
+            ? { ...entry, contact: { ...entry.contact, inbox: migration.inbox } }
+            : entry,
+        ),
+      };
+    }
+    if (changed) await persist(latest);
+    return changed;
   };
 
   useEffect(() => {
