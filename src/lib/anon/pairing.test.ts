@@ -10,6 +10,7 @@ import {
   receiveInboxPackets,
   receiveContactMessages,
   receiveContactOffers,
+  migrateInbox,
   receiveInboxMessages,
   rotateInbox,
   sendContactMessage,
@@ -210,6 +211,75 @@ describe('anonymous contact pairing', () => {
 
     const rotated = await rotateInbox(() => relay, inbox, Date.now());
     expect(rotated).toBeNull();
+  });
+
+  it('moves a contact to the new relay via a migration offer', async () => {
+    const r1 = new InMemoryAnonRelay();
+    const r2 = new InMemoryAnonRelay();
+    const transportFor = (relayUrl: string) => (relayUrl === 'https://r2.example' ? r2 : r1);
+
+    const alice = await createInvitation(r1, 'https://r1.example', undefined, 8);
+    const aliceInbox = {
+      ...alice!.inbox,
+      relays: [
+        { id: 'r1', url: 'https://r1.example' },
+        { id: 'r2', url: 'https://r2.example' },
+      ],
+    };
+    const bob = await acceptInvitation(r1, alice!.invite);
+    expect(bob).not.toBeNull();
+
+    // Alice learns Bob's inbox from the offer he posted on her queue.
+    const [offer] = await receiveContactOffers(r1, aliceInbox);
+    const aliceContact = contactFromOffer(aliceInbox, offer)!;
+    expect(aliceContact).not.toBeNull();
+
+    aliceInbox.createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    aliceInbox.expiresAt = Date.now() + 60_000;
+    const migration = await migrateInbox(transportFor, aliceInbox, [aliceContact], Date.now());
+    expect(migration).not.toBeNull();
+    expect(migration!.notified).toBe(1);
+    expect(migration!.failed).toBe(0);
+    expect(migration!.inbox.relayUrl).toBe('https://r2.example');
+
+    // Bob picks the new invite up from his own queue: it points at r2.
+    const [moved] = await receiveContactOffers(r1, bob!.contact.inbox);
+    expect(moved).not.toBeNull();
+    expect(moved.queueId).toBe(migration!.inbox.queueId);
+    expect(moved.relayUrl).toBe('https://r2.example');
+
+    const bobUpdated = contactFromOffer(bob!.contact.inbox, moved)!;
+    await sendContactMessage(r2, bobUpdated, 'still here');
+
+    const movedContact = { ...aliceContact, inbox: migration!.inbox };
+    const messages = await receiveContactMessages(r2, movedContact);
+    expect(messages.map((message) => message.body)).toEqual(['still here']);
+    // Nothing was left behind on the old relay for this queue.
+    expect(() => r1.poll(migration!.inbox.queueId, migration!.inbox.recipientToken)).toThrow();
+  });
+
+  it('reports contacts it could not notify instead of hiding them', async () => {
+    const r1 = new InMemoryAnonRelay();
+    const r2 = new InMemoryAnonRelay();
+    const alice = await createInvitation(r1, 'https://r1.example', undefined, 8);
+    const inbox = {
+      ...alice!.inbox,
+      relays: [
+        { id: 'r1', url: 'https://r1.example' },
+        { id: 'r2', url: 'https://r2.example' },
+      ],
+    };
+    inbox.createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+
+    const migration = await migrateInbox(
+      (relayUrl) => (relayUrl === 'https://r2.example' ? r2 : r1),
+      inbox,
+      [{ inbox, peerInvite: { v: 1 } as never, createdAt: Date.now() }],
+      Date.now(),
+    );
+    expect(migration).not.toBeNull();
+    expect(migration!.notified).toBe(0);
+    expect(migration!.failed).toBe(1);
   });
 
   it('does not call a second entry with the same URL a rotation', async () => {
