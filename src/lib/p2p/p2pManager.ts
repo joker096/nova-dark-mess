@@ -235,6 +235,16 @@ export class P2PManager {
     return true;
   }
 
+  /**
+   * Returns the cached pre-key bundle for a peer, or `null` when none has been
+   * registered yet. Used by the key-change journal so `checkPeerKey` can
+   * compare against the bundle received over the real transport instead of the
+   * local demo peer.
+   */
+  public getPeerBundle(fingerprint: string): PreKeyBundle | null {
+    return this.getPeer(fingerprint).bundle ?? null;
+  }
+
   private async loadSession(peer: PeerRecord): Promise<RatchetState | null> {
     if (peer.session) return peer.session;
     if (!this.storage) return null;
