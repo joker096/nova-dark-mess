@@ -1546,58 +1546,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     setRecordedVoiceNote(null);
     setReplyingTo(null);
 
-    if (isGroupChat) {
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-        );
-      }, 500);
-      appendConversationHistory(chatId, [newMessage]);
-      return;
-    }
-
-    // Transition read status after 1.8s
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-      );
-    }, 500);
-
-    const shouldVoiceReply = Math.random() > 0.4;
-    setTimeout(() => {
-      setTypingActivity(shouldVoiceReply ? 'recording' : 'typing');
-      setIsTyping(true);
-    }, 750);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-      if (shouldVoiceReply) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: 'm-' + (Date.now() + 1),
-            senderId: 'other',
-            voiceNote: {
-              duration: '0:12',
-              durationSeconds: 12,
-              waveform: [30, 45, 70, 95, 80, 60, 40, 75, 90, 85, 65, 50, 70, 85, 60, 45, 30, 20],
-            },
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: 'm-' + (Date.now() + 1),
-            senderId: 'other',
-            text: "Got your voice message! Sounds great, let's meet up soon!",
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
-      }
-    }, 2800);
+    appendConversationHistory(chatId, [newMessage]);
   };
 
   const handleCycleChatTheme = () => {
@@ -2507,21 +2456,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
             m.id === messageId ? { ...m, deliveryStatus: 'sent' as const } : m
           )
         );
-        // Simulated delivery → read lifecycle (real transport replaces these timers).
-        setTimeout(() => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === messageId ? { ...m, deliveryStatus: 'delivered' as const } : m
-            )
-          );
-        }, 700);
-        setTimeout(() => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === messageId ? { ...m, deliveryStatus: 'read' as const, isRead: true } : m
-            )
-          );
-        }, 1400);
       }).catch((err) => {
         console.warn('Message send failed:', err);
         setMessages((prev) =>
