@@ -14,6 +14,38 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Release signing (Google Play upload key).
+// Values come from src-tauri/gen/android/keystore.properties, which is
+// gitignored, or from environment variables for CI. The key must be the one
+// Play already accepted (alias `messandanger`, SHA1 5E:1B:A8:21:…:90:E4) —
+// any other key is rejected with "app bundle is signed with the wrong key".
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val uploadStorePath: String? = System.getenv("ANDROID_KEYSTORE_PATH")
+    ?: keystoreProperties.getProperty("storeFile")
+val uploadStorePassword: String? = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+    ?: keystoreProperties.getProperty("storePassword")
+val uploadKeyAlias: String? = System.getenv("ANDROID_KEY_ALIAS")
+    ?: keystoreProperties.getProperty("keyAlias")
+val uploadKeyPassword: String? = System.getenv("ANDROID_KEY_PASSWORD")
+    ?: keystoreProperties.getProperty("keyPassword")
+
+val uploadKeyFile: File? = uploadStorePath?.let { pathString ->
+    val candidate = File(pathString)
+    if (candidate.isAbsolute) candidate else rootProject.file(pathString)
+}
+val hasUploadKey = uploadKeyFile != null && uploadKeyFile.exists() &&
+    !uploadStorePassword.isNullOrBlank() && !uploadKeyAlias.isNullOrBlank()
+
+if (!hasUploadKey) {
+    logger.warn("No Android upload key found — release bundles will be UNSIGNED and rejected by Google Play. Point keystore.properties (storeFile/keyAlias) at the Play upload key play-upload-key.jks, alias `messandanger`.")
+}
+
 android {
     compileSdk = 37
     namespace = "com.messanger.e2e"
@@ -24,6 +56,18 @@ android {
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        if (hasUploadKey) {
+            create("upload") {
+                storeFile = uploadKeyFile
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword ?: uploadStorePassword
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -40,6 +84,9 @@ android {
             }
         }
         getByName("release") {
+            if (hasUploadKey) {
+                signingConfig = signingConfigs.getByName("upload")
+            }
             optimization {
                enable = true
             }

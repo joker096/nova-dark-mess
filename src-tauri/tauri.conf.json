@@ -1,61 +1,61 @@
 {
-    "$schema":  "../node_modules/@tauri-apps/cli/config.schema.json",
-    "productName":  "Nova Dark Messenger",
-    "version":  "1.0.49",
-    "identifier":  "com.messanger.e2e",
-    "build":  {
-                  "frontendDist":  "../dist",
-                  "devUrl":  "http://localhost:3000",
-                  "beforeDevCommand":  "npm run dev",
-                  "beforeBuildCommand":  "npm run build"
-              },
-    "app":  {
-                "windows":  [
-                                {
-                                    "title":  "Nova Dark Messenger",
-                                    "width":  800,
-                                    "height":  600,
-                                    "resizable":  true,
-                                    "fullscreen":  false
-                                }
-                            ],
-                "security":  {
-                                 "csp":  null
-                             }
-            },
-    "plugins":  {
-                    "deep-link":  {
-                                      "desktop":  {
-                                                      "schemes":  [
-                                                                      "nova"
-                                                                  ]
-                                                  },
-                                      "mobile":  [
-                                                     {
-                                                         "scheme":  [
-                                                                        "nova"
-                                                                    ],
-                                                         "appLink":  false
-                                                     }
-                                                 ]
-                                  }
-                },
-    "bundle":  {
-                   "active":  true,
-                   "targets":  "all",
-                   "icon":  [
-                                "icons/32x32.png",
-                                "icons/128x128.png",
-                                "icons/128x128@2x.png",
-                                "icons/icon.icns",
-                                "icons/icon.ico"
-                            ],
-                   "android":  {
-                                   "minSdkVersion":  24,
-                                   "debugApplicationIdSuffix":  ".debug"
-                               },
-                   "iOS":  {
-                               "minimumSystemVersion":  "15.0"
-                           }
-               }
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Nova Dark Messenger",
+  "version": "1.0.52",
+  "identifier": "com.messanger.e2e",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Nova Dark Messenger",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "nova"
+        ]
+      },
+      "mobile": [
+        {
+          "scheme": [
+            "nova"
+          ],
+          "appLink": false
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "minSdkVersion": 24,
+      "debugApplicationIdSuffix": ".debug"
+    },
+    "iOS": {
+      "minimumSystemVersion": "15.0"
+    }
+  }
 }

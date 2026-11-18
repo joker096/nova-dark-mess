@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, within, fireEvent, act, waitFor } from '@testing-library/react';
+import { toDataURL } from 'qrcode';
 import { ProfileScreen } from './ProfileScreen';
 import {
   CONTACT_PROFILES,
@@ -9,6 +10,7 @@ import {
   KATIE_SHARED_MEDIA,
 } from '../data/mockMessengerData';
 import { CONTACT_OVERRIDES_KEY } from '../lib/contacts/contactOverrides';
+import { loadAccount, saveAccount } from '../lib/account/account';
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -32,9 +34,13 @@ vi.mock('../context/LanguageContext', () => ({
 const securityState = vi.hoisted(() => ({
   identity: null as null | { signingPublicKey: string; fingerprint: string },
 }));
+const premiumState = vi.hoisted(() => ({ active: false }));
 
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => ({ identity: securityState.identity }),
+}));
+vi.mock('../lib/premium', () => ({
+  isPremium: () => premiumState.active,
 }));
 
 vi.mock('qrcode', () => ({
@@ -66,9 +72,14 @@ const renderProfile = (
 const firstMedia = KATIE_SHARED_MEDIA[0];
 const firstVideo = KATIE_SHARED_MEDIA.find((item) => item.type === 'video')!;
 
+const setOwnAccountAvatar = () => {
+  saveAccount({ ...loadAccount(), avatar: 'data:image/png;base64,avatar' });
+};
+
 beforeEach(() => {
   localStorage.clear();
   securityState.identity = null;
+  premiumState.active = false;
   for (const [id, profile] of Object.entries(initialProfiles)) {
     Object.assign(CONTACT_PROFILES[id], profile);
   }
@@ -95,11 +106,27 @@ afterEach(() => {
 });
 
 describe('ProfileScreen - ID-based anonymous profile', () => {
+  it('shows the Premium crown only on the current user profile', () => {
+    premiumState.active = true;
+    const ownProfile = renderProfile(CURRENT_USER.id);
+    expect(screen.getByTestId('premium-crown')).toBeTruthy();
+    ownProfile.unmount();
+
+    renderProfile('katie');
+    expect(screen.queryByTestId('premium-crown')).toBeNull();
+  });
+
   it('renders nickname as the primary identifier, not phone', () => {
     renderProfile('katie');
     expect(screen.getByText('profile.nickname')).toBeTruthy();
     expect(screen.getByText('@Katie_Rogers')).toBeTruthy();
     expect(screen.queryByText('Phone Number')).toBeNull();
+  });
+
+  it('shows the optional phone field as empty for a new local account', () => {
+    renderProfile();
+    const phoneLabel = screen.getByText('profile.additionalPhone');
+    expect(phoneLabel.nextElementSibling?.textContent).toBe('—');
   });
 
   it('renders additional phone as an optional secondary field', () => {
@@ -138,6 +165,7 @@ describe('ProfileScreen - header and avatar', () => {
   });
 
   it('keeps avatar edit and remove buttons outside the clipped avatar circle', () => {
+    setOwnAccountAvatar();
     renderProfile();
     const edit = screen.getByRole('button', { name: 'profile.changeAvatar' });
     const remove = screen.getByRole('button', { name: 'profile.removeAvatar' });
@@ -167,10 +195,11 @@ describe('ProfileScreen - header and avatar', () => {
   });
 
   it('removes the own avatar and persists it in the account', () => {
+    setOwnAccountAvatar();
     renderProfile();
     fireEvent.click(screen.getByRole('button', { name: 'profile.removeAvatar' }));
 
-    expect(screen.getByText('J')).toBeTruthy();
+    expect(screen.getByText('NU')).toBeTruthy();
     const stored = JSON.parse(localStorage.getItem('nova_account_profile_v1')!);
     expect(stored.avatar).toBe('');
   });
@@ -405,6 +434,24 @@ describe('ProfileScreen - QR and security modals', () => {
     renderProfile('katie');
     fireEvent.click(screen.getByTitle('common.share'));
     expect(screen.getByText('contact.shareTitle')).toBeTruthy();
+  });
+
+  it('uses the cryptographic fingerprint for the own-profile QR link', async () => {
+    securityState.identity = {
+      signingPublicKey: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      fingerprint: 'nova_pk_0123456789abcdef',
+    };
+    renderProfile();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('common.contact'));
+      await Promise.resolve();
+    });
+
+    expect(toDataURL).toHaveBeenCalledWith(
+      'https://nova.app/profile/nova_pk_0123456789abcdef',
+      expect.objectContaining({ width: 260 }),
+    );
   });
 });
 

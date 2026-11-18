@@ -439,6 +439,18 @@ describe('SettingsModal', () => {
     );
   });
 
+  it('never restores a backup with an implicit default passphrase', () => {
+    renderSettings();
+    fireEvent.click(screen.getByRole('button', { name: /settings.importBackup/ }));
+    const file = new File(['backup'], 'account.nova-backup');
+    fireEvent.change(document.getElementById('backup-file-input')!, {
+      target: { files: [file] },
+    });
+
+    expect(screen.getByRole('button', { name: 'Import' }).hasAttribute('disabled')).toBe(true);
+    expect(securityMock.importEncryptedBackup).not.toHaveBeenCalled();
+  });
+
   it('copies the recovery phrase and shows confirmation', async () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, 'clipboard', {

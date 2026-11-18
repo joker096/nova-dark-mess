@@ -5,6 +5,7 @@ import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { resetOnboarding } from '../lib/onboarding';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
+import { createKeychain } from '../lib/storage/keychain';
 import { downloadEncryptedBackup, uploadEncryptedBackup } from '../lib/storage/cloudBackup';
 import { localAnalytics } from '../lib/analytics/localAnalytics';
 import {
@@ -528,6 +529,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
   const eraseAllData = async () => {
     await clearLocalEncryptedData();
+    // The PIN lives in the keychain after the F2.2 migration; drop both copies
+    // so "erase all data" cannot leave a usable lock behind.
+    const kc = createKeychain();
+    await kc.remove('nova-dark-messenger', PIN_HASH_KEY).catch(() => undefined);
+    await kc.remove('nova-dark-messenger', PIN_ENABLED_KEY).catch(() => undefined);
     try {
       localStorage.removeItem(PIN_HASH_KEY);
       localStorage.removeItem(PIN_ENABLED_KEY);

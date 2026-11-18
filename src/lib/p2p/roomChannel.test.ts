@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RoomDataChannel, isRoomChannelSupported } from './roomChannel';
 
 /** Minimal in-memory BroadcastChannel, shared by name. */
@@ -231,5 +231,17 @@ describe('RoomDataChannel', () => {
     expect(a.send('after dispose')).toBe(0);
 
     b.dispose();
+  });
+
+  it('refuses to auto-generate a peer id without a CSPRNG', () => {
+    vi.stubGlobal('crypto', {});
+    expect(
+      () => new RoomDataChannel({ room: 'chat-crypto', onMessage: vi.fn() }),
+    ).toThrow('Secure random generator is unavailable');
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 });

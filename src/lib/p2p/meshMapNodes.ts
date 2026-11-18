@@ -1,23 +1,25 @@
 /**
- * Real mesh map nodes — collected entirely on-device.
+ * Mesh map snapshot generation — processed on-device.
  *
  * Unlike meshDemoData (static Far-East samples), every node/link produced here
  * comes from actual app state:
- *  - the local device, positioned by its last known GPS fix (if any);
+ *  - the local device, positioned by its current in-memory GPS fix (if any);
  *  - live-location broadcasts received in chats (LocationData.isLive messages
  *    whose liveUntil has not passed);
  *  - links between group members who share a group with an open WebRTC mesh.
  *
- * Nothing here phones home: reading localStorage + conversation history only.
+ * This module makes no network requests. Online presence ids are fetched and
+ * resolved by the caller before they are passed into the snapshot builder.
  */
 import type { MeshNode, MeshLink } from '../../components/meshDemoData';
 import { CONVERSATION_HISTORIES, MOCK_CHATS, loadCreatedGroups } from '../../data/mockMessengerData';
 import { loadGroupRoles } from '../social/groupRoles';
 
-const LAST_FIX_KEY = 'nova_last_gps_fix';
-
 /** Fired after a new GPS fix is stored so screens recompute the mesh. */
 export const GPS_FIX_EVENT = 'nova-gps-fix';
+
+const LEGACY_LAST_FIX_KEY = 'nova_last_gps_fix';
+let lastGpsFix: LocalGpsFix | null = null;
 
 export interface LocalGpsFix {
   latitude: number;
@@ -26,34 +28,31 @@ export interface LocalGpsFix {
   timestamp: number;
 }
 
-/** Persist the device's most recent GPS fix (called by map screen). */
+/** Keep the device's most recent GPS fix in memory only. */
 export function saveLastGpsFix(fix: LocalGpsFix): void {
-  try {
-    localStorage.setItem(LAST_FIX_KEY, JSON.stringify(fix));
-  } catch {
-    return;
-  }
+  lastGpsFix = { ...fix };
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(GPS_FIX_EVENT));
   }
 }
 
-export function loadLastGpsFix(): LocalGpsFix | null {
-  try {
-    const raw = localStorage.getItem(LAST_FIX_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<LocalGpsFix>;
-    if (
-      typeof parsed.latitude === 'number' &&
-      typeof parsed.longitude === 'number' &&
-      typeof parsed.timestamp === 'number'
-    ) {
-      return parsed as LocalGpsFix;
+export function clearLastGpsFix(): void {
+  const hadFix = lastGpsFix !== null;
+  lastGpsFix = null;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(LEGACY_LAST_FIX_KEY);
+    } catch (error) {
+      console.error('mesh map: failed to remove a previously stored GPS fix', error);
     }
-  } catch {
-    void 0;
   }
-  return null;
+  if (hadFix && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(GPS_FIX_EVENT));
+  }
+}
+
+export function loadLastGpsFix(): LocalGpsFix | null {
+  return lastGpsFix ? { ...lastGpsFix } : null;
 }
 
 /** Deterministic pseudo-position for peers we have no GPS fix for. */

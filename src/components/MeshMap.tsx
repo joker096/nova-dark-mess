@@ -12,7 +12,7 @@ import {
   type MeshNodeStatus,
   type MeshLinkType,
 } from './meshDemoData';
-import { saveLastGpsFix } from '../lib/p2p/meshMapNodes';
+import { clearLastGpsFix, saveLastGpsFix } from '../lib/p2p/meshMapNodes';
 import { useLanguage } from '../context/LanguageContext';
 
 /** Keeps the viewport on the current real nodes when they change. */
@@ -27,8 +27,8 @@ function FitBounds({ bounds }: { bounds?: [[number, number], [number, number]] }
 
 /**
  * Tracks browser online/offline state (network online + offline events).
- * The OSM TileLayer is mounted only while online; when offline the map
- * keeps its dark background and markers/polylines remain visible.
+ * The OSM TileLayer is mounted only while online and no precise local
+ * location is visible; local coordinates never go to the tile provider.
  */
 function useOnline(): boolean {
   const [online, setOnline] = useState<boolean>(
@@ -101,25 +101,35 @@ export const MeshMap: React.FC<MeshMapProps> = ({
   // an empty map always means "no live peers", never fake data.
   const [demoEnabled, setDemoEnabled] = useState(showDemo === true);
   const [locating, setLocating] = useState(false);
-  // One passive GPS fix per mount so the device's own node is at the real
-  // position when permission was already granted; never prompts on its own.
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        saveLastGpsFix({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          timestamp: position.timestamp || Date.now(),
-        });
-      },
-      () => undefined,
-      { timeout: 5_000, maximumAge: 60_000 },
-    );
-  }, []);
+  const [preciseLocationVisible, setPreciseLocationVisible] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const savePosition = useCallback((position: GeolocationPosition) => {
+    try {
+      saveLastGpsFix({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        timestamp: position.timestamp || Date.now(),
+      });
+      setPreciseLocationVisible(true);
+      setLocationError('');
+    } catch (error) {
+      console.error('mesh map: failed to save GPS fix', error);
+      setLocationError(t('meshMap.locationError'));
+    } finally {
+      setLocating(false);
+    }
+  }, [t]);
+  const handleLocationError = useCallback((error: GeolocationPositionError) => {
+    setLocationError(error.code === 1
+      ? t('meshMap.locationPermissionDenied')
+      : t('meshMap.locationError'));
+    setLocating(false);
+  }, [t]);
   const liveNodes = useMemo(() => nodes ?? [], [nodes]);
   const liveLinks = useMemo(() => links ?? [], [links]);
   const hasLive = liveNodes.length > 0;
+  const hasPreciseLocalLocation =
+    preciseLocationVisible || liveNodes.some((node) => node.label === 'You' && !node.demo);
   const demoNodes = hasLive || !demoEnabled ? [] : DEMO_MESH_NODES;
   const demoLinks = hasLive || !demoEnabled ? [] : DEMO_MESH_LINKS;
   const allNodes = [...liveNodes, ...demoNodes];
@@ -149,20 +159,23 @@ export const MeshMap: React.FC<MeshMapProps> = ({
   const mapCenter = center ?? fallbackCenter;
 
   const locate = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationError(t('meshMap.locationError'));
+      return;
+    }
     setLocating(true);
+    setLocationError('');
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        saveLastGpsFix({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          timestamp: position.timestamp || Date.now(),
-        });
-        setLocating(false);
-      },
-      () => setLocating(false),
+      savePosition,
+      handleLocationError,
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 0 },
     );
+  }, [handleLocationError, savePosition, t]);
+
+  const clearLocation = useCallback(() => {
+    clearLastGpsFix();
+    setPreciseLocationVisible(false);
+    setLocationError('');
   }, []);
 
   return (
@@ -180,7 +193,7 @@ export const MeshMap: React.FC<MeshMapProps> = ({
         attributionControl={false}
       >
         <FitBounds bounds={bounds} />
-        {online ? (
+        {online && !hasPreciseLocalLocation ? (
           <TileLayer
             key="osm"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -256,7 +269,7 @@ export const MeshMap: React.FC<MeshMapProps> = ({
         >
           <button
             type="button"
-            onClick={locate}
+            onClick={hasPreciseLocalLocation ? clearLocation : locate}
             disabled={locating}
             style={{
               fontSize: 10,
@@ -270,8 +283,22 @@ export const MeshMap: React.FC<MeshMapProps> = ({
               opacity: locating ? 0.6 : 1,
             }}
           >
-            {locating ? '…' : t('meshMap.locateMe')}
+            {locating
+              ? '…'
+              : hasPreciseLocalLocation
+                ? t('meshMap.hideLocation')
+                : t('meshMap.locateMe')}
           </button>
+          {hasPreciseLocalLocation && (
+            <div role="status" style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.65)', maxWidth: 150 }}>
+              {t('meshMap.localOnly')}
+            </div>
+          )}
+          {locationError && (
+            <div role="alert" style={{ fontSize: 9.5, color: '#fca5a5', maxWidth: 150 }}>
+              {locationError}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setDemoEnabled((on) => !on)}

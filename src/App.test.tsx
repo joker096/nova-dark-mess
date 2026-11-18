@@ -49,7 +49,12 @@ vi.mock('./components/AnalyticsScreen', () => ({
 }));
 vi.mock('./components/MeshMap', () => ({
   default: vi.fn(() => <div data-testid="mesh-map-screen" />),
-  MeshMap: vi.fn(() => <div data-testid="mesh-map-screen" />),
+  MeshMap: vi.fn(({ nodes, links }: { nodes?: unknown[]; links?: unknown[] }) => (
+    <div
+      data-testid="mesh-map-screen"
+      data-live-inputs={String(Array.isArray(nodes) && Array.isArray(links))}
+    />
+  )),
 }));
 vi.mock('./components/SettingsModal', () => ({
   SettingsModal: vi.fn(({ isOpen }: { isOpen: boolean }) => (
@@ -154,7 +159,9 @@ describe('App - desktop navigation rail', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
 
-    expect((await screen.findAllByTestId('mesh-map-screen')).length).toBeGreaterThan(0);
+    const mapScreens = await screen.findAllByTestId('mesh-map-screen');
+    expect(mapScreens.length).toBeGreaterThan(0);
+    expect(mapScreens.every((screen) => screen.getAttribute('data-live-inputs') === 'true')).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'common.back' }));
     expect(screen.queryByTestId('mesh-map-screen')).toBeNull();

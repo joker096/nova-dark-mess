@@ -1,11 +1,16 @@
 mod anon_net;
+mod keychain;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
         anon_net::anon_socks_request,
-        anon_net::anon_tor_check
+        anon_net::anon_tor_check,
+        keychain::keychain_available,
+        keychain::keychain_get,
+        keychain::keychain_set,
+        keychain::keychain_remove
     ])
     .on_permission_request(|_, kind| match kind {
       tauri::webview::PermissionKind::Camera

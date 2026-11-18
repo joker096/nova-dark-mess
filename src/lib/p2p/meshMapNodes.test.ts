@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLiveMeshSnapshot,
+  clearLastGpsFix,
   loadLastGpsFix,
   saveLastGpsFix,
 } from './meshMapNodes';
@@ -10,12 +11,15 @@ const NOW = 1_700_000_000_000;
 
 beforeEach(() => {
   localStorage.clear();
+  clearLastGpsFix();
 });
 
 afterEach(() => {
+  clearLastGpsFix();
   // Restore the preloaded Kyiv location message that other suites may rely on.
   const katie = CONVERSATION_HISTORIES['katie'] ?? [];
   katie.length = 0;
+  vi.restoreAllMocks();
 });
 
 describe('buildLiveMeshSnapshot', () => {
@@ -38,6 +42,40 @@ describe('buildLiveMeshSnapshot', () => {
     expect(selfNode?.demo).toBe(false);
     expect(selfNode?.lat).toBeCloseTo(50.45);
     expect(selfNode?.status).toBe('online');
+  });
+
+  it('keeps exact GPS coordinates in memory without writing them to local storage', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    saveLastGpsFix({
+      latitude: 50.45,
+      longitude: 30.52,
+      timestamp: NOW,
+    });
+
+    expect(loadLastGpsFix()).toEqual({
+      latitude: 50.45,
+      longitude: 30.52,
+      timestamp: NOW,
+    });
+    expect(setItem).not.toHaveBeenCalled();
+    expect(localStorage.getItem('nova_last_gps_fix')).toBeNull();
+  });
+
+  it('clears the in-memory GPS fix when requested', () => {
+    saveLastGpsFix({ latitude: 50.45, longitude: 30.52, timestamp: NOW });
+    clearLastGpsFix();
+    expect(loadLastGpsFix()).toBeNull();
+  });
+
+  it('removes exact coordinates saved by the previous map implementation', () => {
+    localStorage.setItem(
+      'nova_last_gps_fix',
+      JSON.stringify({ latitude: 50.45, longitude: 30.52, timestamp: NOW }),
+    );
+
+    clearLastGpsFix();
+
+    expect(localStorage.getItem('nova_last_gps_fix')).toBeNull();
   });
 
   it('ignores a GPS fix older than 10 minutes', () => {

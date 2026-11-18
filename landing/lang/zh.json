@@ -9,6 +9,7 @@
   "hero.title": "认识 <b>Mess&Anger</b>",
   "hero.tag": "v1.0.49 · 2026年11月 · Open Source",
   "hero.sub": "端到端加密的去中心化即时通讯。\\n消息只保存在你的设备上。无需手机号。不做妥协。",
+  "hero.releaseNote": "Android 1.0.52 已构建完成，支持 16 KB 内存页；Google Play 发布尚待处理。",
   "hero.get": "获取 Android 版",
   "hero.pay": "解锁 Premium — $3.90 / 30 天",
   "pay.cta": "解锁 Premium",

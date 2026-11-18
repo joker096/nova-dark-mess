@@ -26,6 +26,7 @@ import {
   Sparkles,
   ShieldCheck,
   Camera,
+  Crown,
 } from 'lucide-react';
 import { CONTACT_PROFILES, CURRENT_USER, CONVERSATION_HISTORIES } from '../data/mockMessengerData';
 import {
@@ -49,6 +50,7 @@ import {
   parseDeviceLinkResponse,
 } from '../lib/p2p/deviceLinking';
 import { createHandle } from '../lib/crypto/handles';
+import { isPremium } from '../lib/premium';
 
 interface ProfileScreenProps {
   profileId: string;
@@ -86,6 +88,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     .toUpperCase()
     .slice(0, 2);
   const { t } = useLanguage();
+  const premium = isPremium();
   const { identity } = useSecurity();
   const ownHandle = identity
     ? createHandle(identity.signingPublicKey, account.displayName).handle
@@ -407,7 +410,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const openQr = async () => {
     setShowQrModal(true);
     try {
-      const url = await toDataURL(`https://nova.app/u/${profile.nickname.replace('@', '')}`, {
+      const profileUrl = isOwnProfile && identity?.fingerprint
+        ? `https://nova.app/profile/${encodeURIComponent(identity.fingerprint)}`
+        : `https://nova.app/u/${encodeURIComponent(profile.nickname.replace(/^@/, ''))}`;
+      const url = await toDataURL(profileUrl, {
         width: 260,
         margin: 2,
         color: { dark: '#000000', light: '#ffffff' },
@@ -717,9 +723,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </button>
           </div>
         ) : (
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            {profile.name}
-          </h1>
+          <div className="flex items-center justify-center gap-1.5">
+            <h1 className="text-xl font-bold text-white tracking-tight">{profile.name}</h1>
+            {isOwnProfile && premium && (
+              <span
+                data-testid="premium-crown"
+                aria-label={t('premium.active')}
+                title={t('premium.active')}
+                className="text-amber-300 drop-shadow"
+              >
+                <Crown className="w-4 h-4" />
+              </span>
+            )}
+          </div>
         )}
         <p className="text-xs text-[#828795] mt-0.5">
           {profile.status}

@@ -118,7 +118,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
   privacy: {
     id: 'privacy',
     title: 'Privacy Policy',
-    updated: 'November 16, 2026',
+    updated: 'November 18, 2026',
     url: `${LEGAL_BASE_URL}/privacy.html`,
     summary:
       'We collect no name, email, phone number, contact list or message content. Moderation uses pseudonymous reports; ads in public channels use contextual placement and aggregate statistics, never an advertising profile.',
@@ -175,6 +175,8 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
         heading: '7. Optional network features',
         paragraphs: [
           'Map tiles are requested from OpenStreetMap only while the mesh map is open and you are online. If you enable an encrypted cloud backup, your device uploads the encrypted blob to the WebDAV or S3 endpoint that you configure.',
+          'The experimental anonymous mode uses one-way relay queues with fixed-size sealed packets. A relay stores ciphertext only until the recipient acknowledges it or its TTL expires. When a proxy is configured, the relay sees the proxy address instead of yours; when Tor is configured, traffic leaves through a local Tor SOCKS listener to a .onion relay. This mode is still experimental and not independently audited.',
+          'Residual risks of anonymous mode: a passive observer can still correlate send and poll timing despite jitter; using the direct relay path without a proxy or Tor reveals your IP address to the relay; an invite can be used once by whoever reads it; sealed sender protects content but does not prove who sent it; and push providers, if enabled, learn that a notification was delivered. Turning the mode off returns the app to ordinary peer-to-peer encrypted messaging.',
         ],
       },
       {

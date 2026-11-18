@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   buildGroupInviteLink,
   getOrCreateGroupInvite,
@@ -9,6 +9,10 @@ import {
 describe('group invites', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('mints and reuses one persisted token per group', () => {
@@ -36,6 +40,18 @@ describe('group invites', () => {
     expect(loadGroupInviteToken('thailand')).toBe(next);
     expect(getOrCreateGroupInvite('thailand').link).toBe(buildGroupInviteLink('thailand', next));
     expect(original.link).not.toContain(next);
+  });
+
+  it('refuses to mint a token when no CSPRNG is available', () => {
+    vi.stubGlobal('crypto', {});
+    try {
+      expect(() => getOrCreateGroupInvite('thailand')).toThrow(
+        'Secure random generator is unavailable',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(getOrCreateGroupInvite('thailand').token).toMatch(/^[a-f0-9]{24}$/);
   });
 
   it('encodes ids and tokens in the link', () => {

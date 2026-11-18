@@ -9,6 +9,7 @@
   "hero.title": "<b>Mess&Anger</b> へようこそ",
   "hero.tag": "v1.0.49 · 2026年11月 · Open Source",
   "hero.sub": "エンドツーエンド暗号化の分散型メッセンジャー。\\nメッセージはあなたの端末上だけに存在します。電話番号不要。妥協なし。",
+  "hero.releaseNote": "Android 1.0.52 は 16 KB メモリページに対応してビルド済みです。Google Play での公開は保留中です。",
   "hero.get": "Android 版を入手",
   "hero.pay": "Premium を解除 — $3.90 / 30日",
   "pay.cta": "Premiumをアンロック",

@@ -27,11 +27,23 @@ at rest therefore buys integrity and keeps message text out of casual
 inspection — it does not buy confidentiality against a device-level attacker.
 That is the gap a native key store closes, and it is the first item below.
 
-`src/lib/storage/keychain.ts` already sketches the interface for that
-(`get`/`set`/`remove`, a `storeMasterKey` helper) but nothing calls it: the
-current `createKeychain()` always returns the localStorage implementation, and
-the Tauri strongbox path is a comment. It is the natural landing spot for the
-change below, not a working protection today.
+`src/lib/storage/keychain.ts` is where that gap is being closed. Inside the
+Tauri shell on Windows, macOS and Linux, `createKeychain()` now returns an
+OS-backed store: `src-tauri/src/keychain.rs` exposes `keychain_get`,
+`keychain_set` and `keychain_remove`, backed by the `keyring` crate (Windows
+Credential Manager, macOS Keychain, Secret Service). The storage passphrase and
+salt, the device secret that decrypts the seed phrase, and the PIN hash/salt all
+go through it. Values written by older builds under `nova_keychain_*` are moved
+into the OS store on first read and the localStorage copy is deleted; an OS
+failure propagates instead of silently falling back to weaker storage.
+
+Two gaps remain. **Mobile shells have no native store yet**: the Rust command
+`keychain_available()` returns false there and the app keeps the localStorage
+backend, so on a rooted Android device or through an Android backup the seed
+phrase is still recoverable — `android:allowBackup` is not disabled either. And
+the browser build is a development target with no OS store at all. Until the
+mobile store lands, treat device-level attackers on Android/iOS as out of the
+threat model.
 
 ## What deletion means today
 

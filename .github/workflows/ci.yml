@@ -1,10 +1,10 @@
 name: CI
 
 on:
+  # Every branch, not just master: work happens on long-lived feature branches
+  # and regressions there used to stay invisible until merge.
   push:
-    branches: [master, main]
   pull_request:
-    branches: [master, main]
 
 jobs:
   lint-and-test:
@@ -21,6 +21,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format=cyclonedx --sbom-type=application > dependency-sbom.cdx.json
+
+      # The dependency tree that ships (server.js runtime deps) must be clean.
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+
+      # Build/test tooling still reports the unpatched picomatch ReDoS
+      # (GHSA via vite/tinyglobby/@typescript-eslint). No fixed release exists
+      # yet, so it is reported but does not block the build. Remove
+      # continue-on-error once picomatch publishes a patched 4.x.
+      - name: Audit build-time dependencies (non-blocking)
+        continue-on-error: true
+        run: npm audit --audit-level=moderate
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
@@ -35,6 +50,15 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Upload dependency SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-sbom
+          path: dependency-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 30
 
       # ── Secret scanning ──────────────────────────────────────────────────
       # Fail the build if a secret (passwords, API keys, tokens, private

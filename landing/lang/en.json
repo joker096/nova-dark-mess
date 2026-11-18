@@ -9,6 +9,7 @@
   "hero.title": "Meet <b>Mess&Anger</b>",
   "hero.tag": "v1.0.49 · November 2026 · Open Source",
   "hero.sub": "Decentralized messenger with end-to-end encryption.\\nMessages live only on your devices. No phone number. No compromises.",
+  "hero.releaseNote": "Android 1.0.52 is built with 16 KB page-size support; Google Play rollout is pending.",
   "hero.get": "Get it for Android",
   "hero.pay": "Unlock Premium — $3.90 / 30 days",
   "pay.cta": "Unlock Premium",

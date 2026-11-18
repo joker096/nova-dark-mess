@@ -1,6 +1,12 @@
 import { sealMessageAsync, unsealMessageAsync } from '../messaging/sealedSender';
 import { isQueueId, isQueueToken } from './ids';
-import { base64ToUint8, decodeFixedPacket, encodeFixedPacket, uint8ToBase64 } from './packet';
+import {
+  base64ToUint8,
+  decodeFixedPacket,
+  encodeFixedPacket,
+  profileForPacketSize,
+  uint8ToBase64,
+} from './packet';
 import { isQueuePrivateKey, isQueuePublicKey } from './signing';
 import { isInviteToken, isPowChallenge, solvePow, type PowChallenge, type PowSolution } from './spam';
 import type { AnonTransport, EnqueueResult, PacketProfile, PollResult } from './types';
@@ -183,6 +189,8 @@ export async function receiveAnonMessages(
 export interface ReceivedAnonPacket {
   packetId: string;
   body: string;
+  /** Padding profile the packet was framed with, recovered from its length. */
+  profile: PacketProfile;
 }
 
 export async function receiveAnonPackets(
@@ -199,11 +207,14 @@ export async function receiveAnonPackets(
   for (const packet of packets) {
     try {
       const bytes = base64ToUint8(packet.payload);
-      const jsonBytes = decodeFixedPacket(bytes, 'standard');
+      // Senders pick the profile per payload (files use 'large'), so the
+      // receiver must derive it from the length instead of assuming 'standard'.
+      const profile = profileForPacketSize(bytes.length);
+      const jsonBytes = decodeFixedPacket(bytes, profile);
       const json = new TextDecoder().decode(jsonBytes);
       const sealed = JSON.parse(json);
       const plaintext = await unsealMessageAsync(recipientPrivateKey, sealed);
-      messages.push({ packetId: packet.packetId, body: plaintext });
+      messages.push({ packetId: packet.packetId, body: plaintext, profile });
     } catch {
       // Skip malformed packets; leave them for TTL cleanup.
     }

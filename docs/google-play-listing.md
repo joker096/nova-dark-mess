@@ -8,13 +8,16 @@ AAB собирается через `scripts/deploy-android.ps1 -Version <x.y.z>
 
 **Подпись (важно).** Play принимает только upload-ключ с отпечатком
 SHA1 `5E:1B:A8:21:E0:80:EE:36:C8:27:FE:CE:9E:83:59:F4:AC:46:90:E4`
-(SHA256 `13:36:84:83:…:9F:86:3D`, alias `messandanger`, JKS). Его копия лежит в корне
-проекта как `play-upload-key.jks`; пароль — `BUBBLEWRAP_KEYSTORE_PASSWORD` /
-`BUBBLEWRAP_KEY_PASSWORD` из `.env` (в старом проекте `F:\AISTUDIO\neumorphic-ui`,
-тот же alias `messandanger`).
+(SHA256 `13:36:84:83:…:9F:86:3D`, alias `messandanger`, JKS). Это единственный
+keystore в проекте: `play-upload-key.jks` в корне. Пароль —
+`KEYSTORE_PASSWORD` / `KEY_PASSWORD` из `.env` (исторически
+`BUBBLEWRAP_KEYSTORE_PASSWORD` / `BUBBLEWRAP_KEY_PASSWORD` в старом проекте
+`F:\AISTUDIO\neumorphic-ui`).
 
-Файл `messandanger-keystore.jks` в корне — **другой ключ** (SHA1 `9F:95:4B:75:…:BF:F1`, PKCS12),
-им подписывать нельзя: Play отклонит загрузку с ошибкой «неправильный ключ».
+Других ключей в проекте больше нет — `messandanger-keystore.jks`
+(SHA1 `9F:95:4B:75:…:BF:F1`) и `src-tauri/gen/android/keystore/upload.jks`
+(SHA1 `37:A1:1C:8B:…:59:32`) удалены. Создавать новый ключ нельзя: Play
+отклонит загрузку с ошибкой «неправильный ключ» до upload key reset.
 Переподпись готового бандла:
 
 ```bash
@@ -243,7 +246,7 @@ Contact: (ваш email)
 
 ### Чек-лист перед заливкой AAB
 - [ ] `com.messanger.e2e` без `.debug` суффикса в release-сборке (проверить `applicationId` в `build.gradle` после сборки).
-- [ ] Подписано upload-ключом `play-upload-key.jks` (SHA1 `5E:1B:…`), не `messandanger-keystore.jks` и не debug-ключом.
+- [ ] Подписано единственным upload-ключом `play-upload-key.jks` (SHA1 `5E:1B:…`, alias `messandanger`) — других ключей в проекте нет.
 - [ ] `versionCode` увеличен относительно прошлой загрузки (Tauri ставит из `version`).
 - [ ] Внутри AAB не попали secrets: `npm run check:secrets` + gitleaks в CI уже проверяют.
 - [ ] Скриншоты сняты с реального билда, feature graphic без изношенного текста.

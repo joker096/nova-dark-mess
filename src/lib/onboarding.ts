@@ -39,11 +39,7 @@ export function completeOnboarding(path: OnboardingPath = 'create'): OnboardingR
     completedAt: new Date().toISOString(),
     path,
   };
-  try {
-    localStorage.setItem(ONBOARDING_KEY, JSON.stringify(record));
-  } catch {
-    /* private mode: the wizard simply shows again next launch */
-  }
+  localStorage.setItem(ONBOARDING_KEY, JSON.stringify(record));
   return record;
 }
 

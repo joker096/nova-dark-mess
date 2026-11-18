@@ -22,19 +22,27 @@ interface SanitizedHtmlOptions {
   allowTags?: boolean;
 }
 
+const ALLOWED_TAGS = new Set([
+  'b',
+  'i',
+  'em',
+  'strong',
+  'u',
+  'br',
+  'p',
+  'span',
+  'a',
+  'code',
+]);
+
 export function sanitizeHtml(html: string, options: SanitizedHtmlOptions = {}): string {
   if (!options.allowTags) {
     return escapeHtml(html);
   }
-  const tagRegex = /<[^>]*>/g;
-  return html.replace(tagRegex, (tag) => {
-    const isClosing = tag.startsWith('</');
-    const tagNameMatch = tag.match(/<\/?(\w+)/);
-    const tagName = tagNameMatch ? tagNameMatch[1].toLowerCase() : '';
-    const allowed = ['b', 'i', 'em', 'strong', 'u', 'br', 'p', 'span', 'a', 'code'].includes(tagName);
-    if (!allowed) return escapeHtml(tag);
-    if (isClosing) return `</${tagName}>`;
-    return tag;
+  return html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (tag, rawTagName: string) => {
+    const tagName = rawTagName.toLowerCase();
+    if (!ALLOWED_TAGS.has(tagName)) return escapeHtml(tag);
+    return tag.startsWith('</') ? `</${tagName}>` : `<${tagName}>`;
   });
 }
 

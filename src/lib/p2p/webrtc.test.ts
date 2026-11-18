@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, vi } from 'vitest';
-import { P2PMessengerChannel, TURN_SERVERS } from './webrtc';
+import { P2PMessengerChannel } from './webrtc';
 import { P2PSignalingClient } from './signaling';
 
 class FakeSignaling {

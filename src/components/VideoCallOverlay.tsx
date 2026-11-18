@@ -298,6 +298,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   return (
     <div
       onClick={resetControlsTimeout}
+      data-theme-preserve="dark"
       className="absolute inset-0 z-50 bg-[#08090d] text-white flex flex-col justify-between overflow-hidden select-none animate-in fade-in zoom-in-95 duration-300"
     >
       {/* BACKGROUND / MAIN REMOTE VIDEO FEED */}
@@ -411,7 +412,11 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
       {/* TOP RIGHT: SELF VIEW / PICTURE-IN-PICTURE (PIP) CAMERA */}
       {!isVoiceCall && (
-        <div className="absolute top-16 right-4 z-30 w-28 h-40 bg-[#161722]/90 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300">
+        <div
+          data-testid="self-view"
+          aria-label="Your camera preview"
+          className="absolute top-16 right-4 z-30 w-28 h-40 bg-[#161722]/90 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300"
+        >
           {isCameraOn ? (
             <div className="w-full h-full relative group">
               {/* Local camera preview (real stream) or simulated selfie fallback */}
@@ -425,7 +430,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                     cameraFacing === 'back' ? 'scale-x-[-1]' : ''
                   } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
                 />
-              ) : (
+              ) : account.avatar ? (
                 <img
                   src={account.avatar}
                   alt="You"
@@ -433,6 +438,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                     cameraFacing === 'back' ? 'scale-x-[-1]' : ''
                   } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
                 />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-[#242630] text-white text-2xl font-bold">
+                  {account.displayName.slice(0, 2).toUpperCase()}
+                </div>
               )}
 
               {/* Viewfinder brackets */}

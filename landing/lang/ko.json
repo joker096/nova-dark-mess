@@ -9,6 +9,7 @@
   "hero.title": "<b>Mess&Anger</b> 만나보기",
   "hero.tag": "v1.0.49 · 2026년 11월 · Open Source",
   "hero.sub": "종단간 암호화 기반의 분산형 메신저.\\n메시지는 오직 당신의 기기에만 저장됩니다. 전화번호 불필요. 타협 없음.",
+  "hero.releaseNote": "Android 1.0.52는 16KB 메모리 페이지를 지원하도록 빌드되었으며, Google Play 배포를 기다리고 있습니다.",
   "hero.get": "Android용 받기",
   "hero.pay": "Premium 잠금 해제 — $3.90 / 30일",
   "pay.cta": "프리미엄 잠금 해제",
