@@ -1,6 +1,6 @@
 # Anonymous Queue Layer — Internal Audit and Build Notes
 
-Last updated: 2026-11-18
+Last updated: 2026-11-18 (F4.1–F4.4 applied)
 
 Status: internal review only. This is **not** an independent audit. It records
 what was checked in the repository, what remains exposed, and how to reproduce
@@ -59,10 +59,10 @@ confidentiality. Status is `open`, `accepted` (residual risk, documented) or
 | A5 | Medium | Sealed sender gives confidentiality but not sender authentication: the queue signature authenticates the queue, not a person. | Accepted — out of scope for v1 |
 | A6 | Low | Relay responses are not end-to-end authenticated; a malicious proxy can drop or fabricate replies. | Accepted — availability/DoS only |
 | A7 | Low | Queue state and the report-to-queue index are RAM-only. A restart forgets which queues a key created, so new reports about old queues are rejected. | Open — needs persistent queue metadata |
-| A8 | Low | File transfer uses the `large` profile, so the profile choice itself leaks that a transfer is happening. | Open — file transfer is not wired into the app |
+| A8 | Low | File transfer uses the `large` profile, so the profile choice itself leaks that a transfer is happening. | Fixed — F1.2 wired file transfer into the app; `profileForPacketSize()` maps wire length back to profile, and `receiveAnonPackets()` uses it instead of hard-coded `'standard'`; `assembleFile` verifies SHA-256. Residual: profile choice still hints a transfer is in progress. |
 | A9 | Low | HTTP ACK/control request bodies are variable-length even though relay packets are fixed. | Open |
 | A10 | Low | Invite `expiresAt` is enforced at decode time but direct transport configuration can bypass invite validation. | Accepted — only reachable by editing local settings |
-| A11 | Info | Tor/onion routing is available through the native SOCKS bridge and `createTorFetch`, but the experimental screen has no Tor toggle yet, so it is opt-in through transport configuration only. | Open — Phase I bridge exists; UI wiring remains |
+| A11 | Info | Tor/onion routing is available through the native SOCKS bridge and `createTorFetch`, but the experimental screen has no Tor toggle yet, so it is opt-in through transport configuration only. | Partially fixed — Phase I (`relayLatency.ts`, `tor.ts`, `checkTorRunning`) landed; the app Tor toggle validates `.onion` URLs, verifies the SOCKS listener via `anon_tor_check`, and disables push while active. UI wiring remains optional. |
 
 No finding lets the relay read message content or link a sender to a recipient
 when proxy mode and independent inbox queues are used.

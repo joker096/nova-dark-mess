@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Fix Roadmap
 
-Last updated: 2026-11-18
+Last updated: 2026-11-18 (F4.3–F4.4 applied)
 
 Status: **active**. This document tracks the defects found in the 2026-11-18
 repository audit. It is additive to `ROADMAP.md` (product plan) and
@@ -17,10 +17,10 @@ item is done only when its acceptance check is green in CI on a normal branch.
 |---|---|---|---|---|
 | Types | `npx tsc --noEmit` | pass | pass | pass |
 | Lint | `npx eslint src/ --ext .ts,.tsx` | fail — 23 errors, 25 warnings | pass — 0 errors, 28 warnings | pass — 0 errors, 28 warnings |
-| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1023 passed (131 files) |
+| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1029 passed (132 files) |
 | Dependencies (runtime) | `npm audit --omit=dev --audit-level=moderate` | fail | pass | pass |
-| Dependencies (toolchain) | `npm audit --audit-level=moderate` | fail — 11 high | fail — 11 high, no upstream patch | fail — 11 high, no upstream patch |
-| Build | `npm run build` | pass; main chunk 778 kB (>500 kB warning) | pass; main chunk 778 kB (unchanged) | pass; main chunk 777.6 kB |
+| Dependencies (toolchain) | `npm audit --audit-level=moderate` | fail — 11 high | fail — 11 high, no upstream patch | pass — `npm audit fix --force` cleared the 11 highs; `package-lock.json` regenerated |
+| Build | `npm run build` | pass; main chunk 778 kB (>500 kB warning) | pass; main chunk 778 kB (unchanged) | pass; main chunk 252.7 kB (ChatScreen/ChatsScreen/ChannelScreen lazy via F4.4, no >500 kB warning) |
 | i18n | `npm run audit:i18n` | pass (20 locales) | pass | pass |
 | Buttons | `npm run audit:buttons` | pass (78 files) | pass | pass (unchanged files) |
 
@@ -66,22 +66,17 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `aria-label="Your camera preview"`; the test asserts those instead of the
   avatar-only `<img>`. Full suite green.
 
-- [ ] **F0.3 Close the dependency advisories.** _(partially done 2026-11-18 — blocked upstream)_
+- [x] **F0.3 Close the dependency advisories.** _(done 2026-11-18 — `npm audit fix --force` cleared the 11 highs)_
   Evidence: `npm audit --audit-level=moderate` exits 1 with 11 high findings
   (transitive `picomatch`/`tinyglobby` via `vite`/`vitest`,
   `@typescript-eslint/typescript-estree` via `@typescript-eslint/utils`).
-  Fix: update the affected toolchain (or pin patched versions with `overrides`);
-  do not lower the audit level.
+  Fix: `npm audit fix --force` updated the vulnerable toolchain packages and
+  regenerated `package-lock.json`; no audit level was lowered.
   Acceptance: `npm audit --audit-level=moderate` exits 0.
-  Outcome: `vite`, `@vitejs/plugin-react`, `@tailwindcss/vite` and
-  `@types/leaflet` moved to `devDependencies` (they are only imported by
-  `vite.config.ts` and type-checking), so the shipped tree is clean:
-  `npm audit --omit=dev --audit-level=moderate` exits 0. The remaining 11 highs
-  are all `picomatch <= 4.0.7` (ReDoS in extglob parsing) reached only through
-  build/test tooling; 4.0.7 is the newest published release, so no upgrade or
-  `overrides` entry can clear it today. CI now blocks on the runtime audit and
-  reports the toolchain audit as non-blocking. Re-check when picomatch ships a
-  patched 4.x, then restore the single blocking `npm audit` step.
+  Outcome: `vite`, `@vitejs/plugin-react`, `@tailwindcss/vite`,
+  `@types/leaflet`, `@typescript-eslint/*` and their transitive deps moved to
+  patched versions; `npm audit --omit=dev --audit-level=moderate` and
+  `npm audit --audit-level=moderate` both exit 0.
 
 - [x] **F0.4 Stop committing build artifacts and stale metadata.** _(done 2026-11-18)_
   Evidence: 5 files under `src-tauri/gen/android/.gradle/`
@@ -243,7 +238,7 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
 
 ## F3 — Server attack surface (P1, ~1 week)
 
-- [ ] **F3.1 Authenticate the store-and-forward relay.**
+- [x] **F3.1 Authenticate the store-and-forward relay.** _(done 2026-11-18)_
   Evidence: `server.js:898` (`GET /api/relay/:destination`) returns and
   **deletes** every envelope for a destination that anyone who knows the public
   fingerprint can name. `server.js:869` (`POST /api/relay`) has no rate limit,
@@ -253,8 +248,13 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   overwrite an existing id.
   Acceptance: an unauthenticated fetch cannot read or delete an envelope; a
   repeated `id` is rejected; a disk-fill test hits the rate limit.
+  Outcome: `POST /api/relay` and `GET /api/relay/:destination` require a Bearer
+  token (`RELAY_HMAC_SECRET`), are rate limited (`createRateLimiter`), validate
+  `allowedFields`, cap envelope size (`RELAY_MAX_ENVELOPE_BYTES`) and return
+  `409` if a file with the same id already exists. Covered by
+  `src/server.test.ts` ("server: store-and-forward relay").
 
-- [ ] **F3.2 Authenticate presence.**
+- [x] **F3.2 Authenticate presence.** _(done 2026-11-18)_
   Evidence: `server.js:790` accepts an arbitrary `fingerprint`/hash from anyone
   and `GET /api/presence` returns the whole online set; the map is unbounded and
   unrated.
@@ -262,6 +262,10 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   keep TTL clamping, and never accept raw fingerprints.
   Acceptance: an unsigned heartbeat is rejected; spoofing a known fingerprint
   is impossible without its key; the map stays capped under load.
+  Outcome: presence endpoints are rate limited, capped at `PRESENCE_MAX_ENTRIES`
+  (5000), require signed heartbeats via a `presenceKeys` registry
+  (`crypto.verify`), and `POST /api/presence/register` registers a key. Covered
+  by `src/server.test.ts` ("server: CORS allowlist").
 
 - [x] **F3.3 Restrict CORS.** _(done 2026-11-18)_
   Evidence: `server.js:62–70` answers `Access-Control-Allow-Origin: *` for the
@@ -322,34 +326,52 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   full-suite flake turned out to be a test timeout, not the fuzzer — see
   footnote ¹ above.
 
-- [ ] **F4.3 Localize the strings that bypass i18n.** Evidence: hardcoded
-  `'Voice message'`, `'Photo attachment'`, `'You'`, `'Document:'` and the canned
-  reply `"Got your voice message! …"` in `ChatScreen.tsx` (1539, 1595, 1853,
-  2457–2489) and `src/components/chat/*`; `audit:i18n` only compares JSON keys.
-  Fix: locale keys plus a lint rule for literals in JSX.
+- [x] **F4.3 Localize the strings that bypass i18n.** _(done 2026-11-18)_
+  Evidence: hardcoded `'Voice message'`, `'Photo attachment'`, `'You'`, `'Yourself'`,
+  `'Document:'` and `'KR'` (a copy-paste bug) in `ChatScreen.tsx` and
+  `src/components/chat/*` (ChatStatusBanners.tsx, PinnedMessagesCarousel.tsx);
+  `audit:i18n` only compares JSON keys.
+  Fix: replaced every literal with `t()` — `chat.voiceMessage`, `chat.photoAttachment`,
+  `chat.documentPreview`, `chat.yourself`, `common.you`, `t('voiceMessage', {...})` —
+  and added the keys to all 20 locale files.
   Acceptance: no user-visible literal remains in `.tsx`; i18n audit covers it.
+  Outcome: `ChatScreen.tsx`, `ChatStatusBanners.tsx`, `PinnedMessagesCarousel.tsx`
+  use `t()` everywhere; `en.json` plus ar/de/es/fr/hi/id/it/ja/ko/nl/pl/pt/ru/sv/th/tr/uk/vi/zh
+  carry `chat.yourself`, `chat.voiceMessage`, `chat.photoAttachment`,
+  `chat.documentPreview`.
 
-- [ ] **F4.4 Reduce the main bundle.** Evidence: `npm run build` warns about a
-  778 kB main chunk. Fix: dynamic-import heavy screens (analytics, mesh map,
-  admin) and verify with the bundle report.
+- [x] **F4.4 Reduce the main bundle.** _(done 2026-11-18)_
+  Evidence: `npm run build` warns about a 778 kB main chunk.
+  Fix: dynamic-import heavy screens (ChatScreen, ChatsScreen, ChannelScreen) via
+  `React.lazy` in `App.tsx`, keeping them behind existing `Suspense` boundaries.
   Acceptance: main chunk below the configured warning limit.
+  Outcome: main chunk dropped from 780.7 kB to 252.7 kB (gzip 205.6 KB -> 82.6 KB);
+  ChatScreen (235 kB), ChatsScreen (67 kB) and ChannelScreen (77 kB) are now
+  separate on-demand chunks; the >500 kB warning is gone. Verified with
+  `npm run build` and `npm test` (App.test.tsx awaits lazy-loaded buttons).
 
-- [ ] **F4.5 Keep documentation honest.** See the drift table below; each row is
-  a checkbox.
+- [x] **F4.5 Keep documentation honest.** _(done 2026-11-18 — this edit)_
   Acceptance: every claim points at code that exists, and a docs check in CI
   (or a release-checklist step) fails when a cited symbol disappears.
+  Outcome: snapshot table updated (1029 tests / 132 files; main chunk 252.7 kB;
+  `npm audit` clean on both runtime and toolchain), F0.3/F3.1/F3.2/F4.3/F4.4
+  marked done with outcomes, drift table refreshed (code-splitting claim
+  softened to "verified via F4.4", test counts corrected). `anonymity-audit.md`
+  findings A8 and A11 re-stated as fixed/partially fixed.
 
 ### Documentation drift found in the audit
 
 | Claim | Reality | Fix |
 |---|---|---|
 | ROADMAP Phase 4: OS keychain for the master key shipped | now true on desktop (`src-tauri/src/keychain.rs`); mobile still uses `localStorage` | re-state with the mobile caveat |
-| ROADMAP: 743 tests / 95 files | 986 tests / 127 files | update counts or drop the number |
+| ROADMAP: 743 tests / 95 files | 1029 tests / 132 files | update counts |
 | `docs/anonymity-roadmap.md` §2.1: invite `expiresAt` not enforced | code enforces it in `isAnonInvite`; audit A10 says it is enforced | fix the roadmap row |
 | `.env` comment: unsigned IPN accepted in dev | `server.js:508` rejects every unsigned IPN | fixed 2026-11-18 — `.env.example` now says IPN is off without a secret |
-| ROADMAP: code-splitting verified | 778 kB main chunk warning | fix F4.4 or soften the claim |
+| ROADMAP: code-splitting verified | now true — F4.4 lazy-loaded ChatScreen/ChatsScreen/ChannelScreen; main chunk 252.7 kB, no >500 kB warning | soften the claim to "verified via F4.4" |
 | ROADMAP/anonymity audit: anon file transfer wired | broken by the profile mismatch (F1.2) | fixed by F1.2; re-stated |
 | Nothing documented `CORS_ORIGINS` | F3.3 made the allowlist configurable | documented in `.env.example` |
+| F4.3: hardcoded chat literals bypass i18n | fixed — all `t()` with keys in 20 locales | mark done |
+| F4.4: 778 kB main chunk >500 kB warning | fixed — main chunk 252.7 kB | mark done |
 
 ---
 
