@@ -1,13 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { InMemoryAnonRelay } from './relay';
-import { encodeInvite, decodeInvite, sendAnonMessage, receiveAnonMessages } from './session';
+import { encodeInvite, decodeInvite, sendAnonMessage, receiveAnonMessages, isAllowedRelayUrl } from './session';
 
 function b64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
 describe('anon session', () => {
+  it('allows onion relays alongside https and loopback', () => {
+    const onion = 'http://abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwxyz234567.onion';
+    expect(isAllowedRelayUrl(onion)).toBe(true);
+    expect(isAllowedRelayUrl('https://relay.example')).toBe(true);
+    expect(isAllowedRelayUrl('http://localhost:8787')).toBe(true);
+    expect(isAllowedRelayUrl('http://relay.example')).toBe(false);
+    expect(isAllowedRelayUrl('http://.onion')).toBe(false);
+  });
+
   it('sends and receives a sealed fixed-size message', async () => {
     const relay = new InMemoryAnonRelay();
     const { queueId, tokens, signingKey, inviteToken } = relay.createQueue();

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Gift, Send, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Copy, Gift, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { toDataURL } from 'qrcode';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
@@ -33,6 +33,16 @@ import {
 } from '../lib/anon/blocks';
 import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
+import { createPushHintPoller, pushTokenForQueue, registerPush } from '../lib/anon/push';
+import { isOnionUrl } from '../lib/anon/tor';
+import { sendAnonMessage } from '../lib/anon/session';
+import { uint8ToBase64 } from '../lib/anon/packet';
+import {
+  assembleFile,
+  createFileEnvelopes,
+  parseFileEnvelope,
+  type FileEnvelope,
+} from '../lib/anon/fileTransfer';
 import type { RelayEndpoint } from '../lib/anon/relays';
 import {
   noteRelayFailure,
@@ -40,6 +50,15 @@ import {
   shouldFailoverRelay,
   type RelayFailureMap,
 } from '../lib/anon/relayHealth';
+import { DummyTrafficScheduler } from '../lib/anon/jitter';
+import {
+  coverTrafficIntervalMs,
+  loadPrivacyPrefs,
+  readBatteryStatus,
+  shouldEmitCoverTraffic,
+  type BatteryStatus,
+  type PrivacyPrefs,
+} from '../lib/network/privacyMode';
 import { clearPendingPremiumGiftOrder, purchasePremiumGiftCode } from '../lib/premium';
 
 const STORAGE_KEY = 'anon_messenger_state_v1';
@@ -53,6 +72,29 @@ interface RelaySettings {
   proxyUrl: string;
   relayId: string;
   relayPublicKey: string;
+  /** Optional provider token; registered once per queue with a derived suffix. */
+  pushToken: string;
+  /** Route relay/proxy traffic through the native Tor SOCKS bridge. */
+  tor: boolean;
+}
+
+interface StoredFile {
+  name: string;
+  mime: string;
+  size: number;
+  /** Base64 of the assembled file; storage is already encrypted at rest. */
+  data: string;
+}
+
+interface StoredTransfer {
+  transferId: string;
+  name: string;
+  mime: string;
+  size: number;
+  total: number;
+  sha256: string;
+  envelopes: FileEnvelope[];
+  updatedAt: number;
 }
 
 interface StoredMessage {
@@ -61,6 +103,7 @@ interface StoredMessage {
   fromMe: boolean;
   createdAt: number;
   status?: 'queued' | 'sent' | 'error';
+  file?: StoredFile;
 }
 
 interface StoredContact {
@@ -82,6 +125,8 @@ interface AnonymousMessengerState {
   pendingInbox?: LocalInbox;
   contacts: StoredContact[];
   pendingPremiumGift?: PendingPremiumGift;
+  /** Incomplete inbound file transfers, keyed by transfer id. */
+  pendingTransfers?: Record<string, StoredTransfer>;
 }
 
 const EMPTY_STATE: AnonymousMessengerState = { contacts: [] };
@@ -90,6 +135,8 @@ const EMPTY_SETTINGS: RelaySettings = {
   proxyUrl: '',
   relayId: '',
   relayPublicKey: '',
+  pushToken: '',
+  tor: false,
 };
 
 function isAllowedProxyUrl(value: string): boolean {
@@ -132,6 +179,14 @@ function relayEndpoints(settings: RelaySettings): RelayEndpoint[] {
 function isValidSettings(settings: RelaySettings): boolean {
   if (!isAllowedRelayUrl(settings.relayUrl)) return false;
   if (splitRelays(settings.extraRelays).some((url) => !isAllowedRelayUrl(url))) return false;
+  if (
+    settings.tor &&
+    (!isOnionUrl(settings.relayUrl) ||
+      splitRelays(settings.extraRelays).some((url) => !isOnionUrl(url)) ||
+      (settings.proxyUrl.trim() !== '' && !isOnionUrl(settings.proxyUrl)))
+  ) {
+    return false;
+  }
   const hasProxySettings = Boolean(
     settings.proxyUrl.trim() || settings.relayId.trim() || settings.relayPublicKey.trim(),
   );
@@ -177,6 +232,7 @@ function transportFor(settings: RelaySettings, relayUrl: string = settings.relay
   );
   return createAnonTransport({
     relayUrl,
+    ...(settings.tor && isOnionUrl(relayUrl) ? { tor: true } : {}),
     ...(hasProxySettings
       ? {
           proxy: {
@@ -235,6 +291,15 @@ export const AnonymousMessengerScreen: React.FC<{
         proxyUrl: 'URL proxy',
         relayId: 'ID relay для proxy',
         relayKey: 'Закреплённый публичный ключ X25519 relay',
+        pushToken: 'Push-токен (необязательно)',
+        pushTokenHint:
+          'Только токен провайдера. Уведомление пустое («проверьте relay»), без отправителя и текста. Один токен на очередь; с proxy и Tor push отключён.',
+        torRouting: 'Подключение через Tor (.onion)',
+        torHint:
+          'Все адреса relay и proxy должны быть http://…onion. Нужен запущенный Tor (порт 9050) и нативное приложение Tauri.',
+        attachFile: 'Отправить файл',
+        fileFailed: 'Файл повреждён или не прошёл проверку SHA-256.',
+        fileTooLarge: 'Файл слишком большой для анонимной передачи (до 2 МБ).',
       advanced: 'Дополнительные сетевые настройки',
       advancedNote: 'Для собственного relay или proxy. Обычно менять это не нужно.',
         saveSettings: 'Сохранить подключение',
@@ -295,6 +360,15 @@ export const AnonymousMessengerScreen: React.FC<{
         proxyUrl: 'Proxy URL',
         relayId: 'Relay ID at proxy',
         relayKey: 'Pinned relay X25519 public key',
+        pushToken: 'Push token (optional)',
+        pushTokenHint:
+          'Provider token only. The notification is empty ("check the relay") with no sender or text. One token per queue; disabled with a proxy or Tor.',
+        torRouting: 'Route through Tor (.onion)',
+        torHint:
+          'All relay and proxy URLs must be http://…onion. Requires a running Tor (port 9050) and the native Tauri app.',
+        attachFile: 'Send a file',
+        fileFailed: 'The file was corrupted or failed its SHA-256 check.',
+        fileTooLarge: 'File is too large for anonymous transfer (2 MB max).',
         advanced: 'Advanced network settings',
         advancedNote: 'For a custom relay or proxy. Most people do not need to change this.',
         saveSettings: 'Save connection',
@@ -357,7 +431,11 @@ export const AnonymousMessengerScreen: React.FC<{
   const [error, setError] = useState('');
   const pollingRef = useRef(false);
   const checkInboxRef = useRef<(() => Promise<void>) | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const relayFailuresRef = useRef<RelayFailureMap>({});
+  const [privacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
+  const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
+  const dummyTrafficRef = useRef<DummyTrafficScheduler | null>(null);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -369,8 +447,16 @@ export const AnonymousMessengerScreen: React.FC<{
         const defaultSettings = { ...EMPTY_SETTINGS, relayUrl: defaultRelayUrl() };
         const next =
           stored && Array.isArray(stored.contacts)
-            ? { ...stored, settings: stored.settings ?? defaultSettings }
+            ? { ...stored, settings: { ...defaultSettings, ...(stored.settings ?? {}) } }
             : { ...EMPTY_STATE, settings: defaultSettings };
+        if (next.pendingTransfers) {
+          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+          next.pendingTransfers = Object.fromEntries(
+            Object.entries(next.pendingTransfers).filter(
+              ([, transfer]) => transfer.updatedAt > cutoff,
+            ),
+          );
+        }
         if (cancelled) return;
         stateRef.current = next;
         setState(next);
@@ -432,6 +518,14 @@ export const AnonymousMessengerScreen: React.FC<{
     ? buildContactInviteUrl(currentInvite, publicAppUrl())
     : '';
   const isConfigured = Boolean(configuredSettings && transport);
+  const hasProxyRouting = Boolean(
+    configuredSettings &&
+      (configuredSettings.proxyUrl.trim() ||
+        configuredSettings.relayId.trim() ||
+        configuredSettings.relayPublicKey.trim()),
+  );
+  const pushToken = configuredSettings?.pushToken.trim() ?? '';
+  const hasTorRouting = Boolean(configuredSettings?.tor);
 
   useEffect(() => {
     if (!inviteLink) {
@@ -470,6 +564,8 @@ export const AnonymousMessengerScreen: React.FC<{
       proxyUrl: settingsForm.proxyUrl.trim(),
       relayId: settingsForm.relayId.trim(),
       relayPublicKey: settingsForm.relayPublicKey.trim(),
+      pushToken: settingsForm.pushToken.trim(),
+      tor: settingsForm.tor,
     };
     if (!isValidSettings(nextSettings)) {
       setError(
@@ -692,15 +788,103 @@ export const AnonymousMessengerScreen: React.FC<{
         for (const packet of packets) {
           if (contactId) {
             if (packet.offer) {
-              // Offers on an established inbox are not authenticated as queue
-              // rotations, so never replace the saved peer invite implicitly.
+              // A queue rotation arrives as a contact offer on our own queue.
+              // Adopt the new inbox only when the offer proves the same contact
+              // identity this conversation started with (the peer signed the
+              // new queue key with its identity key), so neither a stranger nor
+              // a replayed offer can redirect the conversation.
+              const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
+              bucket.packetIds.push(packet.packetId);
+              acknowledgements.set(inbox.queueId, bucket);
+              const existing = next.contacts.find((entry) => entry.id === contactId);
+              const rotated = packet.offer;
+              const trustedIdentity = existing?.contact.identityKey;
+              if (
+                existing &&
+                trustedIdentity &&
+                !isBlockedContact(rotated) &&
+                rotated.queueId !== existing.contact.peerInvite.queueId &&
+                contactIdentity(rotated) === trustedIdentity
+              ) {
+                changed = true;
+                next = {
+                  ...next,
+                  contacts: next.contacts.map((entry) =>
+                    entry.id === contactId
+                      ? { ...entry, contact: { ...entry.contact, peerInvite: rotated } }
+                      : entry,
+                  ),
+                };
+              }
+              continue;
+            }
+            const existing = next.contacts.find((entry) => entry.id === contactId);
+            if (!existing) continue;
+            const fileEnvelope = parseFileEnvelope(packet.body);
+            if (fileEnvelope) {
+              const previous = next.pendingTransfers?.[fileEnvelope.transferId];
+              const envelopes = previous ? [...previous.envelopes] : [];
+              if (!envelopes.some((entry) => entry.index === fileEnvelope.index)) {
+                envelopes.push(fileEnvelope);
+              }
+              if (previous && previous.total !== fileEnvelope.total) {
+                setError(labels.fileFailed);
+                continue;
+              }
+              const pendingTransfers = { ...(next.pendingTransfers ?? {}) };
+              if (envelopes.length >= fileEnvelope.total) {
+                const assembled = await assembleFile(envelopes);
+                delete pendingTransfers[fileEnvelope.transferId];
+                if (assembled) {
+                  next = {
+                    ...next,
+                    pendingTransfers,
+                    contacts: next.contacts.map((entry) =>
+                      entry.id === contactId
+                        ? {
+                            ...entry,
+                            messages: [
+                              ...entry.messages,
+                              {
+                                id: packet.packetId,
+                                body: '',
+                                fromMe: false,
+                                createdAt: Date.now(),
+                                file: {
+                                  name: assembled.name,
+                                  mime: assembled.mime,
+                                  size: assembled.bytes.length,
+                                  data: uint8ToBase64(assembled.bytes),
+                                },
+                              },
+                            ].slice(-MAX_STORED_MESSAGES),
+                          }
+                        : entry,
+                    ),
+                  };
+                } else {
+                  next = { ...next, pendingTransfers };
+                  setError(labels.fileFailed);
+                }
+              } else {
+                pendingTransfers[fileEnvelope.transferId] = {
+                  transferId: fileEnvelope.transferId,
+                  name: fileEnvelope.name,
+                  mime: fileEnvelope.mime,
+                  size: fileEnvelope.size,
+                  total: fileEnvelope.total,
+                  sha256: fileEnvelope.sha256,
+                  envelopes,
+                  updatedAt: Date.now(),
+                };
+                next = { ...next, pendingTransfers };
+              }
+              changed = true;
               const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
               bucket.packetIds.push(packet.packetId);
               acknowledgements.set(inbox.queueId, bucket);
               continue;
             }
-            const existing = next.contacts.find((entry) => entry.id === contactId);
-            if (!existing) continue;
             if (existing.messages.some((message) => message.id === packet.packetId)) {
               const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
               bucket.packetIds.push(packet.packetId);
@@ -805,6 +989,120 @@ export const AnonymousMessengerScreen: React.FC<{
     }, 10_000);
     return () => window.clearInterval(timer);
   }, [isBusy, pendingInboxForPolling, transport]);
+
+  // Push split (phase F): register an opaque token per queue so the relay can
+  // send an empty wake-up. Disabled with a proxy: the registration would leak
+  // the direct IP the proxy exists to hide.
+  const pushTargets = useMemo(() => {
+    const targets: Array<{ queueId: string; relayUrl: string }> = [];
+    const add = (inbox?: LocalInbox) => {
+      if (inbox) targets.push({ queueId: inbox.queueId, relayUrl: inbox.relayUrl });
+    };
+    add(state.pendingInbox);
+    for (const entry of state.contacts) add(entry.contact.inbox);
+    return targets;
+  }, [state.pendingInbox, state.contacts]);
+  const registeredPushRef = useRef(new Map<string, string>());
+  useEffect(() => {
+    if (!isLoaded || !pushToken || hasProxyRouting || hasTorRouting) {
+      registeredPushRef.current.clear();
+      return;
+    }
+    for (const target of pushTargets) {
+      const key = `${target.queueId}@${target.relayUrl}`;
+      if (registeredPushRef.current.get(key) === pushToken) continue;
+      registeredPushRef.current.set(key, pushToken);
+      void registerPush(
+        { baseUrl: target.relayUrl },
+        pushTokenForQueue(pushToken, target.queueId),
+        target.queueId,
+      ).then((ok) => {
+        if (!ok) registeredPushRef.current.delete(key);
+      });
+    }
+  }, [isLoaded, pushToken, hasProxyRouting, hasTorRouting, pushTargets]);
+  useEffect(() => {
+    if (
+      !isLoaded ||
+      !configuredSettings ||
+      !transport ||
+      !pushToken ||
+      hasProxyRouting ||
+      hasTorRouting
+    ) {
+      return;
+    }
+    const poller = createPushHintPoller({
+      config: { baseUrl: configuredSettings.relayUrl },
+      subscriptions: () => {
+        const current = stateRef.current;
+        const queues = new Map<string, { queueId: string; baseUrl: string }>();
+        const add = (inbox?: LocalInbox) => {
+          if (inbox && !queues.has(inbox.queueId)) {
+            queues.set(inbox.queueId, { queueId: inbox.queueId, baseUrl: inbox.relayUrl });
+          }
+        };
+        add(current.pendingInbox);
+        for (const entry of current.contacts) add(entry.contact.inbox);
+        return [...queues.values()].map(({ queueId, baseUrl }) => ({
+          pushToken: pushTokenForQueue(pushToken, queueId),
+          queueId,
+          baseUrl,
+        }));
+      },
+      onHint: () => checkInboxRef.current?.(),
+    });
+    return poller.start();
+  }, [isLoaded, configuredSettings, transport, pushToken, hasProxyRouting, hasTorRouting]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void readBatteryStatus().then((status) => {
+      if (!cancelled) setBattery(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeCoverTraffic = shouldEmitCoverTraffic(privacyPrefs, battery);
+    const interval = activeCoverTraffic ? coverTrafficIntervalMs(privacyPrefs, battery) : null;
+
+    if (dummyTrafficRef.current) {
+      dummyTrafficRef.current.stop();
+      dummyTrafficRef.current = null;
+    }
+
+    if (!interval || !transport) return;
+
+    const queueIds: string[] = [];
+    const senderTokens: Record<string, string> = {};
+    const addQueue = (inbox: LocalInbox) => {
+      if (!queueIds.includes(inbox.queueId)) {
+        queueIds.push(inbox.queueId);
+        senderTokens[inbox.queueId] = inbox.senderToken;
+      }
+    };
+    if (state.pendingInbox) addQueue(state.pendingInbox);
+    for (const entry of state.contacts) addQueue(entry.contact.inbox);
+
+    if (queueIds.length === 0) return;
+
+    const scheduler = new DummyTrafficScheduler({
+      queueIds,
+      senderTokens,
+      intervalMs: interval,
+      enabled: true,
+    });
+    scheduler.start(transport);
+    dummyTrafficRef.current = scheduler;
+
+    return () => {
+      scheduler.stop();
+      dummyTrafficRef.current = null;
+    };
+  }, [privacyPrefs, battery, transport, state.pendingInbox, state.contacts]);
 
   const toggleSelectedContactBlock = () => {
     if (!selectedContactKey) return;
@@ -929,6 +1227,84 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!result && !sendError) setError('Message could not be sent. It remains saved locally for retry.');
     else if (!result && sendError) setError(friendlyError(sendError));
     setIsBusy(false);
+  };
+
+  const sendFile = async (file: File | undefined) => {
+    if (!file || !selectedContact || selectedContactBlocked || isBusy) return;
+    const peerTransport = getTransport(selectedContact.contact.peerInvite.relayUrl);
+    if (!peerTransport) {
+      setError(labels.relayUnavailable);
+      return;
+    }
+    setError('');
+    setStatus('');
+    setIsBusy(true);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const envelopes = await createFileEnvelopes(bytes, file.name, file.type);
+      const id = crypto.randomUUID();
+      const queued: StoredMessage = {
+        id,
+        body: '',
+        fromMe: true,
+        createdAt: Date.now(),
+        status: 'queued',
+        file: {
+          name: file.name,
+          mime: file.type || 'application/octet-stream',
+          size: bytes.length,
+          data: uint8ToBase64(bytes),
+        },
+      };
+      await persist({
+        ...stateRef.current,
+        contacts: stateRef.current.contacts.map((entry) =>
+          entry.id === selectedContact.id
+            ? { ...entry, messages: [...entry.messages, queued].slice(-MAX_STORED_MESSAGES) }
+            : entry,
+        ),
+      });
+
+      let sentAll = true;
+      for (const envelope of envelopes) {
+        const result = await sendAnonMessage(
+          peerTransport,
+          selectedContact.contact.peerInvite,
+          JSON.stringify(envelope),
+          'large',
+        );
+        if (!result) {
+          sentAll = false;
+          break;
+        }
+      }
+
+      await persist({
+        ...stateRef.current,
+        contacts: stateRef.current.contacts.map((entry) =>
+          entry.id === selectedContact.id
+            ? {
+                ...entry,
+                messages: entry.messages.map((message) =>
+                  message.id === id
+                    ? { ...message, status: sentAll ? 'sent' : 'error' }
+                    : message,
+                ),
+              }
+            : entry,
+        ),
+      });
+      if (!sentAll) setError(labels.fileFailed);
+    } catch (error) {
+      setError(
+        error instanceof Error && error.message.includes('too large')
+          ? labels.fileTooLarge
+          : friendlyError(error),
+      );
+    } finally {
+      setIsBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const deliverPremiumGift = async (gift: PendingPremiumGift) => {
@@ -1199,6 +1575,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 ['proxyUrl', labels.proxyUrl, 'https://proxy.example'],
                 ['relayId', labels.relayId, 'relay-main'],
                 ['relayPublicKey', labels.relayKey, 'base64url X25519 key'],
+                ['pushToken', labels.pushToken, 'unifiedpush-endpoint-or-token'],
               ] as const).map(([field, label, placeholder]) => (
                 <label key={field} className="block space-y-1 text-xs text-white/60">
                   <span>{label}</span>
@@ -1214,6 +1591,19 @@ export const AnonymousMessengerScreen: React.FC<{
                   />
                 </label>
               ))}
+              <p className="text-[11px] leading-relaxed text-white/45">{labels.pushTokenHint}</p>
+              <label className="flex items-center gap-2 text-xs text-white/60">
+                <input
+                  type="checkbox"
+                  checked={settingsForm.tor}
+                  onChange={(event) =>
+                    setSettingsForm((current) => ({ ...current, tor: event.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-white/20 bg-black/30"
+                />
+                <span>{labels.torRouting}</span>
+              </label>
+              <p className="text-[11px] leading-relaxed text-white/45">{labels.torHint}</p>
               <button
                 type="submit"
                 disabled={isBusy}
@@ -1314,7 +1704,21 @@ export const AnonymousMessengerScreen: React.FC<{
                         : 'mr-auto bg-white/10 text-white/90'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                    {message.file ? (
+                      <a
+                        href={`data:${message.file.mime};base64,${message.file.data}`}
+                        download={message.file.name}
+                        className="flex items-center gap-2 break-all underline decoration-white/40"
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0" />
+                        <span>{message.file.name}</span>
+                        <span className="shrink-0 text-[10px] opacity-70">
+                          {Math.max(1, Math.ceil(message.file.size / 1024))} KB
+                        </span>
+                      </a>
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                    )}
                     <p className="mt-1 text-right text-[10px] opacity-60">
                       {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       {message.status === 'error' ? ' · error' : ''}
@@ -1326,6 +1730,22 @@ export const AnonymousMessengerScreen: React.FC<{
                 )}
               </div>
               <form onSubmit={sendMessage} className="flex gap-2 border-t border-white/10 p-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(event) => void sendFile(event.target.files?.[0])}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={labels.attachFile}
+                  title={labels.attachFile}
+                  disabled={!selectedContact || selectedContactBlocked || isBusy}
+                  className="rounded-full bg-white/10 p-2.5 text-white/80 hover:bg-white/15 disabled:opacity-40"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
                 <input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}

@@ -1,10 +1,46 @@
 import { generateQueueSigningKeyPair, signQueueCommand } from './signing';
+import { base64ToUint8 } from './packet';
 import type { PowChallenge, PowSolution } from './spam';
 import type { CreatedQueue, EnqueueResult, PollResult } from './types';
 
 export interface AnonHttpRelayConfig {
   baseUrl: string;
   fetchImpl?: typeof fetch;
+}
+
+const PAD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const CONTROL_BODY_BYTES = 4096;
+const ACK_BODY_BYTES = 8192;
+const ENQUEUE_BODY_BYTES: Record<number, number> = {
+  4096: 8192,
+  16384: 24576,
+  65536: 92160,
+};
+
+/**
+ * Pad a control command to a constant JSON size. `pad` is random base64url and
+ * is ignored by the relay; it is added after signing, so signatures only cover
+ * the semantic fields. Enqueue bodies are padded per packet profile, so their
+ * size no longer reveals which optional fields were present.
+ */
+function padJsonBody(body: Record<string, unknown>, targetBytes: number): Record<string, unknown> {
+  const base = JSON.stringify({ ...body, pad: '' });
+  const remaining = targetBytes - new TextEncoder().encode(base).length;
+  if (remaining <= 0) return body;
+  const random = new Uint8Array(remaining);
+  crypto.getRandomValues(random);
+  let pad = '';
+  for (let index = 0; index < remaining; index++) pad += PAD_ALPHABET[random[index] & 63];
+  return { ...body, pad };
+}
+
+function packetProfileBytes(packet: string): number | null {
+  try {
+    const size = base64ToUint8(packet).length;
+    return size in ENQUEUE_BODY_BYTES ? size : null;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeBase(baseUrl: string): string {
@@ -32,6 +68,11 @@ export async function createAnonQueue(
   pow?: PowChallenge,
 ): Promise<CreatedQueue | null> {
   const signing = generateQueueSigningKeyPair();
+  const body: Record<string, unknown> = {
+    ...(ttlMs ? { ttlMs } : {}),
+    ...(pow ? { pow } : {}),
+    signingPublicKey: signing.publicKey,
+  };
   const result = await postJson<{
     ok: boolean;
     queueId: string;
@@ -39,11 +80,7 @@ export async function createAnonQueue(
     recipientToken: string;
     inviteToken: string;
     expiresAt: number;
-  }>(config, '/api/anon/queues', {
-    ...(ttlMs ? { ttlMs } : {}),
-    ...(pow ? { pow } : {}),
-    signingPublicKey: signing.publicKey,
-  });
+  }>(config, '/api/anon/queues', padJsonBody(body, CONTROL_BODY_BYTES));
   if (!result?.queueId || !result.senderToken || !result.recipientToken || !result.inviteToken) return null;
   return {
     queueId: result.queueId,
@@ -80,7 +117,7 @@ export async function enqueueAnonPacket(
   const result = await postJson<{ ok: boolean; packetId: string; expiresAt: number }>(
     config,
     '/api/anon/enqueue',
-    body,
+    padJsonBody(body, ENQUEUE_BODY_BYTES[packetProfileBytes(packet) ?? 0] ?? 24576),
   );
   if (!result?.packetId) return null;
   return { packetId: result.packetId, expiresAt: result.expiresAt };
@@ -105,7 +142,7 @@ export async function pollAnonQueue(
   const result = await postJson<{ ok: boolean; packets: PollResult['packets']; nextCursor: string | null }>(
     config,
     '/api/anon/poll',
-    body,
+    padJsonBody(body, CONTROL_BODY_BYTES),
   );
   return {
     packets: Array.isArray(result?.packets) ? result.packets : [],
@@ -129,7 +166,11 @@ export async function ackAnonQueue(
       packetIds,
     }));
   }
-  const result = await postJson<{ ok: boolean }>(config, '/api/anon/ack', body);
+  const result = await postJson<{ ok: boolean }>(
+    config,
+    '/api/anon/ack',
+    padJsonBody(body, ACK_BODY_BYTES),
+  );
   return Boolean(result?.ok);
 }
 
@@ -147,7 +188,11 @@ export async function deleteAnonQueue(
       token: recipientToken,
     }));
   }
-  const result = await postJson<{ ok: boolean }>(config, '/api/anon/queues/delete', body);
+  const result = await postJson<{ ok: boolean }>(
+    config,
+    '/api/anon/queues/delete',
+    padJsonBody(body, CONTROL_BODY_BYTES),
+  );
   return Boolean(result?.ok);
 }
 

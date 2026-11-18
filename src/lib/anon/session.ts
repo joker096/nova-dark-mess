@@ -3,7 +3,7 @@ import { isQueueId, isQueueToken } from './ids';
 import { base64ToUint8, decodeFixedPacket, encodeFixedPacket, uint8ToBase64 } from './packet';
 import { isQueuePrivateKey, isQueuePublicKey } from './signing';
 import { isInviteToken, isPowChallenge, solvePow, type PowChallenge, type PowSolution } from './spam';
-import type { AnonTransport, EnqueueResult, PollResult } from './types';
+import type { AnonTransport, EnqueueResult, PacketProfile, PollResult } from './types';
 
 export interface AnonInvite {
   v: 1;
@@ -17,10 +17,14 @@ export interface AnonInvite {
   displayName?: string;
   /**
    * Public signing key of the contact's first queue. Queue keys are rotated on
-   * relay moves, so this is what local block lists and contact recognition use;
-   * it is self-asserted and carries no signature of its own.
+   * relay moves, so this is what local block lists and contact recognition use.
+   * On rotation, `identitySignature` is an Ed25519 signature by this key over
+   * the new queue signing key. A first invite can omit it because the identity
+   * is the queue key itself.
    */
   identityKey?: string;
+  /** Binding of `identityKey` to the current queue key; absent on legacy invites. */
+  identitySignature?: string;
   /** Optional first-contact proof-of-work required by the relay. */
   pow?: PowChallenge;
   /**
@@ -62,6 +66,9 @@ export function isAllowedRelayUrl(value: string): boolean {
     const url = new URL(value);
     if (url.protocol === 'https:') return true;
     if (url.protocol !== 'http:') return false;
+    // Plain http is only acceptable on loopback (dev) or inside a Tor onion
+    // circuit, where the onion service authenticates and encrypts the hop.
+    if (url.hostname.endsWith('.onion')) return url.hostname.length > '.onion'.length;
     return url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
   } catch {
     return false;
@@ -91,7 +98,11 @@ export function isAnonInvite(value: unknown): value is AnonInvite {
         invite.displayName.length > 64 ||
         containsControlCharacters(invite.displayName))) ||
     (invite.pow !== undefined && !isPowChallenge(invite.pow)) ||
-    (invite.identityKey !== undefined && !isQueuePublicKey(invite.identityKey))
+    (invite.identityKey !== undefined && !isQueuePublicKey(invite.identityKey)) ||
+    (invite.identitySignature !== undefined &&
+      (typeof invite.identitySignature !== 'string' ||
+        invite.identitySignature.length === 0 ||
+        invite.identityKey === undefined))
   ) {
     return false;
   }
@@ -124,11 +135,12 @@ export async function sendAnonMessage(
   transport: AnonTransport,
   invite: AnonInvite,
   plaintext: string,
+  profile: PacketProfile = 'standard',
 ): Promise<EnqueueResult | null> {
   const sealed = await sealMessageAsync(invite.recipientPublicKey, plaintext);
   const json = JSON.stringify(sealed);
   const bytes = new TextEncoder().encode(json);
-  const packet = encodeFixedPacket(bytes, 'standard');
+  const packet = encodeFixedPacket(bytes, profile);
   const payload = uint8ToBase64(packet);
   const pow = await solutionFor(invite);
   return transport.enqueue(

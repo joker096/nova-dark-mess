@@ -8,6 +8,7 @@ import {
 } from './routing';
 import type { AbuseReportSubmission } from './blocks';
 import { generateQueueSigningKeyPair, signQueueCommand } from './signing';
+import { base64ToUint8 } from './packet';
 import type { PowChallenge, PowSolution } from './spam';
 import type { AnonTransport, CreatedQueue, EnqueueResult, PollResult } from './types';
 
@@ -44,6 +45,37 @@ interface ProxyHealth {
 
 const MAX_FAILURES_BEFORE_COOLDOWN = 3;
 const COOLDOWN_MS = 60 * 1000;
+
+const PAD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const CONTROL_PADDED_BYTES = 6144;
+const ACK_PADDED_BYTES = 10240;
+const ENQUEUE_PADDED_BYTES: Record<number, number> = {
+  4096: 10240,
+  16384: 26624,
+  65536: 94208,
+};
+
+function padRoute(route: RoutingRequest): RoutingRequest {
+  let target = CONTROL_PADDED_BYTES;
+  if (route.action === 'enqueue') {
+    try {
+      const size = base64ToUint8(route.packet).length;
+      target = ENQUEUE_PADDED_BYTES[size] ?? 26624;
+    } catch {
+      target = 26624;
+    }
+  } else if (route.action === 'ack') {
+    target = ACK_PADDED_BYTES;
+  }
+  const base = JSON.stringify({ ...route, pad: '' });
+  const remaining = target - base.length;
+  if (remaining <= 0) return route;
+  const random = new Uint8Array(remaining);
+  crypto.getRandomValues(random);
+  let pad = '';
+  for (let index = 0; index < remaining; index++) pad += PAD_ALPHABET[random[index] & 63];
+  return { ...route, pad } as unknown as RoutingRequest;
+}
 
 function normalizeBase(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '');
@@ -127,7 +159,7 @@ export class ProxyAnonTransport implements AnonTransport {
   }
 
   private async sendRoute<T>(route: RoutingRequest): Promise<T | null> {
-    const envelope = await sealRoutingEnvelope(this.relayPublicKey, route);
+    const envelope = await sealRoutingEnvelope(this.relayPublicKey, padRoute(route));
     return this.sendViaProxies<T>({
       relay: this.relayId,
       envelope,
