@@ -42,6 +42,7 @@ export function sanitizeHtml(html: string, options: SanitizedHtmlOptions = {}): 
   return html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (tag, rawTagName: string) => {
     const tagName = rawTagName.toLowerCase();
     if (!ALLOWED_TAGS.has(tagName)) return escapeHtml(tag);
+    // Rebuild the tag without any attributes: no href, on*, style, etc.
     return tag.startsWith('</') ? `</${tagName}>` : `<${tagName}>`;
   });
 }
