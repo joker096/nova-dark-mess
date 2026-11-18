@@ -1,11 +1,13 @@
 import { decryptAESGCM, encryptAESGCM, EncryptedData } from '../crypto/aes';
 import { UserIdentity } from '../crypto/identity';
 import { deriveKeyFromRandomSecret } from './kdf';
+import { createKeychain } from './keychain';
 
 const IDENTITY_KEY = 'nova_security_identity_v2';
 const LEGACY_IDENTITY_KEY = 'nova_security_identity';
 const DEVICE_SECRET_KEY = 'nova_device_secret';
 const DEVICE_SALT_KEY = 'nova_device_salt';
+const KEYCHAIN_SERVICE = 'nova-dark-messenger';
 
 let cachedDeviceKey: Promise<CryptoKey> | null = null;
 
@@ -13,17 +15,18 @@ function randomBase64(length: number): string {
   return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(length))));
 }
 
-function getOrCreateDeviceMaterial(): { secret: string; salt: Uint8Array } {
-  let secret = localStorage.getItem(DEVICE_SECRET_KEY);
+async function getOrCreateDeviceMaterial(): Promise<{ secret: string; salt: Uint8Array }> {
+  const kc = createKeychain();
+  let secret = await kc.get(KEYCHAIN_SERVICE, DEVICE_SECRET_KEY);
   if (!secret) {
     secret = randomBase64(32);
-    localStorage.setItem(DEVICE_SECRET_KEY, secret);
+    await kc.set(KEYCHAIN_SERVICE, DEVICE_SECRET_KEY, secret);
   }
 
-  let saltB64 = localStorage.getItem(DEVICE_SALT_KEY);
+  let saltB64 = await kc.get(KEYCHAIN_SERVICE, DEVICE_SALT_KEY);
   if (!saltB64) {
     saltB64 = randomBase64(16);
-    localStorage.setItem(DEVICE_SALT_KEY, saltB64);
+    await kc.set(KEYCHAIN_SERVICE, DEVICE_SALT_KEY, saltB64);
   }
 
   const binary = atob(saltB64);
@@ -35,9 +38,9 @@ function getOrCreateDeviceMaterial(): { secret: string; salt: Uint8Array } {
   return { secret, salt };
 }
 
-function getDeviceKey(): Promise<CryptoKey> {
+async function getDeviceKey(): Promise<CryptoKey> {
   if (!cachedDeviceKey) {
-    const { secret, salt } = getOrCreateDeviceMaterial();
+    const { secret, salt } = await getOrCreateDeviceMaterial();
     cachedDeviceKey = deriveKeyFromRandomSecret(secret, salt);
   }
   return cachedDeviceKey;

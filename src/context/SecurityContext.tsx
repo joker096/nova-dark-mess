@@ -29,7 +29,7 @@ import {
   loadStoredIdentity,
   saveStoredIdentity,
 } from '../lib/storage/identityStore';
-import { deriveKeyFromRandomSecret, deriveKeyFromPassphrase } from '../lib/storage/kdf';
+import { deriveKeyFromRandomSecret } from '../lib/storage/kdf';
 import { generateTOTPSecret, verifyTOTPCode } from '../lib/p2p/totp';
 import { getPeerKeyChanges, observePeerKey, type PeerKeyChange } from '../lib/security/peerKeyJournal';
 import {
@@ -37,6 +37,11 @@ import {
   getPinLockoutUntil,
   recordPinFailure,
 } from '../lib/security/pinAttemptLimiter';
+import { createKeychain } from '../lib/storage/keychain';
+import { checkPin, hashPin } from '../lib/security/pinHash';
+
+const KEYCHAIN_SERVICE = 'nova-dark-messenger';
+const PIN_SALT_KEY = 'pin_salt';
 import {
   clearBiometricCredential,
   getBiometricCredentialId,
@@ -122,24 +127,31 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-function bufferToHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function getOrCreateStorageCredentials(): { passphrase: string; salt: Uint8Array } {
-  let passphrase = localStorage.getItem(STORAGE_SECRET_KEY);
+async function getOrCreateStorageCredentials(): Promise<{ passphrase: string; salt: Uint8Array }> {
+  const kc = createKeychain();
+  let passphrase = await kc.get(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY);
   if (!passphrase) {
     passphrase = randomBase64(32);
-    localStorage.setItem(STORAGE_SECRET_KEY, passphrase);
+    await kc.set(KEYCHAIN_SERVICE, STORAGE_SECRET_KEY, passphrase);
   }
 
-  let salt = localStorage.getItem(STORAGE_SALT_KEY);
+  let salt = await kc.get(KEYCHAIN_SERVICE, STORAGE_SALT_KEY);
   if (!salt) {
     salt = randomBase64(16);
-    localStorage.setItem(STORAGE_SALT_KEY, salt);
+    await kc.set(KEYCHAIN_SERVICE, STORAGE_SALT_KEY, salt);
   }
 
   return { passphrase, salt: base64ToBytes(salt) };
+}
+
+async function ensurePinSalt(): Promise<string> {
+  const kc = createKeychain();
+  let salt = await kc.get(KEYCHAIN_SERVICE, PIN_SALT_KEY);
+  if (!salt) {
+    salt = randomBase64(16);
+    await kc.set(KEYCHAIN_SERVICE, PIN_SALT_KEY, salt);
+  }
+  return salt;
 }
 
 function identityIsConsistent(identity: UserIdentity): boolean {
@@ -188,7 +200,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [lockOnHide, setLockOnHideState] = useState(true);
-  const [pinLength, setPinLengthState] = useState(4);
+  const [pinLength, setPinLengthState] = useState(6);
 
   const sessionsRef = useRef<Record<string, RatchetState>>({});
   const storageReadyRef = useRef(false);
@@ -262,7 +274,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       try {
-        const { passphrase, salt } = getOrCreateStorageCredentials();
+        const { passphrase, salt } = await getOrCreateStorageCredentials();
         const masterKey = await deriveKeyFromRandomSecret(passphrase, salt);
         await dbInstance.initializeWithKey(masterKey);
         await dbInstance.purgeExpiredMessages();
@@ -296,20 +308,24 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     readyPromiseRef.current = readyPromise;
 
     void readyPromise
-      .then(({ identity: readyIdentity, secret, enabled }) => {
+      .then(async ({ identity: readyIdentity, secret, enabled }) => {
         if (cancelled) return;
         setIdentity(readyIdentity);
         setTotpSecret(secret);
         setIs2FAEnabled(enabled);
         try {
-          const storedPinHash = localStorage.getItem(PIN_HASH_KEY);
+          const kc = createKeychain();
+          // New installs keep the hash in the keychain; the localStorage copy is
+          // only read to keep a PIN that predates that move working.
+          const storedPinHash =
+            (await kc.get(KEYCHAIN_SERVICE, PIN_HASH_KEY)) ??
+            localStorage.getItem(PIN_HASH_KEY);
           if (storedPinHash) setPinHash(storedPinHash);
           const enabledPin = Boolean(storedPinHash);
           setPinEnabled(enabledPin);
           setIsLocked(enabledPin);
           setPinLockoutUntil(getPinLockoutUntil());
-          const storedLength = Number(localStorage.getItem(PIN_LENGTH_KEY) ?? '4');
-          setPinLengthState(storedLength === 6 ? 6 : 4);
+          setPinLengthState(6);
           setLockOnHideState(localStorage.getItem(LOCK_ON_HIDE_KEY) !== 'false');
           setBiometricEnabled(Boolean(getBiometricCredentialId()));
         } catch (error) {
@@ -521,24 +537,17 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     []
   );
 
-  const pinHashSalt = 'nova-pin-v1';
-
-  const hashPin = useCallback(async (pin: string): Promise<string> => {
-    const salt = new TextEncoder().encode(pinHashSalt);
-    const key = await deriveKeyFromPassphrase(pin, salt as unknown as Uint8Array, undefined, true);
-    const raw = await crypto.subtle.exportKey('raw', key);
-    return bufferToHex(new Uint8Array(raw));
-  }, []);
-
   const setPin = useCallback(async (pin: string): Promise<void> => {
-    const hash = await hashPin(pin);
+    const salt = await ensurePinSalt();
+    const hash = await hashPin(pin, salt);
     clearPinFailures();
-    localStorage.setItem(PIN_HASH_KEY, hash);
-    localStorage.setItem(PIN_ENABLED_KEY, 'true');
+    const kc = createKeychain();
+    await kc.set(KEYCHAIN_SERVICE, PIN_HASH_KEY, hash);
+    await kc.set(KEYCHAIN_SERVICE, PIN_ENABLED_KEY, 'true');
     setPinHash(hash);
     setPinEnabled(true);
     setPinLockoutUntil(null);
-  }, [hashPin]);
+  }, []);
 
   const verifyPin = useCallback(
     (pin: string): Promise<boolean> =>
@@ -548,23 +557,50 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setPinLockoutUntil(lockedUntil);
         if (lockedUntil !== null) return false;
 
-        const hash = await hashPin(pin);
-        if (hash === pinHash) {
-          clearPinFailures();
-          setPinLockoutUntil(null);
-          return true;
+        const kc = createKeychain();
+        const salt = await kc.get(KEYCHAIN_SERVICE, PIN_SALT_KEY);
+        const result = await checkPin(
+          { pin, pinHash, salt },
+          () => randomBase64(16),
+        );
+
+        if (!result.ok) {
+          setPinLockoutUntil(recordPinFailure());
+          return false;
         }
 
-        setPinLockoutUntil(recordPinFailure());
-        return false;
+        if (result.migrated && result.hash) {
+          // A PIN set before the random salt existed is migrated in place.
+          await kc.set(KEYCHAIN_SERVICE, PIN_HASH_KEY, result.hash);
+          await kc.set(KEYCHAIN_SERVICE, PIN_ENABLED_KEY, 'true');
+          try {
+            localStorage.removeItem(PIN_HASH_KEY);
+            localStorage.removeItem(PIN_ENABLED_KEY);
+          } catch {
+            /* storage may be unavailable */
+          }
+          setPinHash(result.hash);
+        }
+
+        clearPinFailures();
+        setPinLockoutUntil(null);
+        return true;
       }),
-    [hashPin, pinHash, runSerialized]
+    [pinHash, runSerialized]
   );
 
   const removePin = useCallback(async (): Promise<void> => {
     clearPinFailures();
-    localStorage.removeItem(PIN_HASH_KEY);
-    localStorage.removeItem(PIN_ENABLED_KEY);
+    const kc = createKeychain();
+    await kc.remove(KEYCHAIN_SERVICE, PIN_HASH_KEY);
+    await kc.remove(KEYCHAIN_SERVICE, PIN_ENABLED_KEY);
+    await kc.remove(KEYCHAIN_SERVICE, PIN_SALT_KEY);
+    try {
+      localStorage.removeItem(PIN_HASH_KEY);
+      localStorage.removeItem(PIN_ENABLED_KEY);
+    } catch {
+      /* storage may be unavailable */
+    }
     setPinHash(null);
     setPinEnabled(false);
     setPinLockoutUntil(null);
