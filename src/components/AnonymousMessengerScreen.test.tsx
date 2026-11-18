@@ -440,7 +440,7 @@ describe('AnonymousMessengerScreen', () => {
   });
 
   it('seeds relay failures from storage and fails over sooner', async () => {
-    const { contact, state } = stateWithContact('peer');
+    const { state } = stateWithContact('peer');
     const stateWithRelays = {
       ...state,
       contacts: [

@@ -145,13 +145,12 @@ describe('proxy transport', () => {
   it('fails over to the next proxy when the primary is down', async () => {
     const pair = generateRoutingKeyPair();
     const tried: string[] = [];
-    const fn = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fn = (async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       tried.push(url);
       if (url.startsWith('https://primary.example')) {
         throw new Error('connection refused');
       }
-      const body = JSON.parse(String(init?.body));
       return {
         ok: true,
         json: async () => ({ ok: true, packetId: 'p_failover', expiresAt: 123 }),
