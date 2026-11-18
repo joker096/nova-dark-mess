@@ -13,6 +13,7 @@ import {
   prepareInvitationAcceptance,
   receiveInboxPackets,
   contactIdentity,
+  failoverInbox,
   isBlockedContact,
   sendContactOffer,
   sendContactMessage,
@@ -32,6 +33,13 @@ import {
 } from '../lib/anon/blocks';
 import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
+import type { RelayEndpoint } from '../lib/anon/relays';
+import {
+  noteRelayFailure,
+  noteRelaySuccess,
+  shouldFailoverRelay,
+  type RelayFailureMap,
+} from '../lib/anon/relayHealth';
 import { clearPendingPremiumGiftOrder, purchasePremiumGiftCode } from '../lib/premium';
 
 const STORAGE_KEY = 'anon_messenger_state_v1';
@@ -40,6 +48,8 @@ const DEFAULT_PUBLIC_APP_URL = 'https://mess.cvr.name';
 
 interface RelaySettings {
   relayUrl: string;
+  /** Extra relays, one per line or comma-separated; queues rotate across them. */
+  extraRelays?: string;
   proxyUrl: string;
   relayId: string;
   relayPublicKey: string;
@@ -96,8 +106,32 @@ function isValidRoutingPublicKey(value: string): boolean {
   }
 }
 
+function splitRelays(value?: string): string[] {
+  return (value ?? '')
+    .split(/[\s,]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Every relay the user configured, primary first and deduped. Each queue keeps
+ * its own relay URL, so a contact can live on a relay the user never switched
+ * to and rotation has somewhere else to go.
+ */
+function relayEndpoints(settings: RelaySettings): RelayEndpoint[] {
+  const endpoints: RelayEndpoint[] = [];
+  for (const url of [settings.relayUrl, ...splitRelays(settings.extraRelays)]) {
+    const trimmed = url.trim();
+    if (!trimmed || !isAllowedRelayUrl(trimmed)) continue;
+    if (endpoints.some((endpoint) => endpoint.url === trimmed)) continue;
+    endpoints.push({ id: trimmed, url: trimmed });
+  }
+  return endpoints;
+}
+
 function isValidSettings(settings: RelaySettings): boolean {
   if (!isAllowedRelayUrl(settings.relayUrl)) return false;
+  if (splitRelays(settings.extraRelays).some((url) => !isAllowedRelayUrl(url))) return false;
   const hasProxySettings = Boolean(
     settings.proxyUrl.trim() || settings.relayId.trim() || settings.relayPublicKey.trim(),
   );
@@ -137,26 +171,12 @@ function publicAppUrl(): string {
   return DEFAULT_PUBLIC_APP_URL;
 }
 
-function sameRelay(state: AnonymousMessengerState, relayUrl: string): boolean {
-  const now = Date.now();
-  const activeRelayUrls = [
-    ...(state.pendingInbox && state.pendingInbox.expiresAt > now
-      ? [state.pendingInbox.relayUrl]
-      : []),
-    ...state.contacts.flatMap(({ contact }) => [
-      ...(contact.inbox.expiresAt > now ? [contact.inbox.relayUrl] : []),
-      ...(contact.peerInvite.expiresAt > now ? [contact.peerInvite.relayUrl] : []),
-    ]),
-  ];
-  return activeRelayUrls.every((activeRelayUrl) => activeRelayUrl === relayUrl);
-}
-
-function transportFor(settings: RelaySettings) {
+function transportFor(settings: RelaySettings, relayUrl: string = settings.relayUrl) {
   const hasProxySettings = Boolean(
     settings.proxyUrl.trim() || settings.relayId.trim() || settings.relayPublicKey.trim(),
   );
   return createAnonTransport({
-    relayUrl: settings.relayUrl,
+    relayUrl,
     ...(hasProxySettings
       ? {
           proxy: {
@@ -210,6 +230,8 @@ export const AnonymousMessengerScreen: React.FC<{
       privacyNote:
         'Переписка зашифрована между устройствами. Relay видит IP-адрес, но не содержимое сообщений; имя контакта указано им самим.',
         relayUrl: 'URL relay',
+        extraRelays: 'Дополнительные relay (через запятую или с новой строки)',
+        relayMoved: 'Relay не отвечает — очередь перенесена на другой relay.',
         proxyUrl: 'URL proxy',
         relayId: 'ID relay для proxy',
         relayKey: 'Закреплённый публичный ключ X25519 relay',
@@ -268,6 +290,8 @@ export const AnonymousMessengerScreen: React.FC<{
         privacyNote:
           'Messages are encrypted between devices. The relay can see your IP address, but not message contents; contact names are self-declared.',
         relayUrl: 'Relay URL',
+        extraRelays: 'Extra relays (comma-separated or one per line)',
+        relayMoved: 'The relay stopped answering, so the queue moved to another relay.',
         proxyUrl: 'Proxy URL',
         relayId: 'Relay ID at proxy',
         relayKey: 'Pinned relay X25519 public key',
@@ -333,6 +357,7 @@ export const AnonymousMessengerScreen: React.FC<{
   const [error, setError] = useState('');
   const pollingRef = useRef(false);
   const checkInboxRef = useRef<(() => Promise<void>) | null>(null);
+  const relayFailuresRef = useRef<RelayFailureMap>({});
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -382,6 +407,20 @@ export const AnonymousMessengerScreen: React.FC<{
     () => (configuredSettings && isValidSettings(configuredSettings) ? transportFor(configuredSettings) : null),
     [configuredSettings],
   );
+  // One transport per relay URL: queues are pinned to the relay that issued
+  // them, so anything that talks to a queue has to use that relay's transport.
+  const transportCacheRef = useRef(new Map<string, ReturnType<typeof transportFor>>());
+  useEffect(() => {
+    transportCacheRef.current.clear();
+  }, [configuredSettings]);
+  const getTransport = (relayUrl: string) => {
+    if (!configuredSettings || !isValidSettings(configuredSettings)) return null;
+    const cached = transportCacheRef.current.get(relayUrl);
+    if (cached) return cached;
+    const built = transportFor(configuredSettings, relayUrl);
+    transportCacheRef.current.set(relayUrl, built);
+    return built;
+  };
   const selectedContact = state.contacts.find((entry) => entry.id === selectedContactId) ?? null;
   // Blocks follow the contact's identity key, which survives a queue rotation.
   const selectedContactKey = selectedContact
@@ -427,6 +466,7 @@ export const AnonymousMessengerScreen: React.FC<{
     setStatus('');
     const nextSettings = {
       relayUrl: settingsForm.relayUrl.trim(),
+      extraRelays: settingsForm.extraRelays?.trim() ?? '',
       proxyUrl: settingsForm.proxyUrl.trim(),
       relayId: settingsForm.relayId.trim(),
       relayPublicKey: settingsForm.relayPublicKey.trim(),
@@ -435,10 +475,6 @@ export const AnonymousMessengerScreen: React.FC<{
       setError(
         'Enter a valid HTTPS relay URL. If using a proxy, also enter its URL, relay ID, and 32-byte base64url key.',
       );
-      return;
-    }
-    if (!sameRelay(stateRef.current, nextSettings.relayUrl)) {
-      setError('Cannot change relay URL while contacts or an invite use the current relay.');
       return;
     }
     setIsBusy(true);
@@ -475,7 +511,11 @@ export const AnonymousMessengerScreen: React.FC<{
         account.nickname,
       );
       if (!invitation) throw new Error(labels.relayUnavailable);
-      const inbox = { ...invitation.inbox, displayName: account.nickname };
+      const inbox = {
+        ...invitation.inbox,
+        displayName: account.nickname,
+        relays: relayEndpoints(configuredSettings),
+      };
       await persist({
         ...stateRef.current,
         settings: configuredSettings,
@@ -500,30 +540,30 @@ export const AnonymousMessengerScreen: React.FC<{
       if (current.contacts.some((entry) => entry.id === invite.queueId)) {
         throw new Error(labels.alreadyAdded);
       }
-      if (!sameRelay(current, invite.relayUrl)) throw new Error(labels.differentRelay);
       const settings = current.settings ?? {
         ...EMPTY_SETTINGS,
         relayUrl: defaultRelayUrl(),
       };
-      if (settings.proxyUrl && settings.relayUrl !== invite.relayUrl) {
-        throw new Error(labels.differentRelay);
-      }
-      const nextSettings = { ...settings, relayUrl: invite.relayUrl };
-      if (!isValidSettings(nextSettings)) throw new Error(labels.relayUnavailable);
-      const inviteTransport = transportFor(nextSettings);
-      const contact = await prepareInvitationAcceptance(
+      if (!isValidSettings(settings)) throw new Error(labels.relayUnavailable);
+      // The invite's queue lives on its own relay, so accepting it never
+      // switches the relay used for the user's own invite and existing queues.
+      const inviteTransport = transportFor(settings, invite.relayUrl);
+      const prepared = await prepareInvitationAcceptance(
         inviteTransport,
         invite,
         account.nickname,
       );
-      if (!contact) throw new Error('Could not accept this invite.');
+      if (!prepared) throw new Error('Could not accept this invite.');
+      const contact: Contact = {
+        ...prepared,
+        inbox: { ...prepared.inbox, relays: relayEndpoints(settings) },
+      };
       const id = contact.peerInvite.queueId;
       await persist({
         ...current,
-        settings: nextSettings,
+        settings,
         contacts: [...current.contacts, { id, contact, messages: [], pendingOffer: true }],
       });
-      setSettingsForm(nextSettings);
       setSelectedContactId(id);
       setInviteInput('');
       onInviteConsumed?.();
@@ -545,8 +585,51 @@ export const AnonymousMessengerScreen: React.FC<{
     }
   };
 
+  /**
+   * Recreates one of our queues on the next relay once its relay stopped
+   * answering, and tells the contacts that write to it where it went. Only the
+   * queues of that inbox move: contacts on other relays keep their own.
+   */
+  const failoverQueue = async (queueId: string): Promise<boolean> => {
+    const current = stateRef.current;
+    const owners = current.contacts.filter((entry) => entry.contact.inbox.queueId === queueId);
+    const inbox =
+      owners[0]?.contact.inbox ??
+      (current.pendingInbox?.queueId === queueId ? current.pendingInbox : undefined);
+    if (!inbox || (inbox.relays?.length ?? 0) < 2) return false;
+    let migration: Awaited<ReturnType<typeof failoverInbox>> = null;
+    try {
+      migration = await failoverInbox(
+        (relayUrl) => {
+          const relayTransport = getTransport(relayUrl);
+          if (!relayTransport) throw new Error(labels.relayUnavailable);
+          return relayTransport;
+        },
+        inbox,
+        owners.map((entry) => entry.contact),
+      );
+    } catch (failoverError) {
+      setError(friendlyError(failoverError));
+      return false;
+    }
+    if (!migration) return false;
+    relayFailuresRef.current = noteRelaySuccess(relayFailuresRef.current, inbox.relayUrl);
+    const latest = stateRef.current;
+    await persist({
+      ...latest,
+      pendingInbox:
+        latest.pendingInbox?.queueId === queueId ? migration.inbox : latest.pendingInbox,
+      contacts: latest.contacts.map((entry) =>
+        entry.contact.inbox.queueId === queueId
+          ? { ...entry, contact: { ...entry.contact, inbox: migration.inbox } }
+          : entry,
+      ),
+    });
+    return true;
+  };
+
   const checkInbox = async () => {
-    if (!transport || pollingRef.current) return;
+    if (!configuredSettings || pollingRef.current) return;
     const current = stateRef.current;
     const batches = new Map<string, { inbox: LocalInbox; contactId?: string }>();
     if (current.pendingInbox) {
@@ -563,15 +646,17 @@ export const AnonymousMessengerScreen: React.FC<{
     setIsBusy(true);
     setError('');
     setStatus('');
+    const stalledQueues = new Set<string>();
+    let relayError = '';
     try {
       let next = current;
       let changed = false;
       for (const entry of current.contacts) {
         if (!entry.pendingOffer) continue;
-        const offerSent = await sendContactOffer(
-          transport,
-          entry.contact.peerInvite,
-          entry.contact.inbox,
+        const peerTransport = getTransport(entry.contact.peerInvite.relayUrl);
+        const offerSent = Boolean(
+          peerTransport &&
+            (await sendContactOffer(peerTransport, entry.contact.peerInvite, entry.contact.inbox)),
         );
         if (!offerSent) continue;
         next = {
@@ -584,7 +669,26 @@ export const AnonymousMessengerScreen: React.FC<{
       }
       const acknowledgements = new Map<string, { inbox: LocalInbox; packetIds: string[] }>();
       for (const { inbox, contactId } of batches.values()) {
-        const packets = await receiveInboxPackets(transport, inbox);
+        const inboxTransport = getTransport(inbox.relayUrl);
+        if (!inboxTransport) {
+          setError(labels.relayUnavailable);
+          continue;
+        }
+        let packets: Awaited<ReturnType<typeof receiveInboxPackets>>;
+        try {
+          packets = await receiveInboxPackets(inboxTransport, inbox);
+        } catch (receiveError) {
+          relayFailuresRef.current = noteRelayFailure(
+            relayFailuresRef.current,
+            inbox.relayUrl,
+          );
+          relayError = friendlyError(receiveError);
+          if (shouldFailoverRelay(relayFailuresRef.current, inbox.relayUrl)) {
+            stalledQueues.add(inbox.queueId);
+          }
+          continue;
+        }
+        relayFailuresRef.current = noteRelaySuccess(relayFailuresRef.current, inbox.relayUrl);
         for (const packet of packets) {
           if (contactId) {
             if (packet.offer) {
@@ -663,9 +767,20 @@ export const AnonymousMessengerScreen: React.FC<{
       if (changed) await persist(next);
       let ackSucceeded = true;
       for (const { inbox, packetIds } of acknowledgements.values()) {
-        ackSucceeded = (await ackInboxPackets(transport, inbox, packetIds)) && ackSucceeded;
+        const inboxTransport = getTransport(inbox.relayUrl);
+        if (!inboxTransport) {
+          ackSucceeded = false;
+          continue;
+        }
+        ackSucceeded = (await ackInboxPackets(inboxTransport, inbox, packetIds)) && ackSucceeded;
       }
-      if (!ackSucceeded) setStatus(labels.ackFailed);
+      if (relayError) setError(relayError);
+      let moved = false;
+      for (const queueId of stalledQueues) {
+        if (await failoverQueue(queueId)) moved = true;
+      }
+      if (moved) setStatus(labels.relayMoved);
+      else if (!ackSucceeded) setStatus(labels.ackFailed);
       else if (changed) setStatus(labels.pollSaved);
       else setStatus(labels.emptyInbox);
     } catch (pollError) {
@@ -746,7 +861,12 @@ export const AnonymousMessengerScreen: React.FC<{
 
   const sendMessage = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!transport || !selectedContact || selectedContactBlocked || !draft.trim()) return;
+    if (!selectedContact || selectedContactBlocked || !draft.trim()) return;
+    const peerTransport = getTransport(selectedContact.contact.peerInvite.relayUrl);
+    if (!peerTransport) {
+      setError(labels.relayUnavailable);
+      return;
+    }
     const body = draft.trim();
     const id = crypto.randomUUID();
     const queued: StoredMessage = { id, body, fromMe: true, createdAt: Date.now(), status: 'queued' };
@@ -776,7 +896,7 @@ export const AnonymousMessengerScreen: React.FC<{
     let result: Awaited<ReturnType<typeof sendContactMessage>> = null;
     let sendError: unknown;
     try {
-      result = await sendContactMessage(transport, selectedContact.contact, body);
+      result = await sendContactMessage(peerTransport, selectedContact.contact, body);
     } catch (error) {
       sendError = error;
     }
@@ -813,7 +933,10 @@ export const AnonymousMessengerScreen: React.FC<{
 
   const deliverPremiumGift = async (gift: PendingPremiumGift) => {
     const entry = stateRef.current.contacts.find((contact) => contact.id === gift.contactId);
-    if (!entry || !transport) {
+    const peerTransport = entry
+      ? getTransport(entry.contact.peerInvite.relayUrl)
+      : null;
+    if (!entry || !peerTransport) {
       setError(labels.giftDeliveryFailed);
       return;
     }
@@ -843,7 +966,7 @@ export const AnonymousMessengerScreen: React.FC<{
     let sent = false;
     let sendError: unknown;
     try {
-      sent = Boolean(await sendContactMessage(transport, entry.contact, body));
+      sent = Boolean(await sendContactMessage(peerTransport, entry.contact, body));
     } catch (error) {
       sendError = error;
     }
@@ -1072,6 +1195,7 @@ export const AnonymousMessengerScreen: React.FC<{
               <p className="text-xs leading-relaxed text-white/50">{labels.advancedNote}</p>
               {([
                 ['relayUrl', labels.relayUrl, 'https://relay.example'],
+                ['extraRelays', labels.extraRelays, 'https://relay2.example, https://relay3.example'],
                 ['proxyUrl', labels.proxyUrl, 'https://proxy.example'],
                 ['relayId', labels.relayId, 'relay-main'],
                 ['relayPublicKey', labels.relayKey, 'base64url X25519 key'],
