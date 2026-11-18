@@ -2811,7 +2811,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     )}
                   </span>
                   <span className="flex flex-col items-start min-w-0">
-                    <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                    <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
                       {profile.name}
                     </span>
                     {isTyping ? (
@@ -2846,7 +2846,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         {isProfileOnline && (
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
                         )}
-                        <span className="text-[10px] text-[#868b98] font-normal leading-none">
+                        <span className="max-w-[140px] truncate whitespace-nowrap text-[10px] text-[#868b98] font-normal leading-none">
                           {profile.status}
                         </span>
                       </div>
@@ -2855,7 +2855,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 </button>
 
                 {/* Header Menu Tabs: [ Chat | Gallery ] */}
-                <div className="flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
+                <div className="hidden sm:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
                   <button
                     onClick={() => setActiveHeaderTab('chat')}
                     className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
@@ -2888,7 +2888,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   <span
                     data-testid="p2p-peer-count"
                     title={`P2P · ${roomPeerCount}`}
-                    className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                    className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
                   >
                     P2P · {roomPeerCount}
                   </span>
@@ -2911,7 +2911,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <button
                   onClick={() => setIsProtectionOpen(true)}
                   data-testid="e2ee-badge"
-                  className="w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition cursor-pointer active:scale-95"
+                  className="hidden sm:flex w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 items-center justify-center transition cursor-pointer active:scale-95"
                   title={t('chat.e2eeBadgeTitle')}
                   aria-label={t('chat.e2eeCardTitle')}
                 >

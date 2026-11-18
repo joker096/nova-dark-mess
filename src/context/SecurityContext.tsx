@@ -39,6 +39,7 @@ import {
 } from '../lib/security/pinAttemptLimiter';
 import { createKeychain } from '../lib/storage/keychain';
 import { checkPin, hashPin } from '../lib/security/pinHash';
+import { P2PManager } from '../lib/p2p/p2pManager';
 
 const KEYCHAIN_SERVICE = 'nova-dark-messenger';
 const PIN_SALT_KEY = 'pin_salt';
@@ -66,11 +67,14 @@ export interface SecurityContextType {
   lockOnHide: boolean;
   /** Required passcode length in digits (4 or 6). */
   pinLength: number;
+  /** Optional P2P transport manager for real 1:1 message delivery (F1.1). */
+  p2pManager: P2PManager | null;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => void;
   unlockWithBiometric: () => Promise<boolean>;
   setLockOnHide: (enabled: boolean) => void;
   setPinLength: (length: number) => void;
+  setP2PManager: (manager: P2PManager) => void;
   isLocked: boolean;
   ratchetSessions: Record<string, RatchetState>;
   regenerateIdentity: () => Promise<UserIdentity>;
@@ -201,6 +205,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [lockOnHide, setLockOnHideState] = useState(true);
   const [pinLength, setPinLengthState] = useState(6);
+  const [p2pManager, setP2pManagerState] = useState<P2PManager | null>(null);
 
   const sessionsRef = useRef<Record<string, RatchetState>>({});
   const storageReadyRef = useRef(false);
@@ -371,6 +376,24 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const activeIdentity =
           identity ?? (readyPromiseRef.current ? (await readyPromiseRef.current).identity : null);
         if (!activeIdentity) throw new Error('Identity not initialized');
+
+        // F1.1: if a real P2PManager is wired, deliver through it instead of the
+        // local demo peer. The demo path (getOrCreateDemoPeerBundle) stays as
+        // the offline showcase fallback behind an explicit demo flag.
+        if (p2pManager) {
+          const ok = await p2pManager.sendMessage(chatId, text);
+          if (!ok) throw new Error(`P2P transport could not dispatch to ${chatId}`);
+          if (storageReadyRef.current) {
+            await dbInstance.saveEncryptedMessageWithSession(
+              chatId,
+              options?.messageId ?? `msg_${Date.now()}`,
+              JSON.stringify({ type: 'p2p', text, from: activeIdentity.fingerprint, to: chatId }),
+              null,
+              options?.expiresAt,
+            );
+          }
+          return { encryptedPayload: null as unknown as RatchetMessagePayload, plaintext: text };
+        }
 
         const bundle = await getOrCreateDemoPeerBundle(chatId);
         if (!verifyPreKeyBundle(bundle)) {
@@ -644,6 +667,10 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPinLengthState(next);
   }, []);
 
+  const setP2PManager = useCallback((manager: P2PManager): void => {
+    setP2pManagerState(manager);
+  }, []);
+
   const clearLocalEncryptedData = useCallback(async () => {
     if (storageReadyRef.current) {
       await dbInstance.clearAll();
@@ -683,6 +710,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLockOnHide,
         pinLength,
         setPinLength,
+        p2pManager,
+        setP2PManager: setP2pManagerState,
         encryptAndSendMessage,
         checkPeerKey,
         decryptIncomingMessage,
