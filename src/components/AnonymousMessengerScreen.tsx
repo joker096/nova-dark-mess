@@ -25,6 +25,7 @@ import { decodeInvite, encodeInvite, isAllowedRelayUrl } from '../lib/anon/sessi
 import { buildContactInviteUrl, parseDeepLink, parseDeepLinkFromHash } from '../lib/network/deepLinks';
 import {
   blockSender,
+  createAbuseReportSubmission,
   isAbuseCategory,
   isBlocked,
   markAbuseReportUploaded,
@@ -1233,13 +1234,12 @@ export const AnonymousMessengerScreen: React.FC<{
         setStatus(labels.reportUploadFailed);
         return;
       }
-      const uploaded = await transport.submitAbuseReport({
-        v: 1,
-        reportId: report.reportId,
-        queueIdHash: report.queueIdHash,
-        signingKeyHash: report.signingKeyHash,
-        category: report.category,
-      });
+      const submission = await createAbuseReportSubmission(report);
+      if (!submission) {
+        setStatus(labels.reportUploadFailed);
+        return;
+      }
+      const uploaded = await transport.submitAbuseReport(submission);
       if (!uploaded) {
         setStatus(labels.reportUploadFailed);
         return;

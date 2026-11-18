@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   blockSender,
   buildAbuseReport,
+  createAbuseReportSubmission,
   clearAbuseReports,
   clearBlockList,
   isAbuseCategory,
@@ -10,7 +11,10 @@ import {
   loadBlockList,
   markAbuseReportUploaded,
   recordAbuseReport,
+  signAbuseReport,
   unblockSender,
+  verifyAbuseReportSignature,
+  type AbuseCategory,
 } from './blocks';
 import { createInviteToken } from './spam';
 import { generateQueueSigningKeyPair } from './signing';
@@ -174,5 +178,118 @@ describe('abuse reports', () => {
     });
     clearAbuseReports();
     expect(loadAbuseReports()).toHaveLength(0);
+  });
+
+  describe('authenticated abuse reports (Phase G)', () => {
+    it('builds a report with reporter key hash when reporter key is provided', async () => {
+      const reporter = generateQueueSigningKeyPair();
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const report = await buildAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'spam',
+        reporterSigningPublicKey: reporter.publicKey,
+      });
+      expect(report).not.toBeNull();
+      expect(report!.reporterKeyHash).toMatch(/^[0-9a-f]{64}$/);
+      // reporterKeyHash should NOT equal the raw public key (it's a hash)
+      expect(report!.reporterKeyHash).not.toBe(reporter.publicKey);
+    });
+
+    it('builds a hash-only report without reporter key', async () => {
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const report = await buildAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'harassment',
+      });
+      expect(report).not.toBeNull();
+      expect(report!.reporterKeyHash).toBeUndefined();
+    });
+
+    it('signs and verifies an authenticated abuse report', async () => {
+      const reporter = generateQueueSigningKeyPair();
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const report = await buildAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'illegal',
+        reporterSigningPublicKey: reporter.publicKey,
+      });
+      expect(report).not.toBeNull();
+      expect(report!.reporterKeyHash).toBeDefined();
+
+      const submission = await createAbuseReportSubmission(report!, reporter.privateKey);
+      expect(submission).not.toBeNull();
+      expect(submission!.signature).toBeDefined();
+      expect(typeof submission!.signature).toBe('string');
+      expect(submission!.signature.length).toBeGreaterThan(0);
+
+      const valid = await verifyAbuseReportSignature(reporter.publicKey, submission!);
+      expect(valid).toBe(true);
+    });
+
+    it('rejects a signature made with the wrong key', async () => {
+      const reporter = generateQueueSigningKeyPair();
+      const wrongReporter = generateQueueSigningKeyPair();
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const report = await buildAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'spam',
+        reporterSigningPublicKey: reporter.publicKey,
+      });
+      expect(report).not.toBeNull();
+
+      const submission = await createAbuseReportSubmission(report!, wrongReporter.privateKey);
+      expect(submission).not.toBeNull();
+      expect(submission!.signature).toBeDefined();
+
+      // Verifying with the wrong public key should fail
+      const valid = await verifyAbuseReportSignature(reporter.publicKey, submission!);
+      expect(valid).toBe(false);
+    });
+
+    it('returns false for hash-only reports (no signature)', async () => {
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const report = await buildAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'spam',
+      });
+      expect(report).not.toBeNull();
+
+      const submission = await createAbuseReportSubmission(report!);
+      expect(submission).not.toBeNull();
+      expect(submission!.signature).toBeUndefined();
+
+      const valid = await verifyAbuseReportSignature(signingKey, submission!);
+      expect(valid).toBe(false);
+    });
+
+    it('creates a submission with signature when reporter private key is provided', async () => {
+      const reporter = generateQueueSigningKeyPair();
+      const signingKey = generateQueueSigningKeyPair().publicKey;
+      const queueId = `q_${createInviteToken().slice(0, 32).toLowerCase().replace(/[^0-9a-f]/g, '0').slice(0, 32)}`;
+      const report = await recordAbuseReport({
+        queueId,
+        signingPublicKey: signingKey,
+        category: 'spam',
+        reporterSigningPublicKey: reporter.publicKey,
+      });
+      expect(report).not.toBeNull();
+      expect(report!.reporterKeyHash).toBeDefined();
+
+      const submission = await createAbuseReportSubmission(report!, reporter.privateKey);
+      expect(submission).not.toBeNull();
+      expect(submission!.signature).toBeDefined();
+      expect(submission!.reporterKeyHash).toBe(report!.reporterKeyHash);
+      expect(submission!.queueIdHash).toBe(report!.queueIdHash);
+    });
   });
 });

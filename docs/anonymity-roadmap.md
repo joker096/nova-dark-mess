@@ -97,8 +97,11 @@ size audit in `src/lib/anon/metadata.test.ts`); E partial (fan-out helper wired 
 AnonTransport); F met (per-queue tokens, hint poller with visibility/online and
 backoff, app UI registration, token-only provider webhook; no native
 FCM/APNs/background receiver); G partial (rate limits + first-contact PoW verified server-side; one-time
-invites, local block lists, in-app blocking, and hash-only reports through the
-sealed proxy route, verified report targets, per-key creation budget); H helper
+invites, local block lists, in-app blocking, and reports through the sealed
+proxy route; reports can now be Ed25519-signed by the reporter via
+`signAbuseReport`/`verifyAbuseReportSignature` in `src/lib/anon/blocks.ts`
+for relay verification, with hash-only fallback for backward compatibility;
+verified report targets, per-key creation budget); H helper
 (selection/rotation plus `migrateInbox` that moves a queue to the next relay and
 notifies contacts over their existing queues; relay list and per-relay transports
 in the app; failure counters plus `failoverInbox` wired to polling; scheduled rotation triggered on each inbox check); I
@@ -319,9 +322,12 @@ exist: every queue is created with a random invite token, the relay stores only
 its hash and burns it on the first enqueue, so a leaked invite cannot establish
 a second contact. Local block lists (`blocks.ts`, keyed on the sender's queue
 signing public key) are enforced in `pairing.ts` on `acceptInvitation` and
-contact offers. The experimental screen supports blocking/unblocking and
-explicit hash-only report upload through its pinned proxy route. The relay keeps
-reports in a bounded, 90-day in-memory store and deduplicates retries. Queue
+contact offers. The experimental screen supports blocking/unblocking and explicit report upload
+through its pinned proxy route. Reports can be Ed25519-signed by the reporter
+(`signAbuseReport`/`verifyAbuseReportSignature` in `blocks.ts`) so the relay can
+cryptographically verify the reporter is a legitimate participant, with hash-only
+submission as backward-compatible fallback. The relay keeps reports in a bounded,
+90-day in-memory store and deduplicates retries. Queue
 creation has its own budget per signing key (`ANON_CREATE_PER_SIGNING_KEY`,
 10/hour, bucketed on the key hash and independent of the per-IP/proxy-client
 limit), and a signing key with at least `ANON_SPAM_BLOCK_QUEUES` (3) live
