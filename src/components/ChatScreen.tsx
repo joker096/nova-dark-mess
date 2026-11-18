@@ -4140,7 +4140,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         </div>
                       </div>
                     ) : msg.poll ? (
-                      <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
+                      <div className="bg-[#171824]/95 border border-white/10 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
                         {msg.replyTo && (
                           <div
                             onPointerDown={(e) => e.stopPropagation()}
@@ -4169,14 +4169,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                       </div>
                     ) : msg.location ? (
 
-                      <div className="bg-[#171824]/95 border border-white/10 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
+                      <div className="bg-[#171824]/95 border border-white/10 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
                         <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
                           <span>{msg.time}</span>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-[#181921]/95 border border-white/5 text-[#e5e7eb] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
+                      <div className="bg-[#181921]/95 border border-white/5 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
                       {msg.forwardedFrom && (
                         <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-[#868b98]">
                           <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
