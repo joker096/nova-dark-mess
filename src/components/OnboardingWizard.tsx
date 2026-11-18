@@ -186,7 +186,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   };
 
   const primaryBtn =
-    'w-full py-3 rounded-2xl bg-[var(--nova-accent-color,#ff4e18)] hover:brightness-110 text-white text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer';
+    // `text-[#ffffff]`, not `text-white`: the light theme remaps white text to
+    // dark ink, which would disappear on this accent fill.
+    'w-full py-3 rounded-2xl bg-[var(--nova-accent-color,#ff4e18)] hover:brightness-110 text-[#ffffff] text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer';
   const ghostBtn =
     'w-full py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/75 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2';
   const inputCls =

@@ -22,8 +22,11 @@ const FOCUS =
 const VARIANT_CONFIG: Record<string, string> = {
   ghost:
     'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]',
+  // `text-[#ffffff]` (not `text-white`) on purpose: the light theme remaps
+  // `text-white` to dark ink, and the accent-fill exception only matches the
+  // accent class without its fallback value.
   accent:
-    'bg-[var(--nova-accent-color,#ff4e18)] text-white border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95',
+    'bg-[var(--nova-accent-color,#ff4e18)] text-[#ffffff] border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95',
   'accent-ghost':
     'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30',
   danger:
