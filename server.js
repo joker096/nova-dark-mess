@@ -950,6 +950,23 @@ const ANON_SPAM_BLOCK_QUEUES = 3;
 // expiry, so a late report is still accepted (and still deduped by queue).
 const ANON_REPORT_VERIFY_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const ANON_PACKET_PROFILES = new Set([4096, 16384, 65536]);
+// Push split (phase F): the notification server stores only pushToken -> queueId.
+// Push bodies are empty ("check the relay"); no sender, no content ever leaves
+// the device through this path.
+const ANON_PUSH_TTL_DEFAULT_MS = 30 * 24 * 60 * 60 * 1000;
+const anonPushRegistrations = new Map();
+// Reverse index used only to wake devices when a queue receives traffic. It is
+// rebuilt from the registrations above and keeps queue ids out of the provider
+// payload.
+const anonPushQueues = new Map();
+const PUSH_QUEUE_ID_RE = /^q_[0-9a-f]{32}$/;
+// Optional bridge to a provider (UnifiedPush endpoint, FCM/APNs adapter, ...).
+// It receives POST { "token": "<provider token>" } with no queue, sender or
+// content; the bridge decides how to deliver an empty wake-up.
+const ANON_PUSH_WEBHOOK_URL = typeof process.env.ANON_PUSH_WEBHOOK_URL === 'string'
+  ? process.env.ANON_PUSH_WEBHOOK_URL.trim()
+  : '';
+const ANON_PUSH_WEBHOOK_TIMEOUT_MS = 2000;
 const ANON_ROUTING_MAX_AGE_MS = 5 * 60 * 1000;
 const ANON_ROUTING_FUTURE_SKEW_MS = 60 * 1000;
 const ANON_COMMAND_MAX_AGE_MS = 5 * 60 * 1000;
@@ -1344,6 +1361,7 @@ function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
     createdAt: now,
     expiresAt,
   });
+  anonPushNotify(queueId);
   return { status: 202, body: { ok: true, packetId, expiresAt } };
 }
 
@@ -1410,6 +1428,84 @@ function anonDeleteQueue(queueId, recipientToken, auth) {
   return { status: 200, body: { ok: true } };
 }
 
+// Push registration (phase F): store only pushToken -> queueId. The token is
+// opaque to the relay; the queue id is already a random 16-byte id, not an
+// identity. A registration is overwritten when the same token re-registers
+// (device reinstalls rotate the token), and expires after the TTL.
+function anonPushRegister(pushToken, queueId) {
+  if (typeof pushToken !== 'string' || pushToken.length === 0 || pushToken.length > 4096) {
+    return { status: 400, body: { ok: false, reason: 'INVALID_PUSH_TOKEN' } };
+  }
+  if (typeof queueId !== 'string' || !PUSH_QUEUE_ID_RE.test(queueId)) {
+    return { status: 400, body: { ok: false, reason: 'INVALID_QUEUE_ID' } };
+  }
+  const now = Date.now();
+  const previous = anonPushRegistrations.get(pushToken);
+  if (previous && previous.queueId !== queueId) {
+    const tokens = anonPushQueues.get(previous.queueId);
+    tokens?.delete(pushToken);
+    if (tokens && tokens.size === 0) anonPushQueues.delete(previous.queueId);
+  }
+  anonPushRegistrations.set(pushToken, {
+    queueId,
+    registeredAt: now,
+    expiresAt: now + ANON_PUSH_TTL_DEFAULT_MS,
+  });
+  let tokens = anonPushQueues.get(queueId);
+  if (!tokens) {
+    tokens = new Set();
+    anonPushQueues.set(queueId, tokens);
+  }
+  tokens.add(pushToken);
+  return { status: 200, body: { ok: true } };
+}
+
+/**
+ * Fire-and-forget wake-up for every device watching this queue. The webhook
+ * payload carries the provider token only: no queue id, no sender, no content.
+ */
+function anonPushNotify(queueId) {
+  if (!ANON_PUSH_WEBHOOK_URL) return;
+  const tokens = anonPushQueues.get(queueId);
+  if (!tokens || tokens.size === 0) return;
+  for (const token of tokens) {
+    fetch(ANON_PUSH_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+      signal: AbortSignal.timeout(ANON_PUSH_WEBHOOK_TIMEOUT_MS),
+    }).catch(() => {
+      /* notification delivery is best-effort; hints are not message content */
+    });
+  }
+}
+
+function anonPushHint(pushToken) {
+  if (typeof pushToken !== 'string' || pushToken.length === 0) {
+    return { status: 400, body: { ok: false, reason: 'INVALID_PUSH_TOKEN' } };
+  }
+  const reg = anonPushRegistrations.get(pushToken);
+  if (!reg || Date.now() > reg.expiresAt) {
+    anonPushRegistrations.delete(pushToken);
+    return { status: 404, body: { ok: false, reason: 'PUSH_TOKEN_NOT_FOUND' } };
+  }
+  // Empty body by design: the device must poll the relay to learn anything.
+  return { status: 200, body: { ok: true, queueId: reg.queueId, hint: '' } };
+}
+
+function anonPushCleanup() {
+  const now = Date.now();
+  for (const [token, reg] of anonPushRegistrations) {
+    if (now > reg.expiresAt) {
+      anonPushRegistrations.delete(token);
+      const tokens = anonPushQueues.get(reg.queueId);
+      tokens?.delete(token);
+      if (tokens && tokens.size === 0) anonPushQueues.delete(reg.queueId);
+    }
+  }
+}
+setInterval(anonPushCleanup, 60 * 1000).unref?.();
+
 app.post('/api/anon/queues', (req, res) => {
   anonCleanup();
   if (!anonRateLimit(`create:${anonClientKey(req)}`, 20, 60 * 60 * 1000)) {
@@ -1466,6 +1562,29 @@ app.post('/api/anon/queues/delete', (req, res) => {
     signedAt,
     commandNonce,
   });
+  return res.status(result.status).json(result.body);
+});
+
+// Push registration (phase F): the notification provider posts only the device
+// push token and the queue id it should wake. No sender, no content.
+app.post('/api/anon/push/register', (req, res) => {
+  anonPushCleanup();
+  if (!anonRateLimit(`push-register:${anonClientKey(req)}`, 60, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const { pushToken, queueId } = req.body || {};
+  const result = anonPushRegister(pushToken, queueId);
+  return res.status(result.status).json(result.body);
+});
+
+// Empty push hint: "check the relay". No sender, no message text, ever.
+app.get('/api/anon/push/hint', (req, res) => {
+  anonPushCleanup();
+  if (!anonRateLimit(`push-hint:${anonClientKey(req)}`, 120, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  const { pushToken } = req.query || {};
+  const result = anonPushHint(typeof pushToken === 'string' ? pushToken : undefined);
   return res.status(result.status).json(result.body);
 });
 

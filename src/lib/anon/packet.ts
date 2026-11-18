@@ -4,7 +4,13 @@ export function profileSize(profile: PacketProfile): number {
   return ANON_PACKET_PROFILES[profile];
 }
 
-export function encodeFixedPacket(plaintext: Uint8Array, profile: PacketProfile): Uint8Array {
+export type PacketRandomSource = (bytes: Uint8Array) => void;
+
+export function encodeFixedPacket(
+  plaintext: Uint8Array,
+  profile: PacketProfile,
+  random: PacketRandomSource = (bytes) => crypto.getRandomValues(bytes),
+): Uint8Array {
   const size = profileSize(profile);
   if (plaintext.length + 4 > size) {
     throw new Error(`Payload too large for ${profile} profile`);
@@ -13,7 +19,7 @@ export function encodeFixedPacket(plaintext: Uint8Array, profile: PacketProfile)
   const view = new DataView(out.buffer);
   view.setUint32(0, plaintext.length, false);
   out.set(plaintext, 4);
-  crypto.getRandomValues(out.subarray(4 + plaintext.length));
+  random(out.subarray(4 + plaintext.length));
   return out;
 }
 

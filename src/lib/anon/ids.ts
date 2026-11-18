@@ -10,16 +10,21 @@ export function randomBytes(length: number): Uint8Array {
   return out;
 }
 
-export function generateQueueId(): string {
-  return `q_${bytesToHex(randomBytes(16))}`;
-}
+export type IdRandomSource = (length: number) => Uint8Array;
 
-export function generateQueueToken(): string {
-  const bytes = randomBytes(32);
+function base64Url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/g, '');
+}
+
+export function generateQueueId(random: IdRandomSource = randomBytes): string {
+  return `q_${bytesToHex(random(16))}`;
+}
+
+export function generateQueueToken(random: IdRandomSource = randomBytes): string {
+  return base64Url(random(32));
 }
 
 export function isQueueId(value: string): boolean {
