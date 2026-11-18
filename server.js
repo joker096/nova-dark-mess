@@ -933,6 +933,13 @@ const ANON_PACKET_TTL_DEFAULT_MS = 24 * 60 * 60 * 1000;
 const ANON_MAX_PACKETS_PER_QUEUE = 200;
 const ANON_REPORT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const ANON_MAX_REPORTS = 10000;
+// Creation budget per signing key: one invite holder cannot mint queues in bulk
+// just by changing proxy client key or IP.
+const ANON_CREATE_PER_SIGNING_KEY = 10; // queues per signing key per hour
+const ANON_CREATE_WINDOW_MS = 60 * 60 * 1000;
+// Live spam reports needed before a signing key loses queue creation. Reports
+// are hash-only and unauthenticated, so this is a speed bump, not a ban.
+const ANON_SPAM_BLOCK_REPORTS = 3;
 const ANON_PACKET_PROFILES = new Set([4096, 16384, 65536]);
 const ANON_ROUTING_MAX_AGE_MS = 5 * 60 * 1000;
 const ANON_ROUTING_FUTURE_SKEW_MS = 60 * 1000;
@@ -940,6 +947,10 @@ const ANON_COMMAND_MAX_AGE_MS = 5 * 60 * 1000;
 const ANON_COMMAND_FUTURE_SKEW_MS = 60 * 1000;
 const anonQueues = new Map();
 const anonAbuseReports = new Map();
+const anonCreateBySigningKey = new Map();
+// signingKeyHash -> live spam report ids, so a block lifts when its reports
+// expire instead of lingering for the process lifetime.
+const anonSpamReportsByKey = new Map();
 const anonRoutingNonces = new Map();
 const anonCommandNonces = new Map();
 
@@ -984,6 +995,46 @@ function anonClientKey(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
+// Per-signing-key creation budget. Keyed on the hash so the bucket map never
+// holds a reusable public key, and separate from the per-IP/proxy-client limit
+// so clients sharing one proxy do not spend each other's budget.
+function anonCreateRateLimitForKey(signingPublicKey) {
+  const key = anonHash(signingPublicKey);
+  const now = Date.now();
+  const bucket = anonCreateBySigningKey.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    anonCreateBySigningKey.set(key, { count: 1, resetAt: now + ANON_CREATE_WINDOW_MS });
+    if (anonCreateBySigningKey.size > 50000) {
+      for (const [k, v] of anonCreateBySigningKey) if (now > v.resetAt) anonCreateBySigningKey.delete(k);
+    }
+    return true;
+  }
+  if (bucket.count >= ANON_CREATE_PER_SIGNING_KEY) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function anonSpamReportCount(signingKeyHash) {
+  const ids = anonSpamReportsByKey.get(signingKeyHash);
+  return ids ? ids.size : 0;
+}
+
+function anonSpamIndexReport(reportId, signingKeyHash) {
+  let ids = anonSpamReportsByKey.get(signingKeyHash);
+  if (!ids) {
+    ids = new Set();
+    anonSpamReportsByKey.set(signingKeyHash, ids);
+  }
+  ids.add(reportId);
+}
+
+function anonSpamUnindexReport(reportId, signingKeyHash) {
+  const ids = anonSpamReportsByKey.get(signingKeyHash);
+  if (!ids) return;
+  ids.delete(reportId);
+  if (ids.size === 0) anonSpamReportsByKey.delete(signingKeyHash);
+}
+
 function anonHash(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
@@ -1022,7 +1073,10 @@ function anonCleanup() {
     if (now > expiresAt) anonCommandNonces.delete(nonce);
   }
   for (const [reportId, report] of anonAbuseReports) {
-    if (now > report.expiresAt) anonAbuseReports.delete(reportId);
+    if (now > report.expiresAt) {
+      anonAbuseReports.delete(reportId);
+      if (report.category === 'spam') anonSpamUnindexReport(reportId, report.signingKeyHash);
+    }
   }
 }
 
@@ -1081,6 +1135,17 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
   }
   if (pow !== undefined && !isPowChallenge(pow)) {
     return { status: 400, body: { ok: false, reason: 'INVALID_POW_CHALLENGE' } };
+  }
+  // Spam reports about a signing key stop it from creating new queues until
+  // enough of those reports expire. Enqueueing on existing queues is untouched:
+  // this withdraws the cheap "make a fresh queue per message" path only.
+  if (effectiveSigningPublicKey) {
+    if (anonSpamReportCount(anonHash(effectiveSigningPublicKey)) >= ANON_SPAM_BLOCK_REPORTS) {
+      return { status: 403, body: { ok: false, reason: 'SIGNING_KEY_BLOCKED' } };
+    }
+    if (!anonCreateRateLimitForKey(effectiveSigningPublicKey)) {
+      return { status: 429, body: { ok: false, reason: 'RATE_LIMITED' } };
+    }
   }
   const queueId = anonRandomId('q', 16);
   const senderToken = anonRandomToken();
@@ -1377,6 +1442,7 @@ app.post('/api/anon/route', async (req, res) => {
       category: report.category,
       expiresAt: now + ANON_REPORT_TTL_MS,
     });
+    if (report.category === 'spam') anonSpamIndexReport(report.reportId, report.signingKeyHash);
     return res.status(201).json({ ok: true });
   }
 
