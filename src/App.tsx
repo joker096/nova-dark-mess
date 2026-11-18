@@ -63,6 +63,9 @@ const ScreenFallback: React.FC = () => (
 import { useLanguage } from './context/LanguageContext';
 import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
+import { P2PManager } from './lib/p2p/p2pManager';
+import { P2PSignalingClient } from './lib/p2p/signaling';
+import { MeshRelay } from './lib/p2p/relay';
 import { isPremium } from './lib/premium';
 import { useSocialData } from './hooks/useSocialData';
 import { KYIV_CHANNEL_ID } from './lib/social/store';
@@ -100,8 +103,34 @@ type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'ana
 export default function App() {
   const { t } = useLanguage();
   const { account } = useAccount();
-  const { isLocked, pinHash, unlock, identity, isInitialized } = useSecurity();
+  const { isLocked, pinHash, unlock, identity, isInitialized, setP2PManager } = useSecurity();
   const premium = isPremium();
+
+  // Wire the real P2P transport once the local identity is available. The
+  // signaling client uses the in-page BroadcastChannel bus so two manager
+  // instances in the same browser (or two tabs) can complete a prekey exchange
+  // and send encrypted messages over the mesh relay without a central server.
+  // In production pass signalingUrl to reach remote peers over WebSocket.
+  useEffect(() => {
+    if (!identity || !setP2PManager) return;
+    let manager: P2PManager | null = null;
+    let signaling: P2PSignalingClient | null = null;
+    let relay: MeshRelay | null = null;
+    const start = async () => {
+      signaling = new P2PSignalingClient();
+      relay = new MeshRelay(identity.fingerprint);
+      manager = new P2PManager({ identity, signaling, relay });
+      await manager.initialize();
+      setP2PManager(manager);
+    };
+    void start();
+    return () => {
+      manager?.close();
+      signaling?.close();
+      relay?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity, setP2PManager]);
   const {
     stories,
     channels,
