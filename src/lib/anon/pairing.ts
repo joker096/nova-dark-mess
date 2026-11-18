@@ -166,10 +166,11 @@ export async function rotateInbox(
   const next = nextRelay(current, relays);
   if (!next || next.url === inbox.relayUrl) return null;
   const transport = await transportFor(next.url);
-  const created = await transport.createQueue(
-    Math.max(0, inbox.expiresAt - now),
-    createPowChallenge(inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY),
-  );
+  // One challenge, used both for the relay and for the invite. Creating two
+  // made the advertised challenge differ from the stored one, so every first
+  // contact to a rotated inbox failed with "Invalid proof of work".
+  const pow = createPowChallenge(inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY);
+  const created = await transport.createQueue(Math.max(0, inbox.expiresAt - now), pow);
   if (!created) return null;
   const secret = x25519.utils.randomSecretKey();
   const publicKey = x25519.getPublicKey(secret);
@@ -184,11 +185,66 @@ export async function rotateInbox(
     recipientPublicKey: bufferToBase64(publicKey),
     recipientPrivateKey: bufferToBase64(secret),
     inviteToken: created.inviteToken,
-    pow: createPowChallenge(inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY),
+    pow,
     createdAt: now,
     expiresAt: created.expiresAt,
   };
   return rotated;
+}
+
+/**
+ * Tells one contact where our inbox moved by sending the new invite over its
+ * existing queue. The peer sees a normal contact offer, so nothing outside the
+ * sealed message reveals the move.
+ */
+export async function sendInboxMigration(
+  transport: AnonTransport,
+  contact: Contact,
+  inbox: LocalInbox,
+): Promise<boolean> {
+  if (!isAnonInvite(contact.peerInvite)) return false;
+  const ownInvite = inviteFromInbox(inbox);
+  if (!isAnonInvite(ownInvite)) return false;
+  const result = await sendAnonMessage(transport, contact.peerInvite, encodeContactOffer(ownInvite));
+  return Boolean(result);
+}
+
+export interface InboxMigration {
+  inbox: LocalInbox;
+  /** Contacts that received the new invite and will reach the new relay. */
+  notified: number;
+  /** Contacts still pointed at the old queue; retry before it expires. */
+  failed: number;
+}
+
+/**
+ * Rotates an inbox to the next relay and announces the new invite to every
+ * contact, so the move does not depend on the peer noticing a new queue. If the
+ * rotation itself is not due (or no other relay is configured) this is a no-op;
+ * a partial notification is reported instead of hidden, because an unnotified
+ * contact keeps writing to the old queue until it expires.
+ */
+export async function migrateInbox(
+  transportFor: (relayUrl: string) => InboxTransport | Promise<InboxTransport>,
+  inbox: LocalInbox,
+  contacts: Contact[],
+  now: number = Date.now(),
+): Promise<InboxMigration | null> {
+  const rotated = await rotateInbox(transportFor, inbox, now);
+  if (!rotated) return null;
+  const transports = new Map<string, InboxTransport>();
+  let notified = 0;
+  for (const contact of contacts) {
+    const peerRelay = contact.peerInvite?.relayUrl;
+    if (!peerRelay) continue;
+    let transport = transports.get(peerRelay);
+    if (!transport) {
+      transport = await transportFor(peerRelay);
+      transports.set(peerRelay, transport);
+    }
+    if (await sendInboxMigration(transport, contact, rotated)) notified += 1;
+  }
+  return { inbox: rotated, notified, failed: contacts.length - notified };
 }
 
 export function encodeContactOffer(invite: AnonInvite): string {
