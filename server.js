@@ -58,13 +58,44 @@ const RECEIPTS_DIR = process.env.RECEIPTS_DIR
 if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
 // Browser clients (Tauri webview, local dev server, landing) call these APIs
-// from a different origin. Receipts additionally require the admin token.
+// from a different origin. Only those origins are reflected back: a wildcard
+// would let any page on the internet read relay/presence/premium responses.
+const CORS_ORIGINS = new Set(
+  (
+    process.env.CORS_ORIGINS ||
+    [
+      'tauri://localhost',
+      'http://tauri.localhost',
+      'https://tauri.localhost',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:1420',
+      'http://127.0.0.1:1420',
+    ].join(',')
+  )
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
+);
+
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
-  res.setHeader('Access-Control-Max-Age', '600');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  const origin = req.headers.origin;
+  // The response varies per request origin, so caches must key on it.
+  res.setHeader('Vary', 'Origin');
+  if (req.method === 'OPTIONS') {
+    if (origin && !CORS_ORIGINS.has(origin)) {
+      return res.status(403).json({ ok: false, reason: 'ORIGIN_NOT_ALLOWED' });
+    }
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+    res.setHeader('Access-Control-Max-Age', '600');
+    return res.status(204).end();
+  }
+  if (origin && CORS_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
+  }
   next();
 });
 
@@ -74,6 +105,38 @@ const RELAY_DIR = process.env.RELAY_DIR
   : path.join(__dirname, 'relay');
 const RELAY_TTL_MS = parseInt(process.env.RELAY_TTL_MS || String(7 * 24 * 60 * 60 * 1000), 10);
 const RELAY_MAX_PER_DEST = parseInt(process.env.RELAY_MAX_PER_DEST || '200', 10);
+const RELAY_MAX_ENVELOPE_BYTES = parseInt(process.env.RELAY_MAX_ENVELOPE_BYTES || '65536', 10);
+const RELAY_HMAC_SECRET = process.env.RELAY_HMAC_SECRET || '';
+const RELAY_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RELAY_RATE_LIMIT_MAX = 120;
+
+const relayRateLimitMap = new Map();
+function relayRateLimit(ip) {
+  const now = Date.now();
+  const entry = relayRateLimitMap.get(ip);
+  if (!entry || now > entry.resetTime) {
+    relayRateLimitMap.set(ip, { count: 1, resetTime: now + RELAY_RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RELAY_RATE_LIMIT_MAX) return false;
+  entry.count += 1;
+  return true;
+}
+function relaySweepRateLimit() {
+  const now = Date.now();
+  for (const [ip, entry] of relayRateLimitMap) {
+    if (now > entry.resetTime) relayRateLimitMap.delete(ip);
+  }
+}
+setInterval(relaySweepRateLimit, RELAY_RATE_LIMIT_WINDOW_MS);
+
+function verifyRelayAuth(req) {
+  if (!RELAY_HMAC_SECRET) return true; // dev mode: no secret configured
+  const auth = req.headers['authorization'];
+  if (!auth) return false;
+  const token = auth.replace(/^Bearer\s+/i, '');
+  return token === RELAY_HMAC_SECRET;
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 // PaymentO (crypto) premium config
@@ -867,6 +930,13 @@ function sweepRelayExpired() {
 }
 
 app.post('/api/relay', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!relayRateLimit(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
+  if (!verifyRelayAuth(req)) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized' });
+  }
   const envelope = req && req.body && req.body.envelope;
   if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
     return res.status(400).json({ ok: false, reason: 'missing envelope' });
@@ -876,16 +946,28 @@ app.post('/api/relay', (req, res) => {
   if (!destination || !id) {
     return res.status(400).json({ ok: false, reason: 'missing destination or id' });
   }
+  const allowedFields = new Set(['destination', 'id', 'payload']);
+  for (const key of Object.keys(envelope)) {
+    if (!allowedFields.has(key)) {
+      return res.status(400).json({ ok: false, reason: 'unknown field' });
+    }
+  }
+  const raw = req.rawBody || '';
+  if (Buffer.byteLength(raw) > RELAY_MAX_ENVELOPE_BYTES) {
+    return res.status(413).json({ ok: false, reason: 'envelope too large' });
+  }
   sweepRelayExpired();
   const dir = relayDestDir(destination);
   fs.mkdirSync(dir, { recursive: true });
-  // Enforce per-destination cap.
   const existing = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
   if (existing.length >= RELAY_MAX_PER_DEST) {
     return res.status(429).json({ ok: false, reason: 'destination queue full' });
   }
   const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
   const file = path.join(dir, `${safeId}.json`);
+  if (fs.existsSync(file)) {
+    return res.status(409).json({ ok: false, reason: 'id already exists' });
+  }
   const record = {
     envelope,
     expiresAt: Date.now() + RELAY_TTL_MS,
@@ -896,6 +978,13 @@ app.post('/api/relay', (req, res) => {
 });
 
 app.get('/api/relay/:destination', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!relayRateLimit(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
+  if (!verifyRelayAuth(req)) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized' });
+  }
   const destination = req.params.destination;
   sweepRelayExpired();
   const dir = relayDestDir(destination);
@@ -1160,6 +1249,18 @@ function anonHash(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
 
+/**
+ * Compares a presented secret with a stored SHA-256 hex digest in constant
+ * time, so a caller cannot learn the token by timing the comparison.
+ */
+function anonTokenMatches(value, expectedHash) {
+  if (typeof value !== 'string' || typeof expectedHash !== 'string') return false;
+  const provided = Buffer.from(anonHash(value), 'hex');
+  const expected = Buffer.from(expectedHash, 'hex');
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(provided, expected);
+}
+
 function anonRandomToken() {
   return crypto.randomBytes(32).toString('base64url');
 }
@@ -1315,19 +1416,20 @@ function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
     anonQueues.delete(queueId);
     return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
   }
-  if (anonHash(senderToken) !== queue.senderTokenHash) {
+  if (!anonTokenMatches(senderToken, queue.senderTokenHash)) {
     return { status: 403, body: { ok: false, reason: 'INVALID_SENDER_TOKEN' } };
   }
-  // One-time invite: the first enqueue must present the invite token and the
-  // relay burns it, so a leaked invite cannot establish a second contact.
-  if (queue.inviteTokenHash !== null) {
+  // One-time invite: the first enqueue must present the invite token. It is
+  // only burned once the whole request is accepted (see below), otherwise a
+  // garbage request with a leaked invite could lock the honest sender out.
+  const inviteRequired = queue.inviteTokenHash !== null;
+  if (inviteRequired) {
     if (!isInviteToken(inviteToken)) {
       return { status: 400, body: { ok: false, reason: 'INVITE_TOKEN_REQUIRED' } };
     }
-    if (anonHash(inviteToken) !== queue.inviteTokenHash) {
+    if (!anonTokenMatches(inviteToken, queue.inviteTokenHash)) {
       return { status: 403, body: { ok: false, reason: 'INVALID_INVITE_TOKEN' } };
     }
-    queue.inviteTokenHash = null;
   }
   const authError = anonVerifyCommand(
     queue,
@@ -1353,6 +1455,7 @@ function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
   if (queue.packets.size >= ANON_MAX_PACKETS_PER_QUEUE) {
     return { status: 429, body: { ok: false, reason: 'QUEUE_FULL' } };
   }
+  if (inviteRequired) queue.inviteTokenHash = null;
   const packetId = anonRandomId('p', 12);
   const expiresAt = now + ANON_PACKET_TTL_DEFAULT_MS;
   queue.packets.set(packetId, {
@@ -1376,7 +1479,7 @@ function anonPoll(queueId, recipientToken, limit, auth) {
     anonQueues.delete(queueId);
     return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
   }
-  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+  if (!anonTokenMatches(recipientToken, queue.recipientTokenHash)) {
     return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
   }
   const authError = anonVerifyCommand(queue, 'poll', { queueId, token: recipientToken, limit }, auth);
@@ -1402,7 +1505,7 @@ function anonAck(queueId, recipientToken, packetIds, auth) {
   }
   const queue = anonQueues.get(queueId);
   if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
-  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+  if (!anonTokenMatches(recipientToken, queue.recipientTokenHash)) {
     return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
   }
   const authError = anonVerifyCommand(queue, 'ack', { queueId, token: recipientToken, packetIds }, auth);
@@ -1419,7 +1522,7 @@ function anonDeleteQueue(queueId, recipientToken, auth) {
   }
   const queue = anonQueues.get(queueId);
   if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
-  if (anonHash(recipientToken) !== queue.recipientTokenHash) {
+  if (!anonTokenMatches(recipientToken, queue.recipientTokenHash)) {
     return { status: 403, body: { ok: false, reason: 'INVALID_RECIPIENT_TOKEN' } };
   }
   const authError = anonVerifyCommand(queue, 'delete_queue', { queueId, token: recipientToken }, auth);
@@ -1829,17 +1932,21 @@ app.post('/api/anon/hop', async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 // Boot
 // ───────────────────────────────────────────────────────────────────────────
+// Bind a port only when this file is the entry point. `path.resolve` handles
+// both POSIX and Windows argv[1], so tests can import the app without it
+// listening.
 const isMainModule =
-  typeof process.argv[1] === 'string' &&
-  process.argv[1].startsWith('/') &&
-  path.resolve(process.argv[1]) === __filename;
+  typeof process.argv[1] === 'string' && path.resolve(process.argv[1]) === __filename;
 
-app.listen(PORT, () => {
-  console.log(`Mess&Anger server on :${PORT}`);
-  console.log(`  landing  →  http://localhost:${PORT}/`);
-  console.log(`  IPN      →  http://localhost:${PORT}/api/paymento/ipn  (HTTP POST)`);
-  console.log(`  receipts →  ${RECEIPTS_DIR}`);
-  console.log(`  reports  →  ${ANON_REPORTS_DIR} (${anonReportsLoaded} loaded)`);
-});
+if (isMainModule) {
+  app.listen(PORT, () => {
+    console.log(`Mess&Anger server on :${PORT}`);
+    console.log(`  landing  →  http://localhost:${PORT}/`);
+    console.log(`  IPN      →  http://localhost:${PORT}/api/paymento/ipn  (HTTP POST)`);
+    console.log(`  receipts →  ${RECEIPTS_DIR}`);
+    console.log(`  reports  →  ${ANON_REPORTS_DIR} (${anonReportsLoaded} loaded)`);
+  });
+}
 
+export { app };
 export default app;
