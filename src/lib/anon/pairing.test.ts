@@ -152,9 +152,10 @@ describe('anonymous contact pairing', () => {
     await expect(createInvitation(relay, 'http://localhost', undefined, 1.5)).resolves.toBeNull();
   });
 
-  it('rotates an inbox queue to the next relay after the rotation window', async () => {
-    const relay = new InMemoryAnonRelay();
-    const alice = await createInvitation(relay, 'https://r1.example', undefined, 8);
+  it('creates the rotated queue on the next relay, not the current one', async () => {
+    const r1 = new InMemoryAnonRelay();
+    const r2 = new InMemoryAnonRelay();
+    const alice = await createInvitation(r1, 'https://r1.example', undefined, 8);
     const inbox = {
       ...alice!.inbox,
       relays: [
@@ -165,12 +166,23 @@ describe('anonymous contact pairing', () => {
     inbox.createdAt = Date.now() - (8 * 24 * 60 * 60 * 1000);
     inbox.expiresAt = Date.now() + 60_000;
 
-    const rotated = await rotateInbox(relay, inbox, Date.now());
+    const rotated = await rotateInbox(
+      (relayUrl) => (relayUrl === 'https://r2.example' ? r2 : r1),
+      inbox,
+      Date.now(),
+    );
     expect(rotated).not.toBeNull();
     expect(rotated!.relayUrl).toBe('https://r2.example');
     expect(rotated!.queueId).not.toBe(inbox.queueId);
     expect(rotated!.createdAt).toBeGreaterThanOrEqual(Date.now() - 1000);
     expect(rotated!.expiresAt).toBeGreaterThan(Date.now());
+    // The new queue has to live on r2: polling it there works, r1 never saw it.
+    expect(() =>
+      r2.poll(rotated!.queueId, rotated!.recipientToken, 32, rotated!.signingKey),
+    ).not.toThrow();
+    expect(() =>
+      r1.poll(rotated!.queueId, rotated!.recipientToken, 32, rotated!.signingKey),
+    ).toThrow();
   });
 
   it('does not rotate an inbox queue before the rotation window', async () => {
@@ -184,7 +196,7 @@ describe('anonymous contact pairing', () => {
       ],
     };
 
-    const rotated = await rotateInbox(relay, inbox, Date.now());
+    const rotated = await rotateInbox(() => relay, inbox, Date.now());
     expect(rotated).toBeNull();
   });
 
@@ -196,7 +208,23 @@ describe('anonymous contact pairing', () => {
       relays: [{ id: 'r1', url: 'https://r1.example' }],
     };
 
-    const rotated = await rotateInbox(relay, inbox, Date.now());
+    const rotated = await rotateInbox(() => relay, inbox, Date.now());
+    expect(rotated).toBeNull();
+  });
+
+  it('does not call a second entry with the same URL a rotation', async () => {
+    const relay = new InMemoryAnonRelay();
+    const alice = await createInvitation(relay, 'https://r1.example', undefined, 8);
+    const inbox = {
+      ...alice!.inbox,
+      relays: [
+        { id: 'r1', url: 'https://r1.example' },
+        { id: 'r1-mirror', url: 'https://r1.example' },
+      ],
+    };
+    inbox.createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+
+    const rotated = await rotateInbox(() => relay, inbox, Date.now());
     expect(rotated).toBeNull();
   });
 });
