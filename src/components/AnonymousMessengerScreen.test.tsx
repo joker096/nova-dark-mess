@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   ackInboxPackets: vi.fn(),
   sendContactOffer: vi.fn(),
   sendContactMessage: vi.fn(),
+  failoverInbox: vi.fn(),
   toDataURL: vi.fn(),
   purchasePremiumGiftCode: vi.fn(),
   clearPendingPremiumGiftOrder: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('../lib/anon/pairing', async (importOriginal) => {
     ackInboxPackets: mocks.ackInboxPackets,
     sendContactOffer: mocks.sendContactOffer,
     sendContactMessage: mocks.sendContactMessage,
+    failoverInbox: mocks.failoverInbox,
   };
 });
 
@@ -112,6 +114,7 @@ describe('AnonymousMessengerScreen', () => {
     mocks.ackInboxPackets.mockResolvedValue(true);
     mocks.sendContactOffer.mockResolvedValue(true);
     mocks.sendContactMessage.mockResolvedValue({ ok: true });
+    mocks.failoverInbox.mockResolvedValue(null);
     mocks.toDataURL.mockResolvedValue('data:image/png;base64,qr');
     mocks.purchasePremiumGiftCode.mockResolvedValue({
       ok: true,
@@ -211,6 +214,94 @@ describe('AnonymousMessengerScreen', () => {
       undefined,
       '@nova',
     );
+  });
+
+  it('polls a queue on the relay that hosts it, not on the primary relay', async () => {
+    const signingKey = generateQueueSigningKeyPair().privateKey;
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: 'https://relay.example',
+        extraRelays: 'https://other-relay.example',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+      },
+      contacts: [
+        {
+          id: 'peer',
+          contact: {
+            inbox: {
+              relayUrl: 'https://other-relay.example',
+              queueId: 'q_00000000000000000000000000000003',
+              senderToken: 'sender',
+              recipientToken: 'recipient',
+              signingKey,
+              signingPublicKey: 'signing-public',
+              recipientPublicKey: 'recipient-public',
+              recipientPrivateKey: 'recipient-secret',
+              inviteToken: 'invite-secret',
+              createdAt: Date.now(),
+              expiresAt: Date.now() + 60_000,
+            },
+            peerInvite: { queueId: 'q_00000000000000000000000000000004', signingKey },
+            createdAt: Date.now(),
+          },
+          messages: [],
+        },
+      ],
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+
+    await waitFor(() => expect(mocks.receiveInboxPackets).toHaveBeenCalled());
+    expect(mocks.createAnonTransport).toHaveBeenCalledWith({
+      relayUrl: 'https://other-relay.example',
+    });
+    expect(mocks.receiveInboxPackets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ relayUrl: 'https://other-relay.example' }),
+    );
+  });
+
+  it('moves a queue to the next relay only after its relay keeps failing', async () => {
+    const { contact, state } = stateWithContact('peer');
+    mocks.db.loadSetting.mockResolvedValue({
+      ...state,
+      contacts: [
+        {
+          id: 'peer',
+          contact: {
+            ...contact,
+            inbox: {
+              ...contact.inbox,
+              relays: [
+                { id: 'https://relay.example', url: 'https://relay.example' },
+                { id: 'https://other-relay.example', url: 'https://other-relay.example' },
+              ],
+            },
+          },
+          messages: [],
+        },
+      ],
+    });
+    mocks.receiveInboxPackets.mockRejectedValue(new Error('relay unreachable'));
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    const checkButton = screen.getByRole('button', { name: 'Check for updates' }) as HTMLButtonElement;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await waitFor(() => expect(checkButton.disabled).toBe(false));
+      fireEvent.click(checkButton);
+      await waitFor(() => expect(mocks.receiveInboxPackets).toHaveBeenCalledTimes(attempt));
+      expect(mocks.failoverInbox).toHaveBeenCalledTimes(attempt === 3 ? 1 : 0);
+    }
+
+    // The queue moved with its contacts, not the whole app's relay.
+    expect(mocks.failoverInbox.mock.calls[0][1]).toMatchObject({ queueId: contact.inbox.queueId });
+    expect(mocks.failoverInbox.mock.calls[0][2]).toHaveLength(1);
   });
 
   it('persists decrypted messages before acknowledging relay packets', async () => {
