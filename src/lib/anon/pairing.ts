@@ -144,8 +144,17 @@ export async function createInvitation(
   return { inbox, invite };
 }
 
+/**
+ * Moves an inbox to the next configured relay once its rotation window passed.
+ *
+ * `transportFor` must build a transport for the given relay URL: rotation is
+ * only meaningful if the new queue is created on the *next* relay, so the
+ * caller decides how a URL becomes a transport (direct, proxied, or test
+ * double). The returned inbox carries a fresh invite; contacts keep their
+ * identity because the contact id is the sender's signing key, not the queue.
+ */
 export async function rotateInbox(
-  transport: InboxTransport,
+  transportFor: (relayUrl: string) => InboxTransport | Promise<InboxTransport>,
   inbox: LocalInbox,
   now: number = Date.now(),
 ): Promise<LocalInbox | null> {
@@ -155,7 +164,8 @@ export async function rotateInbox(
   const current: RelayEndpoint =
     relays.find((relay) => relay.url === inbox.relayUrl) ?? { id: inbox.relayUrl, url: inbox.relayUrl };
   const next = nextRelay(current, relays);
-  if (!next) return null;
+  if (!next || next.url === inbox.relayUrl) return null;
+  const transport = await transportFor(next.url);
   const created = await transport.createQueue(
     Math.max(0, inbox.expiresAt - now),
     createPowChallenge(inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY),
