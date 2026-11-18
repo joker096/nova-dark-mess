@@ -253,7 +253,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <Paperclip className="w-4 h-4" />
         </NovaButton>
 
-        <div className="flex-1 bg-[#181920]/95 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+        <div className="flex-1 bg-[#181920]/95 rounded-full border border-transparent pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0 focus-within:border-[var(--nova-accent-color)]/35 focus-within:ring-2 focus-within:ring-[var(--nova-accent-color)]/25">
           <input
             ref={mainInputRef}
             type="text"
@@ -263,6 +263,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               if (e.key === 'Enter') handleSendMessage();
             }}
             placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
+            data-inline-focus="true"
             className="w-full bg-transparent text-sm text-white placeholder-white/35 focus:outline-none py-1 min-w-0"
           />
 

@@ -22,7 +22,7 @@ describe('UI visual snapshot - NovaButton', () => {
 
   it('matches default ghost visual snapshot', () => {
     const { container } = render(<NovaButton onClick={vi.fn()}>Click</NovaButton>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]">Click</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11] w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]">Click</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('w-7 h-7');
     expect(btn.className).toContain('bg-white/5');
@@ -35,7 +35,7 @@ describe('UI visual snapshot - NovaButton', () => {
         Accent
       </NovaButton>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none w-10 h-10 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30">Accent</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11] w-10 h-10 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95">Accent</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
     expect(btn.className).toContain('w-10 h-10');
@@ -43,7 +43,7 @@ describe('UI visual snapshot - NovaButton', () => {
 
   it('matches disabled visual snapshot', () => {
     const { container } = render(<NovaButton disabled onClick={vi.fn()}>Disabled</NovaButton>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]" disabled="">Disabled</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11] w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]" disabled="">Disabled</button>"`);
     expect(screen.getByRole('button')).toBeDisabled();
     expect(screen.getByRole('button').className).toContain('disabled:opacity-50');
   });
@@ -135,7 +135,7 @@ describe('UI visual snapshot - NovaInput', () => {
 
   it('matches default input visual snapshot', () => {
     const { container } = render(<NovaInput id="nova-input-test" placeholder="Enter text" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-1 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/30 border-white/10"><input id="nova-input-test" placeholder="Enter text" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="false"></div></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,box-shadow,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-2 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/25 border-white/10"><input id="nova-input-test" placeholder="Enter text" data-inline-focus="true" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="false"></div></div>"`);
     const input = screen.getByRole('textbox');
     expect(input).toHaveAttribute('placeholder', 'Enter text');
     expect(input.className).toContain('bg-transparent');
@@ -144,7 +144,7 @@ describe('UI visual snapshot - NovaInput', () => {
 
   it('matches error input visual snapshot', () => {
     const { container } = render(<NovaInput id="nova-input-test" error="Error" placeholder="Error" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-1 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/30 border-red-500/50 focus-within:border-red-500/60"><input id="nova-input-test" placeholder="Error" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="true" aria-describedby="nova-input-test-error"></div><span id="nova-input-test-error" class="text-xs text-red-400">Error</span></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,box-shadow,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-2 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/25 border-red-500/50 focus-within:border-red-500/60"><input id="nova-input-test" placeholder="Error" data-inline-focus="true" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="true" aria-describedby="nova-input-test-error"></div><span id="nova-input-test-error" class="text-xs text-red-400">Error</span></div>"`);
     const wrapper = screen.getByRole('textbox').closest('div')!;
     expect(wrapper.className).toContain('border-red-500/50');
     const input = screen.getByRole('textbox');

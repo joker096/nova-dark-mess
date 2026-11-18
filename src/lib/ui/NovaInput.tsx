@@ -16,7 +16,7 @@ const BASE_WRAPPER =
   'flex flex-col gap-1.5';
 
 const BASE_FIELD =
-  'flex items-center gap-2 rounded-lg border px-3 py-2 transition focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-1 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/30';
+  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,box-shadow,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-2 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/25';
 
 export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
   ({
@@ -47,6 +47,8 @@ export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
             ref={ref}
             id={inputId}
             placeholder={placeholder}
+            // The wrapper owns the focus ring; avoid a second rectangular one.
+            data-inline-focus="true"
             className={BASE_INPUT}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={error ? `${inputId}-error` : undefined}

@@ -337,6 +337,98 @@ button,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Interaction states ─────────────────────────────────────────────────────
+   Every clickable surface should answer a press and every text field should
+   answer focus. Component utilities (active:scale-95, focus:ring-*, …) stay
+   more specific and keep working; these rules only cover what did not have a
+   state at all. `scale` is used instead of `transform` so positioning
+   transforms are never clobbered. */
+:root {
+  --nova-ease-out: cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):not([data-no-press]),
+  [role='button']:not([aria-disabled='true']):not([data-no-press]) {
+    transition-property: scale, background-color, border-color, color, box-shadow, filter, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: var(--nova-ease-out);
+  }
+
+  button:not(:disabled):not([data-no-press]):active,
+  [role='button']:not([aria-disabled='true']):not([data-no-press]):active {
+    scale: 0.96;
+  }
+
+  .nova-pressable {
+    transition: scale 150ms var(--nova-ease-out), background-color 150ms ease;
+  }
+
+  .nova-pressable:active {
+    scale: 0.99;
+  }
+}
+
+/* Touch screens apply :hover after a tap and it sticks; keep hover-only
+   feedback on real pointers. */
+@media (hover: none) {
+  button:hover,
+  [role='button']:hover {
+    filter: none;
+  }
+}
+
+/* Text fields: accent caret, a soft focus ring instead of the browser outline,
+   and a hover hint on fields that actually draw a border. Fields marked
+   `data-inline-focus` live inside a styled container (the chat composer pill)
+   that owns the focus ring itself. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+textarea,
+select {
+  caret-color: var(--nova-accent-color);
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+input:focus-visible:not([data-inline-focus]),
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nova-accent-color) 45%, transparent);
+}
+
+@media (hover: hover) {
+  input:hover:not(:disabled):not(:focus-visible),
+  textarea:hover:not(:disabled):not(:focus-visible),
+  select:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--nova-accent-color) 35%, transparent);
+  }
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Recording beacon: an expanding ring around the live dot, used by the voice
+   memo composer while capture is running. */
+@keyframes nova-rec-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--nova-accent-color) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.nova-rec-pulse {
+  animation: nova-rec-pulse 1.6s var(--nova-ease-out) infinite;
+}
+
 /* Smooth screens transitions between rail tabs (no jank on mobile). */
 @media (prefers-reduced-motion: no-preference) {
   .safe-area-screen > * {

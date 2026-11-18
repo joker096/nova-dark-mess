@@ -1536,8 +1536,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -1799,7 +1799,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     voiceMemoRef.current?.cancelRecording();
     setIsAttachmentMenuOpen(false);
     setIsEmojiPickerOpen(false);
-    const preview = msg.text || (msg.voiceNote ? `Voice message (${msg.voiceNote.duration})` : 'Photo attachment');
+    const preview = msg.text || (msg.voiceNote ? t('voiceMessage', { duration: msg.voiceNote.duration }) : t('chat.photoAttachment'));
     const sender = msg.senderId === 'me' ? 'myself' : profile.name;
     triggerPinnedToast(`Replying to ${sender}: "${preview.slice(0, 26)}${preview.length > 26 ? '...' : ''}"`);
     setHighlightedMsgId(msg.id);
@@ -1952,7 +1952,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       ...m,
       id: 'fwd-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       senderId: 'me' as const,
-      forwardedFrom: m.senderId === 'me' ? 'You' : profile.name,
+      forwardedFrom: m.senderId === 'me' ? t('common.you') : profile.name,
       text: m.deleted ? undefined : m.text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
@@ -2015,8 +2015,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2072,8 +2072,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2193,8 +2193,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2233,8 +2233,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2262,8 +2262,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2328,8 +2328,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: replyingTo
         ? {
             id: replyingTo.id,
-            text: replyingTo.text || (replyingTo.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: replyingTo.senderId === 'me' ? 'You' : profile.name,
+            text: replyingTo.text || (replyingTo.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2403,8 +2403,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     id: lastUserMsg.id,
                     text:
                       lastUserMsg.text ||
-                      (lastUserMsg.document ? `Document: ${lastUserMsg.document.name}` : 'Photo attachment'),
-                    senderName: 'You',
+                      (lastUserMsg.document ? t('chat.documentPreview', { name: lastUserMsg.document.name }) : t('chat.photoAttachment')),
+                    senderName: t('common.you'),
                   }
                 : undefined,
           },
@@ -2435,8 +2435,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       replyTo: activeReply
         ? {
             id: activeReply.id,
-            text: activeReply.text || (activeReply.voiceNote ? 'Voice message' : 'Photo attachment'),
-            senderName: activeReply.senderId === 'me' ? 'You' : profile.name,
+            text: activeReply.text || (activeReply.voiceNote ? t('chat.voiceMessage') : t('chat.photoAttachment')),
+            senderName: activeReply.senderId === 'me' ? t('common.you') : profile.name,
           }
         : undefined,
     };
@@ -2527,11 +2527,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     text:
                       lastUserMsg.text ||
                       (lastUserMsg.document
-                        ? `Document: ${lastUserMsg.document.name}`
+                        ? t('chat.documentPreview', { name: lastUserMsg.document.name })
                         : lastUserMsg.voiceNote
-                        ? 'Voice message'
-                        : 'Photo attachment'),
-                    senderName: 'You',
+                        ? t('chat.voiceMessage')
+                        : t('chat.photoAttachment')),
+                    senderName: t('common.you'),
                   }
                 : undefined,
           },
@@ -3305,14 +3305,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                     </div>
                   ) : (
                     <div className="w-9 h-9 rounded-lg bg-[#252836] border border-white/5 flex items-center justify-center text-xs font-bold text-white/80 shrink-0">
-                      {currentPinnedMsg.senderId === 'me' ? 'You' : 'KR'}
+                      {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                     </div>
                   )}
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-semibold text-[var(--nova-accent-color, #ff4e18)]">
-                        {currentPinnedMsg.senderId === 'me' ? 'You' : profile.name}
+                        {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                       </span>
                       <span className="text-[10px] text-white/40">
                         {currentPinnedMsg.time}
@@ -3326,8 +3326,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
                     <p className="text-xs text-white/90 truncate mt-0.5 font-normal">
                       {currentPinnedMsg.voiceNote
-                        ? `Voice message (${currentPinnedMsg.voiceNote.duration})`
-                        : currentPinnedMsg.text || 'Photo attachment'}
+                        ? t('voiceMessage', { duration: currentPinnedMsg.voiceNote.duration })
+                        : currentPinnedMsg.text || t('chat.photoAttachment')}
                     </p>
                   </div>
                 </div>
@@ -4512,7 +4512,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <span className="text-[10px] text-white/40">· Click to jump</span>
               </div>
               <p className="text-[#868b98] truncate text-[11px] mt-0.5 font-normal">
-                {replyingTo.text || (replyingTo.voiceNote ? `Voice note (${replyingTo.voiceNote.duration})` : 'Photo attachment')}
+                {replyingTo.text || (replyingTo.voiceNote ? t('voiceMessage', { duration: replyingTo.voiceNote.duration }) : t('chat.photoAttachment'))}
               </p>
             </div>
           </div>
@@ -5255,7 +5255,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
       {/* SCHEDULE MESSAGE MODAL */}
       <ScheduleMessageModal
         isOpen={isScheduleModalOpen}
-        messageText={inputText || (recordedVoiceNote ? `Voice note (${recordedVoiceNote.duration})` : '')}
+        messageText={inputText || (recordedVoiceNote ? t('voiceMessage', { duration: recordedVoiceNote.duration }) : '')}
         onSchedule={handleScheduleMessage}
         onClose={() => setIsScheduleModalOpen(false)}
       />

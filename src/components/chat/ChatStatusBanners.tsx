@@ -145,12 +145,12 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
           <div className="truncate flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-[var(--nova-accent-color, #ff4e18)] font-bold text-[11px] group-hover:underline">
-                Replying to {replyingTo.senderId === 'me' ? 'Yourself' : profile.name}
+                Replying to {replyingTo.senderId === 'me' ? t('chat.yourself') : profile.name}
               </span>
               <span className="text-[10px] text-white/40">· Click to jump</span>
             </div>
             <p className="text-[#868b98] truncate text-[11px] mt-0.5 font-normal">
-              {replyingTo.text || (replyingTo.voiceNote ? `Voice note (${replyingTo.voiceNote.duration})` : 'Photo attachment')}
+              {replyingTo.text || (replyingTo.voiceNote ? t('voiceMessage', { duration: replyingTo.voiceNote.duration }) : t('chat.photoAttachment'))}
             </p>
           </div>
         </div>

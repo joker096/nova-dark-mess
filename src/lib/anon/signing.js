@@ -60,6 +60,55 @@ export function isQueuePrivateKey(value) {
   }
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Identity binding
+//
+// An anonymous inbox is a queue key, and the queue key rotates when the inbox
+// moves to another relay. The identity key stays fixed and signs the current
+// queue key, so a contact can tell "the same person moved" from "someone else
+// took over this queue".
+// ───────────────────────────────────────────────────────────────────────────
+
+export const IDENTITY_BINDING_VERSION = 1;
+
+export function identityBindingMessage(identityKey, signingPublicKey) {
+  if (typeof identityKey !== 'string' || typeof signingPublicKey !== 'string') {
+    throw new Error('Invalid identity binding');
+  }
+  return JSON.stringify({
+    v: IDENTITY_BINDING_VERSION,
+    purpose: 'identity-binding',
+    identityKey,
+    signingPublicKey,
+  });
+}
+
+/**
+ * Signs the binding with the identity key's private half. The identity key is
+ * an Ed25519 key in base64url form, the same encoding used for queue keys.
+ */
+export function signIdentityBinding(privateKey, identityKey, signingPublicKey) {
+  const message = identityBindingMessage(identityKey, signingPublicKey);
+  const signature = ed25519.sign(
+    encoder.encode(message),
+    requireKey(fromBase64Url(privateKey), 32, 'signing key'),
+  );
+  return toBase64Url(signature);
+}
+
+export function verifyIdentityBinding(identityKey, signingPublicKey, signature) {
+  try {
+    if (typeof signature !== 'string') return false;
+    return ed25519.verify(
+      fromBase64Url(signature),
+      encoder.encode(identityBindingMessage(identityKey, signingPublicKey)),
+      requireKey(fromBase64Url(identityKey), 32, 'identity key'),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function queueCommandMessage(command) {
   if (!command || typeof command !== 'object') throw new Error('Invalid command');
   const out = {

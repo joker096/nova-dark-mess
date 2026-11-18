@@ -108,14 +108,14 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
                   </div>
                 ) : (
                   <div className="w-9 h-9 rounded-lg bg-[#252836] border border-white/5 flex items-center justify-center text-xs font-bold text-white/80 shrink-0">
-                    {currentPinnedMsg.senderId === 'me' ? 'You' : 'KR'}
+                    {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                   </div>
                 )}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-semibold text-[var(--nova-accent-color, #ff4e18)]">
-                      {currentPinnedMsg.senderId === 'me' ? 'You' : profile.name}
+                      {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                     </span>
                     <span className="text-[10px] text-white/40">
                       {currentPinnedMsg.time}
@@ -129,8 +129,8 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
 
                   <p className="text-xs text-white/90 truncate mt-0.5 font-normal">
                     {currentPinnedMsg.voiceNote
-                      ? `Voice message (${currentPinnedMsg.voiceNote.duration})`
-                      : currentPinnedMsg.text || 'Photo attachment'}
+                      ? t('voiceMessage', { duration: currentPinnedMsg.voiceNote.duration })
+                      : currentPinnedMsg.text || t('chat.photoAttachment')}
                   </p>
                 </div>
               </div>
