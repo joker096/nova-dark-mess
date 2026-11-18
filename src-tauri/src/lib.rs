@@ -1,9 +1,18 @@
+mod anon_net;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![
+        anon_net::anon_socks_request,
+        anon_net::anon_tor_check
+    ])
     .on_permission_request(|_, kind| match kind {
       tauri::webview::PermissionKind::Camera
       | tauri::webview::PermissionKind::Microphone => {
+        tauri::webview::PermissionResponse::Allow
+      }
+      tauri::webview::PermissionKind::Geolocation => {
         tauri::webview::PermissionResponse::Allow
       }
       _ => tauri::webview::PermissionResponse::Default,

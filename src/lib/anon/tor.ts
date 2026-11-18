@@ -18,6 +18,40 @@ export interface TorEndpoint {
   socksPort?: number;
 }
 
+/** Tauri command implemented in `src-tauri/src/anon_net.rs`. */
+export const TAURI_TOR_COMMAND = 'anon_socks_request';
+/** Tauri command that probes whether a local Tor SOCKS listener answers. */
+export const TAURI_TOR_CHECK_COMMAND = 'anon_tor_check';
+/** Default Tor SOCKS listener (`tor` daemon, Tor Browser, Orbot). */
+export const DEFAULT_TOR_SOCKS_PORT = 9050;
+
+export interface TorHttpResponse {
+  status: number;
+  body: string;
+}
+
+export interface TorCheckResult {
+  ok: boolean;
+  port: number;
+  error?: string;
+}
+
+export type TorInvoke = (command: string, args: Record<string, unknown>) => Promise<unknown>;
+
+export interface TorFetchOptions {
+  socksPort?: number;
+  /** Injection point for tests; defaults to the Tauri `invoke` bridge. */
+  invoke?: TorInvoke;
+}
+
+async function invokeTauri(command: string, args: Record<string, unknown>): Promise<unknown> {
+  const core = await import('@tauri-apps/api/core').catch(() => null);
+  if (!core || typeof core.invoke !== 'function') {
+    throw new Error('Tor transport requires the native Tauri shell');
+  }
+  return core.invoke(command, args);
+}
+
 export function isOnionUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -44,4 +78,75 @@ export function describeTransport(endpoint: TorEndpoint): string {
 
 function socksPortLabel(port?: number): boolean {
   return typeof port === 'number' && port > 0;
+}
+
+/**
+ * Probes the local SOCKS listener through the native bridge and reports
+ * whether Tor (or a Tor-compatible proxy) is actually reachable. The app uses
+ * this before enabling Tor mode so a misconfigured port fails loud instead of
+ * breaking every relay request silently.
+ */
+export async function checkTorRunning(
+  options: { socksPort?: number; invoke?: TorInvoke } = {},
+): Promise<TorCheckResult> {
+  const socksPort = options.socksPort ?? DEFAULT_TOR_SOCKS_PORT;
+  const invoke = options.invoke ?? invokeTauri;
+  const result = (await invoke(TAURI_TOR_CHECK_COMMAND, { socksPort })) as TorCheckResult | null;
+  if (!result || typeof result.ok !== 'boolean' || typeof result.port !== 'number') {
+    throw new Error('Tor check returned an invalid response');
+  }
+  return result;
+}
+
+/**
+ * Fetch-compatible client that routes every request through the native SOCKS5
+ * bridge, so the existing HTTP, proxy and pairing transports work unchanged on
+ * a `.onion` relay. Only plain `http://` onion URLs are accepted: Tor
+ * authenticates the v3 onion service and encrypts the circuit end to end, and
+ * the sealed payload is already encrypted above that.
+ */
+export function createTorFetch(options: TorFetchOptions = {}): typeof fetch {
+  const socksPort = options.socksPort ?? DEFAULT_TOR_SOCKS_PORT;
+  const invoke = options.invoke ?? invokeTauri;
+
+  return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    if (!isOnionUrl(url)) {
+      throw new TypeError('Tor transport only accepts .onion endpoints');
+    }
+    if (!url.startsWith('http://')) {
+      throw new Error('Tor transport supports http:// .onion endpoints only');
+    }
+    const method = (init?.method ?? 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'POST') {
+      throw new Error(`Tor transport does not support ${method}`);
+    }
+    if (init?.body !== undefined && typeof init.body !== 'string') {
+      throw new Error('Tor transport only supports string request bodies');
+    }
+
+    const result = (await invoke(TAURI_TOR_COMMAND, {
+      request: {
+        url,
+        method,
+        ...(typeof init?.body === 'string' ? { body: init.body } : {}),
+        socksPort,
+      },
+    })) as TorHttpResponse | null;
+
+    if (!result || typeof result.status !== 'number') {
+      throw new Error('Tor bridge returned an invalid response');
+    }
+    const body = result.body ?? '';
+    const bodyless = body === '' || result.status === 204 || result.status === 205 || result.status === 304;
+    return new Response(bodyless ? null : body, {
+      status: result.status,
+      headers: bodyless ? undefined : { 'Content-Type': 'application/json' },
+    });
+  }) as typeof fetch;
 }

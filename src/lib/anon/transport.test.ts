@@ -1,35 +1,73 @@
-import { describe, expect, it } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAnonTransport } from './transport';
+import { getRelayLatency, clearRelayLatency } from './relayLatency';
+import { generateQueueSigningKeyPair } from './signing';
 
-describe('anonymous transport factory', () => {
-  it('exposes queue creation while retaining the transport interface', async () => {
-    const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
-    const transport = createAnonTransport({
-      relayUrl: 'https://relay.example',
-      jitter: false,
-      fetchImpl: async (input, init) => {
-        requests.push({
-          url: String(input),
-          body: JSON.parse(String(init?.body)) as Record<string, unknown>,
-        });
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            queueId: 'q_00000000000000000000000000000000',
-            senderToken: 'sender-token',
-            recipientToken: 'recipient-token',
-            inviteToken: 'invite-token',
-            expiresAt: Date.now() + 60_000,
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
-      },
-    });
+const RELAY = 'https://relay.example';
+
+function mockJson(value: unknown): typeof fetch {
+  const mock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } }),
+  );
+  return mock as unknown as typeof fetch;
+}
+
+beforeEach(() => {
+  clearRelayLatency();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('transport latency measurement', () => {
+  it('records round-trip latency for every relay call', async () => {
+    const created = {
+      ok: true,
+      queueId: 'q_00000000000000000000000000000001',
+      senderToken: 'sender-token',
+      recipientToken: 'recipient-token',
+      inviteToken: 'invite-token',
+      expiresAt: 1_800_000_000_000,
+    };
+    const fetchImpl = mockJson(created);
+    const transport = createAnonTransport({ relayUrl: RELAY, fetchImpl, jitter: false });
 
     const queue = await transport.createQueue();
-    expect(queue?.queueId).toBe('q_00000000000000000000000000000000');
-    expect(requests).toHaveLength(1);
-    expect(requests[0].url).toBe('https://relay.example/api/anon/queues');
-    expect(requests[0].body.signingPublicKey).toBeTruthy();
+    expect(queue?.queueId).toBe(created.queueId);
+    expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
+
+    const signing = generateQueueSigningKeyPair();
+    (fetchImpl as any).mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, packetId: 'p_1', expiresAt: 1 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const enqueued = await transport.enqueue(
+      created.queueId,
+      created.senderToken,
+      'QUJD',
+      signing.privateKey,
+    );
+    expect(enqueued?.packetId).toBe('p_1');
+    expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
+
+    (fetchImpl as any).mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, packets: [], nextCursor: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const polled = await transport.poll(created.queueId, created.recipientToken, undefined, signing.privateKey);
+    expect(polled.packets).toEqual([]);
+    expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
+
+    (fetchImpl as any).mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    expect(await transport.ack(created.queueId, created.recipientToken, ['p_1'], signing.privateKey)).toBe(true);
+
+    expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
   });
 });
