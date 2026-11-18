@@ -314,6 +314,7 @@ describe('proxy transport', () => {
       queueIdHash: 'b'.repeat(64),
       signingKeyHash: 'c'.repeat(64),
       category: 'harassment' as const,
+      reportedAt: 1000,
     };
 
     await expect(transport.submitAbuseReport(report)).resolves.toBe(true);

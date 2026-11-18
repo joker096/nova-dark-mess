@@ -122,10 +122,14 @@ export interface AbuseReport {
   queueIdHash: string;
   /** SHA-256 hex of the sender's signing public key. */
   signingKeyHash: string;
+  /** SHA-256 hex of the reporter's signing public key, when the report is authenticated. */
+  reporterKeyHash?: string;
   /** Coarse category, no free text (free text could carry identifying data). */
   category: 'spam' | 'harassment' | 'illegal';
   reportedAt: number;
   uploadedAt?: number;
+  /** Ed25519 signature of the report, base64. Present when the report is authenticated. */
+  signature?: string;
 }
 
 export type AbuseCategory = AbuseReport['category'];
@@ -135,7 +139,13 @@ export interface AbuseReportSubmission {
   reportId: string;
   queueIdHash: string;
   signingKeyHash: string;
+  /** SHA-256 hex of the reporter's signing public key, present for authenticated reports. */
+  reporterKeyHash?: string;
+  /** Timestamp when the report was created, needed for signature verification. */
+  reportedAt: number;
   category: AbuseCategory;
+  /** Ed25519 signature over the report fields, base64. Present when authenticated. */
+  signature?: string;
 }
 
 export function isAbuseCategory(value: unknown): value is AbuseCategory {
@@ -155,22 +165,104 @@ async function sha256Hex(value: string): Promise<string> {
     .join('');
 }
 
+function abuseReportMessage(report: {
+  reportId: string;
+  queueIdHash: string;
+  signingKeyHash: string;
+  reporterKeyHash: string;
+  category: AbuseCategory;
+  reportedAt: number;
+}): string {
+  return JSON.stringify({
+    reportId: report.reportId,
+    queueIdHash: report.queueIdHash,
+    signingKeyHash: report.signingKeyHash,
+    reporterKeyHash: report.reporterKeyHash,
+    category: report.category,
+    reportedAt: report.reportedAt,
+  });
+}
+
+/**
+ * Signs an abuse report with the reporter's Ed25519 signing key so the relay
+ * can verify the report came from a legitimate participant (not a random
+ * submitter who guessed queue hashes). Returns the signature as base64.
+ */
+export async function signAbuseReport(
+  privateKey: string,
+  report: Pick<
+    AbuseReport,
+    'reportId' | 'queueIdHash' | 'signingKeyHash' | 'reporterKeyHash' | 'category' | 'reportedAt'
+  >,
+): Promise<string> {
+  const { signQueueCommand } = await import('./signing');
+  const auth = signQueueCommand(privateKey, {
+    action: 'enqueue',
+    queueId: report.queueIdHash,
+    token: report.reportId!,
+    signedAt: report.reportedAt,
+    commandNonce: report.reporterKeyHash!,
+  });
+  return auth.signature;
+}
+
+/**
+ * Verifies an Ed25519 signature on an abuse report submission. Returns true
+ * when the signature was produced by the holder of `reporterKeyHash`'s
+ * private key over the report fields. Returns false for hash-only reports
+ * (no reporter key or signature).
+ */
+export async function verifyAbuseReportSignature(
+  reporterPublicKey: string,
+  report: Pick<
+    AbuseReport,
+    'reportId' | 'queueIdHash' | 'signingKeyHash' | 'reporterKeyHash' | 'category' | 'reportedAt'
+  > & { signature?: string },
+): Promise<boolean> {
+  if (!report.reporterKeyHash || !report.signature) return false;
+  const { verifyQueueCommand } = await import('./signing');
+  return verifyQueueCommand(
+    reporterPublicKey,
+    {
+      action: 'enqueue',
+      queueId: report.queueIdHash,
+      token: report.reportId!,
+      signedAt: report.reportedAt,
+      commandNonce: report.reporterKeyHash!,
+    },
+    report.signature,
+  );
+}
+
+/**
+ * Builds an authenticated abuse report with the reporter's signing key hash
+ * included. The report can later be signed with `signAbuseReport` for relay
+ * verification. When no reporter key is provided, the report is hash-only
+ * (backwards-compatible, unauthenticated).
+ */
 export async function buildAbuseReport(params: {
   queueId: string;
   signingPublicKey: string;
   category: AbuseCategory;
+  /** Reporter's Ed25519 signing public key, optional for authenticated reports. */
+  reporterSigningPublicKey?: string;
 }): Promise<AbuseReport | null> {
-  const { queueId, signingPublicKey, category } = params;
+  const { queueId, signingPublicKey, category, reporterSigningPublicKey } = params;
   if (!/^q_[0-9a-f]{32}$/.test(queueId) || !isSigningPublicKey(signingPublicKey)) return null;
   if (!isAbuseCategory(category)) return null;
-  return {
+  const now = Date.now();
+  const base: AbuseReport = {
     v: 1,
     reportId: randomReportId(),
     queueIdHash: await sha256Hex(queueId),
     signingKeyHash: await sha256Hex(signingPublicKey),
     category,
-    reportedAt: Date.now(),
+    reportedAt: now,
   };
+  if (reporterSigningPublicKey && isSigningPublicKey(reporterSigningPublicKey)) {
+    base.reporterKeyHash = await sha256Hex(reporterSigningPublicKey);
+  }
+  return base;
 }
 
 export function loadAbuseReports(): AbuseReport[] {
@@ -213,6 +305,8 @@ export async function recordAbuseReport(params: {
   queueId: string;
   signingPublicKey: string;
   category: AbuseCategory;
+  /** Reporter's Ed25519 signing public key, optional for authenticated reports. */
+  reporterSigningPublicKey?: string;
 }): Promise<AbuseReport | null> {
   const report = await buildAbuseReport(params);
   if (!report) return null;
@@ -223,12 +317,48 @@ export async function recordAbuseReport(params: {
       entry.uploadedAt === undefined &&
       entry.queueIdHash === report.queueIdHash &&
       entry.signingKeyHash === report.signingKeyHash &&
-      entry.category === report.category,
+      entry.category === report.category &&
+      entry.reporterKeyHash === report.reporterKeyHash,
   );
   if (pending) return pending;
   reports.unshift(report);
   saveAbuseReports(reports);
   return report;
+}
+
+/**
+ * Creates a submission object ready to send to the relay. Signs the report
+ * with the reporter's private key when provided, producing an authenticated
+ * submission the relay can verify.
+ */
+export async function createAbuseReportSubmission(
+  report: AbuseReport,
+  reporterPrivateKey?: string,
+): Promise<AbuseReportSubmission | null> {
+  if (!report.reportId) return null;
+  const submission: AbuseReportSubmission = {
+    v: 1,
+    reportId: report.reportId,
+    queueIdHash: report.queueIdHash,
+    signingKeyHash: report.signingKeyHash,
+    reporterKeyHash: report.reporterKeyHash,
+    reportedAt: report.reportedAt,
+    category: report.category,
+  };
+  if (report.reporterKeyHash && reporterPrivateKey) {
+    const { isQueuePrivateKey } = await import('./signing');
+    if (isQueuePrivateKey(reporterPrivateKey)) {
+      submission.signature = await signAbuseReport(reporterPrivateKey, {
+        reportId: submission.reportId,
+        queueIdHash: submission.queueIdHash,
+        signingKeyHash: submission.signingKeyHash,
+        reporterKeyHash: submission.reporterKeyHash!,
+        category: submission.category,
+        reportedAt: submission.reportedAt,
+      });
+    }
+  }
+  return submission;
 }
 
 export function markAbuseReportUploaded(reportId: string): boolean {
