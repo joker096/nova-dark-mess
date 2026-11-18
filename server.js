@@ -942,9 +942,13 @@ const ANON_REPORTS_DIR = process.env.ANON_REPORTS_DIR
 // just by changing proxy client key or IP.
 const ANON_CREATE_PER_SIGNING_KEY = 10; // queues per signing key per hour
 const ANON_CREATE_WINDOW_MS = 60 * 60 * 1000;
-// Live spam reports needed before a signing key loses queue creation. Reports
-// are hash-only and unauthenticated, so this is a speed bump, not a ban.
-const ANON_SPAM_BLOCK_REPORTS = 3;
+// Distinct reported queues needed before a signing key loses queue creation.
+// Counting queues instead of report ids is what stops one reporter from
+// padding the threshold with synthetic ids for a key it does not own.
+const ANON_SPAM_BLOCK_QUEUES = 3;
+// Reported queue hashes stay verifiable for this long past the queue's own
+// expiry, so a late report is still accepted (and still deduped by queue).
+const ANON_REPORT_VERIFY_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const ANON_PACKET_PROFILES = new Set([4096, 16384, 65536]);
 const ANON_ROUTING_MAX_AGE_MS = 5 * 60 * 1000;
 const ANON_ROUTING_FUTURE_SKEW_MS = 60 * 1000;
@@ -953,9 +957,13 @@ const ANON_COMMAND_FUTURE_SKEW_MS = 60 * 1000;
 const anonQueues = new Map();
 const anonAbuseReports = new Map();
 const anonCreateBySigningKey = new Map();
-// signingKeyHash -> live spam report ids, so a block lifts when its reports
-// expire instead of lingering for the process lifetime.
-const anonSpamReportsByKey = new Map();
+// signingKeyHash -> live reported queue hashes. A block lifts when the last
+// report for its keys expires instead of lingering for the process lifetime.
+const anonSpamQueuesByKey = new Map();
+// queueIdHash -> the signing key hash that created that queue. Reports must
+// reference a queue the relay really issued for that key, otherwise anyone
+// could inflate the count for a key they merely know the public part of.
+const anonQueueOwners = new Map();
 const anonRoutingNonces = new Map();
 const anonCommandNonces = new Map();
 
@@ -1019,25 +1027,30 @@ function anonCreateRateLimitForKey(signingPublicKey) {
   return true;
 }
 
-function anonSpamReportCount(signingKeyHash) {
-  const ids = anonSpamReportsByKey.get(signingKeyHash);
-  return ids ? ids.size : 0;
+function anonSpamQueueCount(signingKeyHash) {
+  const queues = anonSpamQueuesByKey.get(signingKeyHash);
+  return queues ? queues.size : 0;
 }
 
-function anonSpamIndexReport(reportId, signingKeyHash) {
-  let ids = anonSpamReportsByKey.get(signingKeyHash);
-  if (!ids) {
-    ids = new Set();
-    anonSpamReportsByKey.set(signingKeyHash, ids);
+function anonSpamIndexReport(queueIdHash, signingKeyHash) {
+  let queues = anonSpamQueuesByKey.get(signingKeyHash);
+  if (!queues) {
+    queues = new Set();
+    anonSpamQueuesByKey.set(signingKeyHash, queues);
   }
-  ids.add(reportId);
+  queues.add(queueIdHash);
 }
 
-function anonSpamUnindexReport(reportId, signingKeyHash) {
-  const ids = anonSpamReportsByKey.get(signingKeyHash);
-  if (!ids) return;
-  ids.delete(reportId);
-  if (ids.size === 0) anonSpamReportsByKey.delete(signingKeyHash);
+// Several reports can name the same queue; the queue only stops counting once
+// no live report mentions it any more.
+function anonSpamUnindexReport(queueIdHash, signingKeyHash) {
+  const queues = anonSpamQueuesByKey.get(signingKeyHash);
+  if (!queues) return;
+  for (const report of anonAbuseReports.values()) {
+    if (report.signingKeyHash === signingKeyHash && report.queueIdHash === queueIdHash) return;
+  }
+  queues.delete(queueIdHash);
+  if (queues.size === 0) anonSpamQueuesByKey.delete(signingKeyHash);
 }
 
 function anonReportFile(reportId) {
@@ -1071,7 +1084,7 @@ function anonForgetReportFile(reportId) {
 
 function anonStoreReport(record) {
   anonAbuseReports.set(record.reportId, record);
-  if (record.category === 'spam') anonSpamIndexReport(record.reportId, record.signingKeyHash);
+  if (record.category === 'spam') anonSpamIndexReport(record.queueIdHash, record.signingKeyHash);
 }
 
 function anonIsStoredReport(value) {
@@ -1167,8 +1180,13 @@ function anonCleanup() {
     if (now > report.expiresAt) {
       anonAbuseReports.delete(reportId);
       anonForgetReportFile(reportId);
-      if (report.category === 'spam') anonSpamUnindexReport(reportId, report.signingKeyHash);
+      if (report.category === 'spam') {
+        anonSpamUnindexReport(report.queueIdHash, report.signingKeyHash);
+      }
     }
+  }
+  for (const [queueIdHash, owner] of anonQueueOwners) {
+    if (now > owner.expiresAt) anonQueueOwners.delete(queueIdHash);
   }
 }
 
@@ -1233,7 +1251,7 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
   // enough of those reports expire. Enqueueing on existing queues is untouched:
   // this withdraws the cheap "make a fresh queue per message" path only.
   if (effectiveSigningPublicKey) {
-    if (anonSpamReportCount(anonHash(effectiveSigningPublicKey)) >= ANON_SPAM_BLOCK_REPORTS) {
+    if (anonSpamQueueCount(anonHash(effectiveSigningPublicKey)) >= ANON_SPAM_BLOCK_QUEUES) {
       return { status: 403, body: { ok: false, reason: 'SIGNING_KEY_BLOCKED' } };
     }
     if (!anonCreateRateLimitForKey(effectiveSigningPublicKey)) {
@@ -1241,12 +1259,14 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
     }
   }
   const queueId = anonRandomId('q', 16);
+  const queueIdHash = anonHash(queueId);
   const senderToken = anonRandomToken();
   const recipientToken = anonRandomToken();
   const inviteToken = anonRandomToken();
   const now = Date.now();
   anonQueues.set(queueId, {
     queueId,
+    queueIdHash,
     senderTokenHash: anonHash(senderToken),
     recipientTokenHash: anonHash(recipientToken),
     signingPublicKey: effectiveSigningPublicKey || null,
@@ -1256,6 +1276,10 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
     createdAt: now,
     expiresAt: now + ttl,
     packets: new Map(),
+  });
+  anonQueueOwners.set(queueIdHash, {
+    signingKeyHash: effectiveSigningPublicKey ? anonHash(effectiveSigningPublicKey) : null,
+    expiresAt: now + ttl + ANON_REPORT_VERIFY_GRACE_MS,
   });
   return {
     status: 201,
@@ -1527,6 +1551,13 @@ app.post('/api/anon/route', async (req, res) => {
     }
     if (anonAbuseReports.size >= ANON_MAX_REPORTS) {
       return res.status(503).json({ ok: false, reason: 'REPORT_STORE_FULL' });
+    }
+    // The reported queue must be one this relay issued for that signing key.
+    // Without this, a report is just three random hashes and any client could
+    // block any key it knows about.
+    const queueOwner = anonQueueOwners.get(report.queueIdHash);
+    if (!queueOwner || queueOwner.signingKeyHash !== report.signingKeyHash) {
+      return res.status(403).json({ ok: false, reason: 'UNVERIFIED_REPORT' });
     }
     const record = {
       reportId: report.reportId,
