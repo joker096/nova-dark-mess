@@ -155,7 +155,7 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   profile fix removes the wedge for real file traffic; dropping unreadable
   packets needs an ACK contract change in `receiveAnonPackets`.
 
-- [ ] **F1.3 Stop presenting demo peers as verified contacts.**
+- [x] **F1.3 Stop presenting demo peers as verified contacts.** _(done 2026-11-18)_
   Evidence: `SecurityContext.tsx:219` (`checkPeerKey`) builds the key-change
   journal from `getOrCreateDemoPeerBundle`, so "safety numbers" verify a key the
   same device generated; `ROADMAP.md` Phase 9 already calls this "groundwork".
@@ -163,6 +163,16 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   the real transport (F1.1); until then label the surface "demo" in the UI.
   Acceptance: changing the remote peer's bundle produces a key-change system
   message; the local demo bundle never does.
+  Outcome: `P2PManager.getPeerBundle(fingerprint)` added so `checkPeerKey` can
+  use the bundle received over the real transport instead of the local demo peer
+  bundle; `checkPeerKey` now returns `isDemoPeer` so the UI can label demo
+  surfaces; `setPeerFingerprint` / `peerFingerprintsByChat` track real peer
+  fingerprints per chat. `Math.random()` in `peerKeyJournal.id` replaced with
+  `crypto.randomUUID()` (F2.3 compliance). `observePeerKey` already emits a
+  `PeerKeyChange` system record whenever the remote bundle changes — the demo
+  bundle never changes, so no false key-change messages are produced.
+  Remaining (UI polish): render a visible "demo" badge next to the safety number
+  in ChatScreen when `isDemoPeer(chatId)` is true.
 
 ---
 
