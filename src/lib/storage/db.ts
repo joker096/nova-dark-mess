@@ -74,6 +74,9 @@ export class EncryptedDatabase {
 
       request.onsuccess = (event) => {
         this.db = (event.target as IDBOpenDBRequest).result;
+        // Phase 9 1.5: purge expired encrypted records on startup so they can
+        // never be read even if no chat screen is ever opened.
+        void this.purgeExpiredMessages();
         resolve();
       };
 
