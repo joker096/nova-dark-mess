@@ -1,7 +1,7 @@
 import { sealMessageAsync, unsealMessageAsync } from '../messaging/sealedSender';
 import { isQueueId, isQueueToken } from './ids';
 import { base64ToUint8, decodeFixedPacket, encodeFixedPacket, uint8ToBase64 } from './packet';
-import { isQueuePrivateKey } from './signing';
+import { isQueuePrivateKey, isQueuePublicKey } from './signing';
 import { isInviteToken, isPowChallenge, solvePow, type PowChallenge, type PowSolution } from './spam';
 import type { AnonTransport, EnqueueResult, PollResult } from './types';
 
@@ -15,6 +15,12 @@ export interface AnonInvite {
   expiresAt: number;
   /** Optional self-asserted name shown in the contact list. */
   displayName?: string;
+  /**
+   * Public signing key of the contact's first queue. Queue keys are rotated on
+   * relay moves, so this is what local block lists and contact recognition use;
+   * it is self-asserted and carries no signature of its own.
+   */
+  identityKey?: string;
   /** Optional first-contact proof-of-work required by the relay. */
   pow?: PowChallenge;
   /**
@@ -84,7 +90,8 @@ export function isAnonInvite(value: unknown): value is AnonInvite {
       (typeof invite.displayName !== 'string' ||
         invite.displayName.length > 64 ||
         containsControlCharacters(invite.displayName))) ||
-    (invite.pow !== undefined && !isPowChallenge(invite.pow))
+    (invite.pow !== undefined && !isPowChallenge(invite.pow)) ||
+    (invite.identityKey !== undefined && !isQueuePublicKey(invite.identityKey))
   ) {
     return false;
   }

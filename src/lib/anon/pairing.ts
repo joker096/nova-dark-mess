@@ -48,6 +48,11 @@ export interface LocalInbox {
   /** One-time invite token the first sender must present; burned by the relay. */
   inviteToken: string;
   displayName?: string;
+  /**
+   * Public signing key of this inbox's first queue. Rotation replaces the queue
+   * key, so contacts and local block lists track this instead.
+   */
+  identityKey?: string;
   createdAt: number;
   expiresAt: number;
   relays?: RelayEndpoint[];
@@ -61,7 +66,24 @@ export interface Invitation {
 export interface Contact {
   inbox: LocalInbox;
   peerInvite: AnonInvite;
+  /** Stable label for the peer across queue rotation; defaults to its current key. */
+  identityKey?: string;
   createdAt: number;
+}
+
+/**
+ * Identity a peer keeps when it rotates its inbox: the first queue public key
+ * it advertised. Offers that predate this field fall back to the current key,
+ * which is exactly the behaviour they had before.
+ */
+export function contactIdentity(invite: AnonInvite): string {
+  return invite.identityKey ?? queueSigningPublicKey(invite.signingKey);
+}
+
+/** Blocks are keyed on that identity, not on the rotating queue key. */
+export function isBlockedContact(invite: AnonInvite): boolean {
+  if (isBlocked(contactIdentity(invite))) return true;
+  return isBlocked(queueSigningPublicKey(invite.signingKey));
 }
 
 export interface InboxMessage {
@@ -75,6 +97,12 @@ export interface InboxPacket extends InboxMessage {
 
 export const CONTACT_OFFER_TYPE = 'nova-anon-contact-offer';
 
+function inboxIdentityKey(inbox: LocalInbox): string | undefined {
+  if (inbox.identityKey) return inbox.identityKey;
+  if (!isQueuePrivateKey(inbox.signingKey)) return undefined;
+  return queueSigningPublicKey(inbox.signingKey);
+}
+
 export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
   return {
     v: 1,
@@ -84,6 +112,8 @@ export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
     signingKey: inbox.signingKey,
     recipientPublicKey: inbox.recipientPublicKey,
     inviteToken: inbox.inviteToken,
+    // A pending inbox can exist before its keys are issued, hence the guard.
+    ...(inboxIdentityKey(inbox) ? { identityKey: inboxIdentityKey(inbox) } : {}),
     ...(inbox.displayName ? { displayName: inbox.displayName } : {}),
     expiresAt: inbox.expiresAt,
     ...(inbox.pow ? { pow: inbox.pow } : {}),
@@ -134,6 +164,7 @@ export async function createInvitation(
     recipientPublicKey: bufferToBase64(x25519.getPublicKey(secret)),
     recipientPrivateKey: bufferToBase64(secret),
     inviteToken: created.inviteToken,
+    identityKey: created.signingPublicKey,
     ...(displayName?.trim() ? { displayName: displayName.trim().slice(0, 64) } : {}),
     ...(pow ? { pow } : {}),
     createdAt: Date.now(),
@@ -185,6 +216,7 @@ export async function rotateInbox(
     recipientPublicKey: bufferToBase64(publicKey),
     recipientPrivateKey: bufferToBase64(secret),
     inviteToken: created.inviteToken,
+    identityKey: inboxIdentityKey(inbox),
     pow,
     createdAt: now,
     expiresAt: created.expiresAt,
@@ -290,7 +322,7 @@ export async function prepareInvitationAcceptance(
 ): Promise<Contact | null> {
   if (!isAnonInvite(invite)) return null;
   // Locally blocked senders cannot re-open contact through their old queue.
-  if (isBlocked(queueSigningPublicKey(invite.signingKey))) return null;
+  if (isBlockedContact(invite)) return null;
   const own = await createInvitation(
     transport,
     invite.relayUrl,
@@ -299,12 +331,17 @@ export async function prepareInvitationAcceptance(
     displayName,
   );
   if (!own) return null;
-  return { inbox: own.inbox, peerInvite: invite, createdAt: Date.now() };
+  return {
+    inbox: own.inbox,
+    peerInvite: invite,
+    identityKey: contactIdentity(invite),
+    createdAt: Date.now(),
+  };
 }
 
 export function contactFromOffer(inbox: LocalInbox, offer: AnonInvite): Contact | null {
   if (!isAnonInvite(offer) || offer.queueId === inbox.queueId) return null;
-  return { inbox, peerInvite: offer, createdAt: Date.now() };
+  return { inbox, peerInvite: offer, identityKey: contactIdentity(offer), createdAt: Date.now() };
 }
 
 export async function receiveInboxMessages(
@@ -367,7 +404,7 @@ export async function receiveContactOffers(
   return messages.flatMap((message) => {
     if (!message.offer) return [];
     // Drop offers from locally blocked senders before they reach the UI.
-    if (isBlocked(queueSigningPublicKey(message.offer.signingKey))) return [];
+    if (isBlockedContact(message.offer)) return [];
     return [message.offer];
   });
 }
