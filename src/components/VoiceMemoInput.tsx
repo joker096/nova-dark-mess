@@ -582,8 +582,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             {/* Pulsing Beacon & Duration Counter */}
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="relative flex items-center justify-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] animate-ping absolute opacity-80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] relative" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] relative nova-rec-pulse" />
               </div>
               <span className="text-xs font-mono font-semibold text-white tracking-wider">
                 {formatTime(recordingSeconds)}

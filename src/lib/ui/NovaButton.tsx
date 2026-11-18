@@ -16,15 +16,22 @@ const SIZE_CONFIG: Record<string, { btn: string; icon: string }> = {
   lg: { btn: 'w-10 h-10', icon: 'w-5 h-5' },
 };
 
+const FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11]';
+
 const VARIANT_CONFIG: Record<string, string> = {
-  ghost: 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]',
-  accent: 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30',
-  'accent-ghost': 'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30',
-  danger: 'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 hover:border-red-500/50',
+  ghost:
+    'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]',
+  accent:
+    'bg-[var(--nova-accent-color,#ff4e18)] text-white border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95',
+  'accent-ghost':
+    'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30',
+  danger:
+    'bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 hover:border-red-500/50',
 };
 
 const BASE =
-  'flex items-center justify-center transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none';
+  'flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
 
 export const NovaButton = forwardRef<HTMLButtonElement, NovaButtonProps>(
   ({ variant = 'ghost', size = 'sm', badge, block = false, className, children, ...props }, ref) => {
@@ -37,7 +44,7 @@ export const NovaButton = forwardRef<HTMLButtonElement, NovaButtonProps>(
     return (
       <button
         ref={ref}
-        className={`${BASE} ${btn} ${blockClasses} ${variantClasses} ${className ?? ''}`.trim()}
+        className={`${BASE} ${FOCUS} ${btn} ${blockClasses} ${variantClasses} ${className ?? ''}`.trim()}
         {...props}
       >
         {children}
