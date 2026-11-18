@@ -6,6 +6,19 @@ export function profileSize(profile: PacketProfile): number {
 
 export type PacketRandomSource = (bytes: Uint8Array) => void;
 
+/**
+ * Recovers the padding profile from a packet's wire length. Profiles are the
+ * only accepted lengths, so a receiver never has to guess which one the sender
+ * used (file chunks use 'large', control traffic uses 'small').
+ */
+export function profileForPacketSize(size: number): PacketProfile {
+  const profile = (Object.keys(ANON_PACKET_PROFILES) as PacketProfile[]).find(
+    (candidate) => ANON_PACKET_PROFILES[candidate] === size,
+  );
+  if (!profile) throw new Error('Unexpected packet length');
+  return profile;
+}
+
 export function encodeFixedPacket(
   plaintext: Uint8Array,
   profile: PacketProfile,

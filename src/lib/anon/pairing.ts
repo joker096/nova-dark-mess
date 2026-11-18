@@ -12,6 +12,8 @@ import {
   isQueuePrivateKey,
   isQueuePublicKey,
   queueSigningPublicKey,
+  signIdentityBinding,
+  verifyIdentityBinding,
 } from './signing';
 import {
   createPowChallenge,
@@ -53,6 +55,11 @@ export interface LocalInbox {
    * key, so contacts and local block lists track this instead.
    */
   identityKey?: string;
+  /**
+   * Private half of `identityKey`, kept locally so every rotated invite can
+   * prove it continues the same identity. Legacy inboxes may lack it.
+   */
+  identitySigningKey?: string;
   createdAt: number;
   expiresAt: number;
   relays?: RelayEndpoint[];
@@ -73,11 +80,28 @@ export interface Contact {
 
 /**
  * Identity a peer keeps when it rotates its inbox: the first queue public key
- * it advertised. Offers that predate this field fall back to the current key,
- * which is exactly the behaviour they had before.
+ * it advertised. A claim is honoured only when it is the current queue key
+ * itself or when the identity key signed the current queue key; otherwise the
+ * offer falls back to the queue key, so a stranger cannot borrow an identity
+ * without holding its private half. Offers that predate `identityKey` fall back
+ * to the current key, which is the behaviour they had before.
  */
 export function contactIdentity(invite: AnonInvite): string {
-  return invite.identityKey ?? queueSigningPublicKey(invite.signingKey);
+  let queueKey: string;
+  try {
+    queueKey = queueSigningPublicKey(invite.signingKey);
+  } catch {
+    return invite.identityKey ?? '';
+  }
+  if (!invite.identityKey) return queueKey;
+  if (invite.identityKey === queueKey) return invite.identityKey;
+  if (
+    invite.identitySignature &&
+    verifyIdentityBinding(invite.identityKey, queueKey, invite.identitySignature)
+  ) {
+    return invite.identityKey;
+  }
+  return queueKey;
 }
 
 /** Blocks are keyed on that identity, not on the rotating queue key. */
@@ -104,6 +128,12 @@ function inboxIdentityKey(inbox: LocalInbox): string | undefined {
 }
 
 export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
+  // A pending inbox can exist before its keys are issued, hence the guards.
+  const identityKey = inboxIdentityKey(inbox);
+  const identitySignature =
+    identityKey && inbox.identitySigningKey && isQueuePrivateKey(inbox.identitySigningKey)
+      ? signIdentityBinding(inbox.identitySigningKey, identityKey, inbox.signingPublicKey)
+      : undefined;
   return {
     v: 1,
     relayUrl: inbox.relayUrl,
@@ -112,8 +142,8 @@ export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
     signingKey: inbox.signingKey,
     recipientPublicKey: inbox.recipientPublicKey,
     inviteToken: inbox.inviteToken,
-    // A pending inbox can exist before its keys are issued, hence the guard.
-    ...(inboxIdentityKey(inbox) ? { identityKey: inboxIdentityKey(inbox) } : {}),
+    ...(identityKey ? { identityKey } : {}),
+    ...(identitySignature ? { identitySignature } : {}),
     ...(inbox.displayName ? { displayName: inbox.displayName } : {}),
     expiresAt: inbox.expiresAt,
     ...(inbox.pow ? { pow: inbox.pow } : {}),
@@ -165,6 +195,7 @@ export async function createInvitation(
     recipientPrivateKey: bufferToBase64(secret),
     inviteToken: created.inviteToken,
     identityKey: created.signingPublicKey,
+    identitySigningKey: created.signingKey,
     ...(displayName?.trim() ? { displayName: displayName.trim().slice(0, 64) } : {}),
     ...(pow ? { pow } : {}),
     createdAt: Date.now(),

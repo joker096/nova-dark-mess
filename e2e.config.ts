@@ -20,8 +20,8 @@ export default {
     app: {
       url: process.env.APP_URL ?? 'http://localhost:3000',
       command: {
-        executable: 'npx',
-        args: ['vite', '--port=3000', '--host=0.0.0.0'],
+        executable: 'node',
+        args: ['node_modules/vite/bin/vite.js', '--port=3000', '--host=0.0.0.0'],
         log: '.e2e/logs/app.log',
         reuseExisting: true,
       },

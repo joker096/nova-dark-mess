@@ -8,6 +8,7 @@ import {
   Users,
   MapPin,
   ArrowLeft,
+  Crown,
 } from 'lucide-react';
 import { ChatsScreen } from './components/ChatsScreen';
 import { ChatScreen } from './components/ChatScreen';
@@ -48,6 +49,7 @@ const ScreenFallback: React.FC = () => (
 import { useLanguage } from './context/LanguageContext';
 import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
+import { isPremium } from './lib/premium';
 import { useSocialData } from './hooks/useSocialData';
 import { KYIV_CHANNEL_ID } from './lib/social/store';
 import {
@@ -61,7 +63,7 @@ import {
 import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
-import { buildLiveMeshSnapshot, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
+import { buildLiveMeshSnapshot, clearLastGpsFix, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
 import { heartbeatPresence, fetchPresence, resolvePresenceIds } from './lib/p2p/presence';
 import { loadPrivacyPrefs } from './lib/network/privacyMode';
 import { markJoinPending } from './lib/social/groupJoinRequests';
@@ -85,6 +87,7 @@ export default function App() {
   const { t } = useLanguage();
   const { account } = useAccount();
   const { isLocked, pinHash, unlock, identity, isInitialized } = useSecurity();
+  const premium = isPremium();
   const {
     stories,
     channels,
@@ -109,7 +112,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
   // Navigation history: each entry is the screen state we came from, so the
   // back button restores the previous view instead of jumping to a fixed menu.
-  const [navHistory, setNavHistory] = useState<
+  const [, setNavHistory] = useState<
     Array<{ screen: ScreenId; chatId: string; profileId: string; channelId: string }>
   >([]);
   const [activeChatId, setActiveChatId] = useState<string>('katie');
@@ -156,6 +159,9 @@ export default function App() {
     window.addEventListener(GPS_FIX_EVENT, onFix);
     return () => window.removeEventListener(GPS_FIX_EVENT, onFix);
   }, []);
+  useEffect(() => {
+    if (currentScreen !== 'mesh-map') clearLastGpsFix();
+  }, [currentScreen]);
 
   // Relay presence (strictly opt-in): announce ourselves and refresh the list
   // of online peers so the mesh map reflects who is actually reachable right
@@ -172,12 +178,10 @@ export default function App() {
   useEffect(() => {
     const fingerprint = identity?.fingerprint;
     if (!fingerprint || !presencePrefs.presenceSharing) return;
-    let cancelled = false;
     const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
     beat();
     const interval = window.setInterval(beat, 60_000);
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -475,8 +479,8 @@ export default function App() {
         return (
           <div className="w-full h-full p-4">
             <MeshMapScreen
-              nodes={liveMesh.nodes.length > 0 ? liveMesh.nodes : undefined}
-              links={liveMesh.links.length > 0 ? liveMesh.links : undefined}
+              nodes={liveMesh.nodes}
+              links={liveMesh.links}
             />
           </div>
         );
@@ -574,14 +578,25 @@ export default function App() {
               </h1>
             </header>
             <div className="flex-1 min-h-0 p-3">
-              <MeshMapScreen />
+              <MeshMapScreen
+                nodes={liveMesh.nodes}
+                links={liveMesh.links}
+              />
             </div>
           </div>
+        );
+      case 'anonymous':
+        return (
+          <AnonymousMessengerScreen
+            onBack={goBack}
+            initialInvite={pendingContactInvite}
+            onInviteConsumed={() => setPendingContactInvite(null)}
+          />
         );
       default:
         return null;
     }
-  };   const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat-katie';
+  };   const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat-katie' || currentScreen === 'anonymous';
    const isDesktopChannelActive = currentScreen === 'channel-kyiv';
    const totalUnreadChats = MOCK_CHATS.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0);
    const totalUnreadChannels = channels.reduce((acc, channel) => acc + (channel.unreadCount || 0), 0);
@@ -724,17 +739,29 @@ export default function App() {
             className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
             title={`${account.displayName} (Online)`}
           >
-            <img
-              src={account.avatar}
-              alt={account.displayName}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
+            {account.avatar && (
+              <img
+                src={account.avatar}
+                alt={account.displayName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            )}
             <div className="w-full h-full bg-[var(--nova-accent-color)] text-white font-bold text-xs flex items-center justify-center">
               {account.displayName.slice(0, 2).toUpperCase()}
             </div>
+            {premium && (
+              <span
+                data-testid="premium-crown"
+                aria-label={t('premium.active')}
+                title={t('premium.active')}
+                className="absolute top-1 right-1 text-amber-300 drop-shadow"
+              >
+                <Crown className="w-3 h-3" />
+              </span>
+            )}
             {/* Online Green Beacon */}
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0b0c11]" />
           </button>
@@ -753,6 +780,7 @@ export default function App() {
           onOpenChannel={openChannel}
           onOpenProfile={() => openProfile(account.id)}
           onOpenMeshMap={() => navigate('mesh-map')}
+          onOpenAnonymous={() => navigate('anonymous')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenPremium={() => setIsPremiumOpen(true)}
           activeChatId={activeChatId}

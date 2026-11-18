@@ -25,6 +25,31 @@ tauri = { version = "2.12.5", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2.6.3"
 
+# OS credential store for the vault key and PIN material (see src/keychain.rs).
+# Each desktop platform pulls only its native backend; mobile targets get an
+# explicit "unavailable" error instead of a weakened fallback.
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["sync-secret-service"] }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

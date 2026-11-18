@@ -54,21 +54,43 @@ jobs:
           # Скачать command-line tools если нужно (здесь предполагается, что в образе Windows уже есть Android SDK)
           # Для полной автоматизации раскомментируйте и укажите URL к command-line-tools
 
+      - name: Prepare Android upload key
+        if: ${{ github.event.inputs.channel != 'debug' }}
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PATH_SECRET: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          $path = $env:ANDROID_KEYSTORE_PATH_SECRET
+          if ($env:ANDROID_KEYSTORE_BASE64) {
+            $path = Join-Path $env:RUNNER_TEMP 'android-upload.jks'
+            $bytes = [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64.Trim())
+            [IO.File]::WriteAllBytes($path, $bytes)
+            Write-Host "Decoded upload keystore to $path"
+          }
+          if (-not $path -or -not (Test-Path -LiteralPath $path)) {
+            throw "Android upload keystore not found. Set ANDROID_KEYSTORE_BASE64 (recommended) or a valid ANDROID_KEYSTORE_PATH."
+          }
+          if (-not $env:ANDROID_KEYSTORE_PASSWORD) { throw "ANDROID_KEYSTORE_PASSWORD is not set." }
+          if (-not $env:ANDROID_KEY_ALIAS) { throw "ANDROID_KEY_ALIAS is not set." }
+          if (-not $env:ANDROID_KEY_PASSWORD) { throw "ANDROID_KEY_PASSWORD is not set." }
+          "ANDROID_KEYSTORE_PATH=$path" >> $env:GITHUB_ENV
+
       - name: Build Android (AAB/APK)
         shell: pwsh
         env:
-          KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           $version = "${{ github.event.inputs.version }}"
           if (-not $version) { $version = $GITHUB_REF_NAME -replace '^v','' }
-          .\scripts\deploy-android.ps1 -Version $version -Channel "${{ github.event.inputs.channel }}" `
-            -KeystorePath $env:KEYSTORE_PATH `
-            -KeystorePassword $env:KEYSTORE_PASSWORD `
-            -KeyAlias $env:KEY_ALIAS `
-            -KeyPassword $env:KEY_PASSWORD
+          $channel = "${{ github.event.inputs.channel }}"
+          if (-not $channel) { $channel = 'release' }
+          .\scripts\deploy-android.ps1 -Version $version -Channel $channel
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4

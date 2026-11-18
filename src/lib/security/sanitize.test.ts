@@ -30,4 +30,15 @@ describe('sanitize', () => {
     expect(result).toContain('<code>');
     expect(result).toContain('</code>');
   });
+
+  it('strips attributes from allowed tags and escapes disallowed tags', () => {
+    expect(
+      sanitizeHtml(
+        '<b onclick="alert(1)">bold</b><a href="javascript:alert(1)">link</a><img src=x onerror=alert(1)><script>alert(1)</script>',
+        { allowTags: true },
+      ),
+    ).toBe(
+      '<b>bold</b><a>link</a>&lt;img src&#x3D;x onerror&#x3D;alert(1)&gt;&lt;script&gt;alert(1)&lt;&#x2F;script&gt;',
+    );
+  });
 });

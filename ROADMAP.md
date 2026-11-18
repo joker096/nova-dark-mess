@@ -1,12 +1,19 @@
 # Nova Dark Messenger — Roadmap
 
-Last updated: 2026-11-17 (monetization track added to the roadmap)
+Last updated: 2026-11-18 (repository audit turned into a fix roadmap; no
+product scope change)
 
 ## Where the hardening plan stands (quick index)
 
+- 🔴 **Fix roadmap (2026-11-18 audit)** — the audit findings and their repair
+  order live in [`docs/fix-roadmap.md`](docs/fix-roadmap.md): red CI (lint,
+  tests, `npm audit`), no live 1:1 transport in the chat UI, broken anonymous
+  file receive, key material stored next to the ciphertext, unauthenticated
+  relay/presence endpoints. Tracked as phases F0–F4.
 - ✅ Plan Phase 0 (claims honesty) — done, landing + docs aligned.
-- 🟡 Plan Phase 1 (security) — threat model, IP privacy, hybrid PQ, Argon2id done;
-  key-change journal, secure-wipe audit, XSS pass, CI scanning, external audit remain.
+- 🟡 Plan Phase 1 (security) — threat model, IP privacy, hybrid PQ, Argon2id, and
+  the local peer key-change journal done; secure-wipe audit, XSS pass, CI
+  scanning, and external audit remain.
 - ⬜ Plan Phases 2–5 (delivery, anti-censorship, product, distribution) — not started;
   tracked as originally written in `docs/План доработки Mess&Anger Nova Dark Messenger.md`.
 - ⬜ Monetization track (ads + affiliate) — plan only; phases A–D and the
@@ -91,7 +98,7 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 | Folders / labels | ✅ | ❌ | ✅ | |
 | Scheduled messages | ✅ | ❌ | ✅ | |
 | Bots / API | ✅ | ✅ (Business API) | ➖ out of scope | No centralized bot platform |
-| Payments | ❌ (P2P crypto) | ✅ | 🟡 Premium micro-subscription | PaymentO checkout at $3.90 / 30 days; signed IPN issues a device-bound `MA1.<payload>.<sig>` license key (no PII, no crypto wallets) |
+| Payments | ❌ (P2P crypto) | ✅ | 🟡 Premium micro-subscription | PaymentO checkout at $3.90 / 30 days; direct purchases issue a device-bound `MA1.<payload>.<sig>` license, while gifts use a one-time code redeemed on the recipient's device (no PII, no crypto wallets) |
 | Usernames | ✅ | ❌ | ✅ deterministic handles | Human-readable handles derived from public key (`nova://<short-id>`); no central registry |
 | Premium tier | ✅ | ✅ (Meta Verified) | ✅ local `usePremium` gating | Themes, premium wallpapers, premium sticker packs and channel publish-time picking gated locally; safety features (calls, live location, disappearing messages) stay free on purpose |
 
@@ -146,6 +153,14 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 
 ### Phase 5 — Next up
 
+- [x] Re-enable the light app theme after completing the palette and contrast
+  review. Light/dark/system selection is available; neutral app surfaces and
+  chat wallpapers adapt to the light palette, accent buttons retain readable
+  white text, composer buttons and icons adapt in both base and hover states,
+  and call/media surfaces opt out where appropriate. The browser regression in
+  `tests/light-theme.e2e.ts` checks rendered colors, wallpaper, preserved dark
+  surfaces, composer icons, and WCAG AA contrast for primary and accent text.
+
 - [x] Retry join-request relay traffic with backoff instead of a fixed 10 s tick, and surface undelivered jobs in Settings. (`joinRetryDelay` doubles 5 s → 5 min per failed attempt and is stored on each outbox job as `nextAttemptAt`, so a failed flush no longer retries on every tick; the app session schedules its next wake from `nextJoinOutboxDelay()` and only polls every 15 s when the outbox is idle. Settings → Join request delivery shows the queued count and a "Retry now" button that clears the backoff and flushes through the live session relay.)
 - [x] One-tap approve/decline for pending join requests from the chats list, without opening the group. (`src/lib/social/joinDecisions.ts` checks the admin role, adds an approved peer to the local roster, records the decision and hands the answer to the session relay outbox; the chat row renders the pending requesters with Approve/Reject buttons that do not open the chat.)
 - [x] In-app notice for new join requests on any screen (not only inside the group chat). (`JoinRequestNotice` overlay is mounted in `App.tsx`; a relayed request that is not aimed at the group already on screen shows the requester and group with an "Open" action, auto-dismissing after 8 s.)
@@ -156,6 +171,7 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - [x] Production relay transport for store-and-forward when none of the peers' devices is online. (Thin, stateless: `server.js` exposes `POST /api/relay` (store encrypted envelope) and `GET /api/relay/:destination` (fetch + delete pending); storage is opaque encrypted blobs with a 7-day TTL and a per-destination cap, no PII. Client: `src/lib/p2p/httpRelay.ts` (`pushRelayEnvelope` / `pullRelayEnvelopes` / `HttpRelayTransport`). `server.js` converted to ESM so it actually runs under the project's `"type": "module"`.)
 - [x] **Premium payments via PaymentO** (in scope: flat $3.90 per 30 days, no PII, no crypto). Frontend checkout in `src/lib/premium.ts` (`checkoutPremium()`) and the promo landing (`landing/paymento.js` + `#paymento-checkout` buttons). Backend receipt ledger: `server.js` serves the landing at the site root and exposes `POST /api/paymento/ipn` (HMAC-SHA256 verified, PII-stripped receipt in `receipts/`, `GET /api/paymento/receipts` audit list, `GET /api/health`). Deploy: `npm run deploy:landing` → `scripts/publish-landing.js` stages `landing-deploy/` + `server.js` for the host.
 - [x] Wire the in-app `CryptoCheckoutModal.tsx` to `checkoutPremium()` so the desktop/mobile app opens the real PaymentO checkout instead of the fake crypto addresses. (The modal no longer shows fake currency addresses; it presents the $3.90 / 30-day amount taken from `MIN_SUBSCRIPTION_COST` and a single Pay button that calls `checkoutPremium()`, which invokes the PaymentO widget when present and falls back to a 30-day local activation in dev. A verified IPN mints a 30-day `MA1.<payload>.<sig>` license bound to the device id; the app stores it in `nova_premium_license`/`_expiry`/`_verified_at` and checks it with `/api/premium/status`.)
+- [x] **Premium gifts via saved anonymous contacts.** The sender pays $3.90 for 30 days, delivers a one-time code over the selected E2EE contact, and the recipient redeems it in the app; it adds 30 days to an active paid entitlement or starts at redemption. Codes are encrypted at rest while unredeemed and bound to the recipient device when claimed.
 - [x] Local/dev secrets filled in `.env` (keystore passwords rotated, `messandanger-keystore.jks` regenerated with a fresh RSA key; PaymentO/Cloudflare/Supabase placeholders replaced with generated values). Production values still require creating the PaymentO store "Mess&Anger user" (plan `premium`, amount=49, currency=usd) and pasting the real API key / IPN HMAC secret.
 - [x] Landing bundle staged (`npm run deploy:landing` → `landing-deploy/`, 19 entries, build OK). Actual upload to `https://mess.cvr.name/` requires SSH host access (run `node scripts/publish-landing.js --deploy <user@host>` or scp manually) and registering the IPN URL in PaymentO store settings.
 
@@ -170,12 +186,18 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
   validation → optional 4-digit PIN → done. Restoring derives the same keypair
   from the mnemonic (`restoreIdentityFromMnemonic` in `SecurityContext`), so the
   fingerprint — and therefore contacts and safety numbers — stay stable.
-- [x] **Mesh map shows real peers.** `src/lib/p2p/meshMapNodes.ts` builds the
-  live snapshot from the session relay plus the last saved GPS fix; the demo
-  topology is now opt-in behind a "Show sample" toggle and the empty state
-  explains how to get a node (open a chat with an online peer or share live
-  location). "Locate me" asks for geolocation and re-fits the bounds, and a
-  `nova-gps-fix` event refreshes the map as soon as a fix is stored.
+- [x] **Mesh map is local-first for precise GPS.** `src/lib/p2p/meshMapNodes.ts`
+  keeps a fix in memory only; the map requests it only after the user taps
+  "Locate me", clears it when hidden or when leaving the map, and removes the
+  legacy plaintext localStorage fix. The local GPS fix is used only for the
+  local marker; remote peers are displayed at deterministic pseudo-positions,
+  and the map does not publish the fix. OSM tiles are not requested while the
+  precise local marker is visible (or while offline), so tile requests cannot
+  reveal that point. Without the marker, OSM still receives the device IP and
+  requested tile coordinates, which disclose the viewed area. Presence sharing
+  is separate, opt-in, and carries no GPS coordinates, though the relay can see
+  the connecting IP. The app cannot guarantee that the operating system or
+  browser's geolocation provider will not use its own network service.
 - [x] **Premium is discoverable.** A Premium button sits in the chats header and
   opens the real PaymentO checkout; the price is stated as **$3.90 per 30 days**
   (not "USD / month"), and checkout failures (blocked window, unreachable
@@ -196,6 +218,15 @@ Legend: ✅ shipped · 🟡 partial · ❌ missing · ➖ out of scope (violates
 - [x] **Chat action menu localized** (`chat.contactInfo`, `chat.mediaLinks`,
   `chat.appearance`, `chat.chatTheme`, `chat.scheduledCount`) in all 10 locales,
   restoring key parity in `npm run audit:i18n`.
+- [x] **Make adding a contact usable without technical setup.** The new-
+  conversation dialog opens a contacts flow that automatically creates a
+  shareable invitation link and QR code using the app's default HTTPS relay.
+  Opening the link pre-fills the invite; accepting it saves the contact and
+  sends the reply automatically, while the inviter's inbox is checked in the
+  background as long as the contacts screen stays open. Manual relay/proxy
+  fields are under Advanced network settings.
+  Messages remain end-to-end encrypted; the default relay can see IP metadata.
+  No phone number or address-book upload is required.
 
 **Still open in this area**
 
@@ -259,14 +290,37 @@ servers, no paid services.
   derive keys with Argon2id (32 MiB, memory-hard); legacy PBKDF2-600k v1
   files stay restorable; restore-side parameter validation prevents forced
   weak-KDF attacks (`src/lib/storage/backup.kdf.test.ts`).
-- [ ] **Plan Phase 1.4 — peer key-change journal**: surface "safety number
-  changed" events in-chat with a local history log.
-- [ ] **Plan Phase 1.5 — verify secure wipe** actually erases residues in
-  SQLite/IndexedDB WAL for disappearing messages; audit backoff on the PIN
-  screen against app-data-clear bypass.
-- [ ] **Plan Phase 1.8/1.9 — WebView XSS pass + CI dependency scanning**:
-  Markdown/link-preview sanitization review, `npm audit` + SBOM job, release
-  signing attestation.
+- [x] **Plan Phase 1.4 — peer key-change journal.** On opening a direct chat and
+  before sending, the app verifies the locally stored demo pre-key bundle and
+  compares its signing and X25519 identity keys with a per-chat first-seen
+  baseline. Changes are persisted locally, rehydrated as deduplicated system
+  messages, and shown with prior/current fingerprints and key IDs in Chat
+  Protection; the contact remains explicitly **Not verified**. This currently
+  monitors the local demo peer bundle, not keys obtained from a remote contact
+  directory, so it is groundwork rather than deployed remote-key verification.
+- [ ] **Plan Phase 1.5 — disappearing-message cleanup and PIN throttling
+  (partial).** Sensitive message fields are overwritten in memory where
+  possible; expired encrypted IndexedDB records are deleted on startup, before
+  storage reads/exports, and from the active chat. PIN entry now verifies the
+  saved PIN and applies a persisted exponential delay after repeated failures.
+  Focused unit tests and `tests/secure-wipe.e2e.ts` cover the wipe, retry, and
+  IndexedDB expiry paths. This is not guaranteed physical erasure: browser
+  storage engines and flash wear-leveling may retain old pages, and the app
+  currently uses IndexedDB rather than SQLite/WAL. PIN throttling is stored in
+  origin-local storage, so clearing app data or using developer tools can reset
+  it; it is not tamper-resistant. The assessment is now written down in
+  `docs/secure-storage.md`: today's at-rest layout (encrypted IndexedDB records,
+  master key and PIN hash still in origin-local storage), what deletion can and
+  cannot guarantee on each WebView (engines delete records, flash wear leveling
+  keeps pages, Android auto-backup is still on by default), and the recommended
+  order — deny platform backups, then move the master key into the OS credential
+  store, then consider an encrypted SQLite file. Remaining work: implement and
+  verify those steps on real devices.
+- [ ] **Plan Phase 1.8/1.9 — WebView XSS pass + CI dependency scanning
+  (partial).** The only raw-HTML rendering sites sanitize translated markup;
+  the allowlist now rebuilds permitted tags without attributes, and escapes
+  disallowed tags. CI runs `npm audit` and generates/uploads a CycloneDX SBOM.
+  Release signing attestation remains outstanding.
 - [ ] **Plan Phase 1.7 — external audit** is a paid/operator step; until then
   no "unbreakable"-class wording anywhere (landing already sanitized).
 
@@ -414,9 +468,10 @@ premium payment flow are now marked `[x]`.
   `src/components/ChatScreen.tsx` and `src/components/ChatScreen.test.tsx`.
 - **Mesh map online/offline.** `src/components/MeshMap.tsx` gates the OSM
   `TileLayer` behind a `useOnline()` hook (`navigator.onLine` + `online`/`offline`
-  events). With a connection the map renders normal OSM tiles; offline the tile
-  layer is not mounted (no tile requests) and the dark `#151722` canvas shows
-  mesh nodes and links only. Leaflet dark theming lives in
+  events), and also pauses it while a precise local GPS marker is shown. With a
+  connection and no precise marker the map renders normal OSM tiles; offline
+  or while showing the local point, the dark `#151722` canvas shows mesh nodes
+  and links only. Leaflet dark theming lives in
   `src/components/mesh-map.css`.
 
 ## Explicitly out of scope
@@ -433,6 +488,35 @@ premium payment flow are now marked `[x]`.
 - Group chat of 10 members works over LAN with no signaling server.
 - No PII is present in any persisted storage key or network payload (audited via `tests/` + manual review).
 - All user-facing strings pass i18n parity tests (`src/lib/i18n.test.ts`).
+
+## Fix track (new)
+
+The 2026-11-18 repository audit is tracked in
+[`docs/fix-roadmap.md`](docs/fix-roadmap.md). It does not add product scope: it
+lists what is currently broken or overstated (CI, transport, at-rest keys,
+server endpoints, docs drift) with evidence, a fix and an acceptance check per
+item, grouped into phases F0 (red CI), F1 (product honesty), F2 (keys/PIN),
+F3 (server surface) and F4 (quality/docs).
+
+Status: F0, F1.2, F2.2 (except key-wrapping), F2.3, F2.4, F3.3, F3.4, F4.1 and
+F4.2 are done — CI is green on this branch, anon file receive works, the PIN is
+salted per device with a legacy migration, invite tokens are no longer
+weak-random or burnable by garbage requests, token/PIN checks are constant
+time, CORS is an allowlist, the fuzzers are seeded, and the relay server finally
+has HTTP tests (the app only listens when it is the entry point). Still open and
+load-bearing: **F1.1** (the 1:1 chat UI still encrypts to a locally generated
+demo peer, so no message reaches a second device), **F1.3**, **F2.1** (the vault
+key now lives in the desktop OS credential store, but Android/iOS still fall
+back to localStorage and the PIN does not wrap the key), **F3.1/F3.2**
+(unauthenticated relay and presence), **F4.3/F4.4/F4.5**.
+
+## Anonymity track (new)
+
+Full anonymous-messenger roadmap (one-way queues, proxy hop, fixed-size
+packets, relay TTL, multi-relay, groups, push, spam resistance, audit) is
+tracked separately in `docs/anonymity-roadmap.md`. This track is additive:
+existing secure P2P messaging remains the baseline and fallback until
+anonymous v1 is stable.
 
 ## Monetization track (new)
 
@@ -483,3 +567,7 @@ Settings → Ads section. Premium suppression exists on-device already as the
 `canUse('ads_free')` before rendering the slot), but it has no server-side
 billing yet. No server caps, auction, payouts, dashboard, `erid` or affiliate
 attribution either.
+
+Guardrails that roll an ad load back: holdout group without ads (D30 retention
+delta > 0.5 pp), hide rate > 1% of impressions, ad complaints > 0.1%, admin
+churn > 5%/month, subscriber unsubscribes at 2× baseline.

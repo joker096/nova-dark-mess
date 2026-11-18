@@ -6,23 +6,24 @@
  * production it is served from the site ROOT (https://mess.cvr.name/) by the
  * `server.js` Express app (which also handles PaymentO IPN + receipts).
  *
- * This script prepares a deploy bundle:
- *   1. Validates every referenced asset + lang JSON exists.
- *   2. Stages the landing into `landing-deploy/` (a copy of `landing/` plus
- *      `server.js` + `package.json` + `.env.example`) ready to copy to the host.
- *   3. Prints a copy-ready rsync/scp command for the host.
+ * The full mode stages the landing with the backend into `landing-deploy/`.
+ * Static-only mode stages a temporary landing-only bundle and does not restart
+ * the API.
  *
  * Usage:
  *   node scripts/publish-landing.js                 # stage bundle
  *   node scripts/publish-landing.js --deploy <user@host>   # stage + scp
+ *   node scripts/publish-landing.js --static-only [--dry-run]
  *
  * Environment (optional):
  *   LANDING_HOST       host to deploy to, e.g. "deploy@1.2.3.4"
- *   LANDING_REMOTE     remote path, default "/var/www/mess-anger"
+ *   LANDING_REMOTE     remote path, default "/var/www/mess.cvr.name"
  *   LANDING_SSH_PORT   default 22
+ *   Static-only deploy defaults to the local SSH alias "prod".
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -32,14 +33,32 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const LANDING = path.join(ROOT, 'landing');
-const OUT = path.join(ROOT, 'landing-deploy');
 
 const args = process.argv.slice(2);
 const deployFlag = args.includes('--deploy');
 const deployAt = args.indexOf('--deploy');
-const deployHost = deployFlag
-  ? (args[deployAt + 1] || process.env.LANDING_HOST || null)
+const staticOnly = args.includes('--static-only');
+const dryRun = args.includes('--dry-run') ||
+  process.env.npm_config_dry_run === 'true' ||
+  process.env.npm_config_dry_run === '1';
+const deployHost = staticOnly
+  ? (process.env.LANDING_HOST || 'prod')
+  : deployFlag
+    ? (args[deployAt + 1] || process.env.LANDING_HOST || null)
+    : null;
+if (dryRun && !staticOnly) {
+  console.error('✗ --dry-run is supported only with --static-only');
+  process.exit(1);
+}
+const tempStageRoot = staticOnly
+  ? fs.mkdtempSync(path.join(os.tmpdir(), 'mess-anger-landing-'))
   : null;
+const OUT = tempStageRoot
+  ? path.join(tempStageRoot, 'bundle')
+  : path.join(ROOT, 'landing-deploy');
+if (tempStageRoot) {
+  process.on('exit', () => fs.rmSync(tempStageRoot, { recursive: true, force: true }));
+}
 
 const fail = (msg) => {
   console.error('✗ ' + msg);
@@ -95,23 +114,25 @@ if (fs.existsSync(privacySrc)) {
 } else {
   fail('landing/privacy.html is missing — Google Play requires it');
 }
-fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(OUT, 'server.js'));
-fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(OUT, 'package.json'));
-fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(OUT, '.env.example'));
+if (!staticOnly) {
+  fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(OUT, 'server.js'));
+  fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(OUT, 'package.json'));
+  fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(OUT, '.env.example'));
 
-// package.json for the bundle should be minimal (express + dotenv only).
-const pkg = JSON.parse(fs.readFileSync(path.join(OUT, 'package.json'), 'utf8'));
-pkg.name = 'mess-anger-landing';
-pkg.private = true;
-pkg.scripts = {
-  ...pkg.scripts,
-  start: 'node server.js',
-};
-pkg.dependencies = {
-  express: pkg.dependencies?.express || '4.19.0',
-  dotenv: pkg.dependencies?.dotenv || '16.4.0',
-};
-fs.writeFileSync(path.join(OUT, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  // package.json for the bundle should be minimal (express + dotenv only).
+  const pkg = JSON.parse(fs.readFileSync(path.join(OUT, 'package.json'), 'utf8'));
+  pkg.name = 'mess-anger-landing';
+  pkg.private = true;
+  pkg.scripts = {
+    ...pkg.scripts,
+    start: 'node server.js',
+  };
+  pkg.dependencies = {
+    express: pkg.dependencies?.express || '4.19.0',
+    dotenv: pkg.dependencies?.dotenv || '16.4.0',
+  };
+  fs.writeFileSync(path.join(OUT, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+}
 
 // Pre-compressed siblings (served by nginx gzip_static/brotli_static when on)
 // must be rebuilt from the fresh sources — copying landing/ would ship stale
@@ -169,6 +190,8 @@ const sshCmd = (inner) => `ssh ${sshKeyArg} -p ${sshPort} ${deployHost} ${JSON.s
 const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
 
 const copyLanding = `scp ${sshKeyArg} -P ${sshPort} -r ${q(path.join(OUT, 'landing'))} ${deployHost}:${remote}/`;
+const staticPreflightCmd = sshCmd(`test -d "${remote}/landing" && test -f "${remote}/server.js"`);
+const staticVerifyCmd = sshCmd(`test -f "${remote}/landing/index.html" && test -f "${remote}/landing/releases/releases.json"`);
 const copyServer = `scp ${sshKeyArg} -P ${sshPort} ${q(path.join(OUT, 'server.js'))} ${q(path.join(OUT, '.env.example'))} ${deployHost}:${remote}/`;
 const hashCmd = sshCmd(`sha256sum ${remote}/server.js`);
 const restartCmd = sshCmd(
@@ -177,7 +200,25 @@ const restartCmd = sshCmd(
   ` && sleep 2 && curl -fsS --max-time 5 ${healthUrl}`
 );
 
-if (!deployFlag) {
+if (staticOnly) {
+  console.log('\nStatic-only deploy plan:');
+  console.log('  1. ' + staticPreflightCmd);
+  console.log('  2. ' + copyLanding);
+  console.log('  3. ' + staticVerifyCmd);
+
+  if (dryRun) {
+    ok(`dry-run mode — nothing executed (target ${deployHost}:${remote}/landing)`);
+  } else {
+    try {
+      run(staticPreflightCmd);
+      run(copyLanding);
+      run(staticVerifyCmd);
+      ok(`Static landing uploaded to ${deployHost}:${remote}/landing; backend was not changed`);
+    } catch (e) {
+      fail('Static-only deploy failed: ' + e.message);
+    }
+  }
+} else if (!deployFlag) {
   console.log('\nBundle ready. To deploy manually:');
   console.log(`  scp -r ${q(path.join(OUT, 'landing'))} <user@host>:${remote}/`);
   console.log(`  scp ${q(path.join(OUT, 'server.js'))} <user@host>:${remote}/`);

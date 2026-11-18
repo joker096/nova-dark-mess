@@ -32,9 +32,20 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'react-hooks/purity': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/refs': 'off',
+    },
+  },
+  {
+    // The anon protocol helpers are plain ESM JavaScript that runs in the
+    // browser and in the relay, so they need the browser globals explicitly.
+    files: ['src/lib/anon/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser },
     },
   },
   {

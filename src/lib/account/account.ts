@@ -1,4 +1,4 @@
-import { CONTACT_PROFILES, CURRENT_USER } from '../../data/mockMessengerData';
+import { CURRENT_USER } from '../../data/mockMessengerData';
 
 export const ACCOUNT_STORAGE_KEY = 'nova_account_profile_v1';
 export const ACCOUNT_UPDATED_EVENT = 'nova-account-updated';
@@ -15,17 +15,33 @@ export interface AccountProfile {
 }
 
 function defaultAccount(): AccountProfile {
-  const profile = CONTACT_PROFILES[CURRENT_USER.id];
   return {
     version: 1,
     id: CURRENT_USER.id,
-    displayName: profile?.name || CURRENT_USER.name,
-    nickname: profile?.nickname || '@nova',
-    phone: profile?.phone || '',
-    avatar: profile?.avatar || CURRENT_USER.avatar,
-    status: profile?.status || 'Online',
+    displayName: 'Nova user',
+    nickname: '@nova',
+    phone: '',
+    avatar: '',
+    status: 'Online',
     createdAt: Date.now(),
   };
+}
+
+export function normalizeNickname(value: string): string {
+  const cleaned = value
+    .normalize('NFKC')
+    .replace(/\p{Cc}/gu, '')
+    .trim()
+    .replace(/^@+/u, '')
+    .trim()
+    .replace(/\s+/gu, ' ');
+  const length = Array.from(cleaned).length;
+
+  if (!cleaned || length > 32) {
+    throw new Error('Choose a nickname with 1 to 32 characters.');
+  }
+
+  return `@${cleaned}`;
 }
 
 function isAccountProfile(value: unknown): value is AccountProfile {
@@ -57,16 +73,19 @@ export function loadAccount(): AccountProfile {
 }
 
 export function saveAccount(account: AccountProfile): AccountProfile {
+  const nickname = normalizeNickname(account.nickname);
   const next: AccountProfile = {
     ...account,
     version: 1,
-    displayName: account.displayName.trim() || account.nickname || 'Nova user',
-    nickname: account.nickname.trim() || '@nova',
+    displayName: account.displayName.trim() || nickname.slice(1),
+    nickname,
+    phone: account.phone.trim(),
   };
   try {
     localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    void 0;
+  } catch (error) {
+    console.error('account: failed to persist profile', error);
+    throw error;
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(ACCOUNT_UPDATED_EVENT));

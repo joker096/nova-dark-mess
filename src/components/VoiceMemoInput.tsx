@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   RefreshCw,
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import { VoiceNoteData } from '../types/messenger';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 
@@ -35,11 +36,14 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
   ({ onSendVoiceMemo, onScheduleVoiceMemo, onActiveChange, disabled = false }, ref) => {
     // Recording states
     const [isRecording, setIsRecording] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
     const [isPushToTalk, setIsPushToTalk] = useState(false);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
     const [, setSlideOffset] = useState(0);
     const [isCanceling, setIsCanceling] = useState(false);
+    const [recordingError, setRecordingError] = useState(false);
     const [stagedVoiceNote, setStagedVoiceNote] = useState<VoiceNoteData | null>(null);
+    const { t } = useLanguage();
 
     // Live visual waveform bars (28 bars)
     const [liveBars, setLiveBars] = useState<number[]>([
@@ -64,9 +68,11 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isHeldRef = useRef(false);
     const isRecordingRef = useRef(false);
+    const isStartingRef = useRef(false);
     const isPushToTalkRef = useRef(false);
     const isCancelingRef = useRef(false);
     const recordingSecondsRef = useRef(0);
+    const recordingRequestRef = useRef(0);
 
     const CANCEL_DRAG_THRESHOLD = 80; // px to the left to cancel
 
@@ -115,10 +121,12 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         } catch { /* ignore */ }
         audioCtxRef.current = null;
       }
+      analyserRef.current = null;
     }, []);
 
     useEffect(() => {
       return () => {
+        recordingRequestRef.current += 1;
         cleanupAudio();
       };
     }, [cleanupAudio]);
@@ -128,40 +136,64 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       async (pushToTalkMode = false) => {
         cleanupAudio();
         setStagedVoiceNote(null);
+        setRecordingError(false);
+        setIsStarting(true);
+        isStartingRef.current = true;
         setRecordingSeconds(0);
         setSlideOffset(0);
         setIsCanceling(false);
         setIsPushToTalk(pushToTalkMode);
-        setIsRecording(true);
-        isRecordingRef.current = true;
+        setIsRecording(false);
+        isRecordingRef.current = false;
         isPushToTalkRef.current = pushToTalkMode;
         accumulatedSamplesRef.current = [];
         audioChunksRef.current = [];
         recordedAudioUrlRef.current = null;
+        const requestId = ++recordingRequestRef.current;
 
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(40);
-        }
-
-        // Timer counter
-        recordingSecondsRef.current = 0;
-        timerIntervalRef.current = setInterval(() => {
-          recordingSecondsRef.current += 1;
-          setRecordingSeconds((prev) => prev + 1);
-        }, 1000);
-
-        // Try real microphone access
-        let micSucceeded = false;
         try {
-          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            micStreamRef.current = stream;
+          if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+            throw new Error('Voice recording is not supported');
+          }
 
-            // Initialize Web Audio API Analyser
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          if (requestId !== recordingRequestRef.current) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          if (pushToTalkMode && !isHeldRef.current) {
+            stream.getTracks().forEach((track) => track.stop());
+            setIsPushToTalk(false);
+            isPushToTalkRef.current = false;
+            return;
+          }
+
+          micStreamRef.current = stream;
+          const mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) audioChunksRef.current.push(event.data);
+          };
+          mediaRecorderRef.current = mediaRecorder;
+          mediaRecorder.start(100);
+
+          setIsRecording(true);
+          isRecordingRef.current = true;
+          recordingSecondsRef.current = 0;
+          timerIntervalRef.current = setInterval(() => {
+            recordingSecondsRef.current += 1;
+            setRecordingSeconds((prev) => prev + 1);
+          }, 1000);
+
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(40);
+          }
+
+          let hasLiveAnalyser = false;
+          try {
             const AudioCtx =
               window.AudioContext ||
-              (window as unknown as { webkitAudioContext: typeof AudioContext })
-                .webkitAudioContext;
+              (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+            if (!AudioCtx) throw new Error('Web Audio API is not supported');
             const audioCtx = new AudioCtx();
             audioCtxRef.current = audioCtx;
 
@@ -171,69 +203,52 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             source.connect(analyser);
             analyserRef.current = analyser;
 
-            // Setup MediaRecorder
-            try {
-              const mediaRecorder = new MediaRecorder(stream);
-              mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
-              };
-              mediaRecorder.start(100);
-              mediaRecorderRef.current = mediaRecorder;
-            } catch { /* ignore */ }
-
-            // Live visual frequency loop
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             const updateRealWaveform = () => {
               if (!analyserRef.current) return;
               analyserRef.current.getByteFrequencyData(dataArray);
-
-              // Sample average volume
               let sum = 0;
-              for (let i = 0; i < dataArray.length; i++) {
-                sum += dataArray[i];
-              }
+              for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
               const avgVolume = Math.min(100, Math.max(15, Math.floor((sum / dataArray.length) * 1.5)));
               accumulatedSamplesRef.current.push(avgVolume);
-
-              // Update the 28 live bars
               setLiveBars((prev) => {
-                const nextHeight = Math.max(
-                  18,
-                  Math.min(100, avgVolume + Math.floor(Math.random() * 15))
-                );
+                const nextHeight = Math.max(18, Math.min(100, avgVolume + Math.floor(Math.random() * 15)));
                 return [...prev.slice(1), nextHeight];
               });
-
               animFrameRef.current = requestAnimationFrame(updateRealWaveform);
             };
 
-            micSucceeded = true;
+            hasLiveAnalyser = true;
             animFrameRef.current = requestAnimationFrame(updateRealWaveform);
+          } catch {
+            analyserRef.current = null;
+          }
+
+          if (!hasLiveAnalyser) {
+            simWaveformIntervalRef.current = setInterval(() => {
+              const timeFactor = Date.now() / 180;
+              const baseWave = Math.sin(timeFactor) * 35;
+              const modulation = Math.sin(timeFactor * 2.3) * 20;
+              const jitter = Math.floor(Math.random() * 30);
+              const height = Math.min(100, Math.max(18, Math.floor(45 + baseWave + modulation + jitter)));
+              setLiveBars((prev) => [...prev.slice(1), height]);
+            }, 80);
           }
         } catch {
-          // Microphone was denied or unsupported, fallback smoothly to organic speech simulation
-          micSucceeded = false;
-        }
-
-        // Fallback speech frequency simulation
-        if (!micSucceeded) {
-          simWaveformIntervalRef.current = setInterval(() => {
-            // Natural human speech cadence: pauses, syllables, and voice bursts
-            const timeFactor = Date.now() / 180;
-            const baseWave = Math.sin(timeFactor) * 35;
-            const modulation = Math.sin(timeFactor * 2.3) * 20;
-            const jitter = Math.floor(Math.random() * 30);
-            const height = Math.min(
-              100,
-              Math.max(18, Math.floor(45 + baseWave + modulation + jitter))
-            );
-
-            accumulatedSamplesRef.current.push(height);
-
-            setLiveBars((prev) => {
-              return [...prev.slice(1), height];
-            });
-          }, 80);
+          if (requestId === recordingRequestRef.current) {
+            cleanupAudio();
+            setIsRecording(false);
+            isRecordingRef.current = false;
+            setIsPushToTalk(false);
+            isPushToTalkRef.current = false;
+            setRecordingSeconds(0);
+            setRecordingError(true);
+          }
+        } finally {
+          if (requestId === recordingRequestRef.current) {
+            setIsStarting(false);
+            isStartingRef.current = false;
+          }
         }
       },
       [cleanupAudio]
@@ -247,11 +262,10 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         let finalWaveform: number[] = [];
 
         if (audioChunksRef.current.length > 0) {
-          try {
-            const mime = mediaRecorderRef.current?.mimeType || 'audio/webm';
-            const blob = new Blob(audioChunksRef.current, { type: mime });
-            recordedAudioUrlRef.current = URL.createObjectURL(blob);
-          } catch { /* ignore */ }
+          const mime = mediaRecorderRef.current?.mimeType || 'audio/webm';
+          const blob = new Blob(audioChunksRef.current, { type: mime });
+          if (blob.size === 0) throw new Error('The voice recording is empty');
+          recordedAudioUrlRef.current = URL.createObjectURL(blob);
         }
 
         const samples = accumulatedSamplesRef.current;
@@ -281,42 +295,89 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     );
 
     // Stop recording and stage voice note for preview
-    const stopAndPreview = useCallback(() => {
-      const duration = Math.max(1, recordingSecondsRef.current);
-      cleanupAudio();
-      setIsRecording(false);
-      setIsPushToTalk(false);
-      isRecordingRef.current = false;
-      isPushToTalkRef.current = false;
-
-      const voiceNote = finalizeWaveformData(duration);
-      setStagedVoiceNote(voiceNote);
-
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(30);
+    const stopMediaRecorder = useCallback(async () => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder) throw new Error('No active voice recorder');
+      if (recorder.state !== 'inactive') {
+        await new Promise<void>((resolve, reject) => {
+          const onStop = () => {
+            recorder.removeEventListener('error', onError);
+            resolve();
+          };
+          const onError = () => {
+            recorder.removeEventListener('stop', onStop);
+            reject(new Error('Voice recording failed'));
+          };
+          recorder.addEventListener('stop', onStop, { once: true });
+          recorder.addEventListener('error', onError, { once: true });
+          try {
+            recorder.stop();
+          } catch (error) {
+            recorder.removeEventListener('stop', onStop);
+            recorder.removeEventListener('error', onError);
+            reject(error);
+          }
+        });
       }
-    }, [cleanupAudio, finalizeWaveformData]);
+      if (!audioChunksRef.current.some((chunk) => chunk.size > 0)) {
+        throw new Error('The voice recording is empty');
+      }
+      cleanupAudio();
+    }, [cleanupAudio]);
+
+    const stopAndPreview = useCallback(async () => {
+      try {
+        await stopMediaRecorder();
+        const voiceNote = finalizeWaveformData(Math.max(1, recordingSecondsRef.current));
+        setIsRecording(false);
+        setIsPushToTalk(false);
+        isRecordingRef.current = false;
+        isPushToTalkRef.current = false;
+        setStagedVoiceNote(voiceNote);
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+      } catch {
+        cleanupAudio();
+        setIsRecording(false);
+        setIsPushToTalk(false);
+        isRecordingRef.current = false;
+        isPushToTalkRef.current = false;
+        setRecordingError(true);
+      }
+    }, [cleanupAudio, finalizeWaveformData, stopMediaRecorder]);
 
     // Direct send voice note
-    const sendRecordingDirectly = useCallback(() => {
-      const duration = Math.max(1, recordingSecondsRef.current);
-      cleanupAudio();
-      setIsRecording(false);
-      setIsPushToTalk(false);
-      isRecordingRef.current = false;
-      isPushToTalkRef.current = false;
+    const sendRecordingDirectly = useCallback(async () => {
+      try {
+        await stopMediaRecorder();
+        const voiceNote = finalizeWaveformData(Math.max(1, recordingSecondsRef.current));
+        setIsRecording(false);
+        setIsPushToTalk(false);
+        isRecordingRef.current = false;
+        isPushToTalkRef.current = false;
+        onSendVoiceMemo(voiceNote);
 
-      const voiceNote = finalizeWaveformData(duration);
-      onSendVoiceMemo(voiceNote);
-
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(50);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      } catch {
+        cleanupAudio();
+        setIsRecording(false);
+        setIsPushToTalk(false);
+        isRecordingRef.current = false;
+        isPushToTalkRef.current = false;
+        setRecordingError(true);
       }
-    }, [cleanupAudio, finalizeWaveformData, onSendVoiceMemo]);
+    }, [cleanupAudio, finalizeWaveformData, onSendVoiceMemo, stopMediaRecorder]);
 
     // Cancel recording
     const cancelRecording = useCallback(() => {
+      recordingRequestRef.current += 1;
       cleanupAudio();
+      setIsStarting(false);
+      isStartingRef.current = false;
       setIsRecording(false);
       setIsPushToTalk(false);
       isRecordingRef.current = false;
@@ -345,7 +406,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
     // Pointer Handlers for Push-to-Talk (Hold-to-record & Slide-to-cancel)
     const handlePointerDown = (e: React.PointerEvent) => {
-      if (disabled || isRecordingRef.current) return;
+      if (disabled || isRecordingRef.current || isStartingRef.current) return;
 
       pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
       isHeldRef.current = false;
@@ -382,9 +443,18 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
       if (!isHeldRef.current) {
         // Just a quick tap: start hands-free recording mode!
-        if (!isRecordingRef.current) {
-          startRecording(false);
+        pointerStartPosRef.current = null;
+        if (!isRecordingRef.current && !isStartingRef.current) {
+          void startRecording(false);
         }
+        return;
+      }
+
+      if (isStartingRef.current && isPushToTalkRef.current) {
+        isHeldRef.current = false;
+        pointerStartPosRef.current = null;
+        setIsPushToTalk(false);
+        isPushToTalkRef.current = false;
         return;
       }
 
@@ -393,7 +463,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         if (isCancelingRef.current) {
           cancelRecording();
         } else {
-          sendRecordingDirectly();
+          void sendRecordingDirectly();
         }
       }
 
@@ -405,6 +475,13 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       if (holdTimeoutRef.current) {
         clearTimeout(holdTimeoutRef.current);
         holdTimeoutRef.current = null;
+      }
+      if (isStartingRef.current && isPushToTalkRef.current) {
+        isHeldRef.current = false;
+        pointerStartPosRef.current = null;
+        setIsPushToTalk(false);
+        isPushToTalkRef.current = false;
+        return;
       }
       if (isRecordingRef.current && isPushToTalkRef.current) {
         cancelRecording();
@@ -450,6 +527,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           {/* Send Button */}
           <button
             type="button"
+            aria-label={t('voiceMemo.send')}
             onClick={() => {
               onSendVoiceMemo(stagedVoiceNote);
               setStagedVoiceNote(null);
@@ -461,7 +539,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
                 setStagedVoiceNote(null);
               }
             }}
-            className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0"
+            className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)]"
             title="Send voice note (right click to schedule)"
           >
             <Send className="w-4 h-4 ml-0.5" />
@@ -539,7 +617,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
               </div>
             ) : (
               <span className="text-[10.5px] text-white/50 font-medium shrink-0">
-                Recording...
+                {t('voiceMemo.recording')}
               </span>
             )}
           </div>
@@ -558,8 +636,9 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
               <button
                 type="button"
+                aria-label={t('voiceMemo.send')}
                 onClick={sendRecordingDirectly}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)]"
                 title="Send voice memo now"
               >
                 <Send className="w-4 h-4 ml-0.5" />
@@ -580,18 +659,30 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 
     // 3. DEFAULT IDLE MICROPHONE BUTTON
     return (
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        disabled={disabled}
-        className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[var(--nova-accent-color)] hover:text-white hover:shadow-lg hover:shadow-[var(--nova-accent-color)]/30 border border-white/10 text-white/80 flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md group shrink-0 touch-manipulation relative"
-        title="Tap to record or hold for push-to-talk voice memo"
-      >
-        <Mic className="w-4 h-4 group-hover:scale-110 transition-transform text-[var(--nova-accent-color)] group-hover:text-white" />
-      </button>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          aria-label={t('voiceMemo.tapToRecord')}
+          aria-busy={isStarting}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          disabled={disabled || isStarting}
+          className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[var(--nova-accent-color)] hover:text-white hover:shadow-lg hover:shadow-[var(--nova-accent-color)]/30 border border-white/10 text-white/80 flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md group touch-manipulation disabled:opacity-60 disabled:cursor-wait"
+          title="Tap to record or hold for push-to-talk voice memo"
+        >
+          <Mic className="w-4 h-4 group-hover:scale-110 transition-transform text-[var(--nova-accent-color)] group-hover:text-white" />
+        </button>
+        {recordingError && (
+          <span
+            role="alert"
+            className="absolute bottom-full right-0 z-50 mb-2 w-64 rounded-lg border border-red-400/25 bg-red-950/95 px-3 py-2 text-xs leading-relaxed text-red-100 shadow-xl"
+          >
+            {t('voiceMemo.microphoneUnavailable')}
+          </span>
+        )}
+      </div>
     );
   }
 );

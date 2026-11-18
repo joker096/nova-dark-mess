@@ -101,15 +101,10 @@ adb install dist\android\NovaDarkMessenger-1.0.0-debug.apk
 Google Play Console принимает **только подписанный AAB**.
 
 ```powershell
-# 1. Создать keystore (если нет)
-keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nova
-
-# 2. Собрать signed AAB
-.\scripts\deploy-android.ps1 -Version 1.0.0 -Channel release `
-  -KeystorePath .\nova-upload.jks `
-  -KeystorePassword <пароль> `
-  -KeyAlias nova `
-  -KeyPassword <пароль_ключа>
+# Ключ один: play-upload-key.jks в корне (alias messandanger, SHA1 5E:1B:…:90:E4).
+# Создавать новый НЕЛЬЗЯ — Play его не примет. Пароли в .env / keystore.properties.
+.
+\scripts\deploy-android.ps1 -Version 1.0.0 -Channel release
 ```
 
 ### iOS (IPA)
@@ -142,20 +137,50 @@ keytool -genkeypair -v -keystore nova-upload.jks -keyalg RSA -keysize 2048 -vali
 3. **Деплой** (`--deploy user@host` или `LANDING_HOST` env): scp бандла на хост, `npm install --production` + `pm2 restart mess-api` (или `npm start` в фоне).
 4. **Проверка** — `GET /` (index.html), `GET /releases/releases.json`, `GET /api/health`, `POST /api/paymento/ipn`.
 
+#### Обновление только лендинга (без деплоя backend)
+
+Для обычного обновления текстов, переводов или оформления используйте отдельную команду. Она проверяет ресурсы, обновляет `.gz`/`.br` в временной сборке и загружает только каталог `landing/` в `/var/www/mess.cvr.name/landing`. Файлы `server.js` и `.env.example` не копируются, `mess-api` не перезапускается.
+
+1. Убедитесь, что SSH-доступ к серверу активен. По умолчанию используется alias `prod` из локального SSH config и настроенный для него ключ; ключи и пароли в репозиторий добавлять не нужно.
+2. Предварительно проверьте сборку и target без загрузки:
+   ```powershell
+   npm run deploy:landing:static -- --dry-run
+   ```
+3. Если план корректен, загрузите лендинг:
+   ```powershell
+   npm run deploy:landing:static
+   ```
+4. Проверьте сайт:
+   ```powershell
+   (Invoke-WebRequest -Uri 'https://mess.cvr.name/').StatusCode
+   (Invoke-WebRequest -Uri 'https://mess.cvr.name/lang/ru.json').StatusCode
+   ```
+
+Для другого SSH target задайте его только на время публикации:
+```powershell
+$env:LANDING_HOST = 'user@host'
+npm run deploy:landing:static -- --dry-run
+npm run deploy:landing:static
+Remove-Item Env:LANDING_HOST
+```
+
+Перед копированием скрипт проверяет, что на target есть `/var/www/mess.cvr.name/landing` и `server.js`; после копирования проверяет наличие `index.html` и manifest. Если SSH сообщает об истёкшей или недоступной учётной записи, деплой прекращается до загрузки файлов — сначала восстановите доступ.
+
 Требования на хосте: Node.js 18+, `PORT` (в production — 3002, как в `scripts/deploy/mess.cvr.name.conf`), `PAYMENTO_SECRET` (HMAC-секрет от PaymentO для подписи IPN), Nginx/reverse-proxy с TLS до `mess.cvr.name`.
 
 > 💡 Оплата Premium идёт через **PaymentO** — фикс **$3.90 / 30 дней**, без
 > криптовалютных кошельков и привязки карт в приложении. IPN-хук
 > `POST /api/paymento/ipn` проверяет HMAC-подпись, сохраняет чек без PII и
 > отдаёт устройству подписанную лицензию `MA1.<payload>.<sig>`.
+> Для подарков приложение выпускает одноразовый код в выбранный сохранённый
+> E2EE-контакт; получатель активирует его на своём устройстве. Подарок
+> добавляет 30 дней к действующей платной лицензии или начинает срок при
+> активации. Храните `GIFTS_DIR` вместе с `ORDERS_DIR` и
+> `LICENSES_DIR` на постоянном диске сервера.
 
 **Пример релиза Android:**
 ```powershell
-.\scripts\deploy-android.ps1 -Version 1.0.1 -Channel release `
-  -KeystorePath .\nova-upload.jks `
-  -KeystorePassword **** `
-  -KeyAlias nova `
-  -KeyPassword ****
+.\scripts\deploy-android.ps1 -Version 1.0.1 -Channel release
 ```
 
 **Пример релиза iOS (на Mac):**

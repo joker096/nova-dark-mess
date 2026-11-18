@@ -61,7 +61,7 @@
       </div>
       <header>
         <h1>Mess&amp;Anger — Privacy Policy</h1>
-        <div class="sub">Last updated: November 16, 2026</div>
+        <div class="sub">Last updated: November 18, 2026</div>
       </header>
 
       <div class="sec">
@@ -195,6 +195,25 @@
             process their own compliance data, but Nova does not receive identity documents or KYC files.
           </li>
           <li>No advertising networks, no analytics vendors, no data brokers, no ad-profile resellers.</li>
+        </ul>
+      </div>
+
+      <div class="sec">
+        <h2>Anonymous mode (experimental)</h2>
+        <p>
+          The optional anonymous mode uses one-way relay queues with fixed-size sealed packets. A relay
+          stores ciphertext only until the recipient acknowledges it or the queue TTL expires. With a proxy
+          configured, the relay sees the proxy address instead of yours; with Tor configured, traffic leaves
+          through a local Tor SOCKS listener to a <code>.onion</code> relay. This mode is experimental and
+          has not been independently audited.
+        </p>
+        <p>Residual risks you should know about:</p>
+        <ul>
+          <li>a passive observer can correlate send and poll timing despite padding and jitter;</li>
+          <li>the direct relay path without a proxy or Tor reveals your IP address to the relay;</li>
+          <li>an invite can be used once by whoever reads it, and sealed sender does not prove who sent a message;</li>
+          <li>if push hints are enabled, the push provider learns that a notification was delivered;</li>
+          <li>a device compromise bypasses all of the above.</li>
         </ul>
       </div>
 

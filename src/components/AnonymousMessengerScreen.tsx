@@ -448,6 +448,9 @@ export const AnonymousMessengerScreen: React.FC<{
   const [privacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
   const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
   const dummyTrafficRef = useRef<DummyTrafficScheduler | null>(null);
+  // Declared before the loading effect below: that effect seeds the baseline
+  // used to skip redundant failure-map writes.
+  const lastPersistedRef = useRef<RelayFailureMap | null>(null);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -505,7 +508,6 @@ export const AnonymousMessengerScreen: React.FC<{
     setState(next);
   }, []);
 
-  const lastPersistedRef = useRef<RelayFailureMap | null>(null);
   const persistFailures = useCallback(async (next: RelayFailureMap) => {
     if (!dbInstance.isReady()) return;
     if (

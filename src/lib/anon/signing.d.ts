@@ -1,6 +1,19 @@
 import type { PowSolution } from './spam';
 
 export const QUEUE_COMMAND_VERSION: 1;
+export const IDENTITY_BINDING_VERSION: 1;
+
+export function identityBindingMessage(identityKey: string, signingPublicKey: string): string;
+export function signIdentityBinding(
+  privateKey: string,
+  identityKey: string,
+  signingPublicKey: string,
+): string;
+export function verifyIdentityBinding(
+  identityKey: string,
+  signingPublicKey: string,
+  signature: string,
+): boolean;
 
 export type QueueCommandAction = 'enqueue' | 'poll' | 'ack' | 'delete_queue';
 

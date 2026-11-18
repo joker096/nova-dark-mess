@@ -1,6 +1,8 @@
 export interface WipeableMessage {
   text?: string;
   mediaUrl?: string;
+  images?: unknown;
+  document?: unknown;
   voiceNote?: unknown;
   location?: unknown;
   poll?: unknown;
@@ -20,21 +22,20 @@ export interface WipeableMessage {
  */
 export function secureWipe(value: unknown): void {
   if (value === null || value === undefined) return;
-  if (value instanceof Uint8Array || value instanceof Int8Array || value instanceof Uint16Array ||
-      value instanceof Int16Array || value instanceof Uint32Array || value instanceof Int32Array ||
-      value instanceof Float32Array || value instanceof Float64Array || value instanceof BigInt64Array ||
-      value instanceof BigUint64Array) {
-    for (let i = 0; i < value.length; i++) {
-      (value as any)[i] = 0;
-    }
+  if (value instanceof ArrayBuffer) {
+    new Uint8Array(value).fill(0);
     return;
   }
-  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
-    const view = value as unknown as { length: number; [i: number]: number };
-    for (let i = 0; i < view.length; i++) view[i] = 0;
+  if (ArrayBuffer.isView(value)) {
+    new Uint8Array(value.buffer, value.byteOffset, value.byteLength).fill(0);
     return;
   }
   if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const item: unknown = value[index];
+      if (item !== null && typeof item === 'object') secureWipe(item);
+      value[index] = undefined;
+    }
     value.length = 0;
     return;
   }
@@ -44,31 +45,38 @@ export function secureWipe(value: unknown): void {
       const v = obj[key];
       if (typeof v === 'string') {
         obj[key] = '';
+      } else if (v && typeof v === 'object') {
+        secureWipe(v);
       } else if (typeof v === 'number') {
         obj[key] = 0;
       } else if (typeof v === 'boolean') {
         obj[key] = false;
-      } else if (Array.isArray(v)) {
-        v.length = 0;
-      } else if (v && typeof v === 'object') {
-        secureWipe(v);
       }
     }
   }
 }
 
-export function secureWipeMessage<T = any>(message: T): T {
-  if (!message) return message;
-  const target = message as any;
-  secureWipe(target);
-  target.text = undefined;
-  target.mediaUrl = undefined;
-  target.voiceNote = undefined;
-  target.location = undefined;
-  target.poll = undefined;
-  target.sticker = undefined;
-  target.replyTo = undefined;
-  target.forwardedFrom = undefined;
+export function secureWipeMessage<T>(message: T): T {
+  if (message === null || typeof message !== 'object') return message;
+  const target = message as WipeableMessage;
+  const sensitiveFields = [
+    'text',
+    'mediaUrl',
+    'images',
+    'document',
+    'voiceNote',
+    'location',
+    'poll',
+    'sticker',
+    'replyTo',
+    'forwardedFrom',
+  ] as const;
+
+  for (const field of sensitiveFields) {
+    const value = target[field];
+    if (value !== null && typeof value === 'object') secureWipe(value);
+    target[field] = undefined;
+  }
   target.wiped = true;
   return message;
 }
@@ -76,15 +84,14 @@ export function secureWipeMessage<T = any>(message: T): T {
 export const wipeMessage = secureWipeMessage;
 export const wipeMessageSecurely = secureWipeMessage;
 
-export function wipeExpiredMessages<T = any>(
+export function wipeExpiredMessages<T extends { expiresAt?: number }>(
   messages: T[],
   now: number = Date.now(),
 ): T[] {
   const kept: T[] = [];
   for (const msg of messages) {
-    const m = msg as any;
-    if (m.expiresAt && m.expiresAt <= now) {
-      secureWipeMessage(m);
+    if (msg.expiresAt !== undefined && msg.expiresAt <= now) {
+      secureWipeMessage(msg);
     } else {
       kept.push(msg);
     }

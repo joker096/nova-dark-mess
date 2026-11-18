@@ -103,11 +103,10 @@ describe('VideoCallOverlay visual snapshot', () => {
 
   it('renders self view PIP with camera on and viewfinder brackets', () => {
     render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
-    const img = screen.getByAltText('You');
-    const selfView = findAncestor(img, ['w-28', 'h-40']);
-    expect(selfView).toBeTruthy();
-    expect(selfView!.className).toContain('rounded-2xl');
-    expect(selfView!.className).toContain('border-2');
+    const selfView = screen.getByTestId('self-view');
+    expect(selfView.getAttribute('aria-label')).toBe('Your camera preview');
+    expect(selfView.className).toContain('rounded-2xl');
+    expect(selfView.className).toContain('border-2');
     expect(screen.getByText('Front')).toBeTruthy();
     expect(screen.getByTitle('Flip camera')).toBeTruthy();
   });

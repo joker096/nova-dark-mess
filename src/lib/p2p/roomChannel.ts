@@ -40,13 +40,13 @@ const HELLO_INTERVAL_MS = 3000;
 const RECONNECT_DELAY_MS = 1000;
 
 function randomId(): string {
-  const bytes = new Uint8Array(8);
-  const cryptoApi = typeof crypto !== 'undefined' ? crypto : undefined;
-  if (cryptoApi?.getRandomValues) {
-    cryptoApi.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  // Peer ids identify a node inside a room; a predictable id can be squatted,
+  // so fail loudly rather than degrade to Math.random().
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random generator is unavailable');
   }
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 

@@ -34,12 +34,9 @@
 ### Сборка Android
 
 ```powershell
-# Релизный AAB (для Google Play)
-.\scripts\deploy-android.ps1 -Version 1.0.1 -Channel release `
-  -KeystorePath .\nova-upload.jks `
-  -KeystorePassword <пароль_keystore> `
-  -KeyAlias nova `
-  -KeyPassword <пароль_ключа>
+# Релизный AAB (для Google Play). Ключ один — play-upload-key.jks,
+# параметры читаются из keystore.properties/.env, явные аргументы не нужны.
+.\scripts\deploy-android.ps1 -Version 1.0.1 -Channel release
 
 # Отладочный APK
 .\scripts\deploy-android.ps1 -Version 1.0.1 -Channel debug

@@ -5,6 +5,7 @@ import {
   ACCOUNT_STORAGE_KEY,
   ACCOUNT_UPDATED_EVENT,
   loadAccount,
+  normalizeNickname,
   saveAccount,
   updateAccount,
 } from './account';
@@ -19,8 +20,13 @@ describe('account store', () => {
     const account = loadAccount();
     expect(account.version).toBe(1);
     expect(account.id).toBeTruthy();
-    expect(account.displayName).toBeTruthy();
+    expect(account.displayName).toBe('Nova user');
     expect(account.nickname.startsWith('@')).toBe(true);
+    expect(account.phone).toBe('');
+  });
+
+  it('normalizes Unicode nicknames without requiring uniqueness', () => {
+    expect(normalizeNickname('  @  Мира  🌙  ')).toBe('@Мира 🌙');
   });
 
   it('persists and reloads updated profile fields', () => {
@@ -53,5 +59,15 @@ describe('account store', () => {
     updateAccount({ displayName: 'Event User' });
     window.removeEventListener(ACCOUNT_UPDATED_EVENT, listener);
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces storage failures instead of reporting a successful save', () => {
+    const account = loadAccount();
+    const storageError = new Error('storage is unavailable');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw storageError;
+    });
+
+    expect(() => saveAccount(account)).toThrow(storageError);
   });
 });

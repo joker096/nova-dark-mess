@@ -10,13 +10,13 @@ const INVITE_KEY_PREFIX = 'nova_group_invite_';
 const TOKEN_BYTES = 12;
 
 function randomToken(): string {
-  const bytes = new Uint8Array(TOKEN_BYTES);
-  const cryptoApi = typeof crypto !== 'undefined' ? crypto : undefined;
-  if (cryptoApi?.getRandomValues) {
-    cryptoApi.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  // Invite tokens gate access to a group: a predictable fallback would let an
+  // attacker guess them, so refuse to mint one without a CSPRNG.
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random generator is unavailable');
   }
+  const bytes = new Uint8Array(TOKEN_BYTES);
+  crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 

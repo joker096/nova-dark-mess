@@ -55,6 +55,7 @@ interface ChatHeaderProps {
   pinnedMessages: ChatMessage[];
   isPinnedCarouselOpen: boolean;
   setIsPinnedCarouselOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onOpenProtection?: () => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -92,6 +93,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   pinnedMessages,
   isPinnedCarouselOpen,
   setIsPinnedCarouselOpen,
+  onOpenProtection,
 }) => {
   const { t } = useLanguage();
   const theme = PREMIUM_THEMES[chatTheme];
@@ -231,6 +233,16 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 <span className="font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
                   {profile.name}
                 </span>
+                <button
+                  type="button"
+                  data-testid="e2ee-badge"
+                  onClick={() => onOpenProtection?.()}
+                  className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-semibold text-emerald-300 select-none cursor-pointer hover:bg-emerald-500/25 transition"
+                  title={t('chat.e2eeBadgeTitle')}
+                >
+                  <Lock className="w-2.5 h-2.5" />
+                  {t('chat.e2eeBadge')}
+                </button>
                 {isTyping ? (
                   <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
                     <span className="relative flex h-1.5 w-1.5">
