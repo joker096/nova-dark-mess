@@ -17,6 +17,7 @@ import {
   UserRound,
   Sparkles,
   Archive,
+  Cloud,
 } from 'lucide-react';
 import {
   MOCK_STORIES,
@@ -29,6 +30,7 @@ import {
   saveCreatedGroupHistories,
 } from '../data/mockMessengerData';
 import { ChatItem, Story, MessageSearchResult, ChatFolder, ChannelInfo, StoryDraft } from '../types/messenger';
+import { parseVCF, ParsedContact } from '../lib/contacts/vcfParser';
 import { FolderModal } from './FolderModal';
 import { CommunitiesPanel } from './CommunitiesPanel';
 import { StoryComposerModal } from './StoryComposerModal';
@@ -176,6 +178,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(() => {
     return new Set(MOCK_CHATS.filter((c) => c.isPinned).map((c) => c.id));
   });
+
+  // User-imported contacts (VCF import)
+  const [userContacts, setUserContacts] = useState<ParsedContact[]>([]);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
 
@@ -321,6 +326,23 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     } else {
       result = MOCK_CHATS.filter((c) => currentFolder.chatIds.includes(c.id));
     }
+
+    // Append user-imported contacts as direct chats (only in 'all' folder)
+    if (currentFolder.id === 'all' || currentFolder.filterType === 'all') {
+      const contactChats: ChatItem[] = userContacts.map((c) => ({
+        id: `contact-${c.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: c.name,
+        avatar: c.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`,
+        snippet: c.phone ?? c.email ?? 'Imported contact',
+        time: '',
+        unreadCount: 0,
+        isPinned: false,
+        type: 'direct',
+        category: 'Imported',
+      }));
+      result = [...result, ...contactChats];
+    }
+
     // Sort pinned chats to the top
     return result.sort((a, b) => {
       const aPinned = pinnedChatIds.has(a.id);
@@ -329,7 +351,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       if (!aPinned && bPinned) return 1;
       return 0;
     });
-  }, [currentFolder, groupVersion, archivedChatIds, pinnedChatIds]);
+  }, [currentFolder, groupVersion, archivedChatIds, pinnedChatIds, userContacts]);
 
   // Calculate badge (unread or count) for each folder tab
   const getFolderBadge = (folder: ChatFolder) => {
@@ -486,6 +508,28 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       else next.add(chatId);
       return next;
     });
+  };
+
+  const handleImportVCF = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const { contacts, errors } = parseVCF(text);
+      if (contacts.length > 0) {
+        setUserContacts((prev) => {
+          const existingNames = new Set(prev.map((c) => c.name));
+          const newContacts = contacts.filter((c) => !existingNames.has(c.name));
+          return [...prev, ...newContacts];
+        });
+      }
+      if (errors.length > 0) {
+        triggerFolderToast(`VCF: ${errors.length} error(s) skipped`);
+      }
+      if (contacts.length > 0) {
+        triggerFolderToast(`Imported ${contacts.length} contact(s)`);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const highlightMatch = (text: string, query: string) => {
@@ -1369,6 +1413,30 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
               </div>
               <span>Create Group Chat</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNewChatModalOpen(false);
+                document.getElementById('vcf-file-input')?.click();
+              }}
+              className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
+              aria-label="Import contacts from VCF file"
+            >
+              <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[10px]">
+                <Cloud className="w-3.5 h-3.5" />
+              </div>
+              <span>Import Contacts (VCF)</span>
+            </button>
+            <input
+              id="vcf-file-input"
+              type="file"
+              accept=".vcf,.vcf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target?.files?.[0];
+                if (file) handleImportVCF(file);
+              }}
+            />
             <button
               onClick={() => setNewChatModalOpen(false)}
               className="w-full py-2 bg-white/5 hover:bg-white/10 text-white/70 font-semibold text-xs rounded-xl transition"
