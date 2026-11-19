@@ -145,6 +145,10 @@ interface ChatScreenProps {
   botId?: string;
   /** Commands advertised by the bot in this chat, if any. */
   botCommands?: BotCommand[];
+  /** Pending /start payload from a nova://bot/<id>?start=… deep link. */
+  pendingBotStart?: { chatId: string; payload: string } | null;
+  /** Called once the pending /start payload has been sent. */
+  onBotStartSent?: () => void;
   /**
    * Bot callback dispatcher wired by App.tsx (bots Phase B2/B4). Returns
    * true when the update was dispatched to an installed bot runtime.
@@ -185,6 +189,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onOpenProfile,
   botId,
   botCommands,
+  pendingBotStart,
+  onBotStartSent,
   onBotCallback,
 }) => {
   const { t } = useLanguage();
@@ -253,6 +259,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  /** Send /start <payload> once when arriving from a nova://bot/<id>?start=… link. */
+  useEffect(() => {
+    if (!pendingBotStart || pendingBotStart.chatId !== chatId) return;
+    if (!pendingBotStart.payload) {
+      void onBotStartSent?.();
+      return;
+    }
+    const cmd = `/start ${pendingBotStart.payload.trim()}`;
+    handleSendMessage(cmd);
+    setInputText('');
+    void onBotStartSent?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, pendingBotStart]);
 
   const appendSystemMessage = (text: string) => {
     const message = {
@@ -771,6 +791,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
+  const [botTyping, setBotTyping] = useState(false);
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -2507,6 +2528,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         new TextEncoder().encode(`P2P File Transfer Payload for ${currentAttachment.document.name}`),
       );
     }
+    // Bot typing indicator: when chatting with a bot, show "typing" briefly
+    // to simulate the bot composing a reply (receipts path reused per B2).
+    if (botId) {
+      setBotTyping(true);
+      setTimeout(() => setBotTyping(false), 1800);
+    }
     void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
     if (!customText) {
       setInputText('');
@@ -2847,10 +2874,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     )}
                   </span>
                   <span className="flex flex-col items-start min-w-0">
-                    <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
-                      {profile.name}
-                    </span>
-                    {isTyping ? (
+                    <div className="flex items-center gap-1">
+                      <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                        {profile.name}
+                      </span>
+                      {botId && (
+                        <span
+                          className="px-1.5 py-px rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 text-[9px] font-semibold text-[var(--nova-accent-color,#ff4e18)] shrink-0"
+                          title={t('bot.badge', { defaultValue: 'Bot' })}
+                        >
+                          {t('bot.badge', { defaultValue: 'Bot' })}
+                        </span>
+                      )}
+                    </div>
+                    {(isTyping || botTyping) ? (
                       <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
                         <span className="relative flex h-1.5 w-1.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] opacity-75"></span>
@@ -2932,6 +2969,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
                 {/* Group members live in the "..." menu; the pending-request
                     badge rides on that button instead of a second icon. */}
+
+                {/* Bot Start button: sends /start to the bot (docs/bots-roadmap.md §B2) */}
+                {botId && (
+                  <button
+                    type="button"
+                    onClick={() => handleSendMessage('/start')}
+                    className="w-7 h-7 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/10 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
+                    title={t('bot.start')}
+                    aria-label={t('bot.start')}
+                  >
+                    <span className="text-[10px] font-bold">{t('bot.start')}</span>
+                  </button>
+                )}
 
                 {/* Search Messages in Chat Button */}
                 <button
