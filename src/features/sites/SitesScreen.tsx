@@ -709,20 +709,6 @@ export default function SitesScreen({
           </div>
           {!online && <div className="text-center py-4 text-[#8c919d] text-xs">{t('sites.ownerOffline')}</div>}
         </main>
-        {quickReplies.length > 0 && (
-          <div className="flex gap-2 mb-3">
-            {quickReplies.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => setInput(q)}
-                disabled={!online}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.1] text-[#c5c9d2] text-[11px] hover:bg-white/[0.1] hover:text-white disabled:opacity-50"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
         <form onSubmit={handleSend} className="p-4 border-t border-white/[0.06] bg-[#0c0d11] shrink-0">
           <div className="flex gap-2">
             <input

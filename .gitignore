@@ -3,10 +3,19 @@ server/site-gateway/data/
 
 # Site-gateway environment secrets
 server/site-gateway/.env
+.env
+
+# Agent / session artifacts (do not commit)
+.e2e/
+.open-mem/
+.andromity/
+.kilo/
 
 # Build artifacts
 *.aab
 *.jks
 receipts/
+dist/
 packages/widget/dist/
 src-tauri/gen/
+node_modules

@@ -266,7 +266,7 @@ export class FileTransferManager {
       incoming: [],
     };
 
-    for (const [transferId, transfer] of this.outgoing) {
+    for (const [_transferId, transfer] of this.outgoing) {
       state.outgoing.push({
         meta: transfer.meta,
         recipient: transfer.recipient,
@@ -276,7 +276,7 @@ export class FileTransferManager {
       });
     }
 
-    for (const [transferId, transfer] of this.incoming) {
+    for (const [_transferId, transfer] of this.incoming) {
       const chunks: Record<string, string> = {};
       for (const [index, chunk] of transfer.chunks) {
         chunks[String(index)] = bufferToBase64(chunk);

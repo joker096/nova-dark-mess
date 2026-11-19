@@ -14,7 +14,15 @@ vi.mock('./context/LanguageContext', () => ({
   }),
 }));
 vi.mock('./hooks/useSecurity', () => ({
-  useSecurity: () => ({ isLocked: false, pinHash: null, unlock: vi.fn() }),
+  useSecurity: () => ({
+    isLocked: false,
+    pinHash: null,
+    unlock: vi.fn(),
+    isDemoPeer: () => false,
+    encryptAndSendMessage: vi.fn(),
+    checkPeerKey: vi.fn(),
+    identity: { fingerprint: 'test-fingerprint' },
+  }),
 }));
 
 const capturedRef: { current: { openFolderModal: () => void } | null } = { current: null };

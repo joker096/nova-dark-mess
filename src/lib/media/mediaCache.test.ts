@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
-import { describe, it, expect, vi } from 'vitest';
-import { createMediaCache, type MediaCache } from './mediaCache';
+import { describe, it, expect } from 'vitest';
+import { createMediaCache } from './mediaCache';
 
 function bytes(n: number): Uint8Array {
   return new Uint8Array(n).fill(n % 256);
