@@ -348,7 +348,7 @@ servers, no paid services.
   missing chunks on incoming transfers. `getAllTransferIds()` lists all known
   transfers for UI restoration. 6 new tests in `fileTransfer.test.ts` cover
   save/restore/resume/clear round-trips.
-- [ ] **Backup verification**: dry-run restore, checksum, "test restore" button.
+- [x] **Backup verification**: dry-run restore, checksum, "test restore" button.
   `verifyEncryptedBackup()` in `src/lib/storage/backup.ts` decrypts and validates
   a `.nova-backup` file without applying it (dry-run), returning `true` when the
   passphrase is correct and the structure is valid. AES-GCM authentication
