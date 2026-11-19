@@ -16,6 +16,7 @@ import {
   Megaphone,
   UserRound,
   Sparkles,
+  Archive,
 } from 'lucide-react';
 import {
   MOCK_STORIES,
@@ -109,6 +110,14 @@ export const DEFAULT_FOLDERS: ChatFolder[] = [
     icon: 'star',
     isDefault: true,
   },
+  {
+    id: 'archive',
+    name: 'Archive',
+    filterType: 'custom',
+    chatIds: [],
+    icon: 'archive',
+    isDefault: true,
+  },
 ];
 
 registerCreatedGroups();
@@ -163,6 +172,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   });
 
   const [activeFolderId, setActiveFolderId] = useState<string>('all');
+  const [archivedChatIds, setArchivedChatIds] = useState<Set<string>>(new Set());
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
 
@@ -293,8 +303,12 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
   // Filter chats by active folder when not searching
   const categoryChats = useMemo(() => {
-    if (!currentFolder || currentFolder.id === 'all' || currentFolder.filterType === 'all') {
-      return MOCK_CHATS;
+    if (!currentFolder) return MOCK_CHATS;
+    if (currentFolder.id === 'all' || currentFolder.filterType === 'all') {
+      return MOCK_CHATS.filter((c) => !archivedChatIds.has(c.id));
+    }
+    if (currentFolder.id === 'archive') {
+      return MOCK_CHATS.filter((c) => archivedChatIds.has(c.id));
     }
     if (currentFolder.filterType === 'direct') {
       return MOCK_CHATS.filter((c) => c.type === 'direct');
@@ -306,7 +320,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       return MOCK_CHATS.filter((c) => c.type === 'group');
     }
     return MOCK_CHATS.filter((c) => currentFolder.chatIds.includes(c.id));
-  }, [currentFolder, groupVersion]);
+  }, [currentFolder, groupVersion, archivedChatIds]);
 
   // Calculate badge (unread or count) for each folder tab
   const getFolderBadge = (folder: ChatFolder) => {
@@ -440,6 +454,20 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     } else {
       onSelectChat(chatId);
     }
+  };
+
+  const handleArchiveToggle = (chatId: string) => {
+    setArchivedChatIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) {
+        next.delete(chatId);
+        // If viewing archive folder, switch back to 'all'
+        if (activeFolderId === 'archive') setActiveFolderId('all');
+      } else {
+        next.add(chatId);
+      }
+      return next;
+    });
   };
 
   const highlightMatch = (text: string, query: string) => {
@@ -1108,6 +1136,30 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                             {unreadCount}
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleArchiveToggle(chat.id);
+                          }}
+                          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition cursor-pointer shrink-0"
+                          aria-label={
+                            archivedChatIds.has(chat.id)
+                              ? t('actions.unarchive', { defaultValue: 'Unarchive chat' })
+                              : t('actions.archive', { defaultValue: 'Archive chat' })
+                          }
+                          title={
+                            archivedChatIds.has(chat.id)
+                              ? t('actions.unarchive', { defaultValue: 'Unarchive chat' })
+                              : t('actions.archive', { defaultValue: 'Archive chat' })
+                          }
+                        >
+                          {archivedChatIds.has(chat.id) ? (
+                            <Archive className="w-3 h-3" />
+                          ) : (
+                            <Archive className="w-3 h-3 rotate-180" />
+                          )}
+                        </button>
                       </div>
                     </div>
 
