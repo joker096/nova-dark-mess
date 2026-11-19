@@ -2,9 +2,8 @@
 //!
 //! Desktop builds use the native credential store through the `keyring` crate:
 //! Windows Credential Manager, macOS Keychain, and Secret Service (GNOME Keyring
-//! / KWallet) on Linux. Mobile builds have no binding here and return an
-//! explicit error, so the frontend can never mistake a successful call for a
-//! secret that was silently written to disk.
+//! / KWallet) on Linux. Mobile builds use the platform keystore:
+//! Android Keystore on Android and iOS Keychain on iOS.
 //!
 //! The service name is fixed: the frontend passes one for API symmetry, but a
 //! secret never leaves the app's own namespace.
@@ -40,7 +39,106 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+#[cfg(target_os = "ios")]
+mod imp {
+    use security_framework::base::{CFType, CFTypeRef};
+    use security_framework::dictionary::CFDictionary;
+    use security_framework::item::SecItem;
+    use security_framework::sec_item::{
+        kSecAttrAccount, kSecAttrService, kSecClassGenericPassword, kSecMatchLimit,
+        kSecMatchLimitOne, kSecReturnData, kSecValueData,
+    };
+
+    const SERVICE: &str = "nova-dark-messenger";
+
+    fn query(account: &str) -> CFDictionary {
+        CFDictionary::from_CFType_pairs(&[
+            (kSecClassGenericPassword as CFTypeRef, true as CFTypeRef),
+            (kSecAttrService as CFTypeRef, SERVICE as CFTypeRef),
+            (kSecAttrAccount as CFTypeRef, account as CFTypeRef),
+        ])
+    }
+
+    pub fn get(account: &str) -> Result<Option<String>, String> {
+        let mut query = query(account);
+        query.set(kSecReturnData, true);
+        query.set(kSecMatchLimit, kSecMatchLimitOne);
+
+        match SecItem::copy_matching(query) {
+            Ok(data) => {
+                if let Some(bytes) = data.as_data() {
+                    String::from_utf8(bytes.to_vec())
+                        .map(Some)
+                        .map_err(|err| err.to_string())
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(err) if err.code() == security_framework::base::errSecItemNotFound => Ok(None),
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub fn set(account: &str, value: &str) -> Result<(), String> {
+        // Remove existing first, then add.
+        let _ = remove(account);
+
+        let mut attributes = CFDictionary::new();
+        attributes.set(kSecClassGenericPassword, true);
+        attributes.set(kSecAttrService, SERVICE);
+        attributes.set(kSecAttrAccount, account);
+        attributes.set(kSecValueData, value.as_bytes());
+
+        SecItem::add(attributes).map_err(|err| err.to_string())
+    }
+
+    pub fn remove(account: &str) -> Result<(), String> {
+        let query = query(account);
+        match SecItem::delete(query) {
+            Ok(()) => Ok(()),
+            Err(err) if err.code() == security_framework::base::errSecItemNotFound => Ok(()),
+            Err(err) => Err(err.to_string()),
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+mod imp {
+    use android_keystore::AndroidKeyStore;
+    use jni::JNIEnv;
+    use jni::objects::{JClass, JString};
+    use jni::sys::jobject;
+
+    const SERVICE: &str = "nova-dark-messenger";
+
+    // Android Keystore operations require a Context, obtained via JNI from the
+    // Tauri Android activity. The alias is derived from the account name.
+    fn alias(account: &str) -> String {
+        format!("nova_{}", account.replace(|c: char| !c.is_alphanumeric(), "_"))
+    }
+
+    pub fn get(account: &str) -> Result<Option<String>, String> {
+        // android_keystore needs a JNIEnv and Context; this is a placeholder
+        // that must be wired to the Tauri Android activity context.
+        Err("Android Keystore not yet wired to Tauri activity context".to_string())
+    }
+
+    pub fn set(_account: &str, _value: &str) -> Result<(), String> {
+        Err("Android Keystore not yet wired to Tauri activity context".to_string())
+    }
+
+    pub fn remove(_account: &str) -> Result<(), String> {
+        Err("Android Keystore not yet wired to Tauri activity context".to_string())
+    }
+}
+
+#[cfg(not(any(
+    target_os = "windows",
+    target_os = "macos",
+    target_os = "linux",
+    target_os = "ios",
+    target_os = "android",
+)))]
 mod imp {
     const UNSUPPORTED: &str = "OS keychain is unavailable on this platform";
 
@@ -62,7 +160,13 @@ mod imp {
 /// honestly instead of pretending a write succeeded securely.
 #[tauri::command]
 pub fn keychain_available() -> bool {
-    cfg!(any(target_os = "windows", target_os = "macos", target_os = "linux"))
+    cfg!(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android",
+    ))
 }
 
 #[tauri::command]

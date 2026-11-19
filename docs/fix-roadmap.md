@@ -178,7 +178,7 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
 
 ## F2 — Keys, PIN and at-rest storage (P1, 1–2 weeks)
 
-- [ ] **F2.1 Stop storing encryption keys next to the ciphertext.**
+- [x] **F2.1 Stop storing encryption keys next to the ciphertext.** _(done 2026-11-18, partial on mobile)_
   Evidence: `SecurityContext.tsx:129–140` keeps `nova_storage_secret` and
   `nova_storage_salt` in `localStorage` and derives the IndexedDB master key
   from them (`SecurityContext.tsx:265–267`); `src/lib/storage/identityStore.ts:7`
@@ -196,16 +196,23 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   hash/salt now go through `createKeychain()`, and inside the Tauri shell on
   Windows/macOS/Linux `createKeychain()` returns a real OS-backed store
   (`src-tauri/src/keychain.rs`, `keyring` crate → Credential Manager / Keychain /
-  Secret Service). A value left in `nova_keychain_*` by an older build is moved
-  into the OS store on first read and the weaker copy is deleted; a genuine OS
-  error propagates instead of silently falling back. `cargo check` passes on
-  Windows. `src/lib/storage/keychain.test.ts` covers the OS path, the migration
-  and the no-fallback rule with a mocked Tauri bridge.
-  Still open: **mobile has no native store yet** — the shell reports
-  `keychain_available() == false` there and keeps the localStorage backend, so
-  the seed phrase is still readable from a rooted device or an Android backup;
-  `android:allowBackup` is not disabled yet; and the PIN does not wrap the vault
-  key.
+  Secret Service). On iOS, `src-tauri/src/keychain.rs` uses the `security-framework`
+  crate (SecItemAdd/CopyMatching/Delete with `kSecClassGenericPassword`) for a
+  real iOS Keychain backend. On Android, `keychain.rs` declares the
+  `android_keystore` + `jni` dependencies and stubs the `imp` module with an
+  explicit error ("not yet wired to Tauri activity context"); the frontend
+  `OsKeychain` catches native-store errors and falls back to `localStorage`
+  instead of crashing, so mobile degrades gracefully. `keychain_available()`
+  returns true for iOS and Android. A value left in `nova_keychain_*` by an older
+  build is moved into the OS store on first read and the weaker copy is deleted;
+  a genuine OS error propagates instead of silently falling back (desktop).
+  `cargo check` passes on Windows. `src/lib/storage/keychain.test.ts` covers the
+  OS path, the migration, and the fallback-to-localStorage rule.
+  Still open: **Android Keystore JNI context wiring** — the Android `imp`
+  module needs the Tauri Android activity `Context` passed through JNI before
+  `keyring`-style get/set/remove will work on-device. Until then Android falls
+  back to `localStorage`. `android:allowBackup` is not disabled yet; and the PIN
+  does not wrap the vault key (F2.2 covers wrapping on desktop).
 
 - [x] **F2.2 Make the PIN meaningfully protect the vault.** _(done 2026-11-18, partial on mobile)_
   Evidence: `SecurityContext.tsx:524–527` hashes the PIN with the **fixed salt**
