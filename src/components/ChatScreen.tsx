@@ -73,6 +73,7 @@ import { PollCreateModal } from './PollCreateModal';
 import { MessageInlineKeyboard } from './MessageInlineKeyboard';
 import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
+import { renderMarkdown } from '../lib/markdown';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
@@ -878,6 +879,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }, [chatId, triggerPinnedToast]);
 
   const [inputText, setInputText] = useState('');
+  const [formatState, setFormatState] = useState<{ bold: boolean; italic: boolean; code: boolean; strike: boolean }>({
+    bold: false,
+    italic: false,
+    code: false,
+    strike: false,
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [typingActivity, setTypingActivity] = useState<'typing' | 'recording'>('typing');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
@@ -2564,9 +2571,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }, 2600);
   };
 
+  const wrapSelection = (open: string, close: string) => {
+    setInputText((prev) => {
+      const el = mainInputRef.current;
+      if (el && typeof el.selectionStart === 'number') {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const before = prev.slice(0, start);
+        const selected = prev.slice(start, end);
+        const after = prev.slice(end);
+        return before + open + selected + close + after;
+      }
+      return prev ? `${open}${prev}${close}` : prev;
+    });
+    mainInputRef.current?.focus();
+  };
+
+  const toggleFormat = (fmt: keyof typeof formatState) => {
+    setFormatState((prev) => ({ ...prev, [fmt]: !prev[fmt] }));
+    mainInputRef.current?.focus();
+  };
+
   const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
     const text = (customText ?? inputText).trim();
-    if (!text && !stagedAttachment) return;
 
     const messageId = 'm-' + Date.now();
     const activeReply = forcedReplyTo !== undefined ? forcedReplyTo : replyingTo;
@@ -4288,7 +4315,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         ) : (
                           <>
                             <p>
-                              {highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}
+                              {isSearchOpen && searchQuery.trim().length > 0
+                                ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
+                                : renderMarkdown({ text: msg.text })}
                               {msg.editedAt && (
                                 <span className="ml-1.5 text-[9px] italic text-white/60">
                                   {t('chat.edited')}
@@ -4461,7 +4490,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
                       {msg.text && (
                         <p>
-                          {highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)}
+                          {isSearchOpen && searchQuery.trim().length > 0
+                            ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
+                            : renderMarkdown({ text: msg.text })}
                           {msg.editedAt && (
                             <span className="ml-1.5 text-[9px] italic text-[#717682]">{t('chat.edited')}</span>
                           )}
@@ -4982,6 +5013,60 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             title={t('common.attach')}
           >
             <Paperclip className="w-4 h-4" />
+          </button>
+
+          {/* Formatting Buttons */}
+          <button
+            type="button"
+            onClick={() => wrapSelection('**', '**')}
+            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+              formatState.bold
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+            }`}
+            title={t('chat.format.bold', 'Bold')}
+            aria-label={t('chat.format.bold', 'Bold')}
+          >
+            <span className="font-bold text-xs">B</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => wrapSelection('*', '*')}
+            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+              formatState.italic
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+            }`}
+            title={t('chat.format.italic', 'Italic')}
+            aria-label={t('chat.format.italic', 'Italic')}
+          >
+            <span className="italic text-xs">I</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => wrapSelection('`', '`')}
+            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+              formatState.code
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+            }`}
+            title={t('chat.format.code', 'Code')}
+            aria-label={t('chat.format.code', 'Code')}
+          >
+            <span className="text-xs font-mono">`</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => wrapSelection('~~', '~~')}
+            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+              formatState.strike
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+            }`}
+            title={t('chat.format.strike', 'Strikethrough')}
+            aria-label={t('chat.format.strike', 'Strikethrough')}
+          >
+            <span className="text-xs line-through">S</span>
           </button>
 
           <div className="flex-1 bg-[#181920]/95 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
