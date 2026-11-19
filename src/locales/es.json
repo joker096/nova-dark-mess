@@ -1050,6 +1050,7 @@
     "permissionsRequired": "This bot requests the following permissions:",
     "grantAll": "Grant all",
     "cancel": "Cancel",
-    "commandMenu": "Bot commands"
+    "commandMenu": "Bot commands",
+    "badge": "Bot"
   }
 }

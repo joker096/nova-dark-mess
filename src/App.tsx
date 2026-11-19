@@ -173,6 +173,7 @@ export default function App() {
     null,
   );
   const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
+  const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
 
   // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
   const botSessionRef = useRef<BotSession | null>(null);
@@ -420,6 +421,13 @@ export default function App() {
         navigate('profile-katie', { profileId: target.id });
         return;
       }
+      if (target.type === 'bot') {
+        // Open the bot's chat and, if the link carried a start payload, send
+        // /start <payload> once the chat mounts (docs/bots-roadmap.md §B2).
+        setPendingBotStart(target.startPayload ? { chatId: target.id, payload: target.startPayload } : null);
+        navigate('chat-katie', { chatId: target.id });
+        return;
+      }
       if (
         target.type === 'channel' &&
         channels.some((channel) => channel.id === target.id)
@@ -568,6 +576,8 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
+            pendingBotStart={pendingBotStart}
+            onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
           />
         );
@@ -614,6 +624,8 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
+            pendingBotStart={pendingBotStart}
+            onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
           />
         );
