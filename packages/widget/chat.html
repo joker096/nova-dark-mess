@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Чат</title>
+<link rel="stylesheet" href="/widget/chat.css">
+</head>
+<body>
+<div id="wvc-root" role="application" aria-label="Чат с сайтом">
+  <div class="wvc-header" role="header">
+    <div class="wvc-title" id="wvc-title">Чат</div>
+    <div class="wvc-status" id="wvc-status" aria-live="polite">Подключение…</div>
+    <button class="wvc-close" id="wvc-close" aria-label="Закрыть чат">×</button>
+  </div>
+  <div class="wvc-messages" id="wvc-messages" role="log" aria-live="polite"></div>
+  <div class="wvc-typing" id="wvc-typing" aria-live="polite"></div>
+  <form class="wvc-composer" id="wvc-composer" role="form">
+    <input type="text" id="wvc-input" placeholder="Напишите сообщение…" autocomplete="off" aria-label="Сообщение">
+    <button type="submit" id="wvc-send" disabled>Отправить</button>
+  </form>
+  <div class="wvc-handoff" id="wvc-handoff" style="display:none">
+    <div class="wvc-handoff-title">Получите ответ в мессенджере, даже если закроете сайт</div>
+    <div class="wvc-handoff-actions">
+      <button class="wvc-handoff-btn" id="wvc-handoff-qr" aria-label="Показать QR-код">QR-код</button>
+      <button class="wvc-handoff-btn wvc-handoff-btn-link" id="wvc-handoff-link" aria-label="Открыть ссылку">Открыть в мессенджере</button>
+    </div>
+    <div class="wvc-handoff-qr" id="wvc-handoff-qr-container" style="display:none"></div>
+    <div class="wvc-handoff-done" id="wvc-handoff-done" style="display:none">
+      <div class="wvc-handoff-done-icon">✓</div>
+      <div class="wvc-handoff-done-title">Переписка продолжается в мессенджере</div>
+      <div class="wvc-handoff-done-desc">Ваш чат перенесён в приложение Mess&Anger.</div>
+    </div>
+  </div>
+  <div class="wvc-branding">
+    Работает на <a id="wvc-branding-link" href="#" target="_blank" rel="noopener noreferrer">Mess&Anger</a>
+  </div>
+  <button class="wvc-delete-data" id="wvc-delete-data" aria-label="Удалить мои данные">Удалить мои данные</button>
+</div>
+<script type="module" src="/widget/chat.js"></script>
+</body>
+</html>

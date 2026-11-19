@@ -1,0 +1,25 @@
+{
+  "name": "@messanger/widget",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Mess&Anger website chat widget — embeddable E2EE live-chat iframe",
+  "main": "dist/widget.js",
+  "module": "dist/widget.mjs",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0",
+    "vitest": "^5.1.0",
+    "jsdom": "^29.1.1"
+  }
+}

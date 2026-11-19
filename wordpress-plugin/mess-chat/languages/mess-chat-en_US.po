@@ -1,0 +1,74 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: mess-chat 1.0.0\n"
+"Language: en_US\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Mess Chat"
+msgstr "Mess Chat"
+
+msgid "Embed the Mess&Anger chat widget on your WordPress site. Visitors can message you without registration; you reply from the Mess&Anger app."
+msgstr "Embed the Mess&Anger chat widget on your WordPress site. Visitors can message you without registration; you reply from the Mess&Anger app."
+
+msgid "Enabled"
+msgstr "Enabled"
+
+msgid "Show the chat widget on the public site."
+msgstr "Show the chat widget on the public site."
+
+msgid "Site ID"
+msgstr "Site ID"
+
+msgid "Your Mess&Anger site ID. Get it from the \"Сайты\" screen in the app."
+msgstr "Your Mess&Anger site ID. Get it from the \"Sites\" screen in the app."
+
+msgid "Language"
+msgstr "Language"
+
+msgid "English"
+msgstr "English"
+
+msgid "Русский"
+msgstr "Russian"
+
+msgid "Position"
+msgstr "Position"
+
+msgid "Bottom right"
+msgstr "Bottom right"
+
+msgid "Bottom left"
+msgstr "Bottom left"
+
+msgid "First-party mode"
+msgstr "First-party mode"
+
+msgid "Serve the widget loader from your own domain (helps bypass ad blockers)."
+msgstr "Serve the widget loader from your own domain (helps bypass ad blockers)."
+
+msgid "Requires server-side proxy configuration. See plugin documentation."
+msgstr "Requires server-side proxy configuration. See plugin documentation."
+
+msgid "Подключить через Mess&Anger"
+msgstr "Connect via Mess&Anger"
+
+msgid "Opens the Mess&Anger connection page. After confirmation in the app, you will return here with your Site ID filled in."
+msgstr "Opens the Mess&Anger connection page. After confirmation in the app, you will return here with your Site ID filled in."
+
+msgid "Widget snippet:"
+msgstr "Widget snippet:"
+
+msgid "Копировать сниппет"
+msgstr "Copy snippet"
+
+msgid "Save Changes"
+msgstr "Save Changes"
+
+msgid "Site connected successfully!"
+msgstr "Site connected successfully!"
+
+msgid "Unauthorized"
+msgstr "Unauthorized"
+
+msgid "Site ID is required"
+msgstr "Site ID is required"
