@@ -1,0 +1,74 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: mess-chat 1.0.0\n"
+"Language: ru_RU\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Mess Chat"
+msgstr "Мессенджер Чат"
+
+msgid "Embed the Mess&Anger chat widget on your WordPress site. Visitors can message you without registration; you reply from the Mess&Anger app."
+msgstr "Встройте виджет чата Mess&Anger на ваш сайт WordPress. Посетители могут писать вам без регистрации; вы отвечаете из приложения Mess&Anger."
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "Show the chat widget on the public site."
+msgstr "Показывать виджет чата на публичном сайте."
+
+msgid "Site ID"
+msgstr "ID сайта"
+
+msgid "Your Mess&Anger site ID. Get it from the \"Сайты\" screen in the app."
+msgstr "Ваш ID сайта Mess&Anger. Получите его на экране «Сайты» в приложении."
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "English"
+msgstr "Английский"
+
+msgid "Русский"
+msgstr "Русский"
+
+msgid "Position"
+msgstr "Позиция"
+
+msgid "Bottom right"
+msgstr "Справа внизу"
+
+msgid "Bottom left"
+msgstr "Слева внизу"
+
+msgid "First-party mode"
+msgstr "Режим первого лица"
+
+msgid "Serve the widget loader from your own domain (helps bypass ad blockers)."
+msgstr "Обслуживать загрузчик виджета со своего собственного домена (помогает обойти блокировщики рекламы)."
+
+msgid "Requires server-side proxy configuration. See plugin documentation."
+msgstr "Требует настройки прокси на стороне сервера. См. документацию плагина."
+
+msgid "Подключить через Mess&Anger"
+msgstr "Подключить через Mess&Anger"
+
+msgid "Opens the Mess&Anger connection page. After confirmation in the app, you will return here with your Site ID filled in."
+msgstr "Открывает страницу подключения Mess&Anger. После подтверждения в приложении вы вернётесь сюда, и ID сайта будет заполнен автоматически."
+
+msgid "Widget snippet:"
+msgstr "Сниппет виджета:"
+
+msgid "Копировать сниппет"
+msgstr "Копировать сниппет"
+
+msgid "Save Changes"
+msgstr "Сохранить изменения"
+
+msgid "Site connected successfully!"
+msgstr "Сайт успешно подключён!"
+
+msgid "Unauthorized"
+msgstr "Не авторизовано"
+
+msgid "Site ID is required"
+msgstr "Требуется ID сайта"

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mess&Anger — Ваш ответ ждёт</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0b0f; color: #eaeaea; }
+  .wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+  .card { background: #151621; border: 1px solid #2a2a2a; border-radius: 20px; padding: 32px 24px; max-width: 420px; width: 100%; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  p { font-size: 14px; opacity: .8; margin-bottom: 24px; line-height: 1.5; }
+  .site-name { color: #ff4e18; font-weight: 600; }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 12px; text-decoration: none; }
+  .btn-primary { background: #ff4e18; color: #fff; }
+  .btn-primary:hover { background: #e03d12; }
+  .btn-outline { background: transparent; color: #eaeaea; border: 1px solid #3a3a3a; }
+  .btn-outline:hover { background: #1a1b21; }
+  .hint { font-size: 12px; opacity: .6; margin-top: 16px; }
+  .key-frag { font-family: monospace; font-size: 11px; opacity: .5; word-break: break-all; margin-top: 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1 id="c-title">Вас ждёт ответ от <span class="site-name" id="c-site">сайта</span></h1>
+    <p id="c-desc">Откройте чат в приложении Mess&Anger, чтобы продолжить переписку.</p>
+
+    <a href="#" class="btn btn-primary" id="c-btn-open">Открыть в приложении</a>
+    <a href="https://play.google.com/store/apps/details?id=com.messanger.e2e" class="btn btn-outline" id="c-btn-android">Скачать для Android</a>
+    <a href="https://apps.apple.com/app/mess-anger/id1234567890" class="btn btn-outline hidden" id="c-btn-ios">Скачать для iOS</a>
+
+    <div class="hint">Не хотите устанавливать приложение? <a href="#" id="c-btn-web" style="color:#ff4e18; text-decoration:none">Открыть в браузере</a></div>
+    <div id="c-key-frag" class="key-frag hidden">Ключ (фрагмент ссылки, не отправляется на сервер): <span id="c-key-val"></span></div>
+  </div>
+</div>
+<script>
+  (function(){
+    var params = new URLSearchParams(location.search);
+    var token = params.get('token');
+    var frag = location.hash;
+    var key = frag ? frag.slice(1) : '';
+
+    var $title = document.getElementById('c-title');
+    var $site = document.getElementById('c-site');
+    var $desc = document.getElementById('c-desc');
+    var $btnOpen = document.getElementById('c-btn-open');
+    var $btnAndroid = document.getElementById('c-btn-android');
+    var $btnIos = document.getElementById('c-btn-ios');
+    var $btnWeb = document.getElementById('c-btn-web');
+    var $keyFrag = document.getElementById('c-key-frag');
+    var $keyVal = document.getElementById('c-key-val');
+
+    // Show key fragment info (for debugging / manual copy)
+    if (key) {
+      $keyVal.textContent = key;
+      $keyFrag.classList.remove('hidden');
+    }
+
+    // Try to open app via custom scheme or universal link
+    function openApp() {
+      var siteName = $site.textContent || 'сайта';
+      var schemeUrl = 'nova://widget-handoff?token=' + encodeURIComponent(token) + (key ? '#' + encodeURIComponent(key) : '');
+      var uniUrl = 'https://mess.cvr.name/c/' + encodeURIComponent(token) + (key ? '#' + encodeURIComponent(key) : '');
+
+      // Try custom scheme first
+      location.href = schemeUrl;
+
+      // Fallback: show web option after a short delay
+      setTimeout(function() {
+        $btnWeb.classList.remove('hidden');
+        $desc.textContent = 'Если приложение не открылось, вы можете продолжить в браузере.';
+      }, 2000);
+    }
+
+    // Validate token with server (CORS may block, but we try)
+    async function load() {
+      if (!token) {
+        $desc.textContent = 'Неверная ссылка: токен не найден.';
+        $btnOpen.style.display = 'none';
+        return;
+      }
+      try {
+        var r = await fetch('/v1/guest/handoff/' + encodeURIComponent(token) + '/validate');
+        var j = await r.json();
+        if (j.ok && j.site_name) {
+          $site.textContent = j.site_name;
+          $title.textContent = 'Вас ждёт ответ от ' + j.site_name;
+        }
+      } catch (e) {
+        // CORS or server not available — still show generic page
+      }
+    }
+
+    $btnOpen.onclick = openApp;
+    load();
+  })();
+</script>
+</body>
+</html>
