@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
+import { installBot, pendingConsent, type InstalledBot } from '../lib/bots/runtime';
+import type { BotPermission } from '../lib/bots/types';
 import { usePremium } from '../hooks/usePremium';
 import { resetOnboarding } from '../lib/onboarding';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
@@ -41,13 +43,36 @@ import {
   readAppTheme,
 } from '../lib/ui/appearance';
 
+import type { BotSession } from '../lib/bots/session';
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenAnalytics?: () => void;
+  /** Bot session for Settings → Bots management (Phase B3). */
+  getBotSession?: () => BotSession;
 }
 
 const SETTINGS_STORAGE_KEY = 'nova_messenger_settings';
+
+const CLOUD_URL_STORAGE_KEY = 'nova_backup_cloud_url';
+
+function loadSavedCloudUrl(): string {
+  try {
+    return localStorage.getItem(CLOUD_URL_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveCloudUrl(url: string): void {
+  try {
+    if (url) localStorage.setItem(CLOUD_URL_STORAGE_KEY, url);
+    else localStorage.removeItem(CLOUD_URL_STORAGE_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 interface Prefs {
   notificationSound: boolean;
@@ -126,7 +151,12 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
   </button>
 );
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenAnalytics }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  onOpenAnalytics,
+  getBotSession,
+}) => {
   const { t } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
@@ -202,15 +232,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
 
-  useEffect(() => {
-    applyAppTheme(appTheme);
-    applyFontSize(prefs.fontSize);
-    applyAccentColor(ACCENT_COLORS[chatColorTheme]);
+  // --- Bots (Phase B3) ---
+  const [botsOpen, setBotsOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  const [installingBot, setInstallingBot] = useState<{ manifest: InstalledBot['manifest']; granted: BotPermission[] } | null>(null);
+  const [installError, setInstallError] = useState<string | null>(null);
+
+  const getBots = useCallback(() => {
+    const session = getBotSession?.();
+    return session ? session.listBots() : [];
+  }, [getBotSession]);
+
+  const toggleBot = useCallback(
+    (botId: string, enabled: boolean) => {
+      const session = getBotSession?.();
+      if (!session) return;
+      void session.setBotEnabled(botId, enabled).catch((err) => {
+        console.error('Failed to toggle bot:', err);
+      });
+    },
+    [getBotSession],
+  );
+
+  const uninstallBot = useCallback(
+    (botId: string) => {
+      const session = getBotSession?.();
+      if (!session) return;
+      void session.uninstallBot(botId).catch((err) => {
+        console.error('Failed to uninstall bot:', err);
+      });
+    },
+    [getBotSession],
+  );
+
+  const requestInstall = useCallback(
+    (manifest: import('../lib/bots/runtime').InstalledBot['manifest']) => {
+      const session = getBotSession?.();
+      if (!session) return;
+      const installed = session.listBots().find((b) => b.manifest.id === manifest.id);
+      if (installed) {
+        setInstallingBot(null);
+        return;
+      }
+      const requested = manifest.requestedPermissions.slice();
+      setInstallingBot({ manifest, granted: [] });
+      setInstallOpen(true);
+      setInstallError(null);
+      // Pre-select all requested permissions; user can toggle below.
+      setInstallingBot((prev) => (prev ? { ...prev, granted: requested } : null));
+    },
+    [getBotSession],
+  );
+
+  const confirmInstall = useCallback(async () => {
+    if (!installingBot) return;
+    const session = getBotSession?.();
+    if (!session) return;
+    setInstallError(null);
     try {
-      localStorage.setItem(APP_THEME_KEY, appTheme);
-      localStorage.setItem(FONT_SIZE_KEY, prefs.fontSize);
-    } catch { void 0; }
-  }, [appTheme, chatColorTheme, prefs.fontSize]);
+      await session.installBot(installingBot.manifest, installingBot.granted);
+      setInstallOpen(false);
+      setInstallingBot(null);
+    } catch (err) {
+      setInstallError(err instanceof Error ? err.message : 'Install failed');
+    }
+  }, [installingBot, getBotSession]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -224,11 +310,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         setShowSeedPhraseModal(false);
         return;
       }
+      if (botsOpen) {
+        setBotsOpen(false);
+        return;
+      }
+      if (installOpen) {
+        setInstallOpen(false);
+        return;
+      }
       onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, backupModal, showSeedPhraseModal, onClose]);
+  }, [isOpen, backupModal, showSeedPhraseModal, botsOpen, installOpen, onClose]);
+
+  useEffect(() => {
+    applyAppTheme(appTheme);
+    applyFontSize(prefs.fontSize);
+    applyAccentColor(ACCENT_COLORS[chatColorTheme]);
+    try {
+      localStorage.setItem(APP_THEME_KEY, appTheme);
+      localStorage.setItem(FONT_SIZE_KEY, prefs.fontSize);
+    } catch { void 0; }
+  }, [appTheme, chatColorTheme, prefs.fontSize]);
 
   useEffect(() => {
     if (!isOpen || !privacyPrefs.metadataMinimization) return;
@@ -327,6 +431,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       setBackupMsg('Cloud URL must start with http:// or https://');
       return;
     }
+    saveCloudUrl(cloudUrl.trim());
     setBackupBusy(true);
     setBackupMsg(null);
     try {
@@ -369,6 +474,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     setBackupBusy(true);
     setBackupMsg(null);
     try {
+      saveCloudUrl(cloudUrl.trim());
       const blob = await downloadEncryptedBackup(cloudTarget());
       setImportCloudBlob(blob);
       setImportFile(null);
@@ -394,6 +500,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     setBackupMsg(null);
     try {
       const text = await source.text();
+      if (!text.includes('NOVA_BACKUP')) {
+        throw new Error('This is not a .nova-backup file');
+      }
       await importEncryptedBackup(text, importPassphrase);
       setBackupMsg('Backup imported');
       setBackupModal(null);
@@ -1165,14 +1274,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
           <SectionHeader icon={<Database className="w-3.5 h-3.5" />} title={t('settings.dataBackup')} />
           <button
-            onClick={() => setBackupModal({ open: true, mode: 'export' })}
+            onClick={() => {
+              setCloudUrl(loadSavedCloudUrl());
+              setBackupModal({ open: true, mode: 'export' });
+            }}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"
           >
             <Download className="w-4 h-4" />
             <span>{t('settings.exportBackup')}</span>
           </button>
           <button
-            onClick={() => setBackupModal({ open: true, mode: 'import' })}
+            onClick={() => {
+              setCloudUrl(loadSavedCloudUrl());
+              setBackupModal({ open: true, mode: 'import' });
+            }}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"
           >
             <Upload className="w-4 h-4" />
@@ -1233,6 +1348,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             )}
           </div>
 
+          {/* Bots (Phase B3) */}
+          {getBotSession && (
+            <>
+              <SectionHeader icon={<ShieldAlert className="w-3.5 h-3.5" />} title={t('bot.title')} />
+              <button
+                type="button"
+                onClick={() => setBotsOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-white/90">{t('bot.title')}</p>
+                  <p className="text-[10.5px] text-[#8c919d] truncate">{t('bot.noBots')}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+              </button>
+            </>
+          )}
           <SectionHeader icon={<BarChart3 className="w-3.5 h-3.5" />} title={t('analytics.title')} />
           <button
             type="button"
@@ -1539,6 +1674,188 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
       {/* Terms / Privacy */}
       {legalDoc && <LegalModal docId={legalDoc} onClose={() => setLegalDoc(null)} />}
+
+      {/* Bots list (Phase B3) */}
+      {botsOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('bot.title')}</h3>
+              <button
+                onClick={() => setBotsOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              {getBots().length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-[#8c919d] text-[11px]">
+                  {t('bot.noBots')}
+                  <p className="mt-1 text-[9px]">{t('bot.installDesc')}</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {getBots().map((bot) => {
+                    const pending = pendingConsent(bot);
+                    return (
+                      <div
+                        key={bot.manifest.id}
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
+                            <Settings className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-semibold text-white truncate">{bot.manifest.name}</p>
+                            <p className="text-[10px] text-[#8c9198] truncate">
+                              @{bot.manifest.username} · {bot.enabled ? t('bot.granted') : t('bot.disabled')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {pending.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => requestInstall(bot.manifest)}
+                              className="px-2 py-1 rounded-lg bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[10px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95"
+                            >
+                              {t('bot.permissionsRequired')}
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => toggleBot(bot.manifest.id, !bot.enabled)}
+                                className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center transition cursor-pointer active:scale-95"
+                                title={bot.enabled ? t('bot.disable') : t('bot.enable')}
+                              >
+                                {bot.enabled ? <Ban className="w-3 h-3 text-red-400" /> : <Check className="w-3 h-3 text-emerald-400" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => uninstallBot(bot.manifest.id)}
+                                className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center transition cursor-pointer active:scale-95 text-red-400 hover:text-red-300"
+                                title={t('bot.revoke')}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {installError && (
+                <div className="text-[10px] text-red-400 px-1">{installError}</div>
+              )}
+            </div>
+            <div className="p-4 border-t border-white/5 flex gap-2">
+              <button
+                onClick={() => setBotsOpen(false)}
+                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+              >
+                {t('common.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Install bot consent (Phase B3) */}
+      {installOpen && installingBot && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('bot.install')}</h3>
+              <button
+                onClick={() => setInstallOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-[13px] font-semibold text-white">{installingBot.manifest.name}</p>
+                <p className="text-[10px] text-[#8c9198] mt-0.5">@{installingBot.manifest.username}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-white/70">{t('bot.permissionsRequired')}</p>
+                {installingBot.manifest.requestedPermissions.map((perm) => (
+                  <button
+                    key={perm}
+                    type="button"
+                    role="switch"
+                    aria-checked={installingBot.granted.includes(perm)}
+                    onClick={() => {
+                      setInstallingBot((prev) => {
+                        if (!prev) return null;
+                        const granted = prev.granted.includes(perm)
+                          ? prev.granted.filter((p) => p !== perm)
+                          : [...prev.granted, perm];
+                        return { ...prev, granted };
+                      });
+                    }}
+                    className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg border transition cursor-pointer ${
+                      installingBot.granted.includes(perm)
+                        ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)]'
+                        : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-[11px]">{perm}</span>
+                    {installingBot.granted.includes(perm) ? (
+                      <Check className="w-3 h-3 shrink-0" />
+                    ) : (
+                      <span className="w-3 h-3 shrink-0 opacity-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInstallOpen(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                >
+                  {t('bot.cancel')}
+                </button>
+                <button
+                  type="button"
+                  disabled={installingBot.granted.length === 0}
+                  onClick={confirmInstall}
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-white transition cursor-pointer ${
+                    installingBot.granted.length === 0
+                      ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
+                      : 'bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 hover:bg-[var(--nova-accent-color)]/20 active:scale-95'
+                  }`}
+                >
+                  {t('bot.grantAll')}
+                </button>
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/5 flex gap-2">
+              <button
+                onClick={() => setBotsOpen(false)}
+                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+              >
+                {t('common.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

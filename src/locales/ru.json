@@ -1054,6 +1054,23 @@
     "grantAll": "Grant all",
     "cancel": "Cancel",
     "commandMenu": "Bot commands",
-    "badge": "Bot"
+    "badge": "Bot",
+    "disable": "Disable",
+    "enable": "Enable"
+  },
+  "sites": {
+    "title": "Сайты",
+    "noSites": "Ещё нет сайтов",
+    "noSitesDesc": "Подключите первый сайт, чтобы получать сообщения от посетителей.",
+    "connectSite": "Подключить сайт",
+    "connectComingSoon": "Мастер подключения сайта появится в следующей версии.",
+    "noThreads": "Ещё нет переписок",
+    "noThreadsDesc": "Появится здесь, когда посетитель напишет вам.",
+    "guestChat": "Чат с гостем — {{site}}",
+    "online": "Онлайн",
+    "offline": "Владелец офлайн",
+    "ownerOffline": "Вы офлайн. Сообщения доставятся, когда вернётесь.",
+    "typeMessage": "Напишите сообщение…",
+    "send": "Отправить"
   }
 }

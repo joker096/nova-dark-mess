@@ -1060,6 +1060,23 @@
     "grantAll": "Grant all",
     "cancel": "Cancel",
     "commandMenu": "Bot commands",
-    "badge": "Bot"
+    "badge": "Bot",
+    "disable": "Disable",
+    "enable": "Enable"
+  },
+  "sites": {
+    "title": "Sites",
+    "noSites": "No sites yet",
+    "noSitesDesc": "Connect your first site to receive chat messages from visitors.",
+    "connectSite": "Connect site",
+    "connectComingSoon": "Connect site wizard is coming soon.",
+    "noThreads": "No conversations yet",
+    "noThreadsDesc": "Visitors will appear here when they write to you.",
+    "guestChat": "Guest chat — {{site}}",
+    "online": "Online",
+    "offline": "Owner offline",
+    "ownerOffline": "You are offline. Messages will be delivered when you return.",
+    "typeMessage": "Type a message…",
+    "send": "Send"
   }
 }

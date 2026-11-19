@@ -52,6 +52,9 @@ const SettingsModal = lazy(() =>
 const AnonymousMessengerScreen = lazy(() =>
   import('./components/AnonymousMessengerScreen').then((m) => ({ default: m.AnonymousMessengerScreen })),
 );
+const SitesScreen = lazy(() =>
+  import('./features/sites/SitesScreen').then((m) => ({ default: m.default })),
+);
 const CryptoCheckoutModal = lazy(() =>
   import('./components/CryptoCheckoutModal').then((m) => ({ default: m.CryptoCheckoutModal })),
 );
@@ -99,7 +102,7 @@ const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
 );
 
-type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous';
+type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous' | 'sites';
 
 export default function App() {
   const { t } = useLanguage();
@@ -562,6 +565,8 @@ export default function App() {
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
+      case 'sites':
+        return <SitesScreen onBack={goBack} />;
       case 'chat-katie':
       case 'chats':
       default: {
@@ -683,6 +688,8 @@ export default function App() {
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
+      case 'sites':
+        return <SitesScreen onBack={goBack} />;
       default:
         return null;
     }
@@ -806,12 +813,27 @@ export default function App() {
             aria-label={t('meshMap.title')}
           >
             <MapPin className={`w-5 h-5 ${currentScreen === 'mesh-map' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
-          {currentScreen === 'mesh-map' && (
-            <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
-          )}
-        </button>
+        {currentScreen === 'mesh-map' && (
+          <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
+        )}
+      </button>
 
-        </nav>
+      {/* Sites tab */}
+      <button
+        onClick={() => { setActiveChatId(''); setCurrentScreen('sites'); }}
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
+          currentScreen === 'sites'
+            ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
+            : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
+        }`}
+        title={t('sites.title')}
+      >
+        <MessageSquare className="w-5 h-5" />
+      {currentScreen === 'sites' && (
+        <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
+      )}
+    </button>
+  </nav>
 
         <div className="flex flex-col items-center gap-2">
           {/* Settings Trigger (language switch moved into Settings) */}
@@ -980,6 +1002,7 @@ export default function App() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           onOpenAnalytics={openAnalytics}
+          getBotSession={getBotSession}
         />
       </Suspense>
 
