@@ -292,7 +292,13 @@
     "e2eeDisappearing": "Disappearing messages",
     "e2eeDisappearingOff": "Off",
     "e2eeKeyChanged": "Security code changed",
-    "callbackToast": "{{text}}"
+    "callbackToast": "{{text}}",
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Code",
+      "strike": "Strikethrough"
+    }
   },
   "stories": {
     "title": "Сторіз",
@@ -755,6 +761,10 @@
     "hideSubscriberCount": "Приховати кількість підписників",
     "showSubscriberCount": "Показати кількість підписників",
     "unsubscribed": "Ви відписалися",
+    "notificationsEnabled": "Сповіщення увімкнено",
+    "notificationsDisabled": "Сповіщення вимкнено",
+    "enableNotifications": "Увімкнути сповіщення",
+    "disableNotifications": "Вимкнути сповіщення",
     "commentsCount": "{{count}} коментарів",
     "noComments": "Коментарів ще немає",
     "commentPlaceholder": "Написати коментар...",

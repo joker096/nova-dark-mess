@@ -292,7 +292,13 @@
     "e2eeDisappearing": "Исчезающие сообщения",
     "e2eeDisappearingOff": "Выкл.",
     "e2eeKeyChanged": "Код безопасности изменён",
-    "callbackToast": "{{text}}"
+    "callbackToast": "{{text}}",
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Code",
+      "strike": "Strikethrough"
+    }
   },
   "stories": {
     "title": "Истории",
