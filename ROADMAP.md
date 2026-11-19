@@ -360,12 +360,11 @@ servers, no paid services.
   on low-end Android.
   `createMediaCache()` in `src/lib/media/mediaCache.ts` is a bounded LRU cache
   for media blobs (thumbnails, previews, file data) with configurable entry and
-  byte caps. When either cap is exceeded, the least recently used entries are
-  evicted; a single oversized payload is always stored. Accessed entries are
-  promoted to MRU. 12 tests in `src/lib/media/mediaCache.test.ts` cover
-  store/retrieve/overwrite, LRU eviction, MRU promotion, remove/clear, and
-  single large entry handling. Remaining: image thumbnail generation and cold
-  start optimizations (code splitting, lazy module loading).
+  byte caps. `createThumbnail()` in `src/lib/media/imageThumbnail.ts` downscales
+  image sources to a bounded canvas preserving aspect ratio, never upscaling.
+  12 media cache tests + 10 thumbnail tests cover eviction, MRU promotion,
+  aspect-ratio preservation, and load-error handling. Remaining: cold start
+  optimizations (code splitting, lazy module loading).
 - [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
   user-run signaling/relay gateways, documented but never required.
 
