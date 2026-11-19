@@ -3138,39 +3138,44 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   <ShieldCheck className="w-3 h-3" />
                 </button>
 
-                {/* Voice Call Toggle Button */}
-                <button
-                  onClick={handleStartVoiceCall}
-                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    isVideoCallOpen && callMode === 'voice'
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
-                      : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                  }`}
-                  title={
-                    isVideoCallOpen && callMode === 'voice'
-                      ? 'Voice call in progress (click to view)'
-                      : `Start voice call with ${profile.name}`
-                  }
-                >
-                  <Phone className="w-3 h-3" />
-                </button>
+                {/* Hide call buttons when no real peer (demo peer = no WebRTC connection possible) */}
+                {!isDemoPeer(chatId) && (
+                  <>
+                    {/* Voice Call Toggle Button */}
+                    <button
+                      onClick={handleStartVoiceCall}
+                      className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                        isVideoCallOpen && callMode === 'voice'
+                          ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
+                          : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                      }`}
+                      title={
+                        isVideoCallOpen && callMode === 'voice'
+                          ? 'Voice call in progress (click to view)'
+                          : `Start voice call with ${profile.name}`
+                      }
+                    >
+                      <Phone className="w-3 h-3" />
+                    </button>
 
-                {/* Video Call Toggle Button */}
-                <button
-                  onClick={handleStartVideoCall}
-                  className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                    isVideoCallOpen && callMode === 'video'
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
-                      : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
-                  }`}
-                  title={
-                    isVideoCallOpen && callMode === 'video'
-                      ? 'Video call in progress (click to view)'
-                      : `Start video call with ${profile.name}`
-                  }
-                >
-                  <Video className="w-3 h-3" />
-                </button>
+                    {/* Video Call Toggle Button */}
+                    <button
+                      onClick={handleStartVideoCall}
+                      className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
+                        isVideoCallOpen && callMode === 'video'
+                          ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
+                          : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                      }`}
+                      title={
+                        isVideoCallOpen && callMode === 'video'
+                          ? 'Video call in progress (click to view)'
+                          : `Start video call with ${profile.name}`
+                      }
+                    >
+                      <Video className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
 
                 {/* Pinned Messages Header Button (only when pinned exist) */}
                 {pinnedMessages.length > 0 && (
