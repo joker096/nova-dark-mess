@@ -16,9 +16,14 @@ export const LocationBubble: React.FC<LocationBubbleProps> = ({ location }) => {
   const isLiveActive = location.isLive && (!location.liveUntil || location.liveUntil > Date.now());
 
   return (
-    <div className="w-full min-w-[240px] max-w-sm select-none">
+    <div className="w-full min-w-0 max-w-sm select-none">
       {/* Map Snapshot Visual Canvas */}
-      <div className="relative h-32 rounded-xl overflow-hidden bg-[#13141f] border border-white/10 mb-2 group">
+      {/* A map is a dark surface in both themes: opt out of the light-theme
+          colour remap so the vector streets and the marker stay readable. */}
+      <div
+        data-theme-preserve="dark"
+        className="relative h-32 rounded-xl overflow-hidden bg-[#13141f] border border-white/10 mb-2 group"
+      >
         {/* Vector Grid & Map Lines */}
         <div className="absolute inset-0 opacity-25 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:12px_12px]" />
         <svg className="absolute inset-0 w-full h-full opacity-35" xmlns="http://www.w3.org/2000/svg">
@@ -90,7 +95,7 @@ export const LocationBubble: React.FC<LocationBubbleProps> = ({ location }) => {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition shrink-0 cursor-pointer"
+          className="p-1.5 rounded-lg border border-[color:var(--nova-border-color,rgba(255,255,255,0.15))] bg-[color:var(--nova-surface-raised,rgba(255,255,255,0.1))] text-[color:var(--nova-text-primary,#ffffff)] hover:brightness-110 transition shrink-0 cursor-pointer"
           title={t('location.openInMaps', 'Open in Maps')}
         >
           <ExternalLink className="w-3.5 h-3.5" />
