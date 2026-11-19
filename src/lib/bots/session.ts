@@ -12,6 +12,7 @@ import {
   BotRuntime,
   InMemoryBotStorage,
   type BotRegistry,
+  type BotStorage,
   type InstalledBot,
   type MessageSink,
   NOVA_BOTS,
@@ -19,8 +20,7 @@ import {
   setBotEnabled,
   uninstallBot,
 } from './runtime';
-import type { BotPermission } from './types';
-import type { BotOutgoingMessage } from './types';
+import type { BotPermission, BotOutgoingMessage, BotUpdate, BotCommand } from './types';
 import { echoBotManifest } from '../../../examples/bots/echo/manifest';
 import { novafatherManifest } from '../../../examples/bots/novafather/manifest';
 
@@ -46,11 +46,29 @@ class LocalMessageSink implements MessageSink {
 }
 
 export class BotSession {
-  private readonly storage = new InMemoryBotStorage();
-  private readonly sink = new LocalMessageSink();
+  private storage: BotStorage = new InMemoryBotStorage();
+  private sink: MessageSink = new LocalMessageSink();
   private registry: BotRegistry = { bots: [] };
   private runtimes = new Map<string, BotRuntime>();
   private ready: Promise<void> | null = null;
+
+  constructor(
+    /** Optional storage back-end. Defaults to in-memory; switch to encrypted via switchStorage() when the vault is ready. */
+    storage?: BotStorage,
+    /** Optional sink override. Defaults to LocalMessageSink (no-op). */
+    sink?: MessageSink,
+  ) {
+    if (storage) this.storage = storage;
+    if (sink) this.sink = sink;
+  }
+
+  /** Switch the registry storage (e.g. from in-memory to the encrypted vault) once it becomes available. */
+  public switchStorage(storage: BotStorage): void {
+    this.storage = storage;
+    this.runtimes = new Map(
+      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
+    );
+  }
 
   /** Idempotent session init: installs the dev fixture bot once. */
   public async ensureReady(): Promise<void> {
@@ -102,6 +120,12 @@ export class BotSession {
     return this.registry.bots.some((b) => b.manifest.id === botId);
   }
 
+  /** Commands advertised by the bot, used by the slash-command menu in the composer. */
+  public getBotCommands(botId: string): BotCommand[] {
+    const bot = this.registry.bots.find((b) => b.manifest.id === botId);
+    return bot?.manifest.commands ?? [];
+  }
+
   /**
    * Dispatch a callback_query from ChatScreen. Returns true when a bot
    * runtime accepted the update.
@@ -121,6 +145,35 @@ export class BotSession {
       },
     });
     return true;
+  }
+
+  /**
+   * Deliver an incoming update to a bot runtime. Returns true when a bot
+   * runtime accepted the update. Accepts any BotUpdate (message, inline_query,
+   * callback_query, ...).
+   */
+  public deliverUpdate(botId: string, update: BotUpdate): boolean {
+    const runtime = this.runtimes.get(botId);
+    if (!runtime) return false;
+    void runtime.deliverUpdate(update);
+    return true;
+  }
+
+  /** Deliver an incoming message to a bot runtime (back-compat alias). */
+  public deliverMessage(botId: string, update: { type: 'message'; payload: NonNullable<BotUpdate['payload']> }): boolean {
+    return this.deliverUpdate(botId, update as BotUpdate);
+  }
+
+  /**
+   * Set a custom message sink for bot output (used by ChatScreen to capture
+   * bot responses in the local UI before they're sent via the encrypted sink).
+   */
+  public setMessageSink(sink: MessageSink): void {
+    this.sink = sink;
+    // Re-create runtimes with the new sink
+    this.runtimes = new Map(
+      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
+    );
   }
 
   /** Install a bot with explicit per-permission consent (Phase B3). */
@@ -150,4 +203,8 @@ export class BotSession {
     this.runtimes.delete(botId);
   }
 }
+
+/** App-wide bot session singleton (one per app lifetime). NovaFather and other
+ * system bots use it for administrative operations (install, setGatewayUrl, …). */
+export const botSession = new BotSession();
 

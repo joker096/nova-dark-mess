@@ -39,6 +39,7 @@ interface WebhookRegistration {
 
 interface PendingUpdate {
   updateId: number;
+  update: { update_id: number; message: { chat: { id: string }; text: string; date: number } };
   resolve: (value: { update_id: number; message: { chat: { id: string }; text: string } }) => void;
   reject: (err: Error) => void;
 }
@@ -187,7 +188,7 @@ export class BotHTTPGateway {
     const pending = this.longPoll;
     if (pending && pending.updateId >= offset) {
       this.longPoll = null;
-      this.sendJson(res, 200, { ok: true, result: [{ update_id: pending.updateId }] });
+      this.sendJson(res, 200, { ok: true, result: [pending.update] });
       return;
     }
 
@@ -208,19 +209,51 @@ export class BotHTTPGateway {
       const p = this.longPoll;
       if (p && p.updateId >= offset) {
         this.longPoll = null;
-        this.sendJson(res, 200, { ok: true, result: [{ update_id: p.updateId }] });
+        this.sendJson(res, 200, { ok: true, result: [p.update] });
         return;
       }
     }
     this.sendJson(res, 200, { ok: true, result: [] });
   }
 
-  /** Called by the gateway when an incoming message arrives (feeds getUpdates). */
+  /** Called by the gateway when an incoming message arrives (feeds getUpdates + webhook). */
   public enqueueIncoming(chatId: string, text: string): void {
     this.updateId += 1;
-    const pending: PendingUpdate = { updateId: this.updateId, resolve: () => void 0, reject: () => void 0 };
+    const update = {
+      update_id: this.updateId,
+      message: { chat: { id: chatId }, text, date: Math.floor(Date.now() / 1000) },
+    };
+    const pending: PendingUpdate = { updateId: this.updateId, update, resolve: () => void 0, reject: () => void 0 };
     this.longPoll = pending;
-    pending.resolve({ update_id: pending.updateId, message: { chat: { id: chatId }, text } });
+    pending.resolve(update);
+    // Fire-and-forget webhook delivery (does not block getUpdates long-poll).
+    if (this.webhook) {
+      void this.deliverWebhook(update);
+    }
+  }
+
+  /** Best-effort webhook delivery with HMAC-SHA256 signature. Never throws. */
+  private async deliverWebhook(update: { update_id: number; message: { chat: { id: string }; text: string; date: number } }): Promise<void> {
+    const webhook = this.webhook;
+    if (!webhook) return;
+    const body = JSON.stringify(update);
+    const signature = crypto
+      .createHmac('sha256', webhook.secretToken ?? this.options.webhookSecret)
+      .update(body)
+      .digest('hex');
+    try {
+      await fetch(webhook.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Hub-Signature-256': `sha256=${signature}`,
+          ...(webhook.secretToken ? { 'X-Telegram-Bot-Api-Secret-Token': webhook.secretToken } : {}),
+        },
+        body,
+      });
+    } catch {
+      // Webhook delivery is best-effort; a down webhook must not break getUpdates.
+    }
   }
 
   private async setWebhookHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {

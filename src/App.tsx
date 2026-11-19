@@ -19,7 +19,10 @@ import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
-import { BotSession, NOVA_BOTS } from './lib/bots/session';
+import { BotSession } from './lib/bots/session';
+import { NOVA_BOTS, EncryptedBotStorage } from './lib/bots/runtime';
+import { dbInstance } from './lib/storage/db';
+import { botSession } from './lib/bots/session';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -107,7 +110,7 @@ type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'ana
 export default function App() {
   const { t } = useLanguage();
   const { account } = useAccount();
-  const { isLocked, pinHash, unlock, identity, isInitialized, setP2PManager } = useSecurity();
+  const { isLocked, pinHash, unlock, identity, isInitialized, setP2PManager, peerFingerprintsByChat } = useSecurity();
   const premium = isPremium();
 
   // Wire the real P2P transport once the local identity is available. The
@@ -123,7 +126,33 @@ export default function App() {
     const start = async () => {
       signaling = new P2PSignalingClient();
       relay = new MeshRelay(identity.fingerprint);
-      manager = new P2PManager({ identity, signaling, relay });
+      manager = new P2PManager({ 
+        identity, 
+        signaling, 
+        relay,
+        // B4 (L2 gateway transport): route incoming P2P/relay messages to bots
+        // so they receive updates even when the chat screen is not mounted.
+        onMessage: (fromFingerprint, text) => {
+          const chatId = Object.entries(peerFingerprintsRef.current)
+            .find(([, fp]) => fp === fromFingerprint)?.[0];
+          if (!chatId) return;
+          const session = getBotSession();
+          if (!session.isBot(chatId)) return;
+          void session.deliverMessage(chatId, {
+            type: 'message',
+            payload: {
+              messageId: 'p2p_' + Date.now(),
+              chat: { id: chatId, kind: 'direct' },
+              text,
+              isCommand: text.startsWith('/'),
+              command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
+              mentionsBot: false,
+              from: 'other',
+              timestamp: Date.now(),
+            },
+          });
+        },
+      });
       await manager.initialize();
       setP2PManager(manager);
     };
@@ -179,13 +208,35 @@ export default function App() {
   const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
 
   // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
-  const botSessionRef = useRef<BotSession | null>(null);
+  const botSessionRef = useRef<typeof botSession | null>(null);
+  // Keep the latest fingerprint→chatId map so P2PManager.onMessage can route
+  // incoming messages to the right bot without recreating the transport.
+  const peerFingerprintsRef = useRef(peerFingerprintsByChat);
+  peerFingerprintsRef.current = peerFingerprintsByChat;
   const getBotSession = useCallback(() => {
-    if (!botSessionRef.current) botSessionRef.current = new BotSession();
+    if (!botSessionRef.current) botSessionRef.current = botSession;
     return botSessionRef.current;
   }, []);
   useEffect(() => {
     void getBotSession().ensureReady();
+  }, [getBotSession]);
+
+  // Switch bot registry to the encrypted vault once it is ready (SecurityContext
+  // initializes dbInstance with the user's master key). Until then the registry
+  // lives in memory and is lost on reload — acceptable for dev fixtures; real
+  // bots installed via Phase B3 UI will persist once the vault is up.
+  useEffect(() => {
+    let cancelled = false;
+    const waitForVault = async () => {
+      while (!dbInstance.isReady() && !cancelled) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (cancelled) return;
+      await getBotSession().ensureReady();
+      getBotSession().switchStorage(new EncryptedBotStorage(dbInstance));
+    };
+    void waitForVault();
+    return () => { cancelled = true; };
   }, [getBotSession]);
   const handleBotCallback = useCallback(
     (botId: string, chatId: string, messageId: string, callbackData: string) =>
@@ -581,6 +632,7 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
+            getBotSession={getBotSession}
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
@@ -610,6 +662,7 @@ export default function App() {
             stories={stories}
             channels={channels}
             localFingerprint={identity?.fingerprint}
+            getBotSession={getBotSession}
             now={now}
             onCreateStory={createStory}
             onDeleteStory={deleteStory}
@@ -629,6 +682,7 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
+            getBotSession={getBotSession}
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
@@ -900,6 +954,7 @@ export default function App() {
           stories={stories}
           channels={channels}
           localFingerprint={identity?.fingerprint}
+          getBotSession={getBotSession}
           now={now}
           onCreateStory={createStory}
           onDeleteStory={deleteStory}

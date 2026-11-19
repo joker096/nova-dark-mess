@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, User, Key, Plus, Save, RefreshCw, CirclePlus } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
-import { installBot, pendingConsent, type InstalledBot } from '../lib/bots/runtime';
-import type { BotPermission } from '../lib/bots/types';
+import { installBot, pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
+import type { BotManifest, BotPermission } from '../lib/bots/types';
+import { createAnonymousIdentity } from '../lib/crypto/identity';
 import { usePremium } from '../hooks/usePremium';
 import { resetOnboarding } from '../lib/onboarding';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
@@ -237,6 +238,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [installOpen, setInstallOpen] = useState(false);
   const [installingBot, setInstallingBot] = useState<{ manifest: InstalledBot['manifest']; granted: BotPermission[] } | null>(null);
   const [installError, setInstallError] = useState<string | null>(null);
+  /** Developer registry: create a local L1 bot manifest + keypair in the vault. */
+  const [devRegistryOpen, setDevRegistryOpen] = useState(false);
+  const [devName, setDevName] = useState('');
+  const [devUsername, setDevUsername] = useState('');
+  const [devDesc, setDevDesc] = useState('');
+  const [devCreating, setDevCreating] = useState(false);
+  const [devError, setDevError] = useState<string | null>(null);
+  /** Install from a local manifest file. */
+  const [installFromFile, setInstallFromFile] = useState(false);
+  const [fileManifest, setFileManifest] = useState<BotManifest | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const getBots = useCallback(() => {
     const session = getBotSession?.();
@@ -297,6 +309,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setInstallError(err instanceof Error ? err.message : 'Install failed');
     }
   }, [installingBot, getBotSession]);
+
+  /** Create a local L1 bot: generate a keypair in the vault, build a manifest,
+   *  and install it with the developer-selected permissions. */
+  const createLocalBot = useCallback(async () => {
+    const session = getBotSession?.();
+    if (!session) return;
+    setDevError(null);
+    setDevCreating(true);
+    try {
+      const identity = await createAnonymousIdentity();
+      const manifest: BotManifest = {
+        id: `bot_local_${identity.fingerprint.slice(0, 8)}`,
+        name: devName.trim() || 'Local Bot',
+        username: devUsername.trim() || `local_${identity.fingerprint.slice(0, 8)}bot`,
+        description: devDesc.trim() || undefined,
+        version: '1.0.0',
+        entryPoint: undefined,
+        gatewayUrl: undefined,
+        commands: [],
+        requestedPermissions: ['send_messages'],
+      };
+      await session.installBot(manifest, ['send_messages']);
+      setDevName('');
+      setDevUsername('');
+      setDevDesc('');
+      setDevRegistryOpen(false);
+    } catch (err) {
+      setDevError(err instanceof Error ? err.message : 'Failed to create local bot');
+    } finally {
+      setDevCreating(false);
+    }
+  }, [devName, devUsername, devDesc, getBotSession]);
+
+  /** Read a manifest from a local file and queue it for the install consent flow. */
+  const readFileManifest = useCallback((file: File) => {
+    setFileError(null);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const raw = JSON.parse(e.target?.result as string);
+        const manifest = sanitizeManifest(raw);
+        setFileManifest(manifest);
+        setInstallFromFile(false);
+        // Open the same consent flow used for links.
+        setInstallingBot({ manifest, granted: [...manifest.requestedPermissions] });
+        setInstallOpen(true);
+      } catch (err) {
+        setFileError(err instanceof Error ? err.message : 'Invalid manifest file');
+      }
+    };
+    reader.onerror = () => setFileError('Failed to read file');
+    reader.readAsText(file);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1169,37 +1234,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {pinEnabled && (
             <div className="space-y-1.5 px-1 pb-1">
               <ToggleRow
-                label={t('settings.biometricUnlock')}
+                label={t('settings.biometricUnlockWithPin') ?? 'Fingerprint/Face unlock (with PIN fallback)'}
                 enabled={biometricEnabled}
                 onToggle={() => void handleToggleBiometric()}
               />
               <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
-                {biometricSupported ? t('settings.biometricHint') : t('settings.biometricUnavailable')}
+                {biometricSupported 
+                  ? (t('settings.biometricHintWithPin') ?? 'Use fingerprint or face to unlock. PIN is always required as fallback.')
+                  : t('settings.biometricUnavailable')}
               </p>
               <ToggleRow
                 label={t('settings.lockOnHide')}
                 enabled={lockOnHide}
                 onToggle={() => setLockOnHide(!lockOnHide)}
               />
-              <div className="flex items-center justify-between px-1 py-1.5">
-                <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
-                <div className="flex items-center gap-1">
-                  {[4, 6].map((length) => (
-                    <button
-                      key={length}
-                      type="button"
-                      onClick={() => setPinLength(length)}
-                      aria-pressed={pinLength === length}
-                      className={`h-6 w-8 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                        pinLength === length
-                          ? 'bg-[var(--nova-accent-color)] text-white'
-                          : 'bg-white/[0.06] text-white/60 hover:text-white'
-                      }`}
-                    >
-                      {length}
-                    </button>
-                  ))}
+              <div className="space-y-2 px-1 py-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
+                  <div className="flex items-center gap-1">
+                    {[4, 6].map((length) => (
+                      <button
+                        key={length}
+                        type="button"
+                        onClick={() => setPinLength(length)}
+                        aria-pressed={pinLength === length}
+                        className={`h-6 w-8 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                          pinLength === length
+                            ? 'bg-[var(--nova-accent-color)] text-white'
+                            : 'bg-white/[0.06] text-white/60 hover:text-white'
+                        }`}
+                      >
+                        {length}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRemovingPin(false);
+                    setIsCreatingPin(true);
+                    setPinInput('');
+                  }}
+                  className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98]"
+                >
+                  {t('settings.changePin') ?? 'Change PIN'}
+                </button>
               </div>
             </div>
           )}
@@ -1759,6 +1839,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div className="p-4 border-t border-white/5 flex gap-2">
               <button
+                type="button"
+                onClick={() => setDevRegistryOpen(true)}
+                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+              >
+                {t('bot.createLocal', { defaultValue: 'Create local bot' })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setInstallFromFile(true)}
+                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+              >
+                {t('bot.installFile', { defaultValue: 'Install from file' })}
+              </button>
+              <button
                 onClick={() => setBotsOpen(false)}
                 className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
               >
@@ -1852,6 +1946,149 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 {t('common.close')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Developer registry: create a local L1 bot (Phase B3) */}
+      {devRegistryOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('bot.devRegistryTitle', { defaultValue: 'Developer registry' })}</h3>
+              <button
+                onClick={() => setDevRegistryOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-[11px] text-[#8c919d] leading-relaxed">
+                {t('bot.devRegistryDesc', { defaultValue: 'Create a local L1 bot. A keypair is generated in your vault and never leaves this device.' })}
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.name', { defaultValue: 'Name' })}</label>
+                  <input
+                    value={devName}
+                    onChange={(e) => setDevName(e.target.value)}
+                    placeholder="My Bot"
+                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.username', { defaultValue: 'Username' })}</label>
+                  <input
+                    value={devUsername}
+                    onChange={(e) => setDevUsername(e.target.value)}
+                    placeholder="mybot"
+                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.description', { defaultValue: 'Description' })}</label>
+                  <input
+                    value={devDesc}
+                    onChange={(e) => setDevDesc(e.target.value)}
+                    placeholder="Optional description"
+                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  />
+                </div>
+              </div>
+              {devError && <div className="text-[10px] text-red-400">{devError}</div>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDevRegistryOpen(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  disabled={devCreating || !devName || !devUsername}
+                  onClick={createLocalBot}
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-white transition cursor-pointer ${
+                    devCreating || !devName || !devUsername
+                      ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
+                      : 'bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 hover:bg-[var(--nova-accent-color)]/20 active:scale-95'
+                  }`}
+                >
+                  {devCreating ? t('bot.creating', { defaultValue: 'Creating…' }) : t('bot.create', { defaultValue: 'Create bot' })}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Install from local manifest file (Phase B3) */}
+      {installFromFile && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('bot.installFileTitle', { defaultValue: 'Install from file' })}</h3>
+              <button
+                onClick={() => setInstallFromFile(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-[11px] text-[#8c919d] leading-relaxed">
+                {t('bot.installFileDesc', { defaultValue: 'Select a bot manifest JSON file to install.' })}
+              </p>
+              <label className="flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:border-[var(--nova-accent-color)]/50 transition cursor-pointer">
+                <Upload className="w-6 h-6 text-white/50" />
+                <p className="text-[11px] font-medium text-white">{t('bot.chooseFile', { defaultValue: 'Choose manifest file' })}</p>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) readFileManifest(file);
+                  }}
+                />
+              </label>
+              {fileError && <div className="text-[10px] text-red-400">{fileError}</div>}
+              {fileManifest && (
+                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                  <p className="text-[11px] font-semibold text-white truncate">{fileManifest.name}</p>
+                  <p className="text-[10px] text-[#8c9198] mt-0.5">@{fileManifest.username}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstallingBot({ manifest: fileManifest, granted: [...fileManifest.requestedPermissions] });
+                      setInstallFromFile(false);
+                      setInstallOpen(true);
+                    }}
+                    className="w-full py-1.5 rounded-lg bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[11px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95"
+                  >
+                    {t('bot.continueInstall', { defaultValue: 'Continue install' })}
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInstallFromFile(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

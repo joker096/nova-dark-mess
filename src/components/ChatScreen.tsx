@@ -57,6 +57,9 @@ import {
 } from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import type { BotCommand } from '../lib/bots/types';
+import { BotSession } from '../lib/bots/session';
+import type { MessageSink } from '../lib/bots/runtime';
+import { HttpMessageSink, makeBotSink } from '../lib/bots/httpSink';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
@@ -68,6 +71,7 @@ import { SharedMediaSection } from './SharedMediaSection';
 import { FileSelectionModal } from './FileSelectionModal';
 import { PollCreateModal } from './PollCreateModal';
 import { MessageInlineKeyboard } from './MessageInlineKeyboard';
+import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
@@ -154,6 +158,11 @@ interface ChatScreenProps {
    * true when the update was dispatched to an installed bot runtime.
    */
   onBotCallback?: (botId: string, chatId: string, messageId: string, callbackData: string) => boolean;
+  /**
+   * Accessor to the app-wide BotSession, so the chat can deliver incoming
+   * messages to the bot runtime (docs/bots-roadmap.md §B1/B4).
+   */
+  getBotSession?: () => BotSession;
 }
 
 interface ScheduledMessageItem {
@@ -192,6 +201,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   pendingBotStart,
   onBotStartSent,
   onBotCallback,
+  getBotSession,
 }) => {
   const { t } = useLanguage();
   const { encryptAndSendMessage, checkPeerKey, identity } = useSecurity();
@@ -199,6 +209,74 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
   const localFingerprint = identity?.fingerprint ?? 'nova_pk_local_group';
+
+  // Wire the bot session's MessageSink into this chat so bot outgoing
+  // messages are rendered in the transcript (docs/bots-roadmap.md §B4).
+  // Local (L1) bots use a local sink that renders into the transcript.
+  // L2/L3 bots (manifest.gatewayUrl set via NovaFather /setgateway) use an
+  // HttpMessageSink that forwards send/edit/del/answerCallback to the bot's
+  // gateway over HTTP.
+  useEffect(() => {
+    if (!getBotSession || !botId) return;
+    const session = getBotSession();
+    const bot = session.listBots().find((b) => b.manifest.id === botId);
+    const gatewayUrl = bot?.manifest.gatewayUrl;
+    const sink: MessageSink = gatewayUrl
+      ? new HttpMessageSink({ gatewayUrl })
+      : {
+          send: async (msg) => {
+            if (msg.chat.id !== chatId) return;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: msg.messageId,
+                senderId: 'other',
+                text: msg.text,
+                time: new Date(msg.timestamp).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+                createdAt: msg.timestamp,
+                isRead: true,
+                botId,
+                system: false,
+              } as ChatMessage,
+            ]);
+            playSound('incoming');
+            vibrate();
+            // Bot has responded: stop the typing indicator after a brief
+            // pause so the "typing" bubble is visible to the user.
+            setTimeout(() => setBotTyping(false), 800);
+          },
+          edit: async (edit) => {
+            let applied = false;
+            setMessages((prev) => {
+              applied = prev.some((m) => m.id === edit.messageId && m.botId === botId);
+              return prev.map((m) =>
+                m.id === edit.messageId && m.botId === botId
+                  ? { ...m, text: edit.text, editedAt: Date.now() }
+                  : m
+              );
+            });
+            return applied;
+          },
+          del: async (_chatId, messageId) => {
+            let applied = false;
+            setMessages((prev) => {
+              applied = prev.some((m) => m.id === messageId && m.botId === botId);
+              return prev.map((m) =>
+                m.id === messageId && m.botId === botId
+                  ? { ...m, deleted: true, deletedForEveryone: true }
+                  : m
+              );
+            });
+            return applied;
+          },
+          answerCallback: async () => {},
+        };
+    session.setMessageSink(sink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getBotSession, chatId, botId]);
   const [fileTransfer, setFileTransfer] = useState<{
     id: string;
     fileName: string;
@@ -255,6 +333,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
   const [peerFingerprint, setPeerFingerprint] = useState<string | null>(null);
   const [loadedMessagesChatId, setLoadedMessagesChatId] = useState(chatId);
+
+  /** Mini App currently opened from a `web_app` button (Phase B7). */
+  const [openMiniApp, setOpenMiniApp] = useState<{ botId: string; webAppUrl: string } | null>(null);
+
+  /** Open a bot's Mini App from an inline `web_app` button. */
+  const handleOpenWebApp = useCallback((bId: string, webAppUrl: string) => {
+    setOpenMiniApp({ botId: bId, webAppUrl });
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -321,6 +407,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               isRead: true,
             },
           ]);
+          // Deliver the incoming message to the bot runtime, if this is a bot chat.
+          if (botId && getBotSession) {
+            void getBotSession().deliverMessage(botId, {
+              type: 'message',
+              payload: {
+                messageId: 'm-' + Date.now(),
+                chat: { id: chatId, kind: 'direct' },
+                text,
+                isCommand: text.startsWith('/'),
+                command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
+                mentionsBot: false,
+                from: 'other',
+                timestamp: Date.now(),
+              },
+            });
+          }
         },
         onRoles: (_sender, roles) => {
           setGroupRoles((current) => mergeGroupRoles(chatId, current, roles));
@@ -2500,6 +2602,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     setMessages((prev) => [...prev, newMessage]);
     playSound('outgoing');
+    // Deliver the user's message to the bot runtime, if this is a bot chat.
+    if (botId && text && getBotSession) {
+      // Show "bot typing" while the bot processes the message.
+      setBotTyping(true);
+      void getBotSession().deliverMessage(botId, {
+        type: 'message',
+        payload: {
+          messageId: newMessage.id,
+          chat: { id: chatId, kind: 'direct' },
+          text,
+          isCommand: text.startsWith('/'),
+          command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
+          mentionsBot: false,
+          from: 'me',
+          timestamp: Date.now(),
+        },
+      });
+    }
     if (text) {
       const promise = isGroupChat
         ? groupManager.sendText(text)
@@ -4398,6 +4518,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       botId={msg.botId}
                       messageId={msg.id}
                       onCallback={handleBotCallback}
+                      onOpenWebApp={handleOpenWebApp}
                     />
                   )}
                 </div>
@@ -5636,6 +5757,39 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             )}
           </div>,
           document.body,
+        )}
+        {/* Mini App overlay (Phase B7) — opens on top of the chat when a `web_app` button is pressed. */}
+        {openMiniApp && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0c10]/95 backdrop-blur-sm">
+            <MiniAppIframe
+              botId={openMiniApp.botId}
+              webAppUrl={openMiniApp.webAppUrl}
+              userId="me"
+              secret={openMiniApp.botId}
+              onClose={() => setOpenMiniApp(null)}
+              onInlineQuery={(query) => {
+                setOpenMiniApp(null);
+                // Route inline_query to the bot runtime if a session is wired.
+                if (getBotSession) {
+                  const session = getBotSession();
+                  void session.deliverUpdate(openMiniApp.botId, {
+                    type: 'inline_query',
+                    payload: {
+                      id: `iq_${Date.now()}`,
+                      chat: { id: chatId, kind: 'direct' },
+                      query,
+                      offset: '',
+                      from: 'me',
+                      timestamp: Date.now(),
+                    },
+                  });
+                }
+              }}
+              onMainButtonClick={() => {
+                appendSystemMessage(`Mini App: ${openMiniApp.botId} main button pressed`);
+              }}
+            />
+          </div>
         )}
     </div>
   );

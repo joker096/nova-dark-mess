@@ -32,7 +32,7 @@ const securityMock = vi.hoisted(() => ({
 
 const cloudMock = vi.hoisted(() => ({
   uploadEncryptedBackup: vi.fn(async () => {}),
-  downloadEncryptedBackup: vi.fn(async () => new Blob(['cloud-backup'])),
+  downloadEncryptedBackup: vi.fn(async () => new Blob(['NOVA_BACKUP cloud-backup'])),
 }));
 
 const premiumMock = vi.hoisted(() => ({
@@ -435,7 +435,7 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
     await waitFor(() =>
-      expect(securityMock.importEncryptedBackup).toHaveBeenCalledWith('cloud-backup', 'restore-pass'),
+      expect(securityMock.importEncryptedBackup).toHaveBeenCalledWith('NOVA_BACKUP cloud-backup', 'restore-pass'),
     );
   });
 

@@ -4,49 +4,30 @@
 ### ./
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| 893e8348-8fa9-4da2-b31d-b35e87d15d29 | ✅ change | Fix roadmap F0 complete, F1 interim done | 2026-11-18 |
+| 758eab61-0668-4999-9396-37ad46345eb2 | 🔵 discovery | Mess&Anger repo: answers to spec open questions | 2026-11-19 |
 
-**Key concepts:** fix-roadmap, F0, F1, anonymity, ESLint, npm-audit, i18n, demo-label, packet-profiles
+**Key concepts:** widget-spec, open-questions, backend, p2p, encryption, deep-link, platforms
 
-### docs/
+### src\lib/
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| 893e8348-8fa9-4da2-b31d-b35e87d15d29 | ✅ change | Fix roadmap F0 complete, F1 interim done | 2026-11-18 |
-| 5164e23a-2c78-45b2-8d2b-0c020ed13f43 | ✅ change | Anonymity roadmap: Phase I Tor check + measured latency | 2026-11-18 |
-| 3ac53e68-88c3-491d-b44d-051515f5143e | ✅ change | Anonymity roadmap: Phase H scheduled rotation + failure counters persisted | 2026-11-18 |
+| 758eab61-0668-4999-9396-37ad46345eb2 | 🔵 discovery | Mess&Anger repo: answers to spec open questions | 2026-11-19 |
 
-**Key concepts:** fix-roadmap, F0, F1, anonymity, ESLint, npm-audit, i18n, demo-label, packet-profiles, tor
+**Key concepts:** widget-spec, open-questions, backend, p2p, encryption, deep-link, platforms
 
-### src-tauri\src/
+### src\lib\crypto/
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| 5164e23a-2c78-45b2-8d2b-0c020ed13f43 | ✅ change | Anonymity roadmap: Phase I Tor check + measured latency | 2026-11-18 |
+| 758eab61-0668-4999-9396-37ad46345eb2 | 🔵 discovery | Mess&Anger repo: answers to spec open questions | 2026-11-19 |
 
-**Key concepts:** anonymity, tor, latency-measurement, relay-health, roadmap, tests
+**Key concepts:** widget-spec, open-questions, backend, p2p, encryption, deep-link, platforms
 
-### src\components/
+### src\lib\p2p/
 | ID | Type | Title | Date |
 |----|------|-------|------|
-| 893e8348-8fa9-4da2-b31d-b35e87d15d29 | ✅ change | Fix roadmap F0 complete, F1 interim done | 2026-11-18 |
-| 5164e23a-2c78-45b2-8d2b-0c020ed13f43 | ✅ change | Anonymity roadmap: Phase I Tor check + measured latency | 2026-11-18 |
-| 3ac53e68-88c3-491d-b44d-051515f5143e | ✅ change | Anonymity roadmap: Phase H scheduled rotation + failure counters persisted | 2026-11-18 |
+| 758eab61-0668-4999-9396-37ad46345eb2 | 🔵 discovery | Mess&Anger repo: answers to spec open questions | 2026-11-19 |
 
-**Key concepts:** fix-roadmap, F0, F1, anonymity, ESLint, npm-audit, i18n, demo-label, packet-profiles, tor
-
-### src\lib\anon/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| 893e8348-8fa9-4da2-b31d-b35e87d15d29 | ✅ change | Fix roadmap F0 complete, F1 interim done | 2026-11-18 |
-| 5164e23a-2c78-45b2-8d2b-0c020ed13f43 | ✅ change | Anonymity roadmap: Phase I Tor check + measured latency | 2026-11-18 |
-
-**Key concepts:** fix-roadmap, F0, F1, anonymity, ESLint, npm-audit, i18n, demo-label, packet-profiles, tor
-
-### src\locales/
-| ID | Type | Title | Date |
-|----|------|-------|------|
-| 893e8348-8fa9-4da2-b31d-b35e87d15d29 | ✅ change | Fix roadmap F0 complete, F1 interim done | 2026-11-18 |
-
-**Key concepts:** fix-roadmap, F0, F1, anonymity, ESLint, npm-audit, i18n, demo-label, packet-profiles
+**Key concepts:** widget-spec, open-questions, backend, p2p, encryption, deep-link, platforms
 
 💡 *Use `mem-find` to search full details. Use `mem-create` to save important decisions.*
 <!-- /open-mem-context -->
