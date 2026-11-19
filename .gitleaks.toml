@@ -1,42 +1,5 @@
-# ============================================================================
-# gitleaks configuration for CI secret scanning.
-# Docs: https://github.com/gitleaks/gitleaks#configuration
-#
-# gitleaks ships built-in default rules (generic high-entropy strings,
-# AWS/GCP/Azure keys, GitHub tokens, Slack, private keys, etc.). This file
-# only adds allowlists so standard test vectors and placeholder values do
-# not produce false positives.
-# ============================================================================
-
-[allowlist]
-    description = "Allowlisted files and patterns (test vectors, placeholders)"
-
-    # Files that intentionally contain test vectors or placeholder values.
-    paths = [
-        # Crypto unit tests use standard RFC 5487 / 7292 test vectors
-        '''(src/lib/crypto/.*)\.test\.ts$''',
-        # Anonymous-mode tests use fixed golden vectors and fake relay ids
-        '''(src/lib/anon/.*)\.test\.ts$''',
-        # e2e / test harness fixtures
-        '''(src/test/.*)$''',
-        # The example env file contains only placeholders (CHANGE_ME / <...>)
-        '''\.env\.example$''',
-        # Cargo lockfile contains package checksums, not secrets
-        '''src-tauri/Cargo\.lock$''',
-    ]
-
-    # Placeholder values that must never be treated as a leak
-    regexes = [
-        '''CHANGE_ME.*''',
-        '''<your-anon-key>''',
-        '''<paymento_.*>''',
-        '''<cloudflare_.*>''',
-        '''MY_APP_URL''',
-        # Test fixture key and device-link alphabet
-        '''AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=''',
-        '''ABCDEFGHJKLMNPQRSTUVWXYZ23456789''',
-        # Fixed golden-vector token / digest used by anon vector tests
-        "^AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8$",
-        "^d65e8049e98674a34c1cf5a4b7d61a6ac4595315357269692c18c1c23681d60d$",
-    ]
-
+[[rules]]
+id = "site-gateway-test-data"
+description = "Allow high-entropy blobs in site-gateway test data fixtures"
+regex = '^server/site-gateway/data/'
+allowlist = true
