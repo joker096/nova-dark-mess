@@ -1,7 +1,8 @@
 /// <reference types="vitest/globals" />
 
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { BotHTTPGateway, validateWebhookUrl } from './http';
+import { createHmac } from 'crypto';
 
 describe('BotHTTPGateway', () => {
   const sent: Array<{ chatId: string; text: string }> = [];
@@ -146,5 +147,51 @@ describe('BotHTTPGateway', () => {
     expect(() => validateWebhookUrl('https://localhost/x')).toThrow();
     expect(() => validateWebhookUrl('not-a-url')).toThrow();
     expect(() => validateWebhookUrl('https://example.com/x')).not.toThrow();
+  });
+
+  it('enqueueIncoming delivers via getUpdates long-poll', async () => {
+    server.enqueueIncoming('chat1', 'hello from p2p');
+    const res = await post('/getUpdates', { offset: 0 });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.result).toHaveLength(1);
+    expect(res.body.result[0].update_id).toBe(1);
+    expect(res.body.result[0].message.chat.id).toBe('chat1');
+    expect(res.body.result[0].message.text).toBe('hello from p2p');
+    expect(typeof res.body.result[0].message.date).toBe('number');
+  });
+
+  it('delivers webhook with HMAC signature on incoming message', async () => {
+    const fetchCalls: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
+    const origFetch = (globalThis as any).fetch;
+    (globalThis as any).fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      fetchCalls.push({
+        url: _url as string,
+        headers: init.headers as Record<string, string>,
+        body: typeof init.body === 'string' ? init.body : '',
+      });
+      return { ok: true } as Response;
+    });
+
+    try {
+      await post('/setWebhook', { url: 'https://example.com/webhook', secret_token: 'mysecret' });
+      server.enqueueIncoming('chat1', 'webhook test');
+
+      // allow the fire-and-forget deliverWebhook microtask to run
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(fetchCalls).toHaveLength(1);
+      const { url, headers, body } = fetchCalls[0];
+      expect(url).toBe('https://example.com/webhook');
+      expect(headers['Content-Type']).toBe('application/json');
+      expect(headers['X-Telegram-Bot-Api-Secret-Token']).toBe('mysecret');
+      const parsed = JSON.parse(body);
+      expect(parsed.message.text).toBe('webhook test');
+      expect(parsed.message.chat.id).toBe('chat1');
+      const expectedSig = createHmac('sha256', 'mysecret').update(body).digest('hex');
+      expect(headers['X-Hub-Signature-256']).toBe(`sha256=${expectedSig}`);
+    } finally {
+      (globalThis as any).fetch = origFetch;
+    }
   });
 });

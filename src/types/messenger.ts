@@ -195,6 +195,10 @@ export interface ChatMessage {
     senderName: string;
   };
   forwardedFrom?: string;
+  /** Bot inline keyboard attached to this message (docs/bots-roadmap.md §B2). */
+  botKeyboard?: { text: string; callbackData: string }[][];
+  /** Bot identifier that sent this message. */
+  botId?: string;
 }
 
 export interface ChannelComment {

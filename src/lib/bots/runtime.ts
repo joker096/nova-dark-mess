@@ -233,8 +233,10 @@ function hasPermission(permissions: readonly BotPermission[], needed: BotPermiss
 const COMMAND_MAX = 32;
 
 export class BotRuntime {
-  private readonly handlers = new Map<string, (update: BotUpdate) => void | Promise<void>>();
+  private readonly handlers = new Map<string, Array<(update: BotUpdate) => void | Promise<void>>>();
   private readonly updateLog: BotUpdate[] = [];
+  private readonly rateLimit = new Map<number, { count: number; reset: number }>();
+  private readonly RATE_LIMIT = 20; // messages per second
 
   constructor(
     private readonly bot: InstalledBot,
@@ -258,7 +260,9 @@ export class BotRuntime {
         return [...permissions()];
       },
       onUpdate: (handler) => {
-        this.handlers.set(manifest.id, handler);
+        const arr = this.handlers.get(manifest.id) ?? [];
+        arr.push(handler);
+        this.handlers.set(manifest.id, arr);
       },
       sendMessage: async (chatId, text, options) => {
         require('send_messages');
@@ -280,6 +284,15 @@ export class BotRuntime {
           keyboard,
           timestamp: Date.now(),
         };
+        // Rate limit: ~20 msg/sec per bot.
+        const now = Date.now();
+        const slot = this.rateLimit.get(now) ?? { count: 0, reset: now + 1000 };
+        if (now > slot.reset) slot.count = 0;
+        slot.count += 1;
+        this.rateLimit.set(now, slot);
+        if (slot.count > this.RATE_LIMIT) {
+          throw new PermissionDeniedError('sendMessage: rate limit exceeded');
+        }
         await this.sink.send(message);
         return message;
       },
@@ -298,6 +311,7 @@ export class BotRuntime {
         return this.sink.del(chatId, messageId);
       },
       answerCallbackQuery: async (queryId, options) => {
+        require('send_messages');
         await this.sink.answerCallback(queryId, options);
       },
       setCommands: async (commands) => {
@@ -333,10 +347,18 @@ export class BotRuntime {
     }
     this.updateLog.push(update);
     if (this.updateLog.length > 200) this.updateLog.shift();
-    const handler = this.handlers.get(this.bot.manifest.id);
-    if (!handler) return false;
-    await handler(update);
-    return true;
+    const handlers = this.handlers.get(this.bot.manifest.id);
+    if (!handlers || handlers.length === 0) return false;
+    let handled = false;
+    for (const handler of handlers) {
+      try {
+        await handler(update);
+        handled = true;
+      } catch (err) {
+        console.error(`Bot ${this.bot.manifest.id} handler error:`, err);
+      }
+    }
+    return handled;
   }
 
   /** Recently delivered updates, for tests and diagnostics. */
@@ -346,6 +368,21 @@ export class BotRuntime {
 
   public updateTypesSeen(): BotUpdateType[] {
     return this.updateLog.map((u) => u.type);
+  }
+
+  /** Load the bot's entry-point module and run init(ctx) to register onUpdate handlers. */
+  public async loadModule(): Promise<void> {
+    const entryPoint = this.bot.manifest.entryPoint;
+    if (!entryPoint) return;
+    try {
+      const mod = await import(entryPoint);
+      const init = mod.default ?? mod.init;
+      if (typeof init === 'function') {
+        await init(this.createContext());
+      }
+    } catch (err) {
+      console.error(`Bot ${this.bot.manifest.id} loadModule error:`, err);
+    }
   }
 }
 

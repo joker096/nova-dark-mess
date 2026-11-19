@@ -69,6 +69,7 @@ interface ChatsScreenProps {
   onDeleteStory?: (storyId: string) => void;
   onViewStory?: (storyId: string) => void;
   onToggleStoryReaction?: (storyId: string, emoji: string) => void;
+  getBotSession?: () => { isBot: (id: string) => boolean };
 }
 
 const FOLDERS_STORAGE_KEY = 'nova_messenger_chat_folders';
@@ -133,9 +134,11 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onDeleteStory,
     onViewStory,
     onToggleStoryReaction,
+    getBotSession,
   } = props;
   const { t } = useLanguage();
   const { account } = useAccount();
+  const isBotChat = (id: string) => getBotSession?.().isBot(id);
   const [readChats, setReadChats] = useState(loadReadChats);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -745,6 +748,11 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                                     Contact
                                   </span>
                                 )}
+                                {isBotChat(chat.id) && (
+                                  <span className="flex h-5 items-center rounded-full bg-[#0e7490]/10 px-1.5 text-[10px] text-[#38bdf8] font-semibold border border-[#0e7490]/20 shrink-0 ml-1">
+                                    BOT
+                                  </span>
+                                )}
                               </div>
                               <span className="text-[11px] text-[#717682] font-normal shrink-0 ml-2">
                                 {chat.time}
@@ -1051,6 +1059,11 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         <h2 className="font-semibold text-white text-[15px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
                           {chat.name}
                         </h2>
+                        {isBotChat(chat.id) && (
+                          <span className="flex h-5 items-center rounded-full bg-[#0e7490]/10 px-1.5 text-[10px] text-[#38bdf8] font-semibold border border-[#0e7490]/20 shrink-0">
+                            BOT
+                          </span>
+                        )}
                       </div>
                       <span className="text-[11px] text-[#717682] font-normal shrink-0 ml-2">
                         {chat.time}
