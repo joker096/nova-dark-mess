@@ -2671,7 +2671,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
 
       {/* Floating Header Pill */}
       <div className="p-2 shrink-0 relative z-20">
-        <div className="bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
+        <div className="@container bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
           {isSearchOpen ? (
             /* ACTIVE SEARCH BAR HEADER WITH WORD STEPPER & CONTROLS */
             <div className="flex items-center gap-1.5 w-full animate-in fade-in duration-200">
@@ -2855,7 +2855,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 </button>
 
                 {/* Header Menu Tabs: [ Chat | Gallery ] */}
-                <div className="hidden sm:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
+                <div className="hidden @min-[440px]:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
                   <button
                     onClick={() => setActiveHeaderTab('chat')}
                     className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
@@ -2888,7 +2888,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                   <span
                     data-testid="p2p-peer-count"
                     title={`P2P · ${roomPeerCount}`}
-                    className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+                    className="hidden @min-[400px]:inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
                   >
                     P2P · {roomPeerCount}
                   </span>
@@ -2911,7 +2911,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 <button
                   onClick={() => setIsProtectionOpen(true)}
                   data-testid="e2ee-badge"
-                  className="hidden sm:flex w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 items-center justify-center transition cursor-pointer active:scale-95"
+                  className="hidden @min-[380px]:flex w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 items-center justify-center transition cursor-pointer active:scale-95"
                   title={t('chat.e2eeBadgeTitle')}
                   aria-label={t('chat.e2eeCardTitle')}
                 >

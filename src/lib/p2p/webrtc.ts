@@ -28,6 +28,41 @@ const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
 /** TURN servers usable in relay-only mode; empty unless self-hosted. */
 export const TURN_SERVERS: RTCIceServer[] = [];
 
+/**
+ * Replaces the TURN server list at runtime (e.g. from app settings after a
+ * user configures a self-hosted TURN relay). Safe to call before or after
+ * creating P2PMessengerChannel instances; new instances pick up the updated
+ * list immediately.
+ */
+export function setTurnServers(servers: RTCIceServer[]): void {
+  TURN_SERVERS.length = 0;
+  TURN_SERVERS.push(...servers);
+}
+
+/** Call quality metrics sampled from RTCPeerConnection.getStats(). */
+export interface CallQualityStats {
+  /** Estimated send bitrate in bits per second. */
+  sendBitrateBps: number;
+  /** Estimated receive bitrate in bits per second. */
+  receiveBitrateBps: number;
+  /** Outgoing packet loss ratio (0–1). */
+  sendPacketLoss: number;
+  /** Incoming packet loss ratio (0–1). */
+  receivePacketLoss: number;
+  /** Current round-trip time in milliseconds. */
+  rttMs: number;
+  /** Timestamp of the last sample. */
+  sampledAt: number;
+}
+
+/** Options for quality stats polling. */
+export interface CallQualityOptions {
+  /** Poll interval in milliseconds. Defaults to 1000. */
+  pollIntervalMs?: number;
+  /** Callback invoked with each new stats sample. */
+  onStats: (stats: CallQualityStats) => void;
+}
+
 export class P2PMessengerChannel {
   private pc: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
@@ -44,6 +79,11 @@ export class P2PMessengerChannel {
   private readonly iceServers: RTCIceServer[];
   private readonly icePolicy: 'direct' | 'relay-only';
   private readonly connectTimeoutMs: number;
+  private qualityInterval: ReturnType<typeof setInterval> | null = null;
+  private lastSendBytes = 0;
+  private lastReceiveBytes = 0;
+  private lastStatsTime = 0;
+  private onQualityStats: ((stats: CallQualityStats) => void) | null = null;
 
   public readonly peerFingerprint: string;
   public readonly localFingerprint: string;
@@ -336,5 +376,87 @@ export class P2PMessengerChannel {
     this.remoteMediaStream = null;
     this.onRemoteStreamCallback = null;
     this.updateState('disconnected', false);
+  }
+
+  /** Start polling RTCPeerConnection.getStats() for call quality metrics. */
+  public startQualityMonitoring(options: CallQualityOptions): void {
+    this.stopQualityMonitoring();
+    this.onQualityStats = options.onStats;
+    const intervalMs = options.pollIntervalMs ?? 1000;
+    this.qualityInterval = setInterval(() => {
+      void this.sampleCallQuality(intervalMs);
+    }, intervalMs);
+    // Take an immediate sample.
+    void this.sampleCallQuality(intervalMs);
+  }
+
+  /** Stop quality stats polling. */
+  public stopQualityMonitoring(): void {
+    if (this.qualityInterval) {
+      clearInterval(this.qualityInterval);
+      this.qualityInterval = null;
+    }
+    this.onQualityStats = null;
+    this.lastSendBytes = 0;
+    this.lastReceiveBytes = 0;
+    this.lastStatsTime = 0;
+  }
+
+  private async sampleCallQuality(pollIntervalMs: number): Promise<void> {
+    const pc = this.pc;
+    if (!pc || !this.onQualityStats) return;
+
+    try {
+      const stats = await pc.getStats();
+      const now = Date.now();
+
+      let sendBytes = 0;
+      let receiveBytes = 0;
+      let sendPacketsLost = 0;
+      let sendPacketsSent = 0;
+      let receivePacketsLost = 0;
+      let receivePacketsReceived = 0;
+      let rttMs = 0;
+
+      stats.forEach((report) => {
+        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+          if (typeof report.bytesSent === 'number') sendBytes += report.bytesSent;
+          if (typeof report.bytesReceived === 'number')
+            receiveBytes += report.bytesReceived;
+          if (typeof report.packetsSent === 'number') sendPacketsSent += report.packetsSent;
+          if (typeof report.packetsLost === 'number') sendPacketsLost += report.packetsLost;
+          if (typeof report.packetsReceived === 'number')
+            receivePacketsReceived += report.packetsReceived;
+          if (typeof report.packetsLost === 'number') receivePacketsLost += report.packetsLost;
+          if (typeof report.currentRoundTripTime === 'number')
+            rttMs = report.currentRoundTripTime * 1000;
+        }
+      });
+
+      // Convert cumulative byte counters to bitrates over the sampling interval.
+      const intervalSecs = Math.max(now - this.lastStatsTime, 1) / 1000;
+      const sendBitrateBps = ((sendBytes - this.lastSendBytes) * 8) / intervalSecs;
+      const receiveBitrateBps = ((receiveBytes - this.lastReceiveBytes) * 8) / intervalSecs;
+
+      const sendPacketLoss =
+        sendPacketsSent > 0 ? sendPacketsLost / sendPacketsSent : 0;
+      const receivePacketLoss =
+        receivePacketsReceived > 0 ? receivePacketsLost / receivePacketsReceived : 0;
+
+      this.lastSendBytes = sendBytes;
+      this.lastReceiveBytes = receiveBytes;
+      this.lastStatsTime = now;
+
+      this.onQualityStats({
+        sendBitrateBps: Math.max(0, sendBitrateBps),
+        receiveBitrateBps: Math.max(0, receiveBitrateBps),
+        sendPacketLoss,
+        receivePacketLoss,
+        rttMs,
+        sampledAt: now,
+      });
+    } catch {
+      // Stats sampling failed silently; next interval will retry.
+    }
   }
 }
