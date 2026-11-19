@@ -47,6 +47,34 @@ export interface FileTransferOptions {
   onProgress?: (progress: FileTransferProgress) => void;
   onComplete?: (result: FileTransferResult) => void;
   onError?: (error: Error, transferId?: string) => void;
+  /** Persistence layer for surviving app restarts. When provided, transfer state
+   * is saved after every mutation and restored on construction. */
+  persistence?: {
+    saveState: (state: SerializedTransferState) => Promise<void>;
+    loadState: () => Promise<SerializedTransferState | null>;
+    clearState: () => Promise<void>;
+  };
+}
+
+export interface SerializedTransferState {
+  version: 1;
+  outgoing: SerializedOutgoingTransfer[];
+  incoming: SerializedIncomingTransfer[];
+}
+
+export interface SerializedOutgoingTransfer {
+  meta: FileTransferMeta;
+  recipient: string;
+  chunks: string[]; // base64 chunks
+  acked: number[];
+  sent: number[];
+}
+
+export interface SerializedIncomingTransfer {
+  meta: FileTransferMeta;
+  peer: string;
+  chunks: Record<string, string>; // index -> base64 chunk
+  received: number[];
 }
 
 export const DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024;
@@ -103,9 +131,12 @@ export class FileTransferManager {
   private readonly onProgress?: FileTransferOptions['onProgress'];
   private readonly onComplete?: FileTransferOptions['onComplete'];
   private readonly onError?: FileTransferOptions['onError'];
+  private readonly persistence?: FileTransferOptions['persistence'];
 
   private readonly outgoing = new Map<string, OutgoingTransfer>();
   private readonly incoming = new Map<string, IncomingTransfer>();
+
+  private savePending: Promise<void> | null = null;
 
   constructor(options: FileTransferOptions = {}) {
     this.chunkSize = Math.min(Math.max(1, options.chunkSize ?? 64 * 1024), MAX_CHUNK_SIZE);
@@ -114,6 +145,156 @@ export class FileTransferManager {
     this.onProgress = options.onProgress;
     this.onComplete = options.onComplete;
     this.onError = options.onError;
+    this.persistence = options.persistence;
+
+    void this.loadState();
+  }
+
+  /** Returns all transfer IDs (outgoing and incoming) that have persisted state. */
+  public getAllTransferIds(): string[] {
+    const ids = new Set<string>();
+    for (const id of this.outgoing.keys()) ids.add(id);
+    for (const id of this.incoming.keys()) ids.add(id);
+    return Array.from(ids);
+  }
+
+  /** Resumes a persisted transfer after an app restart. For outgoing transfers,
+   * un-acked chunks are re-sent. For incoming transfers, a `file_resume` message
+   * is sent to the peer requesting missing chunks. */
+  public async resumeTransfer(transferId: string): Promise<void> {
+    const outgoing = this.outgoing.get(transferId);
+    if (outgoing) {
+      // Re-send any chunks that haven't been acked yet.
+      for (let i = 0; i < outgoing.meta.totalChunks; i++) {
+        if (!outgoing.acked.has(i)) {
+          outgoing.sent.delete(i);
+        }
+      }
+      await this.sendAllChunks(transferId);
+      await this.saveState();
+      return;
+    }
+
+    const incoming = this.incoming.get(transferId);
+    if (incoming) {
+      const missing: number[] = [];
+      for (let i = 0; i < incoming.meta.totalChunks; i++) {
+        if (!incoming.received.has(i)) missing.push(i);
+      }
+      if (missing.length > 0) {
+        await this.sendToPeer?.(incoming.peer, {
+          type: 'file_resume',
+          transferId,
+          missing,
+        });
+      }
+      await this.saveState();
+      return;
+    }
+  }
+
+  /** Cancels all persisted transfers and clears the persistence layer. */
+  public async clearAllTransfers(): Promise<void> {
+    this.outgoing.clear();
+    this.incoming.clear();
+    if (this.persistence) {
+      await this.persistence.clearState();
+    }
+  }
+
+  private async loadState(): Promise<void> {
+    if (!this.persistence) return;
+    let state: SerializedTransferState | null;
+    try {
+      state = await this.persistence.loadState();
+    } catch {
+      state = null;
+    }
+    if (!state || state.version !== 1) return;
+
+    for (const serialized of state.outgoing) {
+      const chunks: string[] = [];
+      for (let i = 0; i < serialized.meta.totalChunks; i++) {
+        chunks.push(serialized.chunks[i] ?? '');
+      }
+      this.outgoing.set(serialized.meta.transferId, {
+        meta: serialized.meta,
+        recipient: serialized.recipient,
+        data: new Uint8Array(0), // placeholder; chunks hold the real data
+        chunks,
+        acked: new Set(serialized.acked),
+        sent: new Set(serialized.sent),
+      });
+    }
+
+    for (const serialized of state.incoming) {
+      const chunks = new Map<number, Uint8Array>();
+      const received = new Set<number>();
+      for (const [indexStr, base64] of Object.entries(serialized.chunks)) {
+        const index = Number(indexStr);
+        if (!Number.isInteger(index)) continue;
+        const chunk = base64ToBuffer(base64);
+        if (chunk) {
+          chunks.set(index, chunk);
+          received.add(index);
+        }
+      }
+      this.incoming.set(serialized.meta.transferId, {
+        meta: serialized.meta,
+        peer: serialized.peer,
+        chunks,
+        received,
+      });
+    }
+  }
+
+  private async saveState(): Promise<void> {
+    if (!this.persistence || this.savePending) return;
+    this.savePending = this.doSaveState();
+    try {
+      await this.savePending;
+    } finally {
+      this.savePending = null;
+    }
+  }
+
+  private async doSaveState(): Promise<void> {
+    if (!this.persistence) return;
+    const state: SerializedTransferState = {
+      version: 1,
+      outgoing: [],
+      incoming: [],
+    };
+
+    for (const [transferId, transfer] of this.outgoing) {
+      state.outgoing.push({
+        meta: transfer.meta,
+        recipient: transfer.recipient,
+        chunks: transfer.chunks,
+        acked: Array.from(transfer.acked),
+        sent: Array.from(transfer.sent),
+      });
+    }
+
+    for (const [transferId, transfer] of this.incoming) {
+      const chunks: Record<string, string> = {};
+      for (const [index, chunk] of transfer.chunks) {
+        chunks[String(index)] = bufferToBase64(chunk);
+      }
+      state.incoming.push({
+        meta: transfer.meta,
+        peer: transfer.peer,
+        chunks,
+        received: Array.from(transfer.received),
+      });
+    }
+
+    await this.persistence.saveState(state);
+  }
+
+  /** Persists current transfer state to the persistence layer. */
+  public async markDirty(): Promise<void> {
+    await this.saveState();
   }
 
   public async startTransfer(
@@ -164,6 +345,7 @@ export class FileTransferManager {
 
     await this.sendToPeer?.(recipient, { type: 'file_meta', meta });
     await this.sendAllChunks(transferId);
+    await this.markDirty();
     return transferId;
   }
 
@@ -232,6 +414,7 @@ export class FileTransferManager {
           received: new Set(),
         });
         this.emitProgress(meta.transferId, 0, meta);
+        await this.markDirty();
         break;
       }
       case 'file_chunk': {
@@ -263,12 +446,14 @@ export class FileTransferManager {
         if (incoming.received.size === incoming.meta.totalChunks) {
           await this.finalizeIncoming(incoming);
         }
+        await this.markDirty();
         break;
       }
       case 'file_ack': {
         const outgoing = this.outgoing.get(message.transferId);
         if (!outgoing) return;
         outgoing.acked.add(message.index);
+        await this.markDirty();
         break;
       }
       case 'file_resume': {
@@ -293,6 +478,7 @@ export class FileTransferManager {
             data: outgoing.chunks[index],
           });
         }
+        await this.markDirty();
         break;
       }
       case 'file_complete': {
@@ -303,6 +489,7 @@ export class FileTransferManager {
         this.incoming.delete(message.transferId);
         this.outgoing.delete(message.transferId);
         this.onError?.(new Error(message.reason || 'Transfer aborted'), message.transferId);
+        await this.markDirty();
         break;
       }
       default:
@@ -359,6 +546,8 @@ export class FileTransferManager {
     });
 
     await this.sendToPeer?.(incoming.peer, { type: 'file_complete', transferId: meta.transferId });
+    this.incoming.delete(meta.transferId);
+    await this.markDirty();
   }
 
   /** Cancels an outgoing or incoming transfer and tells the peer to stop. */
@@ -371,6 +560,7 @@ export class FileTransferManager {
     if (peer) {
       await this.sendToPeer?.(peer, { type: 'file_abort', transferId, reason });
     }
+    await this.markDirty();
   }
 
   public getIncoming(transferId: string): IncomingTransfer | undefined {

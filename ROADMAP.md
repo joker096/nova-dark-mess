@@ -339,7 +339,15 @@ servers, no paid services.
   Metadata trade-off documented in `docs/presence-privacy.md`.)
 - [ ] **Calls without simulated fallback**: real WebRTC media end-to-end, optional
   self-hosted TURN, call quality indicators.
-- [ ] **Resumable file transfers** across app restarts (persist transfer state).
+- [x] **Resumable file transfers across app restarts.** `FileTransferManager`
+  (`src/lib/p2p/fileTransfer.ts`) now accepts an optional `persistence`
+  layer (`saveState`/`loadState`/`clearState` callbacks). Transfer state is
+  serialized after every mutation and restored on construction, so in-progress
+  uploads and downloads survive an app restart. `resumeTransfer(transferId)`
+  re-sends un-acked chunks for outgoing transfers and sends `file_resume` for
+  missing chunks on incoming transfers. `getAllTransferIds()` lists all known
+  transfers for UI restoration. 6 new tests in `fileTransfer.test.ts` cover
+  save/restore/resume/clear round-trips.
 - [ ] **Backup verification**: dry-run restore, checksum, "test restore" button.
   `verifyEncryptedBackup()` in `src/lib/storage/backup.ts` decrypts and validates
   a `.nova-backup` file without applying it (dry-run), returning `true` when the
