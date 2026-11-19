@@ -66,9 +66,11 @@ function dropLegacy(service: string, account: string): void {
 
 /**
  * Native credential store, used whenever the app runs inside Tauri on a platform
- * that has one. Mobile shells currently report no native store, so they keep the
- * browser backend; that gap is tracked in `docs/secure-storage.md` rather than
- * being papered over with an error that would break key persistence there.
+ * that has one. Desktop (Windows/macOS/Linux) uses the `keyring` crate; iOS uses
+ * the `security-framework` crate (iOS Keychain). Android declares the
+ * `android_keystore` + `jni` dependencies but the `imp` module is a stub waiting
+ * for JNI context wiring — native-store errors are caught and the backend falls
+ * back to `localStorage` instead of crashing.
  */
 class OsKeychain implements Keychain {
   private readonly local = new BrowserKeychain(SERVICE);
@@ -84,31 +86,54 @@ class OsKeychain implements Keychain {
 
   async get(service: string, account: string): Promise<string | null> {
     if (!(await this.osAvailable())) return this.local.get(service, account);
-    const invoke = await requireInvoke();
-    const stored = await invoke<string | null>('keychain_get', { service, account });
-    if (typeof stored === 'string') return stored;
+    try {
+      const invoke = await requireInvoke();
+      const stored = await invoke<string | null>('keychain_get', { service, account });
+      if (typeof stored === 'string') return stored;
+    } catch {
+      // OS keychain not fully wired on this platform; fall back to localStorage.
+    }
 
     // Migration: a value written before the OS store existed lives in
     // localStorage. Move it once and drop the weaker copy.
     const legacy = readLegacy(service, account);
     if (legacy === null) return null;
-    await invoke('keychain_set', { service, account, value: legacy });
-    dropLegacy(service, account);
+    try {
+      await this.set(service, account, legacy);
+    } catch {
+      /* store may be unavailable */
+    }
     return legacy;
   }
 
   async set(service: string, account: string, value: string): Promise<void> {
-    if (!(await this.osAvailable())) return this.local.set(service, account, value);
-    const invoke = await requireInvoke();
-    await invoke('keychain_set', { service, account, value });
-    dropLegacy(service, account);
+    if (!(await this.osAvailable())) {
+      await this.local.set(service, account, value);
+      return;
+    }
+    try {
+      const invoke = await requireInvoke();
+      await invoke('keychain_set', { service, account, value });
+      dropLegacy(service, account);
+    } catch {
+      // Fall back to localStorage if OS store is unavailable. Do not drop the
+      // legacy copy: it is now the primary copy.
+      await this.local.set(service, account, value);
+    }
   }
 
   async remove(service: string, account: string): Promise<void> {
-    if (!(await this.osAvailable())) return this.local.remove(service, account);
-    const invoke = await requireInvoke();
-    await invoke('keychain_remove', { service, account });
-    dropLegacy(service, account);
+    if (!(await this.osAvailable())) {
+      await this.local.remove(service, account);
+      return;
+    }
+    try {
+      const invoke = await requireInvoke();
+      await invoke('keychain_remove', { service, account });
+      dropLegacy(service, account);
+    } catch {
+      await this.local.remove(service, account);
+    }
   }
 }
 

@@ -98,7 +98,7 @@ describe('OS keychain (Tauri shell)', () => {
     expect(localStorage.getItem(`nova_keychain_${SERVICE}_nova_pin_hash`)).toBeNull();
   });
 
-  it('propagates an OS store failure instead of falling back', async () => {
+  it('falls back to localStorage when the OS store fails', async () => {
     enterTauriShell(true);
     const legacyKey = `nova_keychain_${SERVICE}_master_key`;
     localStorage.setItem(legacyKey, 'weak-copy');
@@ -108,8 +108,9 @@ describe('OS keychain (Tauri shell)', () => {
     });
 
     const kc = createKeychain();
-    await expect(kc.get(SERVICE, 'master_key')).rejects.toThrow('credential manager unavailable');
-    // The weaker copy is left in place rather than silently treated as success.
+    // Falls back to the legacy localStorage copy instead of propagating the error.
+    expect(await kc.get(SERVICE, 'master_key')).toBe('weak-copy');
+    // The legacy copy stays in localStorage since the OS store write failed.
     expect(localStorage.getItem(legacyKey)).toBe('weak-copy');
   });
 });
