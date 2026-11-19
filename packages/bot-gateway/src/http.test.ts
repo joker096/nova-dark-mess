@@ -1,0 +1,150 @@
+/// <reference types="vitest/globals" />
+
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { BotHTTPGateway, validateWebhookUrl } from './http';
+
+describe('BotHTTPGateway', () => {
+  const sent: Array<{ chatId: string; text: string }> = [];
+  const gateway = {
+    sendMessage: async (chatId: string, text: string) => {
+      sent.push({ chatId, text });
+      return true;
+    },
+    getPreKeyBundle: async () => ({ fingerprint: 'fp_bot_123' }),
+    registerPeerBundle: () => true,
+  };
+
+  let server: BotHTTPGateway;
+  let port: number | null = null;
+
+  beforeEach(async () => {
+    server = new BotHTTPGateway({
+      botToken: 'test_token_123',
+      webhookSecret: 'wh_secret',
+      gateway,
+      longPollTimeoutMs: 200,
+    });
+    await server.listen(0);
+    port = server.port;
+  });
+
+  afterEach(async () => {
+    await server.close();
+    sent.length = 0;
+  });
+
+  async function post(path: string, body: unknown, token = 'test_token_123'): Promise<{ status: number; body: any }> {
+    return new Promise((resolve, reject) => {
+      const http = require('http');
+      const req2 = http.request({
+        hostname: '127.0.0.1',
+        port,
+        path: `/bot/${token}${path}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }, (res: import('http').IncomingMessage) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          resolve({ status: res.statusCode ?? 0, body: data ? JSON.parse(data) : {} });
+        });
+      });
+      req2.on('error', reject);
+      req2.write(JSON.stringify(body));
+      req2.end();
+    });
+  }
+
+  it('rejects requests with wrong token', async () => {
+    const res = await post('/sendMessage', { chat_id: 'c1', text: 'hi' }, 'wrong');
+    expect(res.status).toBe(401);
+    expect(res.body.ok).toBe(false);
+  });
+
+  it('rejects non-POST methods', async () => {
+    const res = await new Promise<{ status: number; body: any }>((resolve) => {
+      const http = require('http');
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port,
+        path: '/bot/test_token_123/getMe',
+        method: 'GET',
+      }, (res: import('http').IncomingMessage) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          resolve({ status: res.statusCode ?? 0, body: data ? JSON.parse(data) : {} });
+        });
+      });
+      req.on('error', () => resolve({ status: 0, body: {} }));
+      req.end();
+    });
+    expect(res.status).toBe(405);
+    expect(res.body.ok).toBe(false);
+  });
+
+  it('getMe returns bot info with fingerprint', async () => {
+    const res = await post('/getMe', {});
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.result.fingerprint).toBe('fp_bot_123');
+    expect(res.body.result.is_bot).toBe(true);
+  });
+
+  it('sendMessage delivers and rate-limits per chat', async () => {
+    const res = await post('/sendMessage', { chat_id: 'chat1', text: 'hello bot' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({ chatId: 'chat1', text: 'hello bot' });
+
+    // Rapid fire from same chat -> 429 after 1 msg/s
+    const res2 = await post('/sendMessage', { chat_id: 'chat1', text: 'again' });
+    expect(res2.status).toBe(429);
+  });
+
+  it('allows messages from different chats', async () => {
+    await post('/sendMessage', { chat_id: 'chat1', text: 'a' });
+    const res = await post('/sendMessage', { chat_id: 'chat2', text: 'b' });
+    expect(res.status).toBe(200);
+    expect(sent).toHaveLength(2);
+  });
+
+  it('rejects missing fields', async () => {
+    const res = await post('/sendMessage', { chat_id: 'c1' });
+    expect(res.status).toBe(400);
+    expect(res.body.ok).toBe(false);
+  });
+
+  it('setWebhook/deleteWebhook toggles webhook', async () => {
+    const set = await post('/setWebhook', { url: 'https://example.com/webhook' });
+    expect(set.status).toBe(200);
+    expect(set.body.ok).toBe(true);
+
+    const del = await post('/deleteWebhook', {});
+    expect(del.status).toBe(200);
+    expect(del.body.ok).toBe(true);
+  });
+
+  it('rejects non-https webhook URL', async () => {
+    const res = await post('/setWebhook', { url: 'http://example.com/webhook' });
+    expect(res.status).toBe(500);
+    expect(res.body.ok).toBe(false);
+  });
+
+  it('rejects private/loopback webhook URL', async () => {
+    for (const url of ['https://127.0.0.1/webhook', 'https://localhost/webhook', 'https://10.0.0.1/webhook', 'https://192.168.1.1/webhook']) {
+      const res = await post('/setWebhook', { url });
+      expect(res.status).toBe(500);
+      expect(res.body.ok).toBe(false);
+    }
+  });
+
+  it('validateWebhookUrl rejects invalid schemes and private hosts', () => {
+    expect(() => validateWebhookUrl('http://example.com/x')).toThrow();
+    expect(() => validateWebhookUrl('https://127.0.0.1/x')).toThrow();
+    expect(() => validateWebhookUrl('https://localhost/x')).toThrow();
+    expect(() => validateWebhookUrl('not-a-url')).toThrow();
+    expect(() => validateWebhookUrl('https://example.com/x')).not.toThrow();
+  });
+});
