@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Демо чата Mess&Anger</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f7; color: #111; padding: 24px; line-height: 1.5; }
+  .card { max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #d0d0d0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+  h1 { font-size: 20px; margin-bottom: 8px; }
+  p { color: #555; font-size: 14px; margin-bottom: 16px; }
+  .snippet { background: #0c0d11; color: #fff; padding: 12px 16px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; margin-bottom: 16px; overflow-x: auto; }
+  .snippet kbd { color: #007aff; }
+  .btn { display: inline-block; padding: 10px 18px; background: #007aff; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; }
+  .btn:hover { background: #005bb5; }
+  .note { margin-top: 16px; font-size: 12px; color: #888; }
+  .gateway-url { margin-bottom: 8px; font-size: 12px; color: #888; }
+  input { width: 100%; padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Демо чата Mess&Anger</h1>
+  <p>Виджет «чат на сайт» для Mess&Anger. Посетители пишут с сайта без регистрации, владелец отвечает из приложения мессенджера.</p>
+
+  <label for="site">Site ID:</label>
+  <input type="text" id="site" value="demo-site-001" readonly />
+
+  <label for="gateway">Gateway URL:</label>
+  <input type="text" id="gateway" value="http://localhost:8081" />
+
+  <div class="snippet">&lt;<kbd>script</kbd> <kbd>async</kbd> <kbd>src</kbd>=<span>"https://widget.mess.cvr.name/widget/loader.js"</span> <kbd>data-site</kbd>=<span>"demo-site-001"</span>&gt;&lt;<span>/<kbd>script</kbd>&gt;</div>
+
+  <button class="btn" onclick="openChat()">Открыть демо-чат (iframe)</button>
+
+  <p class="note">Эта страница подключает виджет в iframe. Сообщения шифруются сквозным шифрованием (E2EE) — сервер видит только зашифротекст. Сервер сайт-шлюза должен быть запущен (см. server/site-gateway).</p>
+</div>
+
+<iframe id="demo-iframe" style="width:100%;max-width:420px;height:640px;border:none;border-radius:16px;display:block;margin:24px auto;box-shadow:0 8px 24px rgba(0,0,0,.15);"></iframe>
+
+<script>
+  function openChat() {
+    const site = document.getElementById('site').value;
+    const gw = document.getElementById('gateway').value;
+    const iframe = document.getElementById('demo-iframe');
+    iframe.src = gw + '/widget/chat.html?site=' + encodeURIComponent(site);
+    iframe.style.display = 'block';
+  }
+  // Auto-open on load
+  openChat();
+</script>
+</body>
+</html>

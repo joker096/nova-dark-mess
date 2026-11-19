@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, User, Key, Plus, Save, RefreshCw, CirclePlus } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
-import { installBot, pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
+import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
 import type { BotManifest, BotPermission } from '../lib/bots/types';
 import { createAnonymousIdentity } from '../lib/crypto/identity';
 import { usePremium } from '../hooks/usePremium';

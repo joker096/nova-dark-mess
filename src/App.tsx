@@ -19,8 +19,7 @@ import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
-import { BotSession } from './lib/bots/session';
-import { NOVA_BOTS, EncryptedBotStorage } from './lib/bots/runtime';
+import { EncryptedBotStorage } from './lib/bots/runtime';
 import { dbInstance } from './lib/storage/db';
 import { botSession } from './lib/bots/session';
 
@@ -112,6 +111,19 @@ export default function App() {
   const { account } = useAccount();
   const { isLocked, pinHash, unlock, identity, isInitialized, setP2PManager, peerFingerprintsByChat } = useSecurity();
   const premium = isPremium();
+
+  // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
+  const botSessionRef = useRef<typeof botSession | null>(null);
+  const getBotSession = useCallback(() => {
+    if (!botSessionRef.current) botSessionRef.current = botSession;
+    return botSessionRef.current;
+  }, []);
+  // Keep the latest fingerprint→chatId map so P2PManager.onMessage can route
+  // incoming messages to the right bot without recreating the transport.
+  const peerFingerprintsRef = useRef(peerFingerprintsByChat);
+  useEffect(() => {
+    peerFingerprintsRef.current = peerFingerprintsByChat;
+  }, [peerFingerprintsByChat]);
 
   // Wire the real P2P transport once the local identity is available. The
   // signaling client uses the in-page BroadcastChannel bus so two manager
@@ -207,16 +219,6 @@ export default function App() {
   const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
   const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
 
-  // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
-  const botSessionRef = useRef<typeof botSession | null>(null);
-  // Keep the latest fingerprint→chatId map so P2PManager.onMessage can route
-  // incoming messages to the right bot without recreating the transport.
-  const peerFingerprintsRef = useRef(peerFingerprintsByChat);
-  peerFingerprintsRef.current = peerFingerprintsByChat;
-  const getBotSession = useCallback(() => {
-    if (!botSessionRef.current) botSessionRef.current = botSession;
-    return botSessionRef.current;
-  }, []);
   useEffect(() => {
     void getBotSession().ensureReady();
   }, [getBotSession]);

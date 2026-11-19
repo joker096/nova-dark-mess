@@ -59,7 +59,7 @@ import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, 
 import type { BotCommand } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
 import type { MessageSink } from '../lib/bots/runtime';
-import { HttpMessageSink, makeBotSink } from '../lib/bots/httpSink';
+import { HttpMessageSink } from '../lib/bots/httpSink';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
@@ -210,6 +210,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const isGroupChat = chatItem?.type === 'group';
   const localFingerprint = identity?.fingerprint ?? 'nova_pk_local_group';
 
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
+      if (idx === 1) {
+        return {
+          ...msg,
+          reactions: [
+            { emoji: '🔥', count: 2, fromMe: false },
+            { emoji: '❤️', count: 1, fromMe: true },
+          ],
+        };
+      }
+      return msg;
+    });
+  });
+  const [botTyping, setBotTyping] = useState(false);
+
   // Wire the bot session's MessageSink into this chat so bot outgoing
   // messages are rendered in the transcript (docs/bots-roadmap.md §B4).
   // Local (L1) bots use a local sink that renders into the transcript.
@@ -315,20 +331,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const groupManagerRef = useRef<GroupChatManager | null>(null);
   const fileManagerRef = useRef<FileTransferManager | null>(null);
   const [roomPeerCount, setRoomPeerCount] = useState(0);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    return (CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
-      if (idx === 1) {
-        return {
-          ...msg,
-          reactions: [
-            { emoji: '🔥', count: 2, fromMe: false },
-            { emoji: '❤️', count: 1, fromMe: true },
-          ],
-        };
-      }
-      return msg;
-    });
-  });
   const messagesRef = useRef(messages);
   const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
   const [peerFingerprint, setPeerFingerprint] = useState<string | null>(null);
@@ -345,20 +347,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
-
-  /** Send /start <payload> once when arriving from a nova://bot/<id>?start=… link. */
-  useEffect(() => {
-    if (!pendingBotStart || pendingBotStart.chatId !== chatId) return;
-    if (!pendingBotStart.payload) {
-      void onBotStartSent?.();
-      return;
-    }
-    const cmd = `/start ${pendingBotStart.payload.trim()}`;
-    handleSendMessage(cmd);
-    setInputText('');
-    void onBotStartSent?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, pendingBotStart]);
 
   const appendSystemMessage = (text: string) => {
     const message = {
@@ -893,7 +881,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
-  const [botTyping, setBotTyping] = useState(false);
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -2666,6 +2653,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       return;
     }
   };
+
+  /** Send /start <payload> once when arriving from a nova://bot/<id>?start=… link. */
+  useEffect(() => {
+    if (!pendingBotStart || pendingBotStart.chatId !== chatId) return;
+    if (!pendingBotStart.payload) {
+      void onBotStartSent?.();
+      return;
+    }
+    const cmd = `/start ${pendingBotStart.payload.trim()}`;
+    handleSendMessage(cmd);
+    setInputText('');
+    void onBotStartSent?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, pendingBotStart]);
 
   const handleRetrySend = (messageId: string) => {
     const msg = messages.find((m) => m.id === messageId);

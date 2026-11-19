@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react';
 import type { BotCommand } from '../../lib/bots/types';
-import { NovaButton } from '../../lib/ui';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface CommandMenuProps {
