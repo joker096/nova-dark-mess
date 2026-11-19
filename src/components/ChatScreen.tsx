@@ -2828,7 +2828,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       : null;
 
   return (
-    <div className="nova-chat-surface flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-hidden">
+    <div className="nova-chat-surface flex flex-col h-full bg-[#0b0c10] text-white relative overflow-hidden">
       {/* Dynamic Background Wallpaper with session persistence */}
       <DoodleBackground wallpaperId={wallpaperId} intensity={wallpaperIntensity} />
 
