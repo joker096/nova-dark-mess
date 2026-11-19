@@ -3,7 +3,7 @@
  * Stores queues and messages in localStorage for zero-config operation.
  */
 
-import { AnonTransport, CreatedQueue, EnqueueResult, PollResult, AnonPacket } from './types';
+import { CreatedQueue, EnqueueResult, PollResult, AnonPacket } from './types';
 import type { AbuseReportSubmission } from './blocks';
 import type { PowChallenge } from './spam';
 import type { AnonInboxTransport } from './transport';

@@ -28,10 +28,6 @@ export interface HttpSinkOptions {
   timeoutMs?: number;
 }
 
-class AbortControllerPolyfill {
-  static supported = typeof AbortController !== 'undefined';
-}
-
 export class HttpMessageSink implements MessageSink {
   private readonly base: string;
   private readonly fetch: typeof fetch;

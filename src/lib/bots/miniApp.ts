@@ -88,7 +88,6 @@ export function verifyInitData(
   if (now - payload.auth_date > maxAgeSec || payload.auth_date > now + 60) return null;
 
   const expected = createInitData(payload.bot_id, payload.user_id, secret, payload.auth_date);
-  const key = typeof secret === 'string' ? utf8ToBytes(secret) : secret;
   const expectedHash = utf8ToBytes(expected.hash);
   const actualHash = utf8ToBytes(payload.hash);
   if (!constEqual(expectedHash, actualHash)) return null;

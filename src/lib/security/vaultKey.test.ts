@@ -9,8 +9,6 @@ import {
   hasWrappedMasterKey,
 } from './vaultKey';
 
-const SERVICE = 'nova-dark-messenger';
-
 beforeEach(() => {
   localStorage.clear();
 });

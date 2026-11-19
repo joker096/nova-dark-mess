@@ -204,7 +204,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   getBotSession,
 }) => {
   const { t } = useLanguage();
-  const { encryptAndSendMessage, checkPeerKey, identity } = useSecurity();
+  const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer } = useSecurity();
   const { checkout, canUse } = usePremium();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
@@ -334,6 +334,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const messagesRef = useRef(messages);
   const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
   const [peerFingerprint, setPeerFingerprint] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState<boolean | null>(() => {
+    if (!identity || chatItem?.type !== 'direct') return null;
+    return isDemoPeer(chatId);
+  });
   const [loadedMessagesChatId, setLoadedMessagesChatId] = useState(chatId);
 
   /** Mini App currently opened from a `web_app` button (Phase B7). */
@@ -752,9 +756,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     let active = true;
     void checkPeerKey(chatId)
-      .then(({ peerFingerprint: fingerprint, history }) => {
+      .then(({ peerFingerprint: fingerprint, history, isDemoPeer: isDemoResult }) => {
         if (!active) return;
 
+        setIsDemo(isDemoResult);
         setPeerFingerprint((current) => (current === fingerprint ? current : fingerprint));
         setPeerKeyChanges((current) =>
           current.length === history.length &&
@@ -3005,6 +3010,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           title={t('bot.badge', { defaultValue: 'Bot' })}
                         >
                           {t('bot.badge', { defaultValue: 'Bot' })}
+                        </span>
+                      )}
+                      {isDemo === true && (
+                        <span
+                          className="px-1.5 py-px rounded-full bg-[#6b7280]/15 border border-[#6b7280]/30 text-[9px] font-semibold text-[#9ca3af] shrink-0 ml-1"
+                          title={t('chat.e2eeDemo', { defaultValue: 'Demo' })}
+                        >
+                          {t('chat.e2eeDemo', { defaultValue: 'Demo' })}
                         </span>
                       )}
                     </div>

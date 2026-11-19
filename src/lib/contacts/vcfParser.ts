@@ -157,8 +157,8 @@ function decodeValue(value: string, propertyPart: string): string {
   // Handle CHARSET parameter
   const charsetMatch = propertyPart.match(/CHARSET=([^;:]+)/i);
   if (charsetMatch) {
-    const charset = charsetMatch[1].toUpperCase();
     // For simplicity, assume UTF-8
+    void charsetMatch;
   }
 
   // Handle ENCODING parameter (quoted-printable)

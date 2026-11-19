@@ -38,6 +38,7 @@ vi.mock('../hooks/useSecurity', () => ({
       history: [],
     }),
     identity: { fingerprint: 'nova_pk_test1234567890' },
+    isDemoPeer: vi.fn(() => true),
   }),
 }));
 vi.mock('../hooks/usePremium', () => ({

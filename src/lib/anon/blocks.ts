@@ -165,24 +165,6 @@ async function sha256Hex(value: string): Promise<string> {
     .join('');
 }
 
-function abuseReportMessage(report: {
-  reportId: string;
-  queueIdHash: string;
-  signingKeyHash: string;
-  reporterKeyHash: string;
-  category: AbuseCategory;
-  reportedAt: number;
-}): string {
-  return JSON.stringify({
-    reportId: report.reportId,
-    queueIdHash: report.queueIdHash,
-    signingKeyHash: report.signingKeyHash,
-    reporterKeyHash: report.reporterKeyHash,
-    category: report.category,
-    reportedAt: report.reportedAt,
-  });
-}
-
 /**
  * Signs an abuse report with the reporter's Ed25519 signing key so the relay
  * can verify the report came from a legitimate participant (not a random

@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { computeThumbnailSize, createThumbnail, type ThumbnailOptions } from './imageThumbnail';
+import { computeThumbnailSize, createThumbnail } from './imageThumbnail';
 
 describe('computeThumbnailSize', () => {
   it('downscales a landscape image to fit within maxWidth/maxHeight', () => {
@@ -45,7 +45,6 @@ describe('createThumbnail', () => {
   let mockCanvas: HTMLCanvasElement;
   let mockContext: any;
   let mockImage: HTMLImageElement & { complete: boolean };
-  let resolveImage: (() => void) | null = null;
 
   beforeEach(() => {
     mockContext = {
@@ -58,7 +57,6 @@ describe('createThumbnail', () => {
       toDataURL: vi.fn(() => 'data:image/jpeg;base64,abc123'),
     } as unknown as HTMLCanvasElement;
 
-    resolveImage = null;
     mockImage = {
       complete: false,
       naturalWidth: 800,

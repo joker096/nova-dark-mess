@@ -402,7 +402,7 @@ export class P2PMessengerChannel {
     this.lastStatsTime = 0;
   }
 
-  private async sampleCallQuality(pollIntervalMs: number): Promise<void> {
+  private async sampleCallQuality(_pollIntervalMs: number): Promise<void> {
     const pc = this.pc;
     if (!pc || !this.onQualityStats) return;
 
