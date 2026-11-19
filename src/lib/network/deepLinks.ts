@@ -25,6 +25,7 @@ export type DeepLinkTarget =
       comments?: boolean;
     }
   | { type: 'profile'; id: string }
+  | { type: 'bot'; id: string; /** Start payload carried with /start, if any. */ startPayload?: string }
   | { type: 'contact-invite'; code: string }
   | { type: 'device-link'; url: string };
 
@@ -33,7 +34,7 @@ export const DEEP_LINK_WEB_HOST = 'nova.app';
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const CONTACT_INVITE_PATTERN = /^[A-Za-z0-9_-]{1,4096}$/;
-const NESTED_TYPES = new Set(['chat', 'channel', 'profile']);
+const NESTED_TYPES = new Set(['chat', 'channel', 'profile', 'bot']);
 
 function isValidId(id: string): boolean {
   return ID_PATTERN.test(id);
@@ -70,11 +71,15 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
         : null;
     }
     if (!NESTED_TYPES.has(parsed.hostname)) return null;
-    // nova://chat/<id>
+    // nova://chat/<id>   nova://bot/<id>?start=<payload>
     const id = parsed.pathname.replace(/^\/+|\/+$/g, '');
     if (!isValidId(id)) return null;
+    const start = parsed.searchParams.get('start')?.trim() ?? undefined;
     if (parsed.hostname === 'channel') {
       return { type: 'channel', id, ...readChannelContext(parsed) };
+    }
+    if (parsed.hostname === 'bot') {
+      return { type: 'bot', id, startPayload: start };
     }
     return { type: parsed.hostname as 'chat' | 'profile', id };
   }
@@ -85,6 +90,9 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     if (!isValidId(id)) return null;
     if (type === 'channel') {
       return { type: 'channel', id, ...readChannelContext(parsed) };
+    }
+    if (type === 'bot') {
+      return { type: 'bot', id, startPayload: parsed.searchParams.get('start') ?? undefined };
     }
     return { type: type as 'chat' | 'profile', id };
   }
@@ -97,6 +105,11 @@ export function buildDeepLink(target: DeepLinkTarget): string {
   if (target.type === 'device-link') return target.url;
   if (target.type === 'contact-invite') {
     return `${DEEP_LINK_SCHEME}://contact/${encodeURIComponent(target.code)}`;
+  }
+  if (target.type === 'bot') {
+    const base = `${DEEP_LINK_SCHEME}://bot/${encodeURIComponent(target.id)}`;
+    if (!target.startPayload) return base;
+    return `${base}?start=${encodeURIComponent(target.startPayload)}`;
   }
   const base = `${DEEP_LINK_SCHEME}://${target.type}/${encodeURIComponent(target.id)}`;
   if (target.type !== 'channel' || !target.postId) return base;

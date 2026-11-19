@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Radio,
@@ -19,6 +19,7 @@ import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
+import { BotSession } from './lib/bots/session';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -172,6 +173,21 @@ export default function App() {
     null,
   );
   const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
+
+  // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
+  const botSessionRef = useRef<BotSession | null>(null);
+  const getBotSession = useCallback(() => {
+    if (!botSessionRef.current) botSessionRef.current = new BotSession();
+    return botSessionRef.current;
+  }, []);
+  useEffect(() => {
+    void getBotSession().ensureReady();
+  }, [getBotSession]);
+  const handleBotCallback = useCallback(
+    (botId: string, chatId: string, messageId: string, callbackData: string) =>
+      getBotSession().dispatchCallback(botId, chatId, messageId, callbackData),
+    [getBotSession],
+  );
   const pendingInviteRef = useFocusTrap<HTMLDivElement>(
     Boolean(pendingInvite),
     () => setPendingInvite(null),
@@ -404,7 +420,10 @@ export default function App() {
         navigate('profile-katie', { profileId: target.id });
         return;
       }
-      if (channels.some((channel) => channel.id === target.id)) {
+      if (
+        target.type === 'channel' &&
+        channels.some((channel) => channel.id === target.id)
+      ) {
         setActiveChannelId(target.id);
         setPendingCommentsPostId(
           target.postId && target.comments ? target.postId : null,
@@ -537,14 +556,22 @@ export default function App() {
         );
       case 'chat-katie':
       case 'chats':
-      default:
+      default: {
+        const botId = getBotSession().isBot(activeChatId) ? activeChatId : undefined;
+        const botCommands = botId
+          ? getBotSession().listBots().find((b) => b.manifest.id === botId)?.manifest.commands ?? []
+          : [];
         return (
           <ChatScreen
             chatId={activeChatId}
             onBack={goBack}
             onOpenProfile={() => openProfile(activeChatId)}
+            botId={botId}
+            botCommands={botCommands}
+            onBotCallback={handleBotCallback}
           />
         );
+      }
     }
   };
 
@@ -575,14 +602,22 @@ export default function App() {
             onToggleStoryReaction={toggleStoryReaction}
           />
         );
-      case 'chat-katie':
+      case 'chat-katie': {
+        const botId = getBotSession().isBot(activeChatId) ? activeChatId : undefined;
+        const botCommands = botId
+          ? getBotSession().listBots().find((b) => b.manifest.id === botId)?.manifest.commands ?? []
+          : [];
         return (
           <ChatScreen
             chatId={activeChatId}
             onBack={goBack}
             onOpenProfile={() => openProfile(activeChatId)}
+            botId={botId}
+            botCommands={botCommands}
+            onBotCallback={handleBotCallback}
           />
         );
+      }
       case 'channel-kyiv':
         return (
           <ChannelScreen
