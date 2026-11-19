@@ -498,7 +498,8 @@
     "e2eeVerifyDesc": "Compare the security code with your contact in person or over a trusted channel.",
     "e2eeDisappearing": "Disappearing messages",
     "e2eeDisappearingOff": "Off",
-    "e2eeKeyChanged": "Security code changed"
+    "e2eeKeyChanged": "Security code changed",
+    "callbackToast": "{{text}}"
   },
   "stories": {
     "title": "스토리",
@@ -1024,5 +1025,28 @@
     "howStep3": "You can appeal a sanction once, in the app, without email.",
     "noIdentityNote": "Nova never asks for a phone, email or ID for moderation. Sanctions apply to a pseudonymous key, not a legal identity.",
     "footer": "End-to-end encrypted chats are never scanned."
+  },
+  "bot": {
+    "title": "Bots",
+    "create": "Create bot",
+    "install": "Install bot",
+    "revoke": "Revoke",
+    "permission": "Permission",
+    "readMessages": "Read messages",
+    "sendMessages": "Send messages",
+    "inlineKeyboard": "Inline keyboard",
+    "media": "Media",
+    "mentionOnly": "Mention only",
+    "granted": "Granted",
+    "denied": "Denied",
+    "start": "Start",
+    "help": "Help",
+    "echo": "Echo",
+    "noBots": "No bots installed",
+    "installDesc": "Install a bot from a nova://bot/... link or a local manifest file",
+    "permissionsRequired": "This bot requests the following permissions:",
+    "grantAll": "Grant all",
+    "cancel": "Cancel",
+    "commandMenu": "Bot commands"
   }
 }

@@ -56,6 +56,7 @@ import {
   saveCreatedGroups,
 } from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
+import type { BotCommand } from '../lib/bots/types';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
@@ -66,6 +67,8 @@ import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
 import { FileSelectionModal } from './FileSelectionModal';
 import { PollCreateModal } from './PollCreateModal';
+import { MessageInlineKeyboard } from './MessageInlineKeyboard';
+import { CommandMenu } from './chat/CommandMenu';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
@@ -135,6 +138,18 @@ interface ChatScreenProps {
   chatId: string;
   onBack: () => void;
   onOpenProfile: () => void;
+  /**
+   * Id of the bot this chat is with, if any. Used to render the bot badge
+   * and the slash-command menu (docs/bots-roadmap.md §B2).
+   */
+  botId?: string;
+  /** Commands advertised by the bot in this chat, if any. */
+  botCommands?: BotCommand[];
+  /**
+   * Bot callback dispatcher wired by App.tsx (bots Phase B2/B4). Returns
+   * true when the update was dispatched to an installed bot runtime.
+   */
+  onBotCallback?: (botId: string, chatId: string, messageId: string, callbackData: string) => boolean;
 }
 
 interface ScheduledMessageItem {
@@ -164,7 +179,14 @@ type RoomEnvelope =
   | { v: 1; kind: 'group'; payload: GroupPayload }
   | { v: 1; kind: 'file'; message: FileTransferMessage };
 
-export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenProfile }) => {
+export const ChatScreen: React.FC<ChatScreenProps> = ({
+  chatId,
+  onBack,
+  onOpenProfile,
+  botId,
+  botCommands,
+  onBotCallback,
+}) => {
   const { t } = useLanguage();
   const { encryptAndSendMessage, checkPeerKey, identity } = useSecurity();
   const { checkout, canUse } = usePremium();
@@ -748,6 +770,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -1779,6 +1802,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
     );
 
     setActiveReactionMsgId(null);
+  };
+
+  /**
+   * Inline-button press: emits a callback_query update to the bot runtime
+   * (docs/bots-roadmap.md §B2). The bot's answerCallbackQuery surfaces as a
+   * toast. Bot dispatch goes through the session bot runtime (B1); without
+   * one installed, the press is a no-op with a hint toast.
+   */
+  const handleBotCallback = (botId: string, messageId: string, callbackData: string) => {
+    const dispatched = onBotCallback?.(botId, chatId, messageId, callbackData);
+    if (!dispatched) {
+      triggerPinnedToast(t('chat.callbackToast', { text: callbackData }));
+    }
   };
 
   const handleCopyMessage = (msg: ChatMessage) => {
@@ -3860,11 +3896,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </p>
                           </div>
                         )}
-                        <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                        <div className="w-28 h-28 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            emojiClassName="text-6xl"
+                            emojiClassName="text-5xl"
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
@@ -4128,11 +4164,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                             </p>
                           </div>
                         )}
-                        <div className="w-36 h-36 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                        <div className="w-28 h-28 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            emojiClassName="text-6xl"
+                            emojiClassName="text-5xl"
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
@@ -4303,6 +4339,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                         </button>
                       ))}
                     </div>
+                  )}
+
+                  {/* Bot inline keyboard (docs/bots-roadmap.md §B2) — rendered from the message itself. */}
+                  {msg.botKeyboard && msg.botKeyboard.length > 0 && msg.botId && (
+                    <MessageInlineKeyboard
+                      keyboard={msg.botKeyboard}
+                      botId={msg.botId}
+                      messageId={msg.id}
+                      onCallback={handleBotCallback}
+                    />
                   )}
                 </div>
               </div>
@@ -4763,11 +4809,42 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ chatId, onBack, onOpenPr
                 }
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSendMessage();
+                if (e.key === 'Enter') {
+                  if (commandMenuOpen) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleSendMessage();
+                }
+                if (e.key === '/' && !inputText && !commandMenuOpen && botId) {
+                  e.preventDefault();
+                  setCommandMenuOpen(true);
+                  return;
+                }
+                if (e.key === 'Escape' && commandMenuOpen) {
+                  e.preventDefault();
+                  setCommandMenuOpen(false);
+                  return;
+                }
+                if (commandMenuOpen && e.key === 'ArrowDown') {
+                  e.preventDefault();
+                }
               }}
               placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
               className="w-full bg-transparent text-sm text-white placeholder-white/35 focus:outline-none py-1 min-w-0"
             />
+            {commandMenuOpen && botCommands?.length && (
+              <CommandMenu
+                commands={botCommands}
+                isOpen={commandMenuOpen}
+                onSelect={(command) => {
+                  setInputText(`/${command} `);
+                  setCommandMenuOpen(false);
+                  void mainInputRef.current?.focus();
+                }}
+                onClose={() => setCommandMenuOpen(false)}
+              />
+            )}
 
             {/* Emoji Picker Button inside input field */}
             <button

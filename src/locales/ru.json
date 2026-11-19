@@ -291,7 +291,8 @@
     "e2eeVerifyDesc": "Сравните код безопасности с контактом при встрече или по доверенному каналу.",
     "e2eeDisappearing": "Исчезающие сообщения",
     "e2eeDisappearingOff": "Выкл.",
-    "e2eeKeyChanged": "Код безопасности изменён"
+    "e2eeKeyChanged": "Код безопасности изменён",
+    "callbackToast": "{{text}}"
   },
   "stories": {
     "title": "Истории",
@@ -1030,5 +1031,28 @@
     "howStep3": "You can appeal a sanction once, in the app, without email.",
     "noIdentityNote": "Nova never asks for a phone, email or ID for moderation. Sanctions apply to a pseudonymous key, not a legal identity.",
     "footer": "End-to-end encrypted chats are never scanned."
+  },
+  "bot": {
+    "title": "Bots",
+    "create": "Create bot",
+    "install": "Install bot",
+    "revoke": "Revoke",
+    "permission": "Permission",
+    "readMessages": "Read messages",
+    "sendMessages": "Send messages",
+    "inlineKeyboard": "Inline keyboard",
+    "media": "Media",
+    "mentionOnly": "Mention only",
+    "granted": "Granted",
+    "denied": "Denied",
+    "start": "Start",
+    "help": "Help",
+    "echo": "Echo",
+    "noBots": "No bots installed",
+    "installDesc": "Install a bot from a nova://bot/... link or a local manifest file",
+    "permissionsRequired": "This bot requests the following permissions:",
+    "grantAll": "Grant all",
+    "cancel": "Cancel",
+    "commandMenu": "Bot commands"
   }
 }

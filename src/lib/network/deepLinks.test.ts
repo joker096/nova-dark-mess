@@ -54,6 +54,20 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink(offer)).toEqual({ type: 'device-link', url: offer });
   });
 
+  it('parses bot links with optional start payload', () => {
+    expect(parseDeepLink('nova://bot/echo')).toEqual({ type: 'bot', id: 'echo', startPayload: undefined });
+    expect(parseDeepLink('nova://bot/echo?start=deep')).toEqual({
+      type: 'bot',
+      id: 'echo',
+      startPayload: 'deep',
+    });
+    expect(parseDeepLink('https://nova.app/bot/echo?start=hello')).toEqual({
+      type: 'bot',
+      id: 'echo',
+      startPayload: 'hello',
+    });
+  });
+
   it('rejects foreign, malformed and injected links', () => {
     expect(parseDeepLink('https://example.com/chat/katie')).toBeNull();
     expect(parseDeepLink('nova://settings/toggle')).toBeNull();
@@ -86,9 +100,18 @@ describe('parseDeepLink', () => {
       { type: 'profile' as const, id: 'nova_pk_abc123' },
       { type: 'channel' as const, id: 'channel-kyiv', postId: 'post-1', comments: true },
       { type: 'channel' as const, id: 'channel-kyiv', postId: 'post-1' },
+      { type: 'bot' as const, id: 'echo', startPayload: 'deep' },
+      { type: 'bot' as const, id: 'echo' },
     ]) {
       expect(parseDeepLink(buildDeepLink(target))).toEqual(target);
     }
+  });
+
+  it('builds bot links', () => {
+    expect(buildDeepLink({ type: 'bot', id: 'echo', startPayload: 'deep' })).toBe(
+      'nova://bot/echo?start=deep',
+    );
+    expect(buildDeepLink({ type: 'bot', id: 'echo' })).toBe('nova://bot/echo');
   });
 
   it('keeps the post a channel link points at', () => {
