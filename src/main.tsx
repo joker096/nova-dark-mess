@@ -16,9 +16,13 @@ const bootstrap = async () => {
     document.documentElement.classList.add('native-safe-insets');
   }
 
-  // The active locale may still be a lazy chunk; load it before the first paint
-  // so the UI never flashes translation keys.
-  await loadLanguage(i18n.language);
+  // The active locale may still be a lazy chunk; kick off loading in parallel
+  // with the first paint so the shell renders immediately. Non-English locales
+  // load in the background; English is bundled up front and is a no-op here.
+  // A locale load failure is non-fatal: the UI falls back to English.
+  void loadLanguage(i18n.language).catch(() => {
+    /* locale load failure is non-fatal */
+  });
 
   createRoot(document.getElementById('root')!).render(
     <LanguageProvider>
