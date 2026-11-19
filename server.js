@@ -1049,6 +1049,109 @@ app.get('/api/relay/:destination', (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// Encrypted backup upload/download (network backup/restore)
+//
+// The server never sees plaintext: the client encrypts the backup blob locally
+// with a passphrase (Argon2id) before uploading. The server stores the opaque
+// blob under a destination fingerprint with a TTL, exactly like /api/relay.
+// Download is a simple GET that returns the stored blob for the caller's
+// destination; the caller re-encrypts locally on restore.
+// ───────────────────────────────────────────────────────────────────────────
+const BACKUP_DIR = process.env.BACKUP_DIR
+  ? path.resolve(process.env.BACKUP_DIR)
+  : path.join(__dirname, 'backups');
+const BACKUP_TTL_MS = parseInt(process.env.BACKUP_TTL_MS || String(30 * 24 * 60 * 60 * 1000), 10); // 30 days
+const BACKUP_MAX_BYTES = parseInt(process.env.BACKUP_MAX_BYTES || '10485760', 10); // 10 MB
+
+function backupDestDir(destination) {
+  const safe = String(destination).replace(/[^a-zA-Z0-9_-]/g, '');
+  return path.join(BACKUP_DIR, safe);
+}
+
+function sweepBackupExpired() {
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const dests = fs.readdirSync(BACKUP_DIR);
+    for (const dest of dests) {
+      const dir = path.join(BACKUP_DIR, dest);
+      if (!fs.statSync(dir).isDirectory()) continue;
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.json')) continue;
+        try {
+          const rec = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+          if (Date.now() > (rec.expiresAt || 0)) {
+            fs.unlinkSync(path.join(dir, f));
+          }
+        } catch {
+          try { fs.unlinkSync(path.join(dir, f)); } catch {}
+        }
+      }
+      try { if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir); } catch {}
+    }
+  } catch {}
+}
+
+setInterval(sweepBackupExpired, BACKUP_TTL_MS);
+
+app.post('/api/backup/upload', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!relayRateLimit(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
+  if (!verifyRelayAuth(req)) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized' });
+  }
+  const destination = req.body && req.body.destination;
+  if (!destination || typeof destination !== 'string') {
+    return res.status(400).json({ ok: false, reason: 'missing destination' });
+  }
+  const blob = req.body && req.body.blob;
+  if (!blob || typeof blob !== 'string') {
+    return res.status(400).json({ ok: false, reason: 'missing blob' });
+  }
+  if (Buffer.byteLength(blob) > BACKUP_MAX_BYTES) {
+    return res.status(413).json({ ok: false, reason: 'backup too large' });
+  }
+  const dir = backupDestDir(destination);
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, 'backup.json');
+  const record = {
+    blob,
+    expiresAt: Date.now() + BACKUP_TTL_MS,
+    storedAt: new Date().toISOString(),
+    size: Buffer.byteLength(blob),
+  };
+  fs.writeFileSync(file, JSON.stringify(record));
+  return res.status(202).json({ ok: true });
+});
+
+app.get('/api/backup/download', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!relayRateLimit(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
+  if (!verifyRelayAuth(req)) {
+    return res.status(401).json({ ok: false, reason: 'unauthorized' });
+  }
+  const destination = req.query && req.query.destination;
+  if (!destination || typeof destination !== 'string') {
+    return res.status(400).json({ ok: false, reason: 'missing destination' });
+  }
+  const file = path.join(backupDestDir(destination), 'backup.json');
+  let record;
+  try {
+    record = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return res.status(404).json({ ok: false, reason: 'no backup found' });
+  }
+  if (Date.now() > (record.expiresAt || 0)) {
+    try { fs.unlinkSync(file); } catch {}
+    return res.status(404).json({ ok: false, reason: 'backup expired' });
+  }
+  return res.json({ ok: true, blob: record.blob, storedAt: record.storedAt, size: record.size });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // Anonymous queue relay (v1): one-way, fixed-size packets, TTL, no identity.
 // In-memory for v1; suitable for development and small deployments. For
 // production persistence, back this with the same disk pattern as /api/relay.
