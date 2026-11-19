@@ -173,6 +173,9 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
   const [activeFolderId, setActiveFolderId] = useState<string>('all');
   const [archivedChatIds, setArchivedChatIds] = useState<Set<string>>(new Set());
+  const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(() => {
+    return new Set(MOCK_CHATS.filter((c) => c.isPinned).map((c) => c.id));
+  });
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
 
@@ -304,23 +307,29 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   // Filter chats by active folder when not searching
   const categoryChats = useMemo(() => {
     if (!currentFolder) return MOCK_CHATS;
+    let result: ChatItem[];
     if (currentFolder.id === 'all' || currentFolder.filterType === 'all') {
-      return MOCK_CHATS.filter((c) => !archivedChatIds.has(c.id));
+      result = MOCK_CHATS.filter((c) => !archivedChatIds.has(c.id));
+    } else if (currentFolder.id === 'archive') {
+      result = MOCK_CHATS.filter((c) => archivedChatIds.has(c.id));
+    } else if (currentFolder.filterType === 'direct') {
+      result = MOCK_CHATS.filter((c) => c.type === 'direct');
+    } else if (currentFolder.filterType === 'channels') {
+      result = MOCK_CHATS.filter((c) => c.isChannel || c.type === 'channel');
+    } else if (currentFolder.filterType === 'groups') {
+      result = MOCK_CHATS.filter((c) => c.type === 'group');
+    } else {
+      result = MOCK_CHATS.filter((c) => currentFolder.chatIds.includes(c.id));
     }
-    if (currentFolder.id === 'archive') {
-      return MOCK_CHATS.filter((c) => archivedChatIds.has(c.id));
-    }
-    if (currentFolder.filterType === 'direct') {
-      return MOCK_CHATS.filter((c) => c.type === 'direct');
-    }
-    if (currentFolder.filterType === 'channels') {
-      return MOCK_CHATS.filter((c) => c.isChannel || c.type === 'channel');
-    }
-    if (currentFolder.filterType === 'groups') {
-      return MOCK_CHATS.filter((c) => c.type === 'group');
-    }
-    return MOCK_CHATS.filter((c) => currentFolder.chatIds.includes(c.id));
-  }, [currentFolder, groupVersion, archivedChatIds]);
+    // Sort pinned chats to the top
+    return result.sort((a, b) => {
+      const aPinned = pinnedChatIds.has(a.id);
+      const bPinned = pinnedChatIds.has(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+  }, [currentFolder, groupVersion, archivedChatIds, pinnedChatIds]);
 
   // Calculate badge (unread or count) for each folder tab
   const getFolderBadge = (folder: ChatFolder) => {
@@ -466,6 +475,15 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       } else {
         next.add(chatId);
       }
+      return next;
+    });
+  };
+
+  const handlePinToggle = (chatId: string) => {
+    setPinnedChatIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId);
+      else next.add(chatId);
       return next;
     });
   };
@@ -1159,6 +1177,26 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                           ) : (
                             <Archive className="w-3 h-3 rotate-180" />
                           )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePinToggle(chat.id);
+                          }}
+                          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition cursor-pointer shrink-0"
+                          aria-label={
+                            pinnedChatIds.has(chat.id)
+                              ? t('common.unpin', { defaultValue: 'Unpin' })
+                              : t('common.pin', { defaultValue: 'Pin' })
+                          }
+                          title={
+                            pinnedChatIds.has(chat.id)
+                              ? t('actions.unpin', { defaultValue: 'Unpin chat' })
+                              : t('actions.pin', { defaultValue: 'Pin chat' })
+                          }
+                        >
+                          <Pin className={`w-3 h-3 ${pinnedChatIds.has(chat.id) ? 'fill-[var(--nova-accent-color,#ff4e18)]' : ''}`} />
                         </button>
                       </div>
                     </div>
