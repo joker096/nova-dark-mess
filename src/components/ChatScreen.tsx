@@ -894,6 +894,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [editingText, setEditingText] = useState('');
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
+  // Online/offline state for offline indicator
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
     try {
@@ -2864,6 +2877,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color, #ff4e18)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
           <span>{pinnedToast}</span>
+        </div>
+      )}
+
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-white/10 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <Clock className="w-3.5 h-3.5 text-[#717682]" />
+          <span>You appear to be offline — messages will send when reconnected</span>
         </div>
       )}
 
