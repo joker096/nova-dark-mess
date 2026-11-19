@@ -744,10 +744,6 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPinLengthState(next);
   }, []);
 
-  const setP2PManager = useCallback((manager: P2PManager): void => {
-    setP2pManagerState(manager);
-  }, []);
-
   const setPeerFingerprint = useCallback((chatId: string, fingerprint: string): void => {
     setPeerFingerprintsByChatState((prev) => ({ ...prev, [chatId]: fingerprint }));
   }, []);

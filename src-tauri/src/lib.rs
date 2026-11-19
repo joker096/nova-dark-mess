@@ -42,31 +42,13 @@ pub fn run() {
         }
       }
 
-      // Android: initialise the Keystore-backed keychain with the app Context.
-      // Tauri v2 exposes the Android Context and JavaVM through the app handle;
-      // the exact method name may need adjustment to the installed Tauri version.
+      // Android: the Keystore-backed keychain is a stub in this build
+      // (the `android_keystore` crate is not published on crates.io), so
+      // setup defers to the default and keychain operations degrade to
+      // frontend localStorage on Android.
       #[cfg(target_os = "android")]
       {
-        use jni::objects::JObject;
-        use jni::sys::JavaVM;
-        use std::ptr::NonNull;
-
-        // Obtain the JNIEnv for the current (main) thread and the application
-        // Context. Tauri v2 on Android runs setup on the main thread which is
-        // already attached to the JVM. Any failure here degrades gracefully to
-        // localStorage on the frontend side.
-        if let Ok(env) = app.handle().env() {
-          if let Ok(vm) = env.get_java_vm() {
-            if let Ok(context) = app.handle().android_context() {
-              if let Ok(context_global) = env.new_global_ref(context) {
-                keychain::init_android_keystore(
-                  vm.as_ptr() as *mut JavaVM as usize,
-                  context_global.as_raw() as i64,
-                );
-              }
-            }
-          }
-        }
+        let _ = app;
       }
 
       Ok(())

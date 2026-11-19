@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Установка виджета чата — Mess&Anger</title>
+<meta name="robots" content="index, follow">
+<link rel="icon" href="/favicon.ico">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0b0f; color: #eaeaea; line-height: 1.6; }
+  .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+  header { border-bottom: 1px solid #2a2a2a; padding-bottom: 24px; margin-bottom: 32px; }
+  header h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  header p { font-size: 14px; opacity: .7; }
+  nav a { color: #ff4e18; text-decoration: none; margin-right: 16px; font-size: 14px; }
+  nav a:hover { text-decoration: underline; }
+  h2 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: #ff4e18; }
+  h3 { font-size: 15px; font-weight: 600; margin: 16px 0 8px; }
+  p { margin-bottom: 16px; font-size: 14px; opacity: .9; }
+  pre { background: #151621; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; margin: 12px 0; overflow-x: auto; font-size: 13px; }
+  code { font-family: 'DM Mono', monospace; font-size: 13px; color: #ff4e18; }
+  .platform { border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 20px; background: #151621; }
+  .platform h3 { margin-top: 0; color: #eaeaea; }
+  .copy-btn { background: #ff4e18; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 8px; float: right; }
+  .copy-btn:hover { background: #e03d12; }
+  .clear { clear: both; }
+  .note { background: #1a1b21; border-left: 3px solid #ff4e18; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; opacity: .9; }
+  footer { margin-top: 40px; padding-top: 24px; border-top: 1px solid #2a2a2a; font-size: 12px; opacity: .6; }
+  a { color: #ff4e18; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <nav>
+      <a href="/">Главная</a>
+      <a href="/privacy.html">Приватность</a>
+    </nav>
+    <h1>Установка виджета чата</h1>
+    <p>Бесплатный виджет чата Mess&Anger для вашего сайта. Посетители пишут вам без регистрации, вы отвечаете из приложения.</p>
+  </nav>
+
+  <section>
+    <h2>Шаг 1. Получите Site ID</h2>
+    <p>В приложении Mess&Anger перейдите в экран «Сайты», нажмите «Подключить сайт», укажите название и домены, затем скопируйте готовый сниппет с кнопкой «Копировать».</p>
+    <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+  </section>
+
+  <section>
+    <h2>Шаг 2. Вставьте сниппет на вашу платформу</h2>
+
+    <div class="platform">
+      <h3>Обычный HTML</h3>
+      <p>Вставьте скрипт перед закрывающим тегом &lt;/body&gt; на каждой странице, где нужен чат:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+
+    <div class="platform">
+      <h3>Tilda</h3>
+      <p>В редакторе сайта перейдите в «Настройки сайта» → «HTML и код» → «В<head>» или «Перед тегом &lt;/body&gt;» и вставьте:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+
+    <div class="platform">
+      <h3>Wix</h3>
+      <p>В редакторе сайта перейдите в «Настройки» → «Пользовательские коды» → «Добавить пользовательский код». Вставьте код, выберите placement «Тело - конец» и страницы «Все страницы»:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+
+    <div class="platform">
+      <h3>Shopify</h3>
+      <p>В админке перейдите в «Интернет-магазин» → «Темы» → «Действия» → «Редактировать код». Откройте файл <code>theme.liquid</code> и вставьте перед &lt;/body&gt;:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+
+    <div class="platform">
+      <h3>Joomla</h3>
+      <p>Используйте расширение для вставки кода (например, «Custom HTML» или «Sourcerer») или отредактируйте шаблон, вставив код перед &lt;/body&gt; в <code>index.php</code> вашего шаблона:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+
+    <div class="platform">
+      <h3>WordPress</h3>
+      <p>Установите плагин <strong>Mess Chat</strong> из каталога WordPress.org или загрузите вручную. В настройках плагина укажите Site ID и включите виджет.</p>
+      <p>Или вставьте код вручную через «Внешний вид» → «Редактор тем» → файл <code>footer.php</code> перед &lt;/body&gt;:</p>
+      <pre>&lt;script async src="https://mess.cvr.name/widget/loader.js" data-site="YOUR_SITE_ID"&gt;&lt;/script&gt;</pre>
+      <button class="copy-btn">Копировать</button>
+      <div class="clear"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Шаг 3. Проверьте установку</h2>
+    <p>Откройте свой сайт в браузере. Кнопка чата должна появиться в правом (или левом) нижнем углу. Нажмите на неё — откроется окно чата. Напишите тестовое сообщение и убедитесь, что оно пришло в приложение Mess&Anger.</p>
+  </section>
+
+  <div class="note">
+    <strong>Приватность:</strong> виджет не использует трекеры, внешние шрифты и сторонние скрипты. Все сообщения шифруются сквозным шифрованием. Сервер видит только зашифрованный текст и метаданные (время, размер, ID чата).
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Mess&Anger. <a href="/privacy.html">Политика приватности</a> · <a href="/terms.html">Условия использования</a></p>
+  </footer>
+</div>
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var pre = this.parentElement.querySelector('pre');
+      if (!pre) return;
+      navigator.clipboard.writeText(pre.textContent).then(function() {
+        var orig = btn.textContent;
+        btn.textContent = 'Скопировано!';
+        setTimeout(function() { btn.textContent = orig; }, 1500);
+      });
+    });
+  });
+</script>
+</body>
+</html>

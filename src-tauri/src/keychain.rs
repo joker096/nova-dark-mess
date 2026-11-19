@@ -104,98 +104,19 @@ mod imp {
 
 #[cfg(target_os = "android")]
 mod imp {
-    use android_keystore::AndroidKeyStore;
-    use jni::JNIEnv;
-    use jni::objects::{JObject};
-    use jni::sys::JavaVM;
-    use std::sync::OnceLock;
+    const UNSUPPORTED: &str = "Android Keystore not available in this build";
 
-    const SERVICE: &str = "nova-dark-messenger";
-
-    // Globals initialized once from Tauri setup on Android.
-    // The JavaVM pointer and the application Context (global JNI ref) are
-    // stored here so keychain_get/set/remove can attach to the VM and
-    // obtain a JNIEnv on any thread.
-    static JAVA_VM: OnceLock<*mut JavaVM> = OnceLock::new();
-    static ANDROID_CONTEXT: OnceLock<JObject> = OnceLock::new();
-
-    /// Initialize the Android keystore backing. Called from Tauri setup with
-    // the JavaVM pointer and the application Context (as a global JNI ref).
-    pub fn init_android(vm: *mut JavaVM, context: JObject) {
-        let _ = JAVA_VM.set(vm);
-        let _ = ANDROID_CONTEXT.set(context);
+    pub fn get(_account: &str) -> Result<Option<String>, String> {
+        Err(UNSUPPORTED.to_string())
     }
 
-    /// Attach the current thread to the Java VM and run `f` with a JNIEnv.
-    fn with_env<F, R>(f: F) -> Result<R, String>
-    where
-        F: FnOnce(&mut JNIEnv) -> Result<R, String>,
-    {
-        let vm = JAVA_VM.get().ok_or("Android VM not initialized")?;
-        // Safety: the VM pointer came from a valid JNI invocation in setup.
-        let mut env =
-            unsafe { (*vm).attach_current_thread_as_daemon().map_err(|e| e.to_string())? };
-        f(&mut env)
+    pub fn set(_account: &str, _value: &str) -> Result<(), String> {
+        Err(UNSUPPORTED.to_string())
     }
 
-    fn keystore<'a>(env: &'a mut JNIEnv) -> Result<AndroidKeyStore<'a>, String> {
-        let context = ANDROID_CONTEXT
-            .get()
-            .ok_or("Android Context not initialized")?;
-        Ok(AndroidKeyStore::new(env, context))
+    pub fn remove(_account: &str) -> Result<(), String> {
+        Err(UNSUPPORTED.to_string())
     }
-
-    fn alias(account: &str) -> String {
-        format!("{}_{}", SERVICE, account.replace(|c: char| !c.is_alphanumeric(), "_"))
-    }
-
-    pub fn get(account: &str) -> Result<Option<String>, String> {
-        with_env(|env| {
-            let keystore = keystore(env)?;
-            let alias = alias(account);
-            match keystore.get_key(&alias) {
-                Ok(Some(bytes)) => String::from_utf8(bytes)
-                    .map(Some)
-                    .map_err(|e| e.to_string()),
-                Ok(None) => Ok(None),
-                Err(e) => Err(e.to_string()),
-            }
-        })
-    }
-
-    pub fn set(account: &str, value: &str) -> Result<(), String> {
-        with_env(|env| {
-            let keystore = keystore(env)?;
-            let alias = alias(account);
-            // Delete any existing key first (Android Keystore does not overwrite).
-            let _ = keystore.delete_key(&alias);
-            keystore.generate_key(&alias, value.as_bytes())
-        })
-    }
-
-    pub fn remove(account: &str) -> Result<(), String> {
-        with_env(|env| {
-            let keystore = keystore(env)?;
-            let alias = alias(account);
-            keystore.delete_key(&alias)
-        })
-    }
-}
-
-/// Public wrapper for `imp::init_android` so `lib.rs` can call it from the
-// setup hook despite `imp` being a private module.
-#[cfg(target_os = "android")]
-pub fn init_android_keystore(vm_ptr: usize, context_global_ref: i64) {
-    use jni::objects::JObject;
-    use std::ptr::NonNull;
-
-    let vm = NonNull::new(vm_ptr as *mut jni::sys::JavaVM)
-        .expect("Null JavaVM pointer")
-        .as_ptr();
-
-    let context = unsafe { JObject::from_raw(context_global_ref as jni::sys::jobject) };
-
-    imp::init_android(vm, context);
 }
 
 #[cfg(not(any(
@@ -231,7 +152,6 @@ pub fn keychain_available() -> bool {
         target_os = "macos",
         target_os = "linux",
         target_os = "ios",
-        target_os = "android",
     ))
 }
 
