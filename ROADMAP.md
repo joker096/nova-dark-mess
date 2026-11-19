@@ -369,8 +369,17 @@ servers, no paid services.
   defers ChatScreen, ChatsScreen, ChannelScreen, ProfileScreen, AnalyticsScreen,
   MeshMapScreen, SettingsModal, AnonymousMessengerScreen, and
   CryptoCheckoutModal.
-- [ ] **Optional self-hosted add-ons**: webhook/plugin model (local only),
+- [x] **Optional self-hosted add-ons**: webhook/plugin model (local only),
   user-run signaling/relay gateways, documented but never required.
+  `src/lib/plugins/pluginHost.ts` is a local-only plugin system: plugins
+  register with a name, receive a context (webhook delivery via user-configured
+  local URL, get/set config), and subscribe to typed app events
+  (message:send/receive, contact:add/remove, call:start/end, file:transfer,
+  backup:create/restore, pin:set/remove, session:lock/unlock). Individual
+  plugin errors are swallowed during event dispatch. 12 tests cover register,
+  list, unregister, onRegister context, event emission, webhook delivery,
+  config isolation, multi-plugin emission, and error isolation. Nothing is
+  sent to a remote server unless the user explicitly configures a webhook.
 
 ## Recent changes (2026-11-17)
 
