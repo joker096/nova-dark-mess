@@ -11,10 +11,8 @@ import {
   loadBlockList,
   markAbuseReportUploaded,
   recordAbuseReport,
-  signAbuseReport,
   unblockSender,
   verifyAbuseReportSignature,
-  type AbuseCategory,
 } from './blocks';
 import { createInviteToken } from './spam';
 import { generateQueueSigningKeyPair } from './signing';
