@@ -8,7 +8,7 @@
  *   NOVA_BOT_MNEMONIC="..." npx tsx packages/bot-gateway/src/cli.ts
  */
 
-import { createAnonymousIdentity, deriveIdentityFromMnemonic } from '../../src/lib/crypto/identity';
+import { createAnonymousIdentity, deriveIdentityFromMnemonic } from '../../../src/lib/crypto/identity';
 import { BotGateway } from './index';
 
 async function main() {

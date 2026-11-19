@@ -19,7 +19,7 @@ import { ChannelListPanel } from './components/ChannelListPanel';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
-import { BotSession } from './lib/bots/session';
+import { BotSession, NOVA_BOTS } from './lib/bots/session';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
