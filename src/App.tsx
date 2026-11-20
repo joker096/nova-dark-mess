@@ -1173,6 +1173,10 @@ export default function App() {
           getBotSession={getBotSession}
           pendingBotInstall={pendingBotInstall}
           onBotInstallHandled={() => setPendingBotInstall(null)}
+          onOpenBotChat={(botId) => {
+            setPendingBotStart({ chatId: botId, payload: '/start' });
+            navigate('chat-katie', { chatId: botId });
+          }}
         />
       </Suspense>
 

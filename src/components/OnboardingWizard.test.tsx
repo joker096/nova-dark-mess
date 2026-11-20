@@ -156,6 +156,8 @@ describe('OnboardingWizard', () => {
   });
 
   it('creates an encrypted backup only after the passphrase is confirmed', async () => {
+    // The download URL is revoked on a delay so the browser can start the save.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const createObjectURL = vi.fn(() => 'blob:backup-test');
     const revokeObjectURL = vi.fn();
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
@@ -183,9 +185,12 @@ describe('OnboardingWizard', () => {
       expect(screen.getByTestId('onboarding-done')).toBeTruthy();
     });
     expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(60_000);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:backup-test');
     expect(click).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('onboarding.backupReminder')).toBeNull();
+    vi.useRealTimers();
   });
 
   it('shows a backup reminder when the backup step is skipped', () => {

@@ -43,10 +43,13 @@ pub fn run() {
       }
 
       // Android: Keystore-backed keychain via JNI (AndroidKeyStore).
-      // KeyStore.getInstance() is static — no Activity Context needed.
+      // Initialize the JVM for AndroidKeyStore operations.
       #[cfg(target_os = "android")]
       {
-        let _ = app;
+        use tauri::android::activity;
+        if let Some(vm) = activity().map(|act| act.vm()) {
+          keychain::init_android(vm);
+        }
       }
 
       Ok(())

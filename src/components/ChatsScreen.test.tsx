@@ -43,12 +43,11 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     localStorage.removeItem('nova_read_chats_v1');
   });
 
-  it('renders six bottom-nav tabs with localized keys and moves analytics to settings', () => {
+  it('renders five bottom-nav tabs with localized keys and moves analytics to settings', () => {
     renderChats();
     expect(screen.getByRole('button', { name: 'chats.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'channels' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'folders' })).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'profile.title' }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: 'meshMap.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'settings.title' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();

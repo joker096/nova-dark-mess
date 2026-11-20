@@ -19,18 +19,65 @@ export type AnalyticsEvent =
   | { type: 'folder_delete'; folderId: string; timestamp: number };
 
 const STORAGE_KEY = 'nova_local_analytics';
+const CRASH_STORAGE_KEY = 'nova_local_crashes';
 const MAX_EVENTS = 500;
+const MAX_CRASHES = 50;
+
+interface CrashReport {
+  timestamp: number;
+  message: string;
+  filename?: string;
+  lineno?: number;
+  colno?: number;
+  stack?: string;
+}
 
 export class LocalAnalytics {
   private events: AnalyticsEvent[] = [];
+  private crashes: CrashReport[] = [];
+  private analyticsConsent = false;
+  private crashReportsConsent = false;
 
   constructor() {
     this.load();
-    this.track({ type: 'app_open', timestamp: Date.now() });
+    this.loadCrashes();
+    // Only track app_open if analytics consent is already set.
+    if (this.analyticsConsent) {
+      this.track({ type: 'app_open', timestamp: Date.now() });
+    }
     window.addEventListener('beforeunload', () => {
-      this.track({ type: 'app_close', timestamp: Date.now() });
+      if (this.analyticsConsent) {
+        this.track({ type: 'app_close', timestamp: Date.now() });
+      }
       this.save();
+      this.saveCrashes();
     });
+
+    // Global crash capture (only stores if crashReports consent is enabled)
+    const originalOnError = window.onerror;
+    window.onerror = (message, filename, lineno, colno, error) => {
+      const stack = error?.stack ?? undefined;
+      this.recordCrash(String(message), filename, lineno, colno, stack);
+      if (originalOnError) {
+        return originalOnError(message, filename, lineno, colno, error);
+      }
+      return false;
+    };
+    const originalUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      const reason = event.reason;
+      const stack = reason?.stack ?? undefined;
+      this.recordCrash(
+        typeof reason === 'string' ? reason : String(reason),
+        undefined,
+        undefined,
+        undefined,
+        stack
+      );
+      if (originalUnhandledRejection) {
+        (originalUnhandledRejection as (e: PromiseRejectionEvent) => void)(event);
+      }
+    };
   }
 
   private load(): void {
@@ -44,6 +91,17 @@ export class LocalAnalytics {
     }
   }
 
+  private loadCrashes(): void {
+    try {
+      const raw = localStorage.getItem(CRASH_STORAGE_KEY);
+      if (raw) {
+        this.crashes = JSON.parse(raw) as CrashReport[];
+      }
+    } catch {
+      this.crashes = [];
+    }
+  }
+
   public save(): void {
     try {
       const trimmed = this.events.slice(-MAX_EVENTS);
@@ -54,7 +112,62 @@ export class LocalAnalytics {
     }
   }
 
+  private saveCrashes(): void {
+    try {
+      const trimmed = this.crashes.slice(-MAX_CRASHES);
+      localStorage.setItem(CRASH_STORAGE_KEY, JSON.stringify(trimmed));
+      this.crashes = trimmed;
+    } catch {
+      // localStorage may be unavailable in private mode
+    }
+  }
+
+  /** Call from the settings UI when the user toggles analytics consent. */
+  setAnalyticsConsent(consent: boolean): void {
+    this.analyticsConsent = consent;
+    if (consent) {
+      this.track({ type: 'app_open', timestamp: Date.now() });
+    }
+    this.save();
+  }
+
+  /** Call from the settings UI when the user toggles crash report consent. */
+  setCrashReportsConsent(consent: boolean): void {
+    this.crashReportsConsent = consent;
+    this.saveCrashes();
+  }
+
+  /** Check whether analytics tracking is currently enabled. */
+  hasAnalyticsConsent(): boolean {
+    return this.analyticsConsent;
+  }
+
+  /** Check whether crash report storage is currently enabled. */
+  hasCrashReportsConsent(): boolean {
+    return this.crashReportsConsent;
+  }
+
+  private recordCrash(
+    message: string,
+    filename?: string,
+    lineno?: number,
+    colno?: number,
+    stack?: string
+  ): void {
+    if (!this.crashReportsConsent) return;
+    this.crashes.push({
+      timestamp: Date.now(),
+      message,
+      filename,
+      lineno,
+      colno,
+      stack,
+    });
+    this.saveCrashes();
+  }
+
   track(event: AnalyticsEvent): void {
+    if (!this.analyticsConsent) return;
     this.events.push(event);
     // Debounce save - save every 10 events or on app_close
     if (this.events.length % 10 === 0) {
@@ -88,10 +201,16 @@ export class LocalAnalytics {
     return stats;
   }
 
+  getCrashes(): CrashReport[] {
+    return [...this.crashes];
+  }
+
   clear(): void {
     this.events = [];
+    this.crashes = [];
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(CRASH_STORAGE_KEY);
     } catch {
       // localStorage may be unavailable in private mode
     }

@@ -28,6 +28,10 @@ export interface PrivacyPrefs {
   /** Tor: route relay traffic through local SOCKS proxy (stage 6.4). */
   torEnabled: boolean;
   torSocksPort: number;
+  /** Analytics consent: off by default — no trackers without consent (stage 8.4). */
+  analyticsConsent: boolean;
+  /** Crash reports consent: off by default (stage 8.4). */
+  crashReports: boolean;
 }
 
 export interface BatteryStatus {
@@ -46,6 +50,8 @@ export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = {
   relayEndpoints: [],
   torEnabled: false,
   torSocksPort: 9050,
+  analyticsConsent: false,
+  crashReports: false,
 };
 
 const PRESENCE_TTLS: PresenceTtl[] = ['short', 'normal', 'long'];
@@ -97,6 +103,14 @@ export function loadPrivacyPrefs(): PrivacyPrefs {
         typeof parsed.torSocksPort === 'number' && parsed.torSocksPort > 0
           ? parsed.torSocksPort
           : DEFAULT_PRIVACY_PREFS.torSocksPort,
+      analyticsConsent:
+        typeof parsed.analyticsConsent === 'boolean'
+          ? parsed.analyticsConsent
+          : DEFAULT_PRIVACY_PREFS.analyticsConsent,
+      crashReports:
+        typeof parsed.crashReports === 'boolean'
+          ? parsed.crashReports
+          : DEFAULT_PRIVACY_PREFS.crashReports,
     };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFS };

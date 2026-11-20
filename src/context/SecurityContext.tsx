@@ -285,12 +285,19 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // verify a remote contact's key rather than a key this device generated
         // itself (F1.3).
         if (p2pManager) {
-          const fingerprint = peerFingerprintsByChat[chatId];
+          // For 1:1 chats, the chatId may be the peer fingerprint itself (nova_pk_*)
+          // or there may be a mapping in peerFingerprintsByChat
+          const fingerprint = peerFingerprintsByChat[chatId] ?? 
+            (chatId.startsWith('nova_pk_') ? chatId : undefined);
           if (fingerprint) {
             const realBundle = p2pManager.getPeerBundle(fingerprint);
             if (realBundle) {
               bundle = realBundle;
               isDemo = false;
+              // Auto-register fingerprint-like chatIds
+              if (chatId.startsWith('nova_pk_') && !peerFingerprintsByChat[chatId]) {
+                setPeerFingerprintsByChatState(prev => ({ ...prev, [chatId]: chatId }));
+              }
             }
           }
         }
@@ -447,13 +454,15 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // local demo peer. The demo path (getOrCreateDemoPeerBundle) stays as
         // the offline showcase fallback behind an explicit demo flag.
         if (p2pManager) {
-          const ok = await p2pManager.sendMessage(chatId, text);
-          if (!ok) throw new Error(`P2P transport could not dispatch to ${chatId}`);
+          // Map chatId to real peer fingerprint for 1:1 chats
+          const peerFingerprint = peerFingerprintsByChat[chatId] ?? chatId;
+          const ok = await p2pManager.sendMessage(peerFingerprint, text);
+          if (!ok) throw new Error(`P2P transport could not dispatch to ${peerFingerprint}`);
           if (storageReadyRef.current) {
             await dbInstance.saveEncryptedMessageWithSession(
               chatId,
               options?.messageId ?? `msg_${Date.now()}`,
-              JSON.stringify({ type: 'p2p', text, from: activeIdentity.fingerprint, to: chatId }),
+              JSON.stringify({ type: 'p2p', text, from: activeIdentity.fingerprint, to: peerFingerprint }),
               null,
               options?.expiresAt,
             );

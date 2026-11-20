@@ -47,6 +47,7 @@ import {
   Bell,
   ShieldAlert,
   Flag,
+  Bot,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -87,6 +88,8 @@ import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
 import { ACCENT_COLORS, applyAccentColor } from '../lib/ui/appearance';
+import { NovaAvatar } from '../lib/ui/NovaAvatar';
+import { useAccount } from '../hooks/useAccount';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
 import { secureWipeMessage } from '../lib/security/secureWipe';
@@ -215,6 +218,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const { t } = useLanguage();
   const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer, p2pManager, setPeerFingerprint } = useSecurity();
   const { checkout, canUse } = usePremium();
+  const { account } = useAccount();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
   const localFingerprint = identity?.fingerprint ?? 'nova_pk_local_group';
@@ -744,6 +748,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }),
     [identity, p2pManager],
   );
+  const botManifest = botId
+    ? getBotSession?.()
+        .listBots()
+        .find((entry) => entry.manifest.id === botId)?.manifest
+    : null;
   const profile =
     CONTACT_PROFILES[chatId] ||
     (chatItem?.type === 'group'
@@ -759,7 +768,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           voiceCount: 0,
           mediaItems: [],
         }
-      : CONTACT_PROFILES['katie']);
+      : botManifest
+        ? {
+            name: botManifest.name,
+            avatar: '',
+            status: 'Bot',
+            phone: '—',
+            nickname: botManifest.username,
+            mediaCount: 0,
+            filesCount: 0,
+            linksCount: 0,
+            voiceCount: 0,
+            mediaItems: [],
+          }
+        : CONTACT_PROFILES['katie']);
   const isProfileOnline = /^online$/i.test((profile.status ?? '').trim());
 
   useEffect(() => {
@@ -993,6 +1015,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [typingActivity, setTypingActivity] = useState<'typing' | 'recording'>('typing');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
+  const [pickerPosition, setPickerPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  } | null>(null);
+  const pickerTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
@@ -1011,6 +1039,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       window.removeEventListener('offline', onOffline);
     };
   }, []);
+
+  // Position the reaction picker so it never overflows the viewport edges.
+  // Measures the trigger element on first open and clamps to screen bounds.
+  useLayoutEffect(() => {
+    if (!activeReactionMsgId || !pickerTriggerRef.current) {
+      setPickerPosition(null);
+      return;
+    }
+    const rect = pickerTriggerRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const pickerWidth = 260;
+    const viewportHeight = window.innerHeight;
+
+    let left = rect.left + rect.width / 2 - pickerWidth / 2;
+    left = Math.min(Math.max(left, 8), viewportWidth - pickerWidth - 8);
+
+    const openUpwards = rect.bottom + 10 > viewportHeight - 8;
+    setPickerPosition(openUpwards
+      ? { bottom: viewportHeight - rect.top + 6, left }
+      : { top: rect.bottom + 6, left });
+  }, [activeReactionMsgId]);
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
   const [chatTheme, setChatTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -1066,7 +1115,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isReportBotOpen, setIsReportBotOpen] = useState(false);
   const [isBlockBotConfirm, setIsBlockBotConfirm] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [_toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState<boolean>(() =>
     isNotificationsEnabled(chatId),
@@ -3801,6 +3850,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 isMine ? 'items-end' : 'items-start'
               } ${isDeleting ? 'msg-deleting' : ''}`}
             >
+              {/* Sender avatar at the start of a message group, so the other
+                  person's picture is visible in the conversation itself. */}
+              {item.groupStart && (
+                <div className={`mb-1 flex items-center ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <NovaAvatar
+                    name={isMine ? account.displayName : profile.name}
+                    src={isMine ? account.avatar : profile.avatar}
+                    size="sm"
+                  />
+                </div>
+              )}
+
               {/* Swipe-to-reply background indicator icon */}
               {isThisSwiping && currentOffset > 4 && (
                 <div
@@ -3837,9 +3898,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className={`absolute -top-14 z-40 bg-[#151621]/98 border border-white/20 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.85)] backdrop-blur-2xl animate-in zoom-in-90 fade-in duration-150 ${
-                      isMine ? 'right-0' : 'left-0'
-                    }`}
+                    className={`fixed z-40 flex max-w-[calc(100vw-1rem)] flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain rounded-full border border-white/20 bg-[#151621]/98 px-2 py-1.5 no-scrollbar shadow-[0_12px_36px_rgba(0,0,0,0.85)] backdrop-blur-2xl animate-in zoom-in-90 fade-in duration-150`}
+                    style={pickerPosition ? { ...pickerPosition, touchAction: 'pan-x' } : { touchAction: 'pan-x' }}
                   >
                     {EMOJI_OPTIONS.map((emoji) => {
                       const isSelected = msg.reactions?.some((r) => r.emoji === emoji && r.fromMe);
@@ -3848,7 +3908,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           key={emoji}
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => handleSelectReaction(msg.id, emoji)}
-                          className={`text-xl p-1.5 rounded-full hover:scale-135 active:scale-95 transition-transform cursor-pointer relative group ${
+                          className={`shrink-0 text-xl p-1 rounded-full hover:scale-135 active:scale-95 transition-transform cursor-pointer relative group ${
                             isSelected ? 'bg-white/20 scale-120' : 'hover:bg-white/10'
                           }`}
                           title={`React with ${emoji}`}
@@ -3861,10 +3921,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       );
                     })}
 
-                    <div className="h-4 w-[1px] bg-white/20 mx-1" />
+                    <div className="mx-0.5 h-4 w-[1px] shrink-0 bg-white/20" />
 
                     {/* Quick Action Buttons: Reply, Pin, Copy */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"
                         onPointerDown={(e) => e.stopPropagation()}
@@ -3876,7 +3936,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         title={t('common.reply')}
                       >
                         <Reply className="w-3.5 h-3.5" />
-                        <span>Reply</span>
+                        <span className="hidden sm:inline">Reply</span>
                       </button>
                       <button
                         type="button"
@@ -3988,6 +4048,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   >
                     <NovaTooltip label="Add reaction (emoji popup)">
                       <NovaIconButton
+                        ref={pickerTriggerRef}
                         label="Add reaction (emoji popup)"
                         icon={<Heart className="fill-rose-400/50" />}
                         size={32}
@@ -5054,11 +5115,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <Paperclip className="w-4 h-4" />
           </button>
 
-          {/* Formatting Buttons */}
+          {/* Formatting buttons stay on desktop; on phones they pushed the
+              message field down to almost nothing, so the row keeps only the
+              controls needed to write and send. */}
           <button
             type="button"
             onClick={() => wrapSelection('**', '**')}
-            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.bold
                 ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
@@ -5071,7 +5134,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <button
             type="button"
             onClick={() => wrapSelection('*', '*')}
-            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.italic
                 ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
@@ -5084,7 +5147,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <button
             type="button"
             onClick={() => wrapSelection('`', '`')}
-            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.code
                 ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
@@ -5097,7 +5160,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <button
             type="button"
             onClick={() => wrapSelection('~~', '~~')}
-            className={`w-7 h-7 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.strike
                 ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
@@ -5145,6 +5208,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }
               }}
               placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
+              data-inline-focus
               className="w-full bg-transparent text-sm text-white placeholder-white/35 focus:outline-none py-1 min-w-0"
             />
             {commandMenuOpen && botCommands?.length && (
@@ -5158,6 +5222,31 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 onClose={() => setCommandMenuOpen(false)}
               />
+            )}
+
+            {/* Bot commands: makes the slash menu discoverable instead of
+                requiring people to guess that typing "/" does something. */}
+            {botId && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (botCommands?.length) {
+                    setCommandMenuOpen((prev) => !prev);
+                  } else {
+                    setInputText((prev) => (prev.startsWith('/') ? prev : `/${prev}`));
+                  }
+                  mainInputRef.current?.focus();
+                }}
+                className={`p-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-90 ${
+                  commandMenuOpen
+                    ? 'text-[var(--nova-accent-color, #ff4e18)] bg-white/10'
+                    : 'text-white/50 hover:text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/10'
+                }`}
+                title={t('bot.commands', { defaultValue: 'Bot commands' })}
+                aria-label={t('bot.commands', { defaultValue: 'Bot commands' })}
+              >
+                <Bot className="w-4 h-4" />
+              </button>
             )}
 
             {/* Emoji Picker Button inside input field */}

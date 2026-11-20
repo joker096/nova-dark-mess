@@ -90,7 +90,7 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
       className={[
         'relative shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full',
         'transition cursor-pointer active:scale-95',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)]',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
         SIZES[size],
         VARIANTS[variant],

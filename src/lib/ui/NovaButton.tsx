@@ -17,7 +17,7 @@ const SIZE_CONFIG: Record<string, { btn: string; icon: string }> = {
 };
 
 const FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0d11]';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)]';
 
 const VARIANT_CONFIG: Record<string, string> = {
   ghost:

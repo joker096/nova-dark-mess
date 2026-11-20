@@ -16,7 +16,7 @@ const BASE_WRAPPER =
   'flex flex-col gap-1.5';
 
 const BASE_FIELD =
-  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,box-shadow,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:ring-2 focus-within:ring-[var(--nova-accent-color,#ff4e18)]/25';
+  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:bg-[color-mix(in_srgb,var(--nova-accent-color,#ff4e18)_5%,transparent)]';
 
 export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
   ({

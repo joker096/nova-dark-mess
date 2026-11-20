@@ -374,7 +374,11 @@
     "zeroDataSent": "Zero data sent",
     "week": "Week",
     "month": "Month",
-    "year": "Year"
+    "year": "Year",
+    "consent": "Share local usage analytics",
+    "consentHint": "Helps us improve Nova. Stored locally on your device only — nothing is sent to any server. Off by default.",
+    "crashReports": "Send crash reports",
+    "crashReportsHint": "Helps us fix bugs. Crash reports contain no message content or personal data. Off by default."
   },
   "chat": {
     "systemMemberAdded": "{{member}} joined the group",
