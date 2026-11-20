@@ -43,6 +43,7 @@ import type {
   ChannelPost,
   ChannelPostDraft,
 } from '../types/messenger';
+import type { AdCampaign } from '../lib/ads/types';
 import { DoodleBackground } from './DoodleBackground';
 import { useLanguage } from '../context/LanguageContext';
 import { usePremium } from '../hooks/usePremium';
@@ -53,6 +54,7 @@ import { ChannelPostComposerModal } from './ChannelPostComposerModal';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { ReportSheet } from './ReportSheet';
 import { SponsoredPostCard } from './SponsoredPostCard';
+import { fetchAd, recordImpression } from '../lib/ads/adClient';
 import { getDemoCampaign } from '../lib/ads/demoCampaign';
 import { LazyMedia } from './LazyMedia';
 import {
@@ -604,7 +606,34 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         .sort((a, b) => postCreatedAt(b) - postCreatedAt(a))
     : feedPosts;
 
-  const demoCampaign = useMemo(() => getDemoCampaign(language), [language]);
+  const [adCampaign, setAdCampaign] = useState<AdCampaign | null>(null);
+
+  // Fetch a real ad from the ad server for this channel. Falls back to the
+  // demo campaign when the server is unavailable or has no ad for the channel.
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function loadAd() {
+      if (!channel || channel.isOwned || channel.visibility === 'private') return;
+      try {
+        const ad = await fetchAd(channel.id);
+        if (!cancelled) setAdCampaign(ad ?? null);
+      } catch {
+        /* ad fetch is best-effort; falls back to demo campaign */
+      }
+    }
+
+    // Stagger the fetch so it doesn't block the initial paint.
+    timer = setTimeout(loadAd, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [channel, language]);
+
+  const campaign = adCampaign ?? getDemoCampaign(language);
+
   const showSponsoredCard =
     !query &&
     !canUse('ads_free') &&
@@ -612,8 +641,15 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     channel.visibility !== 'private' &&
     displayPosts.length >= 5 &&
     !adDismissed &&
-    !isAdDismissed(demoCampaign.id) &&
-    !isAdvertiserBlocked(demoCampaign.advertiserId);
+    !isAdDismissed(campaign.id) &&
+    !isAdvertiserBlocked(campaign.advertiserId);
+
+  // Record server-side impression when a real (non-demo) ad becomes visible.
+  useEffect(() => {
+    if (!adCampaign) return;
+    recordImpression(adCampaign.id, adCampaign.id, channel.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adCampaign]);
 
   useEffect(() => {
     const root = postsScrollRef.current;
@@ -1670,7 +1706,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <SponsoredPostCard
-                        campaign={demoCampaign}
+                        campaign={campaign}
                         onDismissed={() => setAdDismissed(true)}
                       />
                     </div>
