@@ -32,3 +32,18 @@ export type { ToastApi, ToastOptions, ToastUndo } from './NovaToast';
 export type { NovaBadgeProps } from './NovaBadge';
 export { NovaReactionPill } from './NovaReactionPill';
 export { NovaReactionPicker } from './NovaReactionPicker';
+export {
+  DEFAULT_MEDIA_PREFERENCES,
+  MEDIA_PREFERENCES_EVENT,
+  STICKER_SIZE_OPTIONS,
+  loadMediaPreferences,
+  normalizeMediaPreferences,
+  resolveStickerSize,
+  saveMediaPreferences,
+} from './mediaPreferences';
+export type {
+  MediaPreferences,
+  StickerPickerDensity,
+  StickerSize,
+  VoiceSendMode,
+} from './mediaPreferences';
