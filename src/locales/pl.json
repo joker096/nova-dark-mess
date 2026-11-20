@@ -643,6 +643,7 @@
     "activeSessions": "Aktywne sesje",
     "dataStorage": "Dane i przechowywanie",
     "storageUsage": "Wykorzystanie pamięci",
+    "storageLoading": "Loading…",
     "autoDownload": "Automatyczne pobieranie multimediów",
     "clearCache": "Wyczyść pamięć podręczną",
     "dataBackup": "Kopia zapasowa i przywracanie",
@@ -701,7 +702,10 @@
     "termsOfService": "Warunki świadczenia usług",
     "privacyPolicy": "Polityka prywatności",
     "rerunSetup": "Uruchom instalację ponownie",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Tapeta czatu",

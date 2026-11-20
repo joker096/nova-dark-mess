@@ -643,6 +643,7 @@
     "activeSessions": "Actieve sessies",
     "dataStorage": "Gegevens en opslag",
     "storageUsage": "Opslaggebruik",
+    "storageLoading": "Loading…",
     "autoDownload": "Media automatisch downloaden",
     "clearCache": "Cache wissen",
     "dataBackup": "Back-up en herstel",
@@ -701,7 +702,10 @@
     "termsOfService": "Servicevoorwaarden",
     "privacyPolicy": "Privacybeleid",
     "rerunSetup": "Voer de installatie opnieuw uit",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Chat-achtergrond",

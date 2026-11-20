@@ -643,6 +643,7 @@
     "activeSessions": "アクティブなセッション",
     "dataStorage": "データとストレージ",
     "storageUsage": "ストレージの使用量",
+    "storageLoading": "Loading…",
     "autoDownload": "メディアの自動ダウンロード",
     "clearCache": "キャッシュのクリア",
     "dataBackup": "バックアップと復元",
@@ -701,7 +702,10 @@
     "termsOfService": "利用規約",
     "privacyPolicy": "プライバシーポリシー",
     "rerunSetup": "セットアップを再度実行する",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "チャット壁紙",

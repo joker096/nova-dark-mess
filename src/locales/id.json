@@ -583,6 +583,7 @@
     "activeSessions": "Sesi aktif",
     "dataStorage": "Data & penyimpanan",
     "storageUsage": "Penggunaan penyimpanan",
+    "storageLoading": "Loading…",
     "autoDownload": "Unduh otomatis media",
     "clearCache": "Bersihkan cache",
     "dataBackup": "Cadangan & pemulihan",

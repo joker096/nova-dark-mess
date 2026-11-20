@@ -583,6 +583,7 @@
     "activeSessions": "Phiên hoạt động",
     "dataStorage": "Dữ liệu & Bộ nhớ",
     "storageUsage": "Dung lượng bộ nhớ",
+    "storageLoading": "Loading…",
     "autoDownload": "Tự động tải phương tiện",
     "clearCache": "Xóa bộ nhớ đệm",
     "dataBackup": "Sao lưu & Khôi phục",

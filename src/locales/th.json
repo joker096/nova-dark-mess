@@ -583,6 +583,7 @@
     "activeSessions": "เซสชันที่ใช้งาน",
     "dataStorage": "ข้อมูลและการจัดเก็บ",
     "storageUsage": "การใช้พื้นที่จัดเก็บ",
+    "storageLoading": "Loading…",
     "autoDownload": "ดาวน์โหลดสื่ออัตโนมัติ",
     "clearCache": "ล้างแคช",
     "dataBackup": "สำรองและกู้คืนข้อมูล",

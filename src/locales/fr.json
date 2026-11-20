@@ -643,6 +643,7 @@
     "activeSessions": "Séances actives",
     "dataStorage": "Données et stockage",
     "storageUsage": "Utilisation du stockage",
+    "storageLoading": "Loading…",
     "autoDownload": "Téléchargement automatique de médias",
     "clearCache": "Vider le cache",
     "dataBackup": "Sauvegarde et restauration",
@@ -701,7 +702,10 @@
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité",
     "rerunSetup": "Exécutez à nouveau l'installation",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Fond d'écran de discussion",

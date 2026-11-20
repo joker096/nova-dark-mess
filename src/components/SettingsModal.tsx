@@ -229,6 +229,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [clearDataConfirm, setClearDataConfirm] = useState(false);
   const [clearDataPin, setClearDataPin] = useState('');
   const [cacheMsg, setCacheMsg] = useState<string | null>(null);
+  const [storageLoading, setStorageLoading] = useState(true);
+  const [storageUsage, setStorageUsage] = useState<{ category: string; bytes: number }[]>([]);
+  const [totalStorageBytes, setTotalStorageBytes] = useState(0);
   const [aboutMsg, _setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
@@ -422,6 +425,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return () => clearTimeout(timer);
   }, [adPrefsMsg]);
 
+  /** Approximate byte size of localStorage, grouped by category. */
+  const computeStorageUsage = useCallback(() => {
+    const categories: Record<string, number> = {};
+    let total = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        const value = localStorage.getItem(key);
+        if (value === null) continue;
+        const bytes = new Blob([key + value]).size;
+        total += bytes;
+
+        let category = 'other';
+        if (key.startsWith('nova_backup_') || key.startsWith('nova_cloud_')) category = 'backup';
+        else if (key.startsWith('nova_ads_')) category = 'ads';
+        else if (key.startsWith('nova_local_analytics')) category = 'analytics';
+        else if (key.startsWith('nova_account_') || key.startsWith('nova_pk_') || key.startsWith('nova_identity_')) category = 'identity';
+        else if (key.startsWith('nova_created_groups') || key.startsWith('nova_created_group_') || key.startsWith('nova_messenger_chat_cache')) category = 'chats';
+        else if (key.startsWith('nova_contact_')) category = 'contacts';
+        else if (key.startsWith('nova_sticker_')) category = 'stickers';
+        else if (key.startsWith('nova_premium_')) category = 'premium';
+        else if (key.startsWith('nova_chat_theme') || key.startsWith('nova_wallpaper') || key === 'nova_messenger_settings' || key.startsWith('nova_messenger_settings')) category = 'settings';
+        else if (key.startsWith('nova_notification_')) category = 'notifications';
+        else if (key.startsWith('nova_onboarding_')) category = 'onboarding';
+        else if (key.startsWith('nova_messenger_chat_')) category = 'messages';
+        else category = 'other';
+
+        categories[category] = (categories[category] || 0) + bytes;
+      }
+    } catch { void 0; }
+
+    const result = Object.entries(categories)
+      .map(([category, bytes]) => ({ category, bytes }))
+      .sort((a, b) => b.bytes - a.bytes);
+
+    setStorageUsage(result);
+    setTotalStorageBytes(total);
+    setStorageLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void computeStorageUsage();
+  }, [computeStorageUsage]);
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   if (!isOpen) return null;
 
   const updatePrivacyPref = (metadataMinimization: boolean) => {
@@ -453,6 +509,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       localStorage.removeItem('nova_messenger_chat_cache');
     } catch { void 0; }
     setCacheMsg(t('settings.cacheCleared'));
+    // Recompute storage usage after clearing
+    void computeStorageUsage();
   };
 
   const handleResetAdPrefs = () => {
@@ -1340,6 +1398,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             enabled={prefs.autoDownload}
             onToggle={() => updatePref('autoDownload', !prefs.autoDownload)}
           />
+
+          {/* Storage Usage Breakdown */}
+          <div className="space-y-1 px-1 py-2">
+            {storageLoading ? (
+              <div className="text-[11px] text-[#8c919d]">{t('settings.storageLoading')}</div>
+            ) : (
+              <>
+                <div className="flex justify-between text-[11px] font-medium text-white/70 mb-1">
+                  <span>{t('settings.storageUsage')}</span>
+                  <span>{formatBytes(totalStorageBytes)}</span>
+                </div>
+                <div className="space-y-1 mb-2">
+                  {storageUsage.map((cat) => (
+                    <div key={cat.category} className="flex justify-between text-[11px] text-[#8c919d]">
+                      <span>{cat.category}</span>
+                      <span>{formatBytes(cat.bytes)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             onClick={handleClearCache}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"

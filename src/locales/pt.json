@@ -643,6 +643,7 @@
     "activeSessions": "Sessões ativas",
     "dataStorage": "Dados e armazenamento",
     "storageUsage": "Uso de armazenamento",
+    "storageLoading": "Loading…",
     "autoDownload": "Download automático de mídia",
     "clearCache": "Limpar Cache",
     "dataBackup": "Backup e restauração",
@@ -701,7 +702,10 @@
     "termsOfService": "Termos de Serviço",
     "privacyPolicy": "Política de Privacidade",
     "rerunSetup": "Execute a configuração novamente",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Papel de parede de bate-papo",

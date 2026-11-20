@@ -591,6 +591,7 @@
     "activeSessions": "الجلسات النشطة",
     "dataStorage": "البيانات والتخزين",
     "storageUsage": "استخدام التخزين",
+    "storageLoading": "Loading…",
     "autoDownload": "تحميل الوسائط تلقائياً",
     "clearCache": "مسح ذاكرة التخزين المؤقت",
     "dataBackup": "النسخ الاحتياطي والاستعادة",

@@ -643,6 +643,7 @@
     "activeSessions": "Aktiva sessioner",
     "dataStorage": "Data & Lagring",
     "storageUsage": "Användning av lagring",
+    "storageLoading": "Loading…",
     "autoDownload": "Automatisk nedladdning av media",
     "clearCache": "Rensa cache",
     "dataBackup": "Säkerhetskopiera och återställa",
@@ -701,7 +702,10 @@
     "termsOfService": "Användarvillkor",
     "privacyPolicy": "Sekretesspolicy",
     "rerunSetup": "Kör installationen igen",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Chattbakgrund",

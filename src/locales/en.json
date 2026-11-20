@@ -645,6 +645,7 @@
     "activeSessions": "Active Sessions",
     "dataStorage": "Data & Storage",
     "storageUsage": "Storage Usage",
+    "storageLoading": "Loading…",
     "autoDownload": "Auto-Download Media",
     "clearCache": "Clear Cache",
     "dataBackup": "Backup & Restore",
