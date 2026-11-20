@@ -81,6 +81,20 @@ describe('anon relay storage audit', () => {
     expect(() => relay.poll(queueId, tokens.recipientToken, 32, signingKey)).toThrow('Queue not found');
   });
 
+  it('rejects poll/ack/deleteQueue on expired queue before cleanup', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-18T00:00:00Z'));
+    const relay = new InMemoryAnonRelay();
+    const { queueId, tokens, signingKey, inviteToken } = relay.createQueue(1_000);
+    relay.enqueue(queueId, tokens.senderToken, btoa('x'), signingKey, undefined, inviteToken);
+
+    vi.advanceTimersByTime(1_001);
+
+    expect(() => relay.poll(queueId, tokens.recipientToken, 32, signingKey)).toThrow('Queue expired');
+    expect(() => relay.ack(queueId, tokens.recipientToken, [], signingKey)).toThrow('Queue expired');
+    expect(() => relay.deleteQueue(queueId, tokens.recipientToken, signingKey)).toThrow('Queue expired');
+  });
+
   it('binds the command timestamp and nonce into the signature', () => {
     const { publicKey, privateKey } = generateQueueSigningKeyPair();
     const auth = signQueueCommand(privateKey, {
