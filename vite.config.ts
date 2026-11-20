@@ -1,11 +1,53 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+
+/**
+ * CSP is injected here instead of being hard-coded in index.html so dev can
+ * allow Vite's inline/eval tooling while production builds do not.
+ *
+ * `script-src` keeps `'unsafe-inline'` in production because Tauri injects its
+ * bootstrap script inline; the actual restriction comes from the Tauri CSP
+ * header, which Tauri extends with a nonce/hash for that script.
+ * `connect-src` must include the IPC origins or every Tauri command is blocked.
+ */
+const SHARED_CSP = [
+  "default-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https: asset: http://asset.localhost",
+  "media-src 'self' blob: https: asset: http://asset.localhost",
+  "frame-src 'self' https: blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+const PROD_CSP = `${SHARED_CSP}; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss:`;
+const DEV_CSP = `${SHARED_CSP}; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss:`;
+
+function cspPlugin(): Plugin {
+  return {
+    name: 'nova-csp',
+    transformIndexHtml(_html, ctx) {
+      return [
+        {
+          tag: 'meta',
+          attrs: {
+            'http-equiv': 'Content-Security-Policy',
+            content: ctx.server ? DEV_CSP : PROD_CSP,
+          },
+          injectTo: 'head-prepend',
+        },
+      ];
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), cspPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

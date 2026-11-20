@@ -518,7 +518,14 @@
     "enableNotifications": "Enable notifications",
     "botWelcomeTitle": "Welcome to the bot!",
     "botWelcomeText": "This bot is ready to help you. Tap Start to begin.",
-    "startBot": "Start"
+    "startBot": "Start",
+    "reportBot": "Report bot",
+    "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
+    "reportSubmitted": "Report submitted: ",
+    "blockBot": "Block bot",
+    "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
+    "block": "Block",
+    "botBlocked": "Bot blocked"
   },
   "stories": {
     "title": "Stories",

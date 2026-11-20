@@ -45,6 +45,8 @@ import {
   VolumeX,
   RefreshCw,
   Bell,
+  ShieldAlert,
+  Flag,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -1062,9 +1064,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   });
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isReportBotOpen, setIsReportBotOpen] = useState(false);
+  const [isBlockBotConfirm, setIsBlockBotConfirm] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState<boolean>(() =>
     isNotificationsEnabled(chatId),
   );
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    toastTimer.current = window.setTimeout(() => setToastMessage(null), 2200);
+  };
 
   const toggleChatNotifications = () => {
     const next = !chatNotificationsEnabled;
@@ -5581,6 +5595,102 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         onClose={() => setIsScheduleModalOpen(false)}
       />
 
+      {/* REPORT BOT MODAL */}
+      {isReportBotOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('chat.reportBot', { defaultValue: 'Report bot' })}</h3>
+              <button
+                onClick={() => setIsReportBotOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-[13px] text-white/80">
+                {t('chat.reportBotDesc', { defaultValue: 'Report this bot for spam, abuse, or violating terms. Your report will be reviewed.' })}
+              </p>
+              <div className="space-y-2">
+                {['spam', 'abuse', 'malware', 'copyright', 'other'].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => {
+                      showToast(`${t('chat.reportSubmitted', { defaultValue: 'Report submitted: ' })}${reason}`);
+                      setIsReportBotOpen(false);
+                    }}
+                    className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/10 text-[12px] font-medium text-white/80 hover:bg-white/[0.1] transition cursor-pointer"
+                  >
+                    {reason.charAt(0).toUpperCase() + reason.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReportBotOpen(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BLOCK BOT CONFIRM MODAL */}
+      {isBlockBotConfirm && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('chat.blockBot', { defaultValue: 'Block bot' })}</h3>
+              <button
+                onClick={() => setIsBlockBotConfirm(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-[13px] text-white/80">
+                {t('chat.blockBotConfirm', { defaultValue: 'Block this bot? You will no longer receive messages from it.' })}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBlockBotConfirm(false);
+                    // In real impl, would call botSession.blockBot(botId)
+                    showToast(t('chat.botBlocked', { defaultValue: 'Bot blocked' }));
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 font-medium hover:bg-red-500/30 transition cursor-pointer"
+                >
+                  {t('chat.block', { defaultValue: 'Block' })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBlockBotConfirm(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FULL-SCREEN MEDIA CALL OVERLAY */}
       <VideoCallOverlay
         isOpen={isVideoCallOpen}
@@ -5815,6 +5925,33 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
                   <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
                 </button>
+              )}
+              {botId && (
+                <>
+                  <div className="h-px bg-white/10 my-1" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsReportBotOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>{t('chat.reportBot', { defaultValue: 'Report bot' })}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsBlockBotConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition cursor-pointer"
+                  >
+                    <Flag className="w-3.5 h-3.5" />
+                    <span>{t('chat.blockBot', { defaultValue: 'Block bot' })}</span>
+                  </button>
+                </>
               )}
               <div className="h-px bg-white/10 my-1" />
               <button
