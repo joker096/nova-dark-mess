@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Nova Dark Messenger",
-  "version": "1.0.53",
+  "version": "1.0.54",
   "identifier": "com.messanger.e2e",
   "build": {
     "frontendDist": "../dist",
