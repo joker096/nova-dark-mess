@@ -26,10 +26,12 @@ import {
 } from '../lib/storage/backup';
 import {
   clearStoredIdentity,
+  hasStoredIdentityRecord,
   loadStoredIdentity,
   saveStoredIdentity,
 } from '../lib/storage/identityStore';
 import { deriveKeyFromRandomSecret } from '../lib/storage/kdf';
+import { isSecureStorageAvailable } from '../lib/storage/keychain';
 import { generateTOTPSecret, verifyTOTPCode } from '../lib/p2p/totp';
 import { getPeerKeyChanges, observePeerKey, type PeerKeyChange } from '../lib/security/peerKeyJournal';
 import {
@@ -79,6 +81,13 @@ export interface SecurityContextType {
   p2pManager: P2PManager | null;
   /** True when a PIN-wrapped master key exists at rest (F2.2). */
   vaultWrapped: boolean;
+  /**
+   * False when the native credential store is unavailable. Secrets then live in
+   * memory for this session only (fail closed, F2.1) and the UI must say so.
+   */
+  secureStorage: boolean;
+  /** False when the encrypted IndexedDB could not be opened (history is not persisted). */
+  dbAvailable: boolean;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => void;
   unlockWithBiometric: () => Promise<boolean>;
@@ -250,6 +259,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     {},
   );
 
+  // F2.1: surfaced to the UI so a build without a working credential store says
+  // so out loud instead of silently degrading.
+  const [secureStorage, setSecureStorageState] = useState(true);
+  const insecureStorageRef = useRef(false);
+  const [dbAvailable, setDbAvailableState] = useState(true);
+  const dbUnavailableRef = useRef(false);
+
   const sessionsRef = useRef<Record<string, RatchetState>>({});
   const storageReadyRef = useRef(false);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
@@ -338,17 +354,32 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
 
     const initialize = async () => {
+      // F2.1 (fail closed): when the native credential store cannot be used we
+      // keep the device key in memory for this session only. Writing the vault
+      // passphrase or the seed-phrase key to localStorage next to the
+      // ciphertext is the defect this guards against, so the persisted seed
+      // phrase becomes unavailable — the user's recovery phrase still works.
+      const secureStorage = await isSecureStorageAvailable().catch(() => false);
+      if (!secureStorage) {
+        console.warn(
+          'Secure key storage is unavailable: encrypted local storage stays in memory for this session.',
+        );
+        insecureStorageRef.current = true;
+        setSecureStorageState(false);
+      }
+
       let currentIdentity: UserIdentity;
       try {
-        const stored = await loadStoredIdentity();
-        if (stored && identityIsConsistent(stored)) {
-          currentIdentity = stored;
-        } else {
-          currentIdentity = await createAnonymousIdentity();
-          await saveStoredIdentity(currentIdentity);
+        currentIdentity = (await loadStoredIdentity()) ?? (await createAnonymousIdentity());
+        // Never silently mint a *new* identity when the seed cannot be read:
+        // that is the only copy of the user's key and the recovery phrase would
+        // stop matching. Keep it in memory for this session instead.
+        if (!(await hasStoredIdentityRecord())) {
+          await saveStoredIdentity(currentIdentity).catch(() => undefined);
         }
       } catch {
         currentIdentity = await createAnonymousIdentity();
+        await saveStoredIdentity(currentIdentity).catch(() => undefined);
       }
 
       try {
@@ -359,6 +390,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         storageReadyRef.current = true;
       } catch (err) {
         console.warn('Encrypted local storage is unavailable:', err);
+        dbUnavailableRef.current = true;
+        setDbAvailableState(false);
       }
 
       let secret: string | null;
@@ -432,6 +465,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const regenerateIdentity = useCallback(async (): Promise<UserIdentity> => {
     const nextIdentity = await createAnonymousIdentity();
+    // Fail closed: an unwritable seed is reported, never replaced by a silent
+    // in-memory identity that would vanish on the next launch.
     await saveStoredIdentity(nextIdentity);
     sessionsRef.current = {};
     setRatchetSessions({});
@@ -623,6 +658,12 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!isValidMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
       const restored = deriveIdentityFromMnemonic(mnemonic);
       await saveStoredIdentity(restored);
+      // The identity is now persisted again; a previous fail-closed session can
+      // be upgraded once the credential store works.
+      if (insecureStorageRef.current && (await isSecureStorageAvailable())) {
+        insecureStorageRef.current = false;
+        setSecureStorageState(true);
+      }
       sessionsRef.current = {};
       setRatchetSessions({});
       if (storageReadyRef.current) {
@@ -881,6 +922,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         peerFingerprintsByChat,
         setPeerFingerprint,
         isDemoPeer,
+        secureStorage,
+        dbAvailable,
         vaultWrapped: vaultWrappedState,
         unlockVault,
         getUnwrappedMasterKey,
