@@ -93,6 +93,7 @@ import { useAccount } from '../hooks/useAccount';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
 import { secureWipeMessage } from '../lib/security/secureWipe';
+import { getDraft, setDraft, clearDraft } from '../lib/messaging/drafts';
 import { dbInstance } from '../lib/storage/db';
 import {
   WALLPAPER_OPTIONS,
@@ -192,7 +193,7 @@ const isVideoMediaUrl = (url: string) =>
 
 // Premium outgoing bubble themes (additive — default theme keeps the current design untouched)
 const PREMIUM_THEMES: Record<string, { label: string; grad: string; shadow: string; border: string }> = {
-  default: { label: 'Default', grad: 'from-[var(--nova-accent-color, #ff521a)] to-[var(--nova-accent-color, #ff3b00)]', shadow: 'shadow-[var(--nova-accent-color, #ff4e18)]/25', border: 'border-[var(--nova-accent-color, #ff4e18)]/45' },
+  default: { label: 'Default', grad: 'from-[var(--nova-accent-color,#ff521a)] to-[var(--nova-accent-color,#ff3b00)]', shadow: 'shadow-[var(--nova-accent-color,#ff4e18)]/25', border: 'border-[var(--nova-accent-color,#ff4e18)]/45' },
   sapphire: { label: 'Sapphire', grad: 'from-[#1E3A8A] to-[#3B82F6]', shadow: 'shadow-[#3B82F6]/25', border: 'border-[#3B82F6]/60' },
   amethyst: { label: 'Amethyst', grad: 'from-[#4C1D95] to-[#8B5CF6]', shadow: 'shadow-[#8B5CF6]/25', border: 'border-[#8B5CF6]/60' },
   emerald: { label: 'Emerald', grad: 'from-[#064E3B] to-[#10B981]', shadow: 'shadow-[#10B981]/25', border: 'border-[#10B981]/60' },
@@ -1005,7 +1006,59 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     };
   }, [chatId, triggerPinnedToast]);
 
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState(() => getDraft(chatId));
+
+  useEffect(() => {
+    setInputText(getDraft(chatId));
+  }, [chatId]);
+
+  // One-handed Edge Swipe-to-Back gesture states
+  const [edgeSwipeOffset, setEdgeSwipeOffset] = useState(0);
+  const [isEdgeSwiping, setIsEdgeSwiping] = useState(false);
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+  const isEligibleEdgeSwipeRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    // Edge zone: touches starting within 44px of the left screen edge
+    if (touch.clientX <= 44) {
+      isEligibleEdgeSwipeRef.current = true;
+    } else {
+      isEligibleEdgeSwipeRef.current = false;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isEligibleEdgeSwipeRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartXRef.current;
+    const dy = Math.abs(touch.clientY - touchStartYRef.current);
+
+    if (dy > dx && dx < 24) {
+      isEligibleEdgeSwipeRef.current = false;
+      setIsEdgeSwiping(false);
+      setEdgeSwipeOffset(0);
+      return;
+    }
+
+    if (dx > 0) {
+      setIsEdgeSwiping(true);
+      setEdgeSwipeOffset(Math.min(dx, 160));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isEligibleEdgeSwipeRef.current && edgeSwipeOffset > 75) {
+      onBack();
+    }
+    isEligibleEdgeSwipeRef.current = false;
+    setIsEdgeSwiping(false);
+    setEdgeSwipeOffset(0);
+  };
   const [formatState, _setFormatState] = useState<{ bold: boolean; italic: boolean; code: boolean; strike: boolean }>({
     bold: false,
     italic: false,
@@ -1613,7 +1666,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           className={
             isActiveMessageMatch
               ? 'bg-gradient-to-r from-[#ff551d] to-[#ff3800] text-white font-bold rounded px-1.5 py-0.5 shadow-[0_0_14px_rgba(255,78,24,0.9)] ring-1 ring-white/90 scale-105 inline-block transition-transform duration-200'
-              : 'bg-[var(--nova-accent-color, #ff4e18)]/35 text-white font-semibold rounded px-1 py-0.5 border border-[var(--nova-accent-color, #ff4e18)]/40'
+              : 'bg-[var(--nova-accent-color,#ff4e18)]/35 text-white font-semibold rounded px-1 py-0.5 border border-[var(--nova-accent-color,#ff4e18)]/40'
           }
         >
           {match}
@@ -1681,13 +1734,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       return;
     }
 
+    const privacyPrefs = loadPrivacyPrefs();
     const call = new P2PMediaCall({
       localFingerprint,
       peerFingerprint,
       mode,
       // Relay-only ICE hides the local IP from the peer; the user opts in via
       // Settings → Privacy (WebRTC IP privacy) and needs a TURN server.
-      icePolicy: loadPrivacyPrefs().webrtcRelayOnly ? 'relay-only' : 'direct',
+      icePolicy: privacyPrefs.webrtcRelayOnly ? 'relay-only' : 'direct',
+      iceServers: privacyPrefs.turnServers.length > 0 ? privacyPrefs.turnServers : undefined,
     });
     mediaCallRef.current = call;
     setCallConnectionStatus('connecting');
@@ -2754,6 +2809,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setTimeout(() => setBotTyping(false), 1800);
     }
     void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
+    clearDraft(chatId);
     if (!customText) {
       setInputText('');
     }
@@ -2841,7 +2897,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               e.stopPropagation();
               handleRetrySend(msg.id);
             }}
-            className="flex items-center gap-1 text-[var(--nova-accent-color, #ff4e18)] hover:text-[var(--nova-accent-color, #ff5d2b)] transition cursor-pointer"
+            className="flex items-center gap-1 text-[var(--nova-accent-color,#ff4e18)] hover:text-[var(--nova-accent-color,#ff5d2b)] transition cursor-pointer"
             title={t('common.retry')}
             aria-label={`${t('common.retry')}: ${msg.text ?? ''}`}
           >
@@ -2935,14 +2991,33 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       : null;
 
   return (
-    <div className="nova-chat-surface flex flex-col h-full bg-[#0b0c10] text-white relative overflow-hidden">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      style={{
+        transform: edgeSwipeOffset > 0 ? `translateX(${edgeSwipeOffset}px)` : undefined,
+        transition: isEdgeSwiping ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+      }}
+      className="nova-chat-surface flex flex-col h-full bg-[#0b0c10] text-white relative overflow-hidden"
+    >
+      {/* Edge Swipe Back Gesture Indicator for One-Handed Operation */}
+      {edgeSwipeOffset > 10 && (
+        <div
+          style={{ opacity: Math.min(1, edgeSwipeOffset / 50) }}
+          className="fixed left-3 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-2xl flex items-center justify-center pointer-events-none transition-opacity"
+        >
+          <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+        </div>
+      )}
       {/* Dynamic Background Wallpaper with session persistence */}
       <DoodleBackground wallpaperId={wallpaperId} intensity={wallpaperIntensity} />
 
       {/* Toast Notification */}
       {pinnedToast && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color, #ff4e18)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color,#ff4e18)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
           <span>{pinnedToast}</span>
         </div>
       )}
@@ -2966,7 +3041,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <button
             type="button"
             onClick={handleUndoDelete}
-            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/[0.08] cursor-pointer"
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/[0.08] cursor-pointer"
           >
             {t('common.undo')}
           </button>
@@ -2987,8 +3062,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <ArrowLeft className="w-4 h-4" />
               </button>
 
-              <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color, #ff4e18)]/50 focus-within:border-[var(--nova-accent-color, #ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
-                <Search className="w-4 h-4 text-[var(--nova-accent-color, #ff4e18)] shrink-0" />
+              <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color,#ff4e18)]/50 focus-within:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
+                <Search className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -3029,7 +3104,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
                 {/* Match counter badge */}
                 {searchQuery.trim() && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30 font-semibold whitespace-nowrap">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30 font-semibold whitespace-nowrap">
                     {matchingMessages.length > 0
                       ? `${activeMatchIndex + 1}/${matchingMessages.length}`
                       : '0/0'}
@@ -3042,14 +3117,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <div className="flex items-center gap-0.5 bg-[#1a1b26] border border-white/10 rounded-xl p-0.5 shrink-0">
                   <button
                     onClick={handlePrevMatch}
-                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color, #ff4e18)] transition cursor-pointer active:scale-95"
+                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                     title={t('common.previous')}
                   >
                     <ChevronUp className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleNextMatch}
-                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color, #ff4e18)] transition cursor-pointer active:scale-95"
+                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                     title={t('common.next')}
                   >
                     <ChevronDown className="w-4 h-4" />
@@ -3067,7 +3142,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   }
                   className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0 ${
                     searchFilterMode === 'filtered'
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 border border-[var(--nova-accent-color, #ff4e18)]'
+                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]'
                       : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
                   }`}
                   title={
@@ -3104,7 +3179,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   className="flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none group"
                   aria-label={t('common.profile')}
                 >
-                  <span className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 ring-2 ring-[var(--nova-accent-color, #ff4e18)]/20 shrink-0">
+                  <span className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20 shrink-0">
                       <LazyMedia
                         src={profile.avatar}
                         alt={profile.name}
@@ -3116,7 +3191,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   </span>
                   <span className="flex flex-col items-start min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                      <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color,#ff4e18)] transition truncate">
                         {profile.name}
                       </span>
                       {botId && (
@@ -3137,28 +3212,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       )}
                     </div>
                     {(isTyping || botTyping) ? (
-                      <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
+                      <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/20 select-none">
                         <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color, #ff4e18)]"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color,#ff4e18)] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color,#ff4e18)]"></span>
                         </span>
                         {typingActivity === 'recording' ? (
                           <>
-                            <Mic className="w-2 h-2 text-[var(--nova-accent-color, #ff4e18)] animate-pulse" />
-                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">recording</span>
+                            <Mic className="w-2 h-2 text-[var(--nova-accent-color,#ff4e18)] animate-pulse" />
+                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">recording</span>
                             <div className="flex items-center gap-0.5 h-1.5">
-                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
-                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
-                              <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
+                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
+                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
+                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
                             </div>
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">typing</span>
+                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">typing</span>
                             <div className="flex items-center gap-0.5 pt-px">
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.32s]" />
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.16s]" />
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce" />
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.32s]" />
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.16s]" />
+                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce" />
                             </div>
                           </>
                         )}
@@ -3235,7 +3310,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 {/* Search Messages in Chat Button */}
                 <button
                   onClick={() => setIsSearchOpen(true)}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
                   title={t('common.search')}
                   aria-label={t('common.search')}
                 >
@@ -3261,8 +3336,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       onClick={handleStartVoiceCall}
                       className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                         isVideoCallOpen && callMode === 'voice'
-                          ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
-                          : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                          ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                          : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
                       }`}
                       title={
                         isVideoCallOpen && callMode === 'voice'
@@ -3278,8 +3353,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       onClick={handleStartVideoCall}
                       className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                         isVideoCallOpen && callMode === 'video'
-                          ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 animate-pulse'
-                          : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                          ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                          : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
                       }`}
                       title={
                         isVideoCallOpen && callMode === 'video'
@@ -3298,8 +3373,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
                     className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
                       isPinnedCarouselOpen
-                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                        : 'bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff4e18)]/30'
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
+                        : 'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
                     }`}
                     title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
                     aria-label={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
@@ -3308,8 +3383,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     <span
                       className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
                         isPinnedCarouselOpen
-                          ? 'bg-white text-[var(--nova-accent-color, #ff4e18)]'
-                          : 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-sm'
+                          ? 'bg-white text-[var(--nova-accent-color,#ff4e18)]'
+                          : 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-sm'
                       }`}
                     >
                       {pinnedMessages.length}
@@ -3329,15 +3404,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     data-pending-requests={pendingJoinRequests.length || undefined}
                     className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                       isMoreMenuOpen
-                        ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color, #ff4e18)]'
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
+                        : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
                   >
                     <MoreHorizontal className="w-3.5 h-3.5" />
                     {isGroupChat && currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
                       <span
                         data-testid="join-request-badge"
-                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
+                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
                       >
                         {pendingJoinRequests.length}
                       </span>
@@ -3372,7 +3447,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onClick={() => setSearchQuery(chip)}
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer shrink-0 ${
                 searchQuery.toLowerCase() === chip.toLowerCase()
-                  ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white'
+                  ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white'
                   : 'bg-[#181922] text-[#8e93a0] hover:text-white border border-white/5'
               }`}
             >
@@ -3525,7 +3600,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             {/* Header row of carousel */}
             <div className="flex items-center justify-between pb-1.5 border-b border-white/5 px-1">
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)]">
+                <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
                   <Pin className="w-3 h-3 fill-current" />
                 </div>
                 <span className="text-xs font-bold text-white tracking-wide">
@@ -3584,7 +3659,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       />
                     </div>
                   ) : currentPinnedMsg.voiceNote ? (
-                    <div className="w-9 h-9 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                       <Mic className="w-4 h-4" />
                     </div>
                   ) : (
@@ -3595,7 +3670,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-semibold text-[var(--nova-accent-color, #ff4e18)]">
+                      <span className="text-[11px] font-semibold text-[var(--nova-accent-color,#ff4e18)]">
                         {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                       </span>
                       <span className="text-[10px] text-white/40">
@@ -3624,7 +3699,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   >
                     <PinOff className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] text-[var(--nova-accent-color, #ff4e18)] font-medium group-hover:underline flex items-center gap-0.5">
+                  <span className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] font-medium group-hover:underline flex items-center gap-0.5">
                     Jump
                   </span>
                 </div>
@@ -3644,7 +3719,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onClick={() => setCurrentPinIndex(idx)}
                     className={`transition-all duration-200 cursor-pointer ${
                       idx === currentPinIndex
-                        ? 'w-4 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)]'
+                        ? 'w-4 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)]'
                         : 'w-1.5 h-1 rounded-full bg-white/20 hover:bg-white/40'
                     }`}
                     title={`Go to pinned message ${idx + 1}`}
@@ -3684,7 +3759,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               </button>
               <button
                 onClick={() => handleSelectSearchQuery("Harry's")}
-                className="px-3.5 py-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/40 text-[var(--nova-accent-color, #ff4e18)] text-xs font-semibold hover:bg-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-accent-color,#ff4e18)] text-xs font-semibold hover:bg-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer"
               >
                 Try &quot;Harry&apos;s&quot;
               </button>
@@ -3872,7 +3947,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   }}
                   className={`absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors pointer-events-none z-0 ${
                     isThresholdReached
-                      ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/50 ring-2 ring-white/20'
+                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/50 ring-2 ring-white/20'
                       : 'bg-white/10 text-white/60'
                   }`}
                 >
@@ -3915,7 +3990,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         >
                           <span className="select-none">{emoji}</span>
                           {isSelected && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] absolute -bottom-0.5 left-1/2 -translate-x-1/2 shadow-[0_0_6px_var(--nova-accent-color, #ff4e18)]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] absolute -bottom-0.5 left-1/2 -translate-x-1/2 shadow-[0_0_6px_var(--nova-accent-color,#ff4e18)]" />
                           )}
                         </button>
                       );
@@ -3932,7 +4007,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           e.stopPropagation();
                           handleReplyMessage(msg);
                         }}
-                        className="px-2 py-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-white flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/40 active:scale-95"
+                        className="px-2 py-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-white flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 active:scale-95"
                         title={t('common.reply')}
                       >
                         <Reply className="w-3.5 h-3.5" />
@@ -3947,7 +4022,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         }}
                         className={`p-1.5 rounded-full transition cursor-pointer ${
                           msg.isPinned
-                            ? 'text-[var(--nova-accent-color, #ff4e18)] bg-[var(--nova-accent-color, #ff4e18)]/20 hover:bg-[var(--nova-accent-color, #ff4e18)]/30'
+                            ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
                             : 'text-white/70 hover:text-white hover:bg-white/10'
                         }`}
                         title={msg.isPinned ? 'Unpin message' : 'Pin message'}
@@ -3965,7 +4040,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         title={t('common.copy')}
                       >
                         {copiedMsgId === msg.id ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                          <CheckCheck className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -3990,11 +4065,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               {/* Active Search Match Indicator Badge */}
               {isCurrentSearchMatch && (
                 <div
-                  className={`flex items-center gap-1 text-[9.5px] font-bold text-[var(--nova-accent-color, #ff4e18)] mb-1 px-1 animate-in fade-in slide-in-from-top-1 ${
+                  className={`flex items-center gap-1 text-[9.5px] font-bold text-[var(--nova-accent-color,#ff4e18)] mb-1 px-1 animate-in fade-in slide-in-from-top-1 ${
                     isMine ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  <span className="bg-[var(--nova-accent-color, #ff4e18)] text-white px-2 py-0.5 rounded-full shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/40 flex items-center gap-1 tracking-tight font-sans">
+                  <span className="bg-[var(--nova-accent-color,#ff4e18)] text-white px-2 py-0.5 rounded-full shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 flex items-center gap-1 tracking-tight font-sans">
                     <Search className="w-2.5 h-2.5" />
                     Match {activeMatchIndex + 1} of {matchingMessages.length}
                   </span>
@@ -4033,11 +4108,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   }}
                   className={`relative group touch-manipulation cursor-pointer transition-all duration-150 select-none active:scale-[0.99] ${
                     isCurrentSearchMatch
-                      ? 'ring-2 ring-[var(--nova-accent-color, #ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[24px]'
+                      ? 'ring-2 ring-[var(--nova-accent-color,#ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[24px]'
                       : isHighlighted
                       ? 'shadow-[0_0_18px_rgba(255,78,24,0.28)] rounded-[24px]'
                       : hasWordMatch
-                      ? 'ring-1 ring-[var(--nova-accent-color, #ff4e18)]/40 rounded-[24px]'
+                      ? 'ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 rounded-[24px]'
                       : ''
                   }`}
                 >
@@ -4164,7 +4239,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       onPointerDown={(e) => e.stopPropagation()}
                       className={`absolute top-2 ${isMine ? 'right-2' : 'left-2'} z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 ${
                         forwardSelectedIds.has(msg.id)
-                          ? 'bg-[var(--nova-accent-color, #ff4e18)] scale-100'
+                          ? 'bg-[var(--nova-accent-color,#ff4e18)] scale-100'
                           : 'bg-white/20 hover:bg-white/30 scale-95'
                       }`}
                     >
@@ -4178,7 +4253,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   {/* Pinned Message Indicator Badge on the bubble */}
                   {msg.isPinned && (
                     <div
-                      className={`flex items-center gap-1 text-[9.5px] font-semibold text-[var(--nova-accent-color, #ff4e18)] mb-1 px-1 ${
+                      className={`flex items-center gap-1 text-[9.5px] font-semibold text-[var(--nova-accent-color,#ff4e18)] mb-1 px-1 ${
                         isMine ? 'justify-end' : 'justify-start'
                       }`}
                     >
@@ -4277,8 +4352,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     ) : msg.voiceNote ? (
                       <div className={`bg-[#1b1c26]/95 ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
                         {msg.forwardedFrom && (
-                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-white/70">
-                            <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
+                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-white/70">
+                            <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
                             <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
                         )}
@@ -4304,7 +4379,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         <AudioWaveformPlayer
                           voiceNote={msg.voiceNote}
                           isMe={true}
-                          accentColor="var(--nova-accent-color, #ff4e18)"
+                          accentColor="var(--nova-accent-color,#ff4e18)"
                         />
                         <div className="flex items-center justify-between gap-2 text-[10px] text-white/70 mt-1.5 font-medium select-none">
                           <button
@@ -4532,8 +4607,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     ) : (
                       <div className="bg-[#181921]/95 border border-white/5 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
                       {msg.forwardedFrom && (
-                        <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color, #ff4e18)]/70 text-[10px] text-[#868b98]">
-                          <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color, #ff4e18)]/70" />
+                        <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[#868b98]">
+                          <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
                           <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                         </div>
                       )}
@@ -4544,10 +4619,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             e.stopPropagation();
                             handleJumpToMessage(msg.replyTo!.id);
                           }}
-                          className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color, #ff4e18)] text-xs cursor-pointer select-none transition hover:bg-white/10"
+                          className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color,#ff4e18)] text-xs cursor-pointer select-none transition hover:bg-white/10"
                           title={t('chat.replyingTo')}
                         >
-                          <div className="font-bold text-[10.5px] text-[var(--nova-accent-color, #ff4e18)] flex items-center gap-1">
+                          <div className="font-bold text-[10.5px] text-[var(--nova-accent-color,#ff4e18)] flex items-center gap-1">
                             <Reply className="w-2.5 h-2.5" />
                             <span>{msg.replyTo.senderName}</span>
                           </div>
@@ -4563,7 +4638,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           <AudioWaveformPlayer
                             voiceNote={msg.voiceNote}
                             isMe={false}
-                            accentColor="var(--nova-accent-color, #ff4e18)"
+                            accentColor="var(--nova-accent-color,#ff4e18)"
                           />
                         </div>
                       )}
@@ -4571,7 +4646,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       {msg.document && (
                         <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 mb-2">
                           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                            <FileText className="w-5 h-5 text-[var(--nova-accent-color, #ff4e18)]" />
+                            <FileText className="w-5 h-5 text-[var(--nova-accent-color,#ff4e18)]" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
@@ -4608,7 +4683,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                               e.stopPropagation();
                               handleReplyMessage(msg);
                             }}
-                            className="text-[var(--nova-accent-color, #ff4e18)] hover:text-[#ff6e38] flex items-center gap-1 py-0.5 px-1.5 rounded-md hover:bg-white/5 cursor-pointer transition active:scale-90"
+                            className="text-[var(--nova-accent-color,#ff4e18)] hover:text-[#ff6e38] flex items-center gap-1 py-0.5 px-1.5 rounded-md hover:bg-white/5 cursor-pointer transition active:scale-90"
                             title="Reply to this message"
                           >
                             <Reply className="w-3 h-3" />
@@ -4650,7 +4725,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           }}
                           className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs transition-all duration-200 cursor-pointer active:scale-90 shadow-lg ${
                             r.fromMe
-                              ? 'bg-[#20151c]/95 border border-[var(--nova-accent-color, #ff4e18)]/70 text-white font-bold ring-1 ring-[var(--nova-accent-color, #ff4e18)]/40 shadow-[var(--nova-accent-color, #ff4e18)]/25'
+                              ? 'bg-[#20151c]/95 border border-[var(--nova-accent-color,#ff4e18)]/70 text-white font-bold ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 shadow-[var(--nova-accent-color,#ff4e18)]/25'
                               : 'bg-[#181920]/95 border border-white/10 text-white/90 hover:bg-[#20222a]'
                           }`}
                         >
@@ -4680,25 +4755,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
         {isTyping && (
           <div className="flex items-start animate-in fade-in duration-200">
-            <div className="bg-[#181921]/95 border border-[var(--nova-accent-color, #ff4e18)]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-md shadow-black/50">
+            <div className="bg-[#181921]/95 border border-[var(--nova-accent-color,#ff4e18)]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-md shadow-black/50">
               {typingActivity === 'recording' ? (
                 <>
-                  <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)] animate-pulse" />
-                  <span className="text-xs text-[var(--nova-accent-color, #ff4e18)] font-semibold">Katie is recording audio</span>
+                  <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] animate-pulse" />
+                  <span className="text-xs text-[var(--nova-accent-color,#ff4e18)] font-semibold">Katie is recording audio</span>
                   <div className="flex items-center gap-0.5 h-2.5">
-                    <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1" />
-                    <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-2.5" />
-                    <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1.5" />
-                    <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.1s_infinite] h-2" />
+                    <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-1" />
+                    <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.2s_infinite] h-2.5" />
+                    <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.4s_infinite] h-1.5" />
+                    <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_0.1s_infinite] h-2" />
                   </div>
                 </>
               ) : (
                 <>
-                  <span className="text-xs text-[var(--nova-accent-color, #ff4e18)] font-semibold">Katie is typing</span>
+                  <span className="text-xs text-[var(--nova-accent-color,#ff4e18)] font-semibold">Katie is typing</span>
                   <div className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.32s]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.16s]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.32s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.16s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce" />
                   </div>
                 </>
               )}
@@ -4714,7 +4789,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             const node = messagesScrollRef.current;
             if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
           }}
-          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition hover:brightness-110 active:scale-95"
+          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition hover:brightness-110 active:scale-95"
           aria-label={`Scroll to ${unreadCount} new message${unreadCount === 1 ? '' : 's'}`}
           title="Scroll to latest messages"
         >
@@ -4733,14 +4808,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
       {/* FLOATING IN-CHAT SEARCH MATCH NAVIGATOR */}
       {isSearchOpen && searchQuery.trim() && matchingMessages.length > 0 && (
-        <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[#151622]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
+        <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[#151622]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
               <Search className="w-3.5 h-3.5" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-white truncate">
-                Word: <span className="text-[var(--nova-accent-color, #ff4e18)]">&quot;{searchQuery}&quot;</span>
+                Word: <span className="text-[var(--nova-accent-color,#ff4e18)]">&quot;{searchQuery}&quot;</span>
               </span>
               <span className="text-[10px] text-[#8e93a0]">
                 Match {activeMatchIndex + 1} of {matchingMessages.length} •{' '}
@@ -4755,12 +4830,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
               title={t('common.previous')}
             >
-              <ChevronUp className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+              <ChevronUp className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
               <span className="text-[11px] font-semibold">Prev</span>
             </button>
             <button
               onClick={handleNextMatch}
-              className="px-2 py-1 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/20 hover:bg-[var(--nova-accent-color, #ff4e18)]/30 border border-[var(--nova-accent-color, #ff4e18)]/40 text-[var(--nova-accent-color, #ff4e18)] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
+              className="px-2 py-1 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-accent-color,#ff4e18)] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
               title={t('common.next')}
             >
               <span className="text-[11px] font-semibold">Next</span>
@@ -4772,9 +4847,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
       {/* FORWARD SELECTION TOOLBAR */}
       {isForwardSelecting && (
-        <div className="px-4 py-2.5 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+        <div className="px-4 py-2.5 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30">
+            <div className="w-7 h-7 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
               <Forward className="w-4 h-4" />
             </div>
             <div className="min-w-0">
@@ -4787,7 +4862,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleOpenForwardModal}
-              className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
             >
               <Forward className="w-3.5 h-3.5" />
               <span>Forward</span>
@@ -4806,18 +4881,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
       {/* Reply Preview Banner */}
       {replyingTo && (
-        <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+        <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
           <div
             onClick={() => handleJumpToMessage(replyingTo.id)}
             className="flex items-center gap-2.5 truncate cursor-pointer group flex-1 mr-2"
             title={t('chat.replyingTo')}
           >
-            <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30">
+            <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
               <Reply className="w-3.5 h-3.5" />
             </div>
             <div className="truncate flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-[var(--nova-accent-color, #ff4e18)] font-bold text-[11px] group-hover:underline">
+                <span className="text-[var(--nova-accent-color,#ff4e18)] font-bold text-[11px] group-hover:underline">
                   Replying to {replyingTo.senderId === 'me' ? 'Yourself' : profile.name}
                 </span>
                 <span className="text-[10px] text-white/40">· Click to jump</span>
@@ -4843,11 +4918,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
       {/* SCHEDULED MESSAGES QUEUE BANNER */}
       {scheduledMessages.length > 0 && (
-        <div className="px-4 py-1.5 bg-[#181926]/95 backdrop-blur-md border-t border-[var(--nova-accent-color, #ff4e18)]/30 flex items-center justify-between text-xs z-20 animate-in fade-in slide-in-from-bottom-1">
+        <div className="px-4 py-1.5 bg-[#181926]/95 backdrop-blur-md border-t border-[var(--nova-accent-color,#ff4e18)]/30 flex items-center justify-between text-xs z-20 animate-in fade-in slide-in-from-bottom-1">
           <div className="flex items-center gap-2 truncate">
-            <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)] shrink-0 animate-pulse" />
+            <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0 animate-pulse" />
             <span className="text-white/85 truncate text-[11px]">
-              <strong className="text-[var(--nova-accent-color, #ff4e18)] font-semibold">
+              <strong className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">
                 {scheduledMessages.length}
               </strong>{' '}
               {scheduledMessages.length === 1 ? 'message scheduled' : 'messages scheduled'} (
@@ -4871,7 +4946,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 setMessages((msgs) => [...msgs, newMsg]);
                 triggerPinnedToast('Sent scheduled message now');
               }}
-              className="text-[10px] text-[var(--nova-accent-color, #ff4e18)] hover:text-[#ff6e38] font-semibold hover:underline cursor-pointer"
+              className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] hover:text-[#ff6e38] font-semibold hover:underline cursor-pointer"
             >
               Send Now
             </button>
@@ -4893,19 +4968,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       <div className="p-3 pt-1 relative z-20 shrink-0 space-y-2">
         {/* ATTACHMENT MENU DRAWER */}
         {isAttachmentMenuOpen && (
-          <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
+          <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
             <button
               type="button"
               onClick={() => handleAttachItem('photo')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
-              <Camera className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+              <Camera className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
               <span>Photo</span>
             </button>
             <button
               type="button"
               onClick={() => handleAttachItem('location')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
               <span>Location</span>
@@ -4913,7 +4988,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <button
               type="button"
               onClick={() => handleAttachItem('document')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
               <FileText className="w-3.5 h-3.5 text-blue-400" />
               <span>Document</span>
@@ -4921,7 +4996,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <button
               type="button"
               onClick={() => handleAttachItem('poll')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
               <span>{t('common.poll')}</span>
@@ -4929,7 +5004,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <button
               type="button"
               onClick={() => handleAttachItem('stickers')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
               <Smile className="w-3.5 h-3.5 text-purple-400" />
               <span>{t('stickers.title', 'Stickers')}</span>
@@ -4937,9 +5012,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <button
               type="button"
               onClick={() => handleAttachItem('voice')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
             >
-              <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+              <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
               <span>Voice Memo</span>
             </button>
             <button
@@ -4997,7 +5072,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         {/* ROW OF SMART REPLY PILL BUTTONS */}
         {shouldShowSmartReplies && (
           <div ref={smartRepliesRef} className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none" data-testid="smart-replies">
-            <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color, #ff4e18)] font-semibold shrink-0 pl-1 pr-1">
+            <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color,#ff4e18)] font-semibold shrink-0 pl-1 pr-1">
               <Sparkles className="w-3.5 h-3.5 animate-pulse" />
               <span className="hidden sm:inline">Smart:</span>
             </div>
@@ -5006,7 +5081,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               <button
                 key={idx}
                 onClick={() => handleSendMessage(reply, replyingTo ?? lastReceivedMessage)}
-                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[var(--nova-accent-color, #ff4e18)] hover:text-white border border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
+                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-white border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
                 title={`Tap to send: "${reply}"`}
               >
                 <span>{reply}</span>
@@ -5028,7 +5103,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         )}
         {/* STAGED ATTACHMENT PREVIEW CHIP */}
         {stagedAttachment && (
-          <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
+          <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
             {stagedAttachment.images && stagedAttachment.images.length > 0 && (
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
@@ -5053,7 +5128,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
             {stagedAttachment.document && (
               <div className="flex items-center gap-2.5 pl-1 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col min-w-0">
@@ -5084,7 +5159,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             onClick={(event) => openSendOptions(event.currentTarget)}
             className={`relative w-11 h-11 shrink-0 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
               disappearAfter > 0 || viewOnceMode
-                ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 border-[var(--nova-accent-color, #ff4e18)]/50 text-[var(--nova-accent-color, #ff4e18)]'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)]'
                 : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
             }`}
             title={t('chat.sendOptions.title')}
@@ -5094,7 +5169,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           >
             <Clock className="w-4 h-4" />
             {(disappearAfter > 0 || viewOnceMode) && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] shadow" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] shadow" />
             )}
           </button>
           {/* Paperclip Button opening Simulated File Selection Menu */}
@@ -5107,7 +5182,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             }}
             className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               isFileModalOpen || stagedAttachment
-                ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white border-[var(--nova-accent-color, #ff4e18)] shadow-[var(--nova-accent-color, #ff4e18)]/30'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-[var(--nova-accent-color,#ff4e18)]/30'
                 : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
             }`}
             title={t('common.attach')}
@@ -5171,7 +5246,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <span className="text-xs line-through">S</span>
           </button>
 
-          <div className="flex-1 bg-[#181920]/95 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+          <div className="flex-1 bg-[#181920]/95 border border-white/10 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
             <input
               ref={mainInputRef}
               type="text"
@@ -5179,6 +5254,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onChange={(e) => {
                 const val = e.target.value;
                 setInputText(val);
+                setDraft(chatId, val);
                 if (val) {
                   void receiptManager.sendReceipt(chatId, chatId, 'typing');
                 } else {
@@ -5209,7 +5285,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               }}
               placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
               data-inline-focus
-              className="w-full bg-transparent text-sm text-white placeholder-white/35 focus:outline-none py-1 min-w-0"
+              className="w-full bg-transparent text-sm text-[color:var(--nova-text-primary)] placeholder-[color:var(--nova-text-muted)] focus:outline-none py-1 min-w-0"
             />
             {commandMenuOpen && botCommands?.length && (
               <CommandMenu
@@ -5239,8 +5315,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 className={`p-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-90 ${
                   commandMenuOpen
-                    ? 'text-[var(--nova-accent-color, #ff4e18)] bg-white/10'
-                    : 'text-white/50 hover:text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/10'
+                    ? 'text-[var(--nova-accent-color,#ff4e18)] bg-white/10'
+                    : 'text-white/50 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10'
                 }`}
                 title={t('bot.commands', { defaultValue: 'Bot commands' })}
                 aria-label={t('bot.commands', { defaultValue: 'Bot commands' })}
@@ -5258,8 +5334,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               }}
               className={`p-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-90 ${
                 isEmojiPickerOpen
-                  ? 'text-[var(--nova-accent-color, #ff4e18)] bg-white/10'
-                  : 'text-white/50 hover:text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/10'
+                  ? 'text-[var(--nova-accent-color,#ff4e18)] bg-white/10'
+                  : 'text-white/50 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10'
               }`}
               title={t('common.react')}
             >
@@ -5271,7 +5347,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="relative shrink-0">
               {scheduledMessages.length > 0 && (
                 <span
-                  className="absolute -top-1.5 -left-1 z-10 w-4 h-4 rounded-full bg-[var(--nova-accent-color, #ff4e18)] text-white text-[9px] font-bold flex items-center justify-center shadow-md"
+                  className="absolute -top-1.5 -left-1 z-10 w-4 h-4 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white text-[9px] font-bold flex items-center justify-center shadow-md"
                   title={`${scheduledMessages.length} scheduled`}
                 >
                   {scheduledMessages.length}
@@ -5288,7 +5364,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   else openSendOptions(e.currentTarget);
                 }}
                 style={{ touchAction: 'manipulation' }}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
                 title={t('common.send')}
                 aria-haspopup="menu"
                 aria-expanded={isSendOptionsOpen}
@@ -5462,7 +5538,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         void handleApproveJoinRequest(request.fingerprint);
                       }}
                       aria-label={`${t('chat.approveJoinRequest')}: ${request.fingerprint}`}
-                      className="px-2.5 py-1 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/20 border border-[var(--nova-accent-color, #ff4e18)]/40 text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff4e18)]/30 transition cursor-pointer shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/40 text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer shrink-0"
                     >
                       {t('chat.approveJoinRequest')}
                     </button>
@@ -5497,7 +5573,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       data-testid={`group-role-${member}`}
                       className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide ${
                         getMemberRole(groupRoles, member) === 'admin'
-                          ? 'bg-[var(--nova-accent-color, #ff4e18)]/20 text-[var(--nova-accent-color, #ff4e18)] border border-[var(--nova-accent-color, #ff4e18)]/40'
+                          ? 'bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] border border-[var(--nova-accent-color,#ff4e18)]/40'
                           : 'bg-white/5 text-white/50 border border-white/10'
                       }`}
                     >
@@ -5516,7 +5592,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             ? 'chat.makeMember'
                             : 'chat.makeAdmin',
                         )}: ${member}`}
-                        className="w-7 h-7 rounded-full text-white/40 hover:text-[var(--nova-accent-color, #ff4e18)] hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
+                        className="w-7 h-7 rounded-full text-white/40 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
                       >
                         <ShieldCheck
                           className={`w-3.5 h-3.5 ${
@@ -5553,7 +5629,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onClick={handleRegenerateGroupInvite}
                     disabled={!currentUserIsGroupAdmin}
                     title={currentUserIsGroupAdmin ? undefined : t('chat.adminOnly')}
-                    className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] hover:underline transition cursor-pointer disabled:text-white/30 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] hover:underline transition cursor-pointer disabled:text-white/30 disabled:no-underline disabled:cursor-not-allowed"
                   >
                     {t('chat.inviteRegenerate')}
                   </button>
@@ -5564,7 +5640,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     value={groupInvite.link}
                     aria-label={t('chat.inviteTitle')}
                     onFocus={(event) => event.currentTarget.select()}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/80 font-mono outline-none focus:border-[var(--nova-accent-color, #ff4e18)]/60"
+                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/80 font-mono outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
                   />
                   <button
                     type="button"
@@ -5592,7 +5668,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     }}
                     placeholder={t('chat.memberFingerprint')}
                     aria-label={t('chat.memberFingerprint')}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--nova-accent-color, #ff4e18)]/60"
+                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
                   />
                   <button
                     type="button"
@@ -5600,7 +5676,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       void handleAddGroupMember();
                     }}
                     disabled={!newMemberFingerprint.trim()}
-                    className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color, #ff4e18)] text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--nova-accent-color, #ff5d2b)] transition cursor-pointer shrink-0"
+                    className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--nova-accent-color,#ff5d2b)] transition cursor-pointer shrink-0"
                   >
                     {t('chat.addMember')}
                   </button>
@@ -5644,7 +5720,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 aria-label={t('chat.fileTransfer')}
               >
                 <div
-                  className="h-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] transition-[width] duration-150"
+                  className="h-full rounded-full bg-[var(--nova-accent-color,#ff4e18)] transition-[width] duration-150"
                   style={{ width: `${percent}%` }}
                 />
               </div>
@@ -5656,7 +5732,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     void fileTransferManager.cancelTransfer(fileTransfer.id);
                     setFileTransfer(null);
                   }}
-                  className="text-[var(--nova-accent-color, #ff4e18)] hover:underline cursor-pointer"
+                  className="text-[var(--nova-accent-color,#ff4e18)] hover:underline cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
@@ -5876,7 +5952,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       {chat.type === 'group' ? 'Group' : 'Direct'}
                     </p>
                   </div>
-                  <Forward className="w-4 h-4 text-[var(--nova-accent-color, #ff4e18)] shrink-0" />
+                  <Forward className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
                 </button>
               ))}
             </div>
@@ -5934,7 +6010,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
               >
-                <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.contactInfo')}</span>
               </button>
               {isGroupChat && (
@@ -5946,7 +6022,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                 >
-                  <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                  <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                   <span>{t('chat.groupMembers')}</span>
                 </button>
               )}
@@ -5958,7 +6034,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
               >
-                <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.mediaLinks')}</span>
               </button>
               <button
@@ -5969,7 +6045,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
               >
-                <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.appearance')}</span>
               </button>
               <button
@@ -5980,7 +6056,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.chatTheme')}</span>
               </button>
               <button
@@ -6011,7 +6087,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
                 >
-                  <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+                  <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                   <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
                 </button>
               )}

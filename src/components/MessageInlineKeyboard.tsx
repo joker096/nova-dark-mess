@@ -62,7 +62,7 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
                     disabled={disabled}
                     onClick={() => onOpenWebApp?.(botId, button.web_app!.url)}
                     onContextMenu={(e) => handleContextMenu(e, button.web_app!.url)}
-                    className="w-full truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--nova-accent-color, #ff4e18)] transition hover:bg-white/10 disabled:opacity-40"
+                    className="w-full truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--nova-accent-color,#ff4e18)] transition hover:bg-white/10 disabled:opacity-40"
                   >
                     {button.text}
                   </button>
@@ -82,7 +82,7 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     onContextMenu={(e) => handleContextMenu(e, button.url)}
-                    className="flex w-full items-center justify-center gap-1.5 truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--nova-accent-color, #ff4e18)] transition hover:bg-white/10"
+                    className="flex w-full items-center justify-center gap-1.5 truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--nova-accent-color,#ff4e18)] transition hover:bg-white/10"
                   >
                     <span className="truncate">{button.text}</span>
                     <ExternalLink size={12} className="shrink-0 opacity-70" aria-hidden />

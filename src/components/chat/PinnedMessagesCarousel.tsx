@@ -45,7 +45,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
           {/* Header row of carousel */}
           <div className="flex items-center justify-between pb-1.5 border-b border-white/5 px-1">
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)]">
+              <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
                 <Pin className="w-3 h-3 fill-current" />
               </div>
               <span className="text-xs font-bold text-white tracking-wide">
@@ -104,7 +104,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
                     />
                   </div>
                 ) : currentPinnedMsg.voiceNote ? (
-                  <div className="w-9 h-9 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                     <Mic className="w-4 h-4" />
                   </div>
                 ) : (
@@ -115,7 +115,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-[var(--nova-accent-color, #ff4e18)]">
+                    <span className="text-[11px] font-semibold text-[var(--nova-accent-color,#ff4e18)]">
                       {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                     </span>
                     <span className="text-[10px] text-white/40">
@@ -144,7 +144,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
                 >
                   <PinOff className="w-3.5 h-3.5" />
                 </button>
-                <span className="text-[10px] text-[var(--nova-accent-color, #ff4e18)] font-medium group-hover:underline flex items-center gap-0.5">
+                <span className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] font-medium group-hover:underline flex items-center gap-0.5">
                   Jump
                 </span>
               </div>
@@ -164,7 +164,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
                   onClick={() => setCurrentPinIndex(idx)}
                   className={`transition-all duration-200 cursor-pointer ${
                     idx === currentPinIndex
-                      ? 'w-4 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)]'
+                      ? 'w-4 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)]'
                       : 'w-1.5 h-1 rounded-full bg-white/20 hover:bg-white/40'
                   }`}
                   title={`Go to pinned message ${idx + 1}`}

@@ -84,19 +84,19 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     <div className="p-3 pt-1 relative z-20 shrink-0 space-y-2">
       {/* ATTACHMENT MENU DRAWER */}
       {isAttachmentMenuOpen && (
-        <ScrollableRow ref={attachmentMenuRef} wheelScroll={true} gap="2" data-testid="attachment-menu" className="p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150">
+        <ScrollableRow ref={attachmentMenuRef} wheelScroll={true} gap="2" data-testid="attachment-menu" className="p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150">
           <button
             type="button"
             onClick={() => handleAttachItem('photo')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
           >
-            <Camera className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+            <Camera className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
             <span>Photo</span>
           </button>
           <button
             type="button"
             onClick={() => handleAttachItem('location')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
           >
             <MapPin className="w-3.5 h-3.5 text-emerald-400" />
             <span>Location</span>
@@ -104,7 +104,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <button
             type="button"
             onClick={() => handleAttachItem('document')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
           >
             <FileText className="w-3.5 h-3.5 text-blue-400" />
             <span>Document</span>
@@ -112,9 +112,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <button
             type="button"
             onClick={() => handleAttachItem('voice')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color, #ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
           >
-            <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+            <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
             <span>Voice Memo</span>
           </button>
           <button
@@ -160,7 +160,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       {/* ROW OF SMART REPLY PILL BUTTONS */}
       {shouldShowSmartReplies && (
         <ScrollableRow ref={smartRepliesRef} wheelScroll={true} gap="1.5" data-testid="smart-replies" className="py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none">
-          <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color, #ff4e18)] font-semibold shrink-0 pl-1 pr-1">
+          <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color,#ff4e18)] font-semibold shrink-0 pl-1 pr-1">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span className="hidden sm:inline">Smart:</span>
           </div>
@@ -169,7 +169,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             <button
               key={idx}
               onClick={() => handleSendMessage(reply, replyingTo ?? lastReceivedMessage)}
-              className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[var(--nova-accent-color, #ff4e18)] hover:text-white border border-white/10 hover:border-[var(--nova-accent-color, #ff4e18)] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
+              className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-white border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
               title={`Tap to send: "${reply}"`}
             >
               <span>{reply}</span>
@@ -191,7 +191,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       )}
       {/* STAGED ATTACHMENT PREVIEW CHIP */}
       {stagedAttachment && (
-        <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
+        <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
           {stagedAttachment.images && stagedAttachment.images.length > 0 && (
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
@@ -216,7 +216,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
           {stagedAttachment.document && (
             <div className="flex items-center gap-2.5 pl-1 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="flex flex-col min-w-0">

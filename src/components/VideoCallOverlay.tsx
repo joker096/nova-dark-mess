@@ -16,6 +16,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { useAccount } from '../hooks/useAccount';
+import { useLanguage } from '../context/LanguageContext';
 import { LazyMedia } from './LazyMedia';
 
 interface VideoCallOverlayProps {
@@ -36,6 +37,15 @@ interface VideoCallOverlayProps {
   onToggleCamera?: () => void;
   /** True when media flows through a TURN relay and the peer cannot see the local IP. */
   hidesIp?: boolean;
+  /** Call quality statistics (bitrate, packet loss, RTT). */
+  qualityStats?: {
+    sendBitrateBps: number;
+    receiveBitrateBps: number;
+    sendPacketLoss: number;
+    receivePacketLoss: number;
+    rttMs: number;
+    sampledAt: number;
+  };
 }
 
 type VideoFilter = 'none' | 'studio' | 'cyber' | 'noir';
@@ -57,8 +67,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
   onToggleMic,
   onToggleCamera,
   hidesIp = false,
+  qualityStats,
 }) => {
   const { account } = useAccount();
+  const { t } = useLanguage();
   const name = contactName || 'Contact';
   const avatar = contactAvatar || '';
   const isVoiceCall = mode === 'voice';
@@ -379,10 +391,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
           <div
             className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80"
-            title={hidesIp ? 'Media relayed through TURN — your IP is hidden' : 'Direct P2P media: the peer sees your IP address. Enable “Hide my IP in calls” in Settings → Privacy to relay it.'}
+            title={hidesIp ? t('chat.ipHiddenTitle') : t('chat.ipVisibleTitle')}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{hidesIp ? 'E2EE · IP hidden' : 'End-to-end Encrypted'}</span>
+            <span>{hidesIp ? t('chat.ipHidden') : t('chat.e2eeEncrypted')}</span>
           </div>
         </div>
 
@@ -406,11 +418,28 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           )}
         </div>
 
-        {/* Right: Quality status badge */}
-        <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80">
-          <Signal className="w-3 h-3 text-emerald-400" />
-          <span className="font-mono text-[10px]">{isVoiceCall ? 'HD Audio' : '1080p 60fps'}</span>
-        </div>
+        {/* Right: Call Quality Indicators */}
+        {callStatus === 'connected' && qualityStats && (
+          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[10px] text-white/80 font-mono">
+            <Signal className="w-3 h-3 text-emerald-400" />
+            <span className="text-emerald-300">{Math.round(qualityStats.sendBitrateBps / 1000)} kbps ↑</span>
+            <span className="text-emerald-300">{Math.round(qualityStats.receiveBitrateBps / 1000)} kbps ↓</span>
+            {qualityStats.rttMs > 0 && (
+              <>
+                <span className="text-amber-300">{Math.round(qualityStats.rttMs)} ms RTT</span>
+                {(qualityStats.sendPacketLoss > 0.05 || qualityStats.receivePacketLoss > 0.05) && (
+                  <span className="text-red-400">Loss: {Math.max(qualityStats.sendPacketLoss, qualityStats.receivePacketLoss) * 100}%</span>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        {callStatus === 'connected' && !qualityStats && (
+          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80">
+            <Signal className="w-3 h-3 text-emerald-400" />
+            <span className="font-mono text-[10px]">{isVoiceCall ? 'HD Audio' : '1080p 60fps'}</span>
+          </div>
+        )}
       </div>
 
       {/* TOP RIGHT: SELF VIEW / PICTURE-IN-PICTURE (PIP) CAMERA */}

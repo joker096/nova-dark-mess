@@ -108,6 +108,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   const [afterNickname, setAfterNickname] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [phraseDownloadNotice, setPhraseDownloadNotice] = useState(false);
   const [quizRound, setQuizRound] = useState(0);
 
   const words = useMemo(
@@ -329,6 +330,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       'Anyone with these words can restore this account. Keep this file offline.',
     ].join('\n');
     downloadTextFile('nova-recovery-phrase.txt', body);
+    // Some Android WebViews block file downloads. Keep the words on the
+    // clipboard as a safety net so the button never leaves the user empty-handed.
+    void navigator.clipboard?.writeText(identity.mnemonic).catch(() => undefined);
+    setPhraseDownloadNotice(true);
+    window.setTimeout(() => setPhraseDownloadNotice(false), 8000);
   };
 
   const answerPhraseQuestion = (answer: string) => {
@@ -629,6 +635,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   {t('onboarding.downloadPhrase')}
                 </button>
               </div>
+              {phraseDownloadNotice && (
+                <p role="status" className="text-[10.5px] text-emerald-300/90 leading-relaxed">
+                  {t('onboarding.phraseDownloadNotice', {
+                    defaultValue:
+                      'Download started. The phrase is also copied to your clipboard as a backup.',
+                  })}
+                </p>
+              )}
               <p className="text-[10.5px] text-amber-400/90 leading-relaxed">{t('onboarding.seedWarning')}</p>
               {error && (
                 <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">

@@ -58,7 +58,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
           }}
           className="flex w-full items-center gap-2 px-3 py-2 text-sm text-white/90 rounded-xl border border-transparent hover:bg-white/10 hover:border-white/10 transition cursor-pointer active:scale-95"
         >
-          <span className="shrink-0 text-[var(--nova-accent-color, #ff4e18)] font-mono text-xs">{`/${cmd.command}`}</span>
+          <span className="shrink-0 text-[var(--nova-accent-color,#ff4e18)] font-mono text-xs">{`/${cmd.command}`}</span>
           <span className="flex-1 truncate text-xs text-white/70">{cmd.description}</span>
         </button>
       ))}

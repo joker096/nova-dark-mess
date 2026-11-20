@@ -115,8 +115,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color, #ff4e18)]/50 focus-within:border-[var(--nova-accent-color, #ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
-              <Search className="w-4 h-4 text-[var(--nova-accent-color, #ff4e18)] shrink-0" />
+            <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color,#ff4e18)]/50 focus-within:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
+              <Search className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -157,7 +157,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
               {/* Match counter badge */}
               {searchQuery.trim() && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30 font-semibold whitespace-nowrap">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30 font-semibold whitespace-nowrap">
                   {matchingMessages.length > 0
                     ? `${activeMatchIndex + 1}/${matchingMessages.length}`
                     : '0/0'}
@@ -170,14 +170,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               <div className="flex items-center gap-0.5 bg-[#1a1b26] border border-white/10 rounded-xl p-0.5 shrink-0">
                 <button
                   onClick={handlePrevMatch}
-                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color, #ff4e18)] transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                   title={t('common.previous')}
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleNextMatch}
-                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color, #ff4e18)] transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                   title={t('common.next')}
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -195,7 +195,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 }
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0 ${
                   searchFilterMode === 'filtered'
-                    ? 'bg-[var(--nova-accent-color, #ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 border border-[var(--nova-accent-color, #ff4e18)]'
+                    ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]'
                     : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
                 }`}
                 title={
@@ -231,7 +231,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 onClick={onOpenProfile}
                 className="flex flex-col items-center min-w-0 cursor-pointer focus:outline-none group"
               >
-                <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color, #ff4e18)] transition truncate">
+                <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color,#ff4e18)] transition truncate">
                   {profile.name}
                 </span>
                 <button
@@ -245,28 +245,28 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   {t('chat.e2eeBadge')}
                 </button>
                 {isTyping ? (
-                  <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color, #ff4e18)]/20 select-none">
+                  <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/20 select-none">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color, #ff4e18)] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color, #ff4e18)]"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color,#ff4e18)] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color,#ff4e18)]"></span>
                     </span>
                     {typingActivity === 'recording' ? (
                       <>
-                        <Mic className="w-2 h-2 text-[var(--nova-accent-color, #ff4e18)] animate-pulse" />
-                        <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">recording</span>
+                        <Mic className="w-2 h-2 text-[var(--nova-accent-color,#ff4e18)] animate-pulse" />
+                        <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">recording</span>
                         <div className="flex items-center gap-0.5 h-1.5">
-                          <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
-                          <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
-                          <span className="w-0.5 bg-[var(--nova-accent-color, #ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
+                          <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
+                          <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
+                          <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
                         </div>
                       </>
                     ) : (
                       <>
-                        <span className="text-[10px] font-semibold text-[var(--nova-accent-color, #ff4e18)] tracking-tight">typing</span>
+                        <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">typing</span>
                         <div className="flex items-center gap-0.5 pt-px">
-                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.32s]" />
-                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce [animation-delay:-0.16s]" />
-                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color, #ff4e18)] animate-bounce" />
+                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.32s]" />
+                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.16s]" />
+                          <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce" />
                         </div>
                       </>
                     )}
@@ -398,8 +398,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 onClick={onOpenProfile}
                 className={`relative w-8 h-8 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                   isTyping
-                    ? 'border-[var(--nova-accent-color, #ff4e18)] ring-2 ring-[var(--nova-accent-color, #ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
-                    : 'border-white/15 ring-2 ring-[var(--nova-accent-color, #ff4e18)]/20'
+                    ? 'border-[var(--nova-accent-color,#ff4e18)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
+                    : 'border-white/15 ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20'
                 }`}
                 title={t('common.profile')}
               >
@@ -411,7 +411,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 />
                 {/* Real-time live status beacon on avatar */}
                 {isTyping ? (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/50">
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                   </span>
                 ) : (

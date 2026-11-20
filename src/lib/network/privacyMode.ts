@@ -25,6 +25,8 @@ export interface PrivacyPrefs {
   webrtcRelayOnly: boolean;
   /** Multi-relay: configured relay endpoints for traffic splitting (stage 6.3). */
   relayEndpoints: RelayEndpoint[];
+  /** TURN servers for relay-only WebRTC calls (IP privacy in calls). */
+  turnServers: RTCIceServer[];
   /** Tor: route relay traffic through local SOCKS proxy (stage 6.4). */
   torEnabled: boolean;
   torSocksPort: number;
@@ -48,6 +50,7 @@ export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = {
   presenceTtl: 'normal',
   webrtcRelayOnly: false,
   relayEndpoints: [],
+  turnServers: [],
   torEnabled: false,
   torSocksPort: 9050,
   analyticsConsent: false,
@@ -95,6 +98,15 @@ export function loadPrivacyPrefs(): PrivacyPrefs {
               typeof e.url === 'string',
           )
         : DEFAULT_PRIVACY_PREFS.relayEndpoints,
+      turnServers: Array.isArray(parsed.turnServers)
+        ? parsed.turnServers.filter(
+            (s): s is RTCIceServer =>
+              typeof s === 'object' &&
+              s !== null &&
+              typeof s.urls === 'string' ||
+              (Array.isArray(s.urls) && s.urls.every((u) => typeof u === 'string')),
+          )
+        : DEFAULT_PRIVACY_PREFS.turnServers,
       torEnabled:
         typeof parsed.torEnabled === 'boolean'
           ? parsed.torEnabled
