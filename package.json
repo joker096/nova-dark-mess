@@ -1,7 +1,7 @@
 {
   "name": "nova-dark-messenger",
   "private": true,
-  "version": "1.0.54",
+  "version": "1.0.55",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -13,6 +13,7 @@
     "posttauri:build:android": "node scripts/copy-android-bundle.mjs",
     "copy:android-bundle": "node scripts/copy-android-bundle.mjs",
     "android:aab": "npm run tauri:build:android && npm run copy:android-bundle",
+    "android:release": "node scripts/bump-android-version.mjs && npm run tauri:build:android",
     "tauri:build:ios": "tauri ios build",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
