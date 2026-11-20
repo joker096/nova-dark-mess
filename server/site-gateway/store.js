@@ -390,18 +390,19 @@ export function listUnreadNotifications(ownerUserId) {
 }
 
 /** ──────────────────────────────────────────────────────────────────────
- * Handoff token store (in-memory, v1)
+ * Handoff token store (disk-based, persistent across restarts)
  * ────────────────────────────────────────────────────────────────────── */
 
 const HANDOFF_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export { HANDOFF_TTL_MS };
 
-const handoffTokens = new Map(); // token → { thread_id, guest_id, site_id, created_at, used, consumed_at }
+const handoffs = new EntityStore('handoffs');
 
 export function createHandoffToken(threadId, guestId, siteId) {
   const token = randomToken(24);
-  handoffTokens.set(token, {
+  const record = handoffs.create({
+    id: token,
     thread_id: threadId,
     guest_id: guestId,
     site_id: siteId,
@@ -409,15 +410,15 @@ export function createHandoffToken(threadId, guestId, siteId) {
     used: false,
     consumed_at: null,
   });
-  setTimeout(() => handoffTokens.delete(token), HANDOFF_TTL_MS).unref?.();
+  setTimeout(() => deleteHandoffToken(token), HANDOFF_TTL_MS).unref?.();
   return token;
 }
 
 export function getHandoffToken(token) {
-  const entry = handoffTokens.get(token);
+  const entry = handoffs.get(token);
   if (!entry) return null;
   if (Date.now() - entry.created_at > HANDOFF_TTL_MS) {
-    handoffTokens.delete(token);
+    deleteHandoffToken(token);
     return null;
   }
   if (entry.used) return null;
@@ -425,20 +426,23 @@ export function getHandoffToken(token) {
 }
 
 export function consumeHandoffToken(token) {
-  const entry = handoffTokens.get(token);
+  const entry = handoffs.get(token);
   if (!entry) return null;
   if (Date.now() - entry.created_at > HANDOFF_TTL_MS) {
-    handoffTokens.delete(token);
+    deleteHandoffToken(token);
     return null;
   }
   if (entry.used) return null;
-  entry.used = true;
-  entry.consumed_at = Date.now();
-  return entry;
+  const updated = handoffs.set(token, { used: true, consumed_at: Date.now() });
+  return updated;
+}
+
+export function deleteHandoffToken(token) {
+  handoffs.delete(token);
 }
 
 export function listHandoffTokens() {
-  return [...handoffTokens.entries()].map(([t, e]) => ({ token: t, ...e }));
+  return handoffs.list().map((e) => ({ token: e.id, ...e }));
 }
 
 /** ──────────────────────────────────────────────────────────────────────
@@ -468,14 +472,18 @@ export function getStatsAll(dateFrom, dateTo) {
 }
 
 /** ──────────────────────────────────────────────────────────────────────
- * Bot token store (in-memory, v1)
+ * Bot token store (disk-based, persistent across restarts)
  * ────────────────────────────────────────────────────────────────────── */
 
-const botTokens = new Map(); // token → { site_id, created_at }
+const botTokens = new EntityStore('bot-tokens');
 
 export function createBotToken(siteId) {
   const token = randomToken(24);
-  botTokens.set(token, { site_id: siteId, created_at: Date.now() });
+  const record = botTokens.create({
+    id: token,
+    site_id: siteId,
+    created_at: Date.now(),
+  });
   return token;
 }
 
@@ -490,7 +498,7 @@ export function deleteBotToken(token) {
 }
 
 export function listBotTokens(siteId) {
-  return [...botTokens.entries()].filter(([, e]) => e.site_id === siteId).map(([t, e]) => ({ token: t, ...e }));
+  return botTokens.list().filter((e) => e.site_id === siteId).map((e) => ({ token: e.id, ...e }));
 }
 
 /** ──────────────────────────────────────────────────────────────────────
@@ -499,12 +507,13 @@ export function listBotTokens(siteId) {
 
 const OAUTH_CODE_TTL_MS = 60 * 1000; // 60 seconds
 
-const oauthCodes = new Map(); // code → { site_id, user_id, redirect_uri, code_challenge, scope, created_at, used }
-const userConsents = new Map(); // `${site_id}|${user_id}` → { scopes: string[], granted_at }
+const oauthCodes = new EntityStore('oauth-codes');
+const userConsents = new EntityStore('user-consents');
 
 export function createOAuthCode(siteId, userId, redirectUri, codeChallenge, scope) {
   const code = randomToken(24);
-  oauthCodes.set(code, {
+  oauthCodes.create({
+    id: code,
     site_id: siteId,
     user_id: userId,
     redirect_uri: redirectUri,
@@ -513,15 +522,19 @@ export function createOAuthCode(siteId, userId, redirectUri, codeChallenge, scop
     created_at: Date.now(),
     used: false,
   });
-  setTimeout(() => oauthCodes.delete(code), OAUTH_CODE_TTL_MS).unref?.();
+  setTimeout(() => deleteOAuthCode(code), OAUTH_CODE_TTL_MS).unref?.();
   return code;
+}
+
+export function deleteOAuthCode(code) {
+  oauthCodes.delete(code);
 }
 
 export function getOAuthCode(code) {
   const entry = oauthCodes.get(code);
   if (!entry) return null;
   if (Date.now() - entry.created_at > OAUTH_CODE_TTL_MS) {
-    oauthCodes.delete(code);
+    deleteOAuthCode(code);
     return null;
   }
   if (entry.used) return null;
@@ -532,12 +545,12 @@ export function consumeOAuthCode(code) {
   const entry = oauthCodes.get(code);
   if (!entry) return null;
   if (Date.now() - entry.created_at > OAUTH_CODE_TTL_MS) {
-    oauthCodes.delete(code);
+    deleteOAuthCode(code);
     return null;
   }
   if (entry.used) return null;
-  entry.used = true;
-  return entry;
+  const updated = oauthCodes.set(code, { used: true });
+  return updated;
 }
 
 export function hasUserConsent(siteId, userId, scope) {
@@ -552,8 +565,8 @@ export function grantUserConsent(siteId, userId, scope) {
   const key = `${siteId}|${userId}`;
   const entry = userConsents.get(key) || { scopes: [], granted_at: Date.now() };
   const scopes = [...new Set([...entry.scopes, ...scope.split(' ').filter(Boolean)])];
-  userConsents.set(key, { scopes, granted_at: Date.now() });
-  return entry;
+  const updated = userConsents.set(key, { scopes, granted_at: Date.now() });
+  return updated;
 }
 
 export function revokeUserConsent(siteId, userId) {
@@ -561,20 +574,20 @@ export function revokeUserConsent(siteId, userId) {
 }
 
 export function listUserConsents(userId) {
-  return [...userConsents.entries()]
-    .filter(([key]) => key.endsWith(`|${userId}`))
-    .map(([key, entry]) => ({ site_id: key.split('|')[0], scopes: entry.scopes, granted_at: entry.granted_at }));
+  return userConsents.list()
+    .filter((e) => e.id.endsWith(`|${userId}`))
+    .map((e) => ({ site_id: e.id.split('|')[0], scopes: e.scopes, granted_at: e.granted_at }));
 }
 
 /** ──────────────────────────────────────────────────────────────────────
- * Site → user notifications (notify scope)
+ * Site → user notifications (notify scope) — disk-based, persistent
  * ────────────────────────────────────────────────────────────────────── */
 
 const NOTIFY_DAILY_LIMIT = 5;
 
-const userNotifications = new Map(); // user_id → [{ id, site_id, title, text, url, created_at, read }]
-const notifyRateLimit = new Map(); // `${site_id}|${user_id}|${date}` → count
-const mutedSites = new Set(); // `${site_id}|${user_id}`
+const userNotifications = new EntityStore('user-notifications');
+const notifyRateLimit = new EntityStore('notify-rate-limit');
+const mutedSites = new EntityStore('muted-sites');
 
 export function createUserNotification(userId, siteId, title, text, url) {
   const id = randomToken(16);
@@ -587,44 +600,45 @@ export function createUserNotification(userId, siteId, title, text, url) {
     created_at: Date.now(),
     read: false,
   };
-  const arr = userNotifications.get(userId) || [];
-  arr.unshift(n);
-  userNotifications.set(userId, arr);
-  return n;
+  const rec = userNotifications.create(n);
+  return rec;
 }
 
 export function getUserNotifications(userId, siteId) {
-  const arr = userNotifications.get(userId) || [];
+  const arr = userNotifications.list().filter((n) => n.user_id === userId);
   if (siteId) return arr.filter((n) => n.site_id === siteId);
   return arr;
 }
 
 export function markUserNotificationRead(userId, notifId) {
-  const arr = userNotifications.get(userId) || [];
-  const n = arr.find((x) => x.id === notifId);
-  if (n) n.read = true;
+  const arr = userNotifications.list().filter((n) => n.user_id === userId && n.id === notifId);
+  const n = arr[0];
+  if (n) userNotifications.set(notifId, { read: true });
   return n;
 }
 
 export function isNotifyRateLimited(siteId, userId) {
   const today = new Date().toISOString().slice(0, 10);
   const key = `${siteId}|${userId}|${today}`;
-  const count = notifyRateLimit.get(key) || 0;
+  const entry = notifyRateLimit.get(key);
+  const count = entry ? (entry.count || 0) : 0;
   return count >= NOTIFY_DAILY_LIMIT;
 }
 
 export function incrementNotifyRateLimit(siteId, userId) {
   const today = new Date().toISOString().slice(0, 10);
   const key = `${siteId}|${userId}|${today}`;
-  notifyRateLimit.set(key, (notifyRateLimit.get(key) || 0) + 1);
+  const entry = notifyRateLimit.get(key) || { count: 0 };
+  const updated = notifyRateLimit.set(key, { count: (entry.count || 0) + 1 });
+  return updated;
 }
 
 export function isSiteMuted(siteId, userId) {
-  return mutedSites.has(`${siteId}|${userId}`);
+  return Boolean(mutedSites.get(`${siteId}|${userId}`));
 }
 
 export function muteSite(siteId, userId) {
-  mutedSites.add(`${siteId}|${userId}`);
+  mutedSites.create({ id: `${siteId}|${userId}`, site_id: siteId, user_id: userId });
 }
 
 export function unmuteSite(siteId, userId) {
@@ -632,9 +646,9 @@ export function unmuteSite(siteId, userId) {
 }
 
 export function listMutedSites(userId) {
-  return [...mutedSites]
-    .filter((k) => k.endsWith(`|${userId}`))
-    .map((k) => k.split('|')[0]);
+  return mutedSites.list()
+    .filter((k) => k.id.endsWith(`|${userId}`))
+    .map((k) => k.site_id);
 }
 
 export function getNotifyRateLimit() {
