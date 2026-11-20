@@ -124,7 +124,7 @@ import {
   type GroupRoles,
 } from '../lib/social/groupRoles';
 import { FileTransferManager } from '../lib/p2p/fileTransfer';
-import { ReceiptManager } from '../lib/p2p/receipts';
+import { ReceiptManager, type ReceiptSignal } from '../lib/p2p/receipts';
 import { enqueueJoinPayload, JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
 import { getThreadMessages } from '../lib/messaging/threads';
 import { editMessage } from '../lib/messaging/messageLifecycle';
@@ -211,7 +211,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   getBotSession,
 }) => {
   const { t } = useLanguage();
-  const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer } = useSecurity();
+  const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer, p2pManager, setPeerFingerprint } = useSecurity();
   const { checkout, canUse } = usePremium();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
@@ -337,10 +337,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const roomChannelRef = useRef<RoomDataChannel | null>(null);
   const groupManagerRef = useRef<GroupChatManager | null>(null);
   const fileManagerRef = useRef<FileTransferManager | null>(null);
+  const fingerprintSetRef = useRef<Set<string>>(new Set());
   const [roomPeerCount, setRoomPeerCount] = useState(0);
   const messagesRef = useRef(messages);
   const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
-  const [peerFingerprint, setPeerFingerprint] = useState<string | null>(null);
+  const [peerFingerprint, setLocalPeerFingerprint] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState<boolean | null>(() => {
     if (!identity || chatItem?.type !== 'direct') return null;
     return isDemoPeer(chatId);
@@ -461,9 +462,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // verification pipeline. Progress and completion feed the chat UI.
   const fileTransferManager = useMemo(() => {
     const manager: FileTransferManager = new FileTransferManager({
-      sendToPeer: async (_peer, message) => {
-        if (sendEnvelope({ v: 1, kind: 'file', message })) return;
-        await manager.handleIncoming('nova_local_delivery', message);
+      sendToPeer: async (peerFingerprint, message) => {
+        if (!p2pManager) {
+          // Нет P2P-менеджера: локальный loopback (тестовое окружение / офлайн).
+          await manager.handleIncoming('nova_local_delivery', message);
+          return;
+        }
+        try {
+          // Реальная P2P-доставка чанков файла (шифруется как ratchet-сообщение).
+          await p2pManager.sendMessage(peerFingerprint, JSON.stringify(message));
+        } catch {
+          // P2P недоступен: локальный loopback как fallback.
+          await manager.handleIncoming('nova_local_delivery', message);
+        }
       },
       onProgress: (progress) => {
         setFileTransfer({
@@ -490,7 +501,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       },
     });
     return manager;
-  }, [sendEnvelope, t]);
+  }, [sendEnvelope, p2pManager, t]);
   fileManagerRef.current = fileTransferManager;
 
   useEffect(() => {
@@ -705,7 +716,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     () =>
       new ReceiptManager({
         localFingerprint: identity?.fingerprint ?? 'nova_pk_local',
-        sendToPeer: async () => undefined,
+        sendToPeer: async (peerFingerprint, signal) => {
+          if (!p2pManager) return;
+          try {
+            // Реальная P2P-доставка квитанции (шифруется как ratchet-сообщение).
+            await p2pManager.sendMessage(peerFingerprint, JSON.stringify(signal));
+          } catch {
+            /* квитанции fire-and-forget: ошибка доставки не критична */
+          }
+        },
         onSignal: (signal) => {
           if (signal.type === 'typing') {
             setIsTyping(true);
@@ -718,7 +737,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           }
         },
       }),
-    [identity],
+    [identity, p2pManager],
   );
   const profile =
     CONTACT_PROFILES[chatId] ||
@@ -741,7 +760,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     registerCreatedGroups();
     setPeerKeyChanges([]);
-    setPeerFingerprint(null);
+    setLocalPeerFingerprint(null);
     setMessages((CONVERSATION_HISTORIES[chatId] || CONVERSATION_HISTORIES['katie']).map((msg, idx) => {
       if (idx === 1) {
         return {
@@ -767,7 +786,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         if (!active) return;
 
         setIsDemo(isDemoResult);
-        setPeerFingerprint((current) => (current === fingerprint ? current : fingerprint));
+        setLocalPeerFingerprint((current) => (current === fingerprint ? current : fingerprint));
+        // Регистрируем отпечаток собеседника в глобальной карте, чтобы
+        // checkPeerKey использовал реальный бандл вместо демо-ключа (F1.1).
+        if (!isDemoResult && fingerprint && !fingerprintSetRef.current.has(chatId)) {
+          setPeerFingerprint?.(chatId, fingerprint);
+          fingerprintSetRef.current.add(chatId);
+        }
         setPeerKeyChanges((current) =>
           current.length === history.length &&
           current.every((change, index) => change.id === history[index]?.id)
@@ -827,8 +852,77 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     checkPeerKey,
     identity,
     keyChangedLabel,
+    setPeerFingerprint,
     triggerPinnedToast,
   ]);
+
+  // Входящие P2P-сообщения из App.tsx (реальная доставка, без фейковой симуляции).
+  useEffect(() => {
+    if (!identity || chatItem?.type !== 'direct') return;
+
+    const onMessage = (event: CustomEvent<{ chatId: string; fromFingerprint: string; text: string }>) => {
+      if (event.detail.chatId !== chatId) return;
+      const { text } = event.detail;
+      const messageId = 'p2p-' + Date.now();
+      playSound('incoming');
+      vibrate();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: messageId,
+          senderId: 'other',
+          text,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: Date.now(),
+          isRead: false,
+        },
+      ]);
+      appendConversationHistory(chatId, [
+        {
+          id: messageId,
+          senderId: 'other',
+          text,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: Date.now(),
+          isRead: false,
+        },
+      ]);
+      // Доставить ботам, если это чат с ботом.
+      if (botId && getBotSession) {
+        void getBotSession().deliverMessage(botId, {
+          type: 'message',
+          payload: {
+            messageId,
+            chat: { id: chatId, kind: 'direct' },
+            text,
+            isCommand: text.startsWith('/'),
+            command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
+            mentionsBot: false,
+            from: 'other',
+            timestamp: Date.now(),
+          },
+        });
+      }
+    };
+
+    const onReceipt = (event: CustomEvent<{ signal: ReceiptSignal }>) => {
+      void receiptManager.handleIncoming(event.detail.signal);
+    };
+
+    const onFile = (event: CustomEvent<{ peerFingerprint: string; message: FileTransferMessage }>) => {
+      void fileManagerRef.current?.handleIncoming(event.detail.peerFingerprint, event.detail.message);
+    };
+
+    window.addEventListener('nova:p2p:message', onMessage as EventListener);
+    window.addEventListener('nova:p2p:receipt', onReceipt as EventListener);
+    window.addEventListener('nova:p2p:file', onFile as EventListener);
+
+    return () => {
+      window.removeEventListener('nova:p2p:message', onMessage as EventListener);
+      window.removeEventListener('nova:p2p:receipt', onReceipt as EventListener);
+      window.removeEventListener('nova:p2p:file', onFile as EventListener);
+    };
+  }, [chatId, chatItem?.type, identity, botId, getBotSession, receiptManager]);
 
   useEffect(() => {
     if (loadedMessagesChatId !== chatId) return;
@@ -1140,33 +1234,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           triggerPinnedToast(
             `Scheduled message sent: "${item.text?.slice(0, 24) || 'Voice note'}"`
           );
-
-          // Simulated recipient read receipt: transitions to double checks
-          setTimeout(() => {
-            setMessages((msgs) =>
-              msgs.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-            );
-          }, 600);
-
-          // Simulate Katie's real-time reply
-          setTimeout(() => {
-            setTypingActivity('typing');
-            setIsTyping(true);
-          }, 850);
-
-          setTimeout(() => {
-            setIsTyping(false);
-            setTypingActivity('typing');
-            setMessages((msgs) => [
-              ...msgs,
-              {
-                id: 'm-' + (Date.now() + 1),
-                senderId: 'other',
-                text: "Got your message! Perfect timing, talk to you soon 🙌",
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              },
-            ]);
-          }, 2700);
         });
 
         return prev.filter((item) => item.targetTimestamp > now);
@@ -2224,25 +2291,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setIsTyping(true);
     }, 850);
 
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-      const attachmentResponses = [
-        "Love this! Looks amazing ✨",
-        "Got your attachment, opening it right now! 📄",
-        "Saved it, thank you! 🙌",
-      ];
-      const randomResponse = attachmentResponses[Math.floor(Math.random() * attachmentResponses.length)];
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'm-' + (Date.now() + 1),
-          senderId: 'other',
-          text: randomResponse,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-    }, 2600);
+    // Квитанция о прочтении приходит по реальному P2P-каналу (через receiptManager),
+    // а не симулируется через setTimeout.
   };
 
   const handleCreatePoll = (poll: PollData) => {
@@ -2285,26 +2335,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       );
     }, 600);
 
-    // Simulated contact response voting in the poll
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id !== messageId || !m.poll) return m;
-          const options = m.poll.options.map((opt, idx) => {
-            if (idx === 0) {
-              return { ...opt, votes: opt.votes + 1 };
-            }
-            return opt;
-          });
-          const total = options.reduce((s, o) => s + o.votes, 0);
-          return {
-            ...m,
-            poll: { ...m.poll, options, totalVotes: total },
-          };
-        })
-      );
-      triggerPinnedToast(t('poll.votedNotification', { name: profile.name, defaultValue: `${profile.name} voted in your poll` }));
-    }, 2200);
+    // Голоса в опросе приходят по реальному P2P-каналу, а не симулируются.
   };
 
   const handleVotePoll = (pollId: string, optionId: string) => {
@@ -2555,49 +2586,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setIsTyping(true);
     }, 750);
 
-    setTimeout(() => {
-      setIsTyping(false);
-      setTypingActivity('typing');
-      const responses = payload.images
-        ? [
-            "Love these photos! Looks so fun ✨",
-            "Awesome shots, saving these right away! 📸",
-            "Can't wait to catch up, thanks for sharing!",
-          ]
-        : payload.document
-        ? [
-            "Got the document! Reviewing it now 📄",
-            "Thanks for sharing this file, looks great!",
-            "Saved it, see you Sunday!",
-          ]
-        : [
-            "Sounds awesome! Let's definitely do that.",
-            "Can't wait to catch up! 🎉",
-          ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      setMessages((prev) => {
-        const lastUserMsg = prev[prev.length - 1];
-        return [
-          ...prev,
-          {
-            id: 'm-' + (Date.now() + 1),
-            senderId: 'other',
-            text: randomResponse,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            replyTo:
-              lastUserMsg && lastUserMsg.senderId === 'me'
-                ? {
-                    id: lastUserMsg.id,
-                    text:
-                      lastUserMsg.text ||
-                      (lastUserMsg.document ? t('chat.documentPreview', { name: lastUserMsg.document.name }) : t('chat.photoAttachment')),
-                    senderName: t('common.you'),
-                  }
-                : undefined,
-          },
-        ];
-      });
-    }, 2600);
+    // Ответы собеседника приходят по реальному P2P-каналу (nova:p2p:message),
+    // а не симулируются через setTimeout.
   };
 
   const wrapSelection = (open: string, close: string) => {

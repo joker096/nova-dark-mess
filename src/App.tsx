@@ -124,7 +124,7 @@ export default function App() {
     return botSessionRef.current;
   }, []);
   // Keep the latest fingerprint→chatId map so P2PManager.onMessage can route
-  // incoming messages to the right bot without recreating the transport.
+  // incoming messages to the right bot or chat UI without recreating the transport.
   const peerFingerprintsRef = useRef(peerFingerprintsByChat);
   const relayRef = useRef<MeshRelay | null>(null);
   useEffect(() => {
@@ -182,28 +182,62 @@ export default function App() {
         signaling, 
         relay,
         transportManager,
-        // B4 (L2 gateway transport): route incoming P2P/relay messages to bots
-        // so they receive updates even when the chat screen is not mounted.
+        // B4 (L2 gateway transport): route incoming P2P/relay messages.
+        // Encrypted ratchet payloads arrive here already decrypted as plain
+        // text. They are either: (a) receipt signals (type: delivered/read/typing/…),
+        // (b) file-transfer chunks (type: file_meta/…), or (c) plain chat text.
+        // Non-bot chat text is forwarded to the active chat UI via a ref so
+        // ChatScreen can render it without remounting this effect.
         onMessage: (fromFingerprint, text) => {
           const chatId = Object.entries(peerFingerprintsRef.current)
             .find(([, fp]) => fp === fromFingerprint)?.[0];
           if (!chatId) return;
+
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            parsed = null;
+          }
+
+          const signal = parsed as { type?: string; [key: string]: unknown } | null;
+          const isReceipt = signal && typeof signal.type === 'string'
+            && /^(delivered|read|typing|typing_stop)$/.test(signal.type);
+          const isFile = signal && typeof signal.type === 'string'
+            && /^(file_meta|file_chunk|file_ack|file_resume|file_complete|file_abort)$/.test(signal.type);
+
+          if (isReceipt && signal) {
+            window.dispatchEvent(new CustomEvent('nova:p2p:receipt', { detail: { signal } }));
+            return;
+          }
+          if (isFile && signal) {
+            window.dispatchEvent(new CustomEvent('nova:p2p:file', { detail: { peerFingerprint: fromFingerprint, message: signal } }));
+            return;
+          }
+
           const session = getBotSession();
-          if (!session.isBot(chatId)) return;
-          void session.deliverMessage(chatId, {
-            type: 'message',
-            payload: {
-              messageId: 'p2p_' + Date.now(),
-              chat: { id: chatId, kind: 'direct' },
-              text,
-              isCommand: text.startsWith('/'),
-              command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
-              mentionsBot: false,
-              from: 'other',
-              timestamp: Date.now(),
-              language,
-            },
-          });
+          if (session.isBot(chatId)) {
+            void session.deliverMessage(chatId, {
+              type: 'message',
+              payload: {
+                messageId: 'p2p_' + Date.now(),
+                chat: { id: chatId, kind: 'direct' },
+                text,
+                isCommand: text.startsWith('/'),
+                command: text.startsWith('/') ? text.slice(1).split(' ')[0] : undefined,
+                mentionsBot: false,
+                from: 'other',
+                timestamp: Date.now(),
+                language,
+              },
+            });
+            return;
+          }
+
+          // Regular chat message for a human contact: broadcast to chat UI.
+          window.dispatchEvent(new CustomEvent('nova:p2p:message', {
+            detail: { chatId, fromFingerprint, text },
+          }));
         },
       });
       await manager.initialize();
