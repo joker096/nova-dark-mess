@@ -63,7 +63,12 @@ Secret scan: чисто (fallback patterns).
 | 3.5 | Handoff (переход гостя в мессенджер) | ✅ | (виджет + c.html) |
 | 3.6 | WP плагин connect flow | ✅ | |
 
-### Этап 4-9 — ❌ Не начаты
+### Этап 4 (server persistence) — ✅ Завершён (4a/4a)
+| # | Задача | Статус | Коммит |
+|---|--------|--------|--------|
+| 4.1 | site-gateway stores persistent (handoff, bot, oauth, user-notifications) | ✅ | `276b191` |
+
+### Этап 5-9 — ❌ Не начаты
 
 `.e2e/`, `.env`, `.open-mem/`, `dist/`, `.andromity/`, `server/site-gateway/data/` — игнорируются `.gitignore`.
 
