@@ -155,6 +155,17 @@ describe('ChatScreen - message rendering', () => {
     });
   });
 
+  it('labels the safety number as demo when the peer key is device-generated', async () => {
+    renderChat();
+    fireEvent.click(screen.getByTestId('e2ee-badge'));
+
+    const row = await screen.findByTestId('safety-number-row');
+    expect(row.getAttribute('data-demo-peer')).toBe('true');
+    const badge = await screen.findByTestId('demo-peer-badge');
+    expect(badge.textContent).toContain('chat.demoPeer');
+    expect(badge.getAttribute('title')).toBe('chat.demoPeerTitle');
+  });
+
   it('surfaces changed peer keys in the chat and protection history', async () => {
     const change = {
       id: 'peer-key-change-test-300',
@@ -368,6 +379,9 @@ describe('ChatScreen - send button interactions', () => {
 
   it('adds a recorded voice note to the conversation when sent', () => {
     renderChat();
+    // The composer swaps the mic for the send button as soon as there is text,
+    // so clear the draft to get the voice recorder back.
+    fireEvent.change(screen.getByPlaceholderText('chat.typeMessage'), { target: { value: '' } });
     const sentVoiceBubblesBefore = screen.queryAllByTestId(/^bubble-m-/).length;
 
     fireEvent.click(screen.getByTestId('test-send-voice-note'));

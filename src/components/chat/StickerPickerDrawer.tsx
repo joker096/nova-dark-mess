@@ -1,10 +1,31 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Smile, Film, X, Search, Sparkles, Star, Clock, Lock, Crown, Upload, Trash2 } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Smile,
+  Film,
+  X,
+  Search,
+  Sparkles,
+  Star,
+  Clock,
+  Lock,
+  Crown,
+  Upload,
+  Trash2,
+  LayoutGrid,
+  Rows3,
+  Type,
+} from 'lucide-react';
 import { STICKER_PACKS, MOCK_GIFS } from '../../data/stickers';
 import { StickerData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePremium } from '../../hooks/usePremium';
 import { LazyMedia } from '../LazyMedia';
+import {
+  STICKER_SIZE_OPTIONS,
+  loadMediaPreferences,
+  saveMediaPreferences,
+} from '../../lib/ui/mediaPreferences';
+import type { StickerPickerDensity } from '../../lib/ui/mediaPreferences';
 import {
   addImportedStickerPack,
   allStickerEntries,
@@ -32,6 +53,17 @@ interface StickerPickerDrawerProps {
   onSelectEmoji: (emoji: string) => void;
   onSendSticker: (sticker: StickerData) => void;
   onSendGif: (gifUrl: string, title?: string) => void;
+  /** Insert the sticker into the message text instead of sending it right away. */
+  onSelectStickerText?: (sticker: StickerData) => void;
+  /** Default sticker size used in the bubble preview. */
+  stickerSize?: 'sm' | 'md' | 'lg';
+  /** Insert a sticker into the text field instead of sending it immediately. */
+  insertInsteadOfSend?: boolean;
+  /** Called when the in-drawer sticker size / insert-mode controls change. */
+  onPreferencesChange?: (change: {
+    stickerSize?: 'sm' | 'md' | 'lg';
+    insertInsteadOfSend?: boolean;
+  }) => void;
 }
 
 const EXTENDED_EMOJIS = [
@@ -48,9 +80,14 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
   onSelectEmoji,
   onSendSticker,
   onSendGif,
+  onSelectStickerText,
+  stickerSize: stickerSizeProp,
+  insertInsteadOfSend: insertInsteadOfSendProp,
+  onPreferencesChange,
 }) => {
   const { t } = useLanguage();
   const { premium, checkout } = usePremium();
+  const [localPrefs, setLocalPrefs] = useState(loadMediaPreferences);
   const [activeTab, setActiveTab] = useState<'emoji' | 'stickers' | 'gifs'>('stickers');
   const [activePackId, setActivePackId] = useState<string>(STICKER_PACKS[0]?.id || 'cyber');
   const [filter, setFilter] = useState<string>('all');
@@ -63,6 +100,31 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
   const [importError, setImportError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [, setActionsForId] = useState<string | null>(null);
+  const actionsTargetIdRef = useRef<string | null>(null);
+  const actionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sticker view settings (size / insert mode) are shared with the chat bubbles.
+  const stickerSize = stickerSizeProp ?? localPrefs.stickerSize;
+  const insertMode = insertInsteadOfSendProp ?? localPrefs.stickerInsertInsteadOfSend;
+  const density = localPrefs.stickerPickerDensity;
+
+  useEffect(() => {
+    return () => {
+      if (actionsTimerRef.current) clearTimeout(actionsTimerRef.current);
+    };
+  }, []);
+
+  const updatePrefs = (patch: Partial<typeof localPrefs>) => {
+    const next = saveMediaPreferences({ ...localPrefs, ...patch });
+    setLocalPrefs(next);
+    onPreferencesChange?.({ stickerSize: next.stickerSize, insertInsteadOfSend: next.stickerInsertInsteadOfSend });
+  };
+
+  const setDensity = (value: StickerPickerDensity) => {
+    const next = saveMediaPreferences({ ...localPrefs, stickerPickerDensity: value });
+    setLocalPrefs(next);
+  };
 
   const sortedPacks = useMemo(
     () => sortStickerPacks([...STICKER_PACKS, ...importedPacks]),
@@ -105,12 +167,44 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
       return;
     }
     setRecentIds(recordStickerUse(entry.sticker.id));
+    // "Insert, don't send" mode keeps the sticker out of the history until the
+    // user actually sends the composed message.
+    if (insertMode && onSelectStickerText) {
+      onSelectStickerText(entry.sticker);
+      return;
+    }
     onSendSticker(entry.sticker);
   };
 
   const handleToggleFavorite = (event: React.MouseEvent, stickerId: string) => {
     event.stopPropagation();
     setFavoriteIds(toggleStickerFavorite(stickerId));
+  };
+
+  /**
+   * Long-press on a sticker (or right click) opens a tiny action panel — much
+   * easier to reach with a thumb than the 12px star in the corner.
+   */
+  const openActions = (stickerId: string) => {
+    if (actionsTimerRef.current) clearTimeout(actionsTimerRef.current);
+    actionsTargetIdRef.current = stickerId;
+    setActionsForId(stickerId);
+    actionsTimerRef.current = setTimeout(() => {
+      actionsTargetIdRef.current = null;
+      setActionsForId(null);
+    }, 2500);
+  };
+
+  const scheduleLongPress = (stickerId: string) => {
+    if (actionsTimerRef.current) clearTimeout(actionsTimerRef.current);
+    actionsTimerRef.current = setTimeout(() => openActions(stickerId), 450);
+  };
+
+  const cancelLongPress = () => {
+    if (actionsTimerRef.current) {
+      clearTimeout(actionsTimerRef.current);
+      actionsTimerRef.current = null;
+    }
   };
 
   const handleImportClick = () => {
@@ -176,6 +270,65 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
       : filter === 'favorites'
         ? t('stickers.emptyFavorites', 'No favorite stickers yet')
         : t('stickers.emptyPack', 'No stickers in this pack');
+
+  const segButtonClass = (active: boolean) =>
+    `px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${active ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white' : 'text-white/55 hover:text-white'}`;
+
+  const renderViewSettings = () => (
+    <div className="flex items-center justify-between gap-1.5 flex-wrap" data-testid="sticker-view-settings">
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-0.5 bg-[#10111a] p-0.5 rounded-xl border border-white/5" role="group" aria-label={t('stickers.size', 'Sticker size')}>
+          {STICKER_SIZE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => updatePrefs({ stickerSize: option.value })}
+              className={segButtonClass(stickerSize === option.value)}
+              aria-pressed={stickerSize === option.value}
+              title={t(`stickers.size.${option.value}`, `Sticker size ${option.label}`)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-0.5 bg-[#10111a] p-0.5 rounded-xl border border-white/5" role="group" aria-label={t('stickers.pickerDensity', 'Picker density')}>
+          <button
+            type="button"
+            onClick={() => setDensity('comfortable')}
+            className={segButtonClass(density === 'comfortable')}
+            aria-pressed={density === 'comfortable'}
+            title={t('stickers.density.comfortable', 'Large stickers, fewer per row')}
+          >
+            <LayoutGrid className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDensity('compact')}
+            className={segButtonClass(density === 'compact')}
+            aria-pressed={density === 'compact'}
+            title={t('stickers.density.compact', 'Small stickers, more per row')}
+          >
+            <Rows3 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => updatePrefs({ stickerInsertInsteadOfSend: !insertMode })}
+        className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold border transition cursor-pointer ${
+          insertMode
+            ? 'border-[var(--nova-accent-color,#ff4e18)]/70 bg-[var(--nova-accent-color,#ff4e18)]/20 text-white'
+            : 'border-white/5 bg-white/5 text-white/55 hover:text-white'
+        }`}
+        aria-pressed={insertMode}
+        title={t('stickers.insertModeHint', 'Tap a sticker to put it in the text field instead of sending it')}
+      >
+        <Type className="w-3 h-3" />
+        {t('stickers.insertMode', 'Insert, don\'t send')}
+      </button>
+    </div>
+  );
 
   return (
     <div
@@ -335,6 +488,9 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
             ))}
           </div>
 
+          {/* Sticker view settings: size, picker density, insert-vs-send */}
+          {renderViewSettings()}
+
           {showPremiumBanner && (
             <button
               type="button"
@@ -346,31 +502,55 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
             </button>
           )}
 
-          {/* Sticker Pack Selector Pills */}
+          {/* Sticker Pack Selector Rail — compact icon tabs, thumb friendly */}
           {highlightedPacks && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1" role="tablist" aria-label={t('stickers.packs', 'Sticker packs')}>
+              <button
+                type="button"
+                onClick={() => setFilter('recent')}
+                className={filterChipClass(false)}
+                title={t('stickers.recent', 'Recent')}
+                aria-label={t('stickers.recent', 'Recent')}
+              >
+                <Clock className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter('favorites')}
+                className={filterChipClass(false)}
+                title={t('stickers.favorites', 'Favorites')}
+                aria-label={t('stickers.favorites', 'Favorites')}
+              >
+                <Star className="w-3.5 h-3.5" />
+              </button>
+              <span className="w-px h-5 bg-white/10 shrink-0 mx-0.5" />
               {sortedPacks.map((pack) => {
                 const isLockedPack = pack.access === 'premium' && !premium;
+                const isActivePack = highlightedPacks && activePackId === pack.id;
                 return (
                   <button
                     key={pack.id}
                     type="button"
                     onClick={() => setActivePackId(pack.id)}
-                    title={pack.description}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 border transition cursor-pointer ${
-                      activePackId === pack.id
-                        ? 'border-[var(--nova-accent-color,#ff4e18)]/70 bg-[var(--nova-accent-color,#ff4e18)]/20 text-white font-semibold'
+                    title={`${pack.name} — ${pack.description}`}
+                    aria-label={pack.name}
+                    aria-pressed={isActivePack}
+                    className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-2xl shrink-0 border transition cursor-pointer active:scale-95 ${
+                      isActivePack
+                        ? 'border-[var(--nova-accent-color,#ff4e18)]/80 bg-[var(--nova-accent-color,#ff4e18)]/20 text-white'
                         : 'border-white/5 bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    <span>{pack.icon}</span>
-                    <span>{pack.name}</span>
+                    <span className="text-base leading-none">{pack.icon}</span>
+                    <span className="text-[8px] font-semibold truncate w-full text-center mt-0.5 px-0.5">
+                      {pack.name}
+                    </span>
                     {isStickerNew(pack) && (
-                      <span className="text-[8px] px-1 py-0.5 rounded-md bg-emerald-400/20 text-emerald-300 font-bold">
-                        NEW
-                      </span>
+                      <span className="absolute -top-0.5 -left-0.5 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.8)]" />
                     )}
-                    {isLockedPack && <Lock className="w-3 h-3 text-amber-300" />}
+                    {isLockedPack && (
+                      <Lock className="absolute top-1 right-1 w-2.5 h-2.5 text-amber-300" />
+                    )}
                   </button>
                 );
               })}
@@ -401,17 +581,31 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
               <span className="text-[11px]">{emptyMessage}</span>
             </div>
           ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto no-scrollbar p-1">
+            <div
+              className={`grid gap-2 max-h-52 overflow-y-auto no-scrollbar p-1 ${density === 'compact' ? 'grid-cols-5 sm:grid-cols-8' : 'grid-cols-4 sm:grid-cols-6'}`}
+              data-density={density}
+            >
               {visibleEntries.map((entry) => {
                 const { sticker, pack } = entry;
                 const locked = isStickerLocked(sticker, pack, premium);
                 const isFavorite = favoriteIds.includes(sticker.id);
+                const compact = density === 'compact';
                 return (
                   <div key={sticker.id} className="group relative">
                     <button
                       type="button"
                       onClick={() => handlePickSticker(entry)}
-                      className={`w-full flex flex-col items-center justify-center p-2 rounded-2xl bg-[#191a27] border transition duration-150 cursor-pointer active:scale-95 shadow-md ${
+                      onPointerDown={() => scheduleLongPress(sticker.id)}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      onPointerCancel={cancelLongPress}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openActions(sticker.id);
+                      }}
+                      className={`w-full flex flex-col items-center justify-center rounded-2xl bg-[#191a27] border transition duration-150 cursor-pointer active:scale-95 shadow-md touch-manipulation ${
+                        compact ? 'p-1' : 'p-2'
+                      } ${
                         locked
                           ? 'border-amber-400/20 hover:border-amber-400/50'
                           : 'border-white/5 hover:border-[var(--nova-accent-color,#ff4e18)]/50 hover:bg-[#232438]'
@@ -422,15 +616,17 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                           : `${sticker.name} (${sticker.emoji})`
                       }
                     >
-                      <div className="w-16 h-16 flex items-center justify-center group-hover:scale-110 transition duration-200">
+                      <div
+                        className={`${compact ? 'w-11 h-11' : 'w-16 h-16'} flex items-center justify-center group-hover:scale-110 transition duration-200`}
+                      >
                         <StickerMedia
                           sticker={sticker}
                           className={`w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${
                             locked ? 'grayscale opacity-30' : ''
                           }`}
-                          emojiClassName={`text-3xl ${locked ? 'grayscale opacity-30' : ''}`}
+                          emojiClassName={`${compact ? 'text-2xl' : 'text-3xl'} ${locked ? 'grayscale opacity-30' : ''}`}
                         />
-                        {(sticker.animated || pack.animated) && !locked && (
+                        {(sticker.animated || pack.animated) && !locked && !compact && (
                           <span className="absolute top-7 right-1 flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-fuchsia-500/20 text-fuchsia-300 text-[7px] font-bold tracking-wider">
                             <Film className="w-2 h-2" />
                             ANIM
@@ -445,9 +641,30 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                         </span>
                       )}
 
-                      <span className="text-[9px] text-white/70 truncate w-full text-center mt-1 font-medium">
-                        {sticker.name}
-                      </span>
+                      {!compact && (
+                        <span className="text-[9px] text-white/70 truncate w-full text-center mt-1 font-medium">
+                          {sticker.name}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Quick action: insert into text instead of sending */}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (actionsTargetIdRef.current === sticker.id) {
+                          if (actionsTimerRef.current) clearTimeout(actionsTimerRef.current);
+                          actionsTargetIdRef.current = null;
+                          setActionsForId(null);
+                        }
+                        onSelectStickerText?.(sticker);
+                      }}
+                      className={`absolute bottom-0.5 left-0.5 p-1 rounded-lg bg-black/60 backdrop-blur-sm transition cursor-pointer ${isFavorite ? 'text-white/70 hover:text-white' : 'text-white/60 hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
+                      aria-label={t('stickers.insert', 'Insert sticker into message')}
+                      title={t('stickers.insertHint', 'Insert into the text field')}
+                    >
+                      <Type className="w-3 h-3" />
                     </button>
 
                     <button
@@ -486,6 +703,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
           <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold px-1">
             <span>{t('stickers.tapToInsert', 'Tap emoji to insert:')}</span>
           </div>
+          {renderViewSettings()}
           <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto no-scrollbar p-1">
             {EXTENDED_EMOJIS.map((emoji) => (
               <button

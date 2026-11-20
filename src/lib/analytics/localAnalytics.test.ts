@@ -4,6 +4,9 @@ import { localAnalytics } from './localAnalytics';
 describe('localAnalytics', () => {
   beforeEach(() => {
     localAnalytics.clear();
+    // Events are deliberately dropped until the user opts in.
+    localAnalytics.setAnalyticsConsent(true);
+    localAnalytics.clear();
   });
 
   it('tracks events and returns them', () => {

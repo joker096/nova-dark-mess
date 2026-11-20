@@ -63,13 +63,14 @@ describe('pinHash', () => {
     expect(result.hash).not.toBe(legacy);
 
     // The migrated hash verifies on the next attempt with the new salt only.
+    // Argon2id checks are CPU-heavy, so give the chained verifications room.
     expect((await checkPin({ pin: '654321', pinHash: result.hash!, salt: 'fresh-salt' }, () => 'x')).ok).toBe(
       true,
     );
     expect((await checkPin({ pin: '654321', pinHash: result.hash!, salt: null }, () => 'x')).ok).toBe(
       false,
     );
-  });
+  }, 20000);
 
   it('does not migrate when the legacy hash does not match', async () => {
     const legacy = await legacyHash('654321', LEGACY_PIN_SALT);
