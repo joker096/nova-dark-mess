@@ -84,6 +84,7 @@ export class P2PMessengerChannel {
   private lastReceiveBytes = 0;
   private lastStatsTime = 0;
   private onQualityStats: ((stats: CallQualityStats) => void) | null = null;
+  private readonly _iceServersExplicitlyProvided: boolean;
 
   public readonly peerFingerprint: string;
   public readonly localFingerprint: string;
@@ -99,6 +100,8 @@ export class P2PMessengerChannel {
     this.peerFingerprint = peerFingerprint;
     this.signaling = signaling;
     this.iceServers = options.iceServers ?? DEFAULT_ICE_SERVERS;
+    // Track whether iceServers were explicitly provided (not default STUN)
+    this._iceServersExplicitlyProvided = Array.isArray(options.iceServers) && options.iceServers.length > 0;
     this.icePolicy = options.icePolicy ?? 'direct';
     this.connectTimeoutMs = options.connectTimeoutMs ?? 30000;
     this.currentState = {
@@ -174,9 +177,10 @@ export class P2PMessengerChannel {
     // In relay-only mode the peer connection refuses host/srflx candidates:
     // media can only flow through a TURN relay, so the peer never learns the
     // local IP addresses and the STUN servers are never contacted.
-    const relayOnly = this.icePolicy === 'relay-only' && this.iceServers.length > 0;
+    // Only enable relay mode when iceServers were explicitly provided (not default STUN).
+    const relayOnly = this.icePolicy === 'relay-only' && this._iceServersExplicitlyProvided;
     const pc = new RTCPeerConnection({
-      iceServers: relayOnly ? this.iceServers : this.iceServers,
+      iceServers: this.iceServers,
       ...(relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
     });
     this.pc = pc;

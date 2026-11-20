@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Qualidade da Chamada",
+    "callQualityTitle": "Métricas de Qualidade da Chamada em Tempo Real",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Perda: ",
+    "callQualityGood": "Excelente",
+    "callQualityFair": "Aceitável",
+    "callQualityPoor": "Ruim",
+    "ipHidden": "IP Oculto",
+    "ipHiddenTitle": "Mídia via TURN — seu IP está oculto do par",
+    "ipVisible": "IP Visível",
+    "ipVisibleTitle": "Fluxo de Mídia P2P Direto: o par pode ver seu IP. Ative 'Ocultar meu IP em chamadas' em Configurações → Privacidade para rotear mídia via TURN."
   },
   "analytics": {
     "title": "Painel analítico",

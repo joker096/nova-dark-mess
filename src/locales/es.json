@@ -866,7 +866,20 @@
     "botBlocked": "Bot bloqueado",
     "reportBot": "Reportar bot",
     "reportBotDesc": "Reportar este bot por spam, abuso o violación de términos. Tu reporte será revisado.",
-    "reportSubmitted": "Reporte enviado: "
+    "reportSubmitted": "Reporte enviado: ",
+    "callQuality": "Calidad de la llamada",
+    "callQualityTitle": "Métricas de calidad de la llamada en tiempo real",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Pérdida: ",
+    "callQualityGood": "Excelente",
+    "callQualityFair": "Aceptable",
+    "callQualityPoor": "Mala",
+    "ipHidden": "IP oculto",
+    "ipHiddenTitle": "Los medios pasan por TURN — tu IP está oculta del par",
+    "ipVisible": "IP visible",
+    "ipVisibleTitle": "Flujo multimedia P2P directo: el par puede ver tu IP. Activa 'Ocultar mi IP en llamadas' en Ajustes → Privacidad para enrutar multimedia a través de TURN."
   },
   "analytics": {
     "title": "Panel de analítica",

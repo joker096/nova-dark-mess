@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "通话质量",
+    "callQualityTitle": "实时通话质量指标",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "丢包: ",
+    "callQualityGood": "优秀",
+    "callQualityFair": "一般",
+    "callQualityPoor": "差",
+    "ipHidden": "IP 隐藏",
+    "ipHiddenTitle": "媒体经 TURN 传输 — 您的 IP 对对方隐藏",
+    "ipVisible": "IP 可见",
+    "ipVisibleTitle": "直接 P2P 媒体流：对方可看到您的 IP。在设置 → 隐私中启用“通话中隐藏我的 IP”以通过 TURN 路由媒体。"
   },
   "analytics": {
     "title": "分析仪表板",

@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Samtalskvalitet",
+    "callQualityTitle": "Real-time samtalskvalitetsmått",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Förlust: ",
+    "callQualityGood": "Utmärkt",
+    "callQualityFair": "Acceptabel",
+    "callQualityPoor": "Dålig",
+    "ipHidden": "IP dold",
+    "ipHiddenTitle": "Media via TURN — ditt IP är dolt för motparten",
+    "ipVisible": "IP synligt",
+    "ipVisibleTitle": "Direkt P2P-mediastream: motparten kan se ditt IP. Aktivera 'Dölj mitt IP i samtal' i Inställningar → Integritet för att dirigera media via TURN."
   },
   "analytics": {
     "title": "Analysinstrumentpanel",

@@ -1020,7 +1020,20 @@
     "blockBot": "Заблокировать бота",
     "blockBotConfirm": "Заблокировать этого бота? Вы перестанете получать от него сообщения.",
     "block": "Заблокировать",
-    "botBlocked": "Бот заблокирован"
+    "botBlocked": "Бот заблокирован",
+    "callQuality": "Качество связи",
+    "callQualityTitle": "Метрики качества звонка в реальном времени",
+    "callQualityBitrateUp": "кбит/с ↑",
+    "callQualityBitrateDown": "кбит/с ↓",
+    "callQualityRtt": "мс RTT",
+    "callQualityLoss": "Потери: ",
+    "callQualityGood": "Отлично",
+    "callQualityFair": "Нормально",
+    "callQualityPoor": "Плохо",
+    "ipHidden": "IP скрыт",
+    "ipHiddenTitle": "Медиа идет через TURN — ваш IP скрыт от собеседника",
+    "ipVisible": "IP виден",
+    "ipVisibleTitle": "Прямой P2P медиапоток: собеседник видит ваш IP. Включите 'Скрыть IP в звонках' в Настройки → Приватность, чтобы маршрутизировать через TURN."
   },
   "chats": {
     "joinRequestNotice": "{{who}} просит вступить",

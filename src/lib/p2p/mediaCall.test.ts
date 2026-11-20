@@ -48,6 +48,8 @@ vi.mock('./webrtc', () => ({
     connectAsInitiator = vi.fn(async () => undefined);
     connectAsResponder = vi.fn(async () => undefined);
     close = vi.fn();
+    startQualityMonitoring = vi.fn();
+    stopQualityMonitoring = vi.fn();
 
     constructor(localFingerprint: string, peerFingerprint: string, _signaling: unknown) {
       this.localFingerprint = localFingerprint;

@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "कॉल गुणवत्ता",
+    "callQualityTitle": "रियल-टाइम कॉल गुणवत्ता मेट्रिक्स",
+    "callQualityBitrateUp": "केबीपीएस ↑",
+    "callQualityBitrateDown": "केबीपीएस ↓",
+    "callQualityRtt": "मिसे RTT",
+    "callQualityLoss": "हानि: ",
+    "callQualityGood": "उत्कृष्ट",
+    "callQualityFair": "औसत",
+    "callQualityPoor": "खराब",
+    "ipHidden": "आईपी छिपा हुआ",
+    "ipHiddenTitle": "मीडिया TURN के माध्यम से — आपका आईपी पीयर से छिपा हुआ है",
+    "ipVisible": "आईपी दृश्यमान",
+    "ipVisibleTitle": "सीधा P2P मीडिया स्ट्रीम: पीयर आपका आईपी देख सकता है। सेटिंग्स → प्राइवेसी में 'कॉल में मेरा आईपी छिपाएं' सक्षम करके मीडिया को TURN के माध्यम से रूट करें।"
   },
   "analytics": {
     "title": "एनालिटिक्स डैशबोर्ड",

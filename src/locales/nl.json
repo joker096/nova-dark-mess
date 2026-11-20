@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Gesprekswaliteit",
+    "callQualityTitle": "Real-time gesprekswaliteitsmetrieken",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Verlies: ",
+    "callQualityGood": "Uitstekend",
+    "callQualityFair": "Acceptabel",
+    "callQualityPoor": "Slecht",
+    "ipHidden": "IP verborgen",
+    "ipHiddenTitle": "Media loopt via TURN — je IP is verborgen voor de peer",
+    "ipVisible": "IP zichtbaar",
+    "ipVisibleTitle": "Directe P2P-mediastream: de peer kan je IP zien. Schakel 'Mijn IP verbergen in gesprekken' in Instellingen → Privacy in om media via TURN te routeren."
   },
   "analytics": {
     "title": "Analytics-dashboard",

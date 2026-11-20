@@ -865,7 +865,20 @@
     "botBlocked": "Bot blockiert",
     "reportBot": "Bot melden",
     "reportBotDesc": "Diesen Bot wegen Spam, Missbrauch oder Verstößen melden. Ihr Bericht wird geprüft.",
-    "reportSubmitted": "Meldung eingereicht: "
+    "reportSubmitted": "Meldung eingereicht: ",
+    "callQuality": "Anrufqualität",
+    "callQualityTitle": "Echtzeit-Anrufqualitätsmetriken",
+    "callQualityBitrateUp": "kbit/s ↑",
+    "callQualityBitrateDown": "kbit/s ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Verlust: ",
+    "callQualityGood": "Exzellent",
+    "callQualityFair": "Akzeptabel",
+    "callQualityPoor": "Schlecht",
+    "ipHidden": "IP versteckt",
+    "ipHiddenTitle": "Medien laufen über TURN — Ihre IP ist vor dem Peer verborgen",
+    "ipVisible": "IP sichtbar",
+    "ipVisibleTitle": "Direkter P2P-Mediastream: der Peer sieht Ihre IP. Aktivieren Sie 'IP in Anrufen verbergen' in Einstellungen → Datenschutz, um Medien über TURN zu leiten."
   },
   "analytics": {
     "title": "Analysten-Dashboard",

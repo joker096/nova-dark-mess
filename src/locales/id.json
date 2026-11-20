@@ -865,7 +865,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Kualitas Panggilan",
+    "callQualityTitle": "Metrik Kualitas Panggilan Real-time",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Kehilangan: ",
+    "callQualityGood": "Luar Biasa",
+    "callQualityFair": "Cukup",
+    "callQualityPoor": "Buruk",
+    "ipHidden": "IP Tersembunyi",
+    "ipHiddenTitle": "Media melewati TURN — IP Anda tersembunyi dari lawan bicara",
+    "ipVisible": "IP Terlihat",
+    "ipVisibleTitle": "Aliran Media P2P Langsung: lawan bicara bisa melihat IP Anda. Aktifkan 'Sembunyikan IP di Panggilan' di Pengaturan → Privasi untuk mengarahkan media melalui TURN."
   },
   "analytics": {
     "title": "Dasbor Analitik",

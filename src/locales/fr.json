@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Qualité d'appel",
+    "callQualityTitle": "Métriques de qualité d'appel en temps réel",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Perte: ",
+    "callQualityGood": "Excellent",
+    "callQualityFair": "Acceptable",
+    "callQualityPoor": "Mauvaise",
+    "ipHidden": "IP masqué",
+    "ipHiddenTitle": "Les médias passent par TURN — votre IP est masquée du pair",
+    "ipVisible": "IP visible",
+    "ipVisibleTitle": "Flux média P2P direct : le pair peut voir votre IP. Activez 'Masquer mon IP en appel' dans Paramètres → Confidentialité pour router les médias via TURN."
   },
   "analytics": {
     "title": "Tableau de bord d'analyse",

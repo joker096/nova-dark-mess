@@ -363,6 +363,7 @@ describe('SettingsModal', () => {
       presenceTtl: 'normal',
       webrtcRelayOnly: false,
       relayEndpoints: [],
+      turnServers: [],
       torEnabled: false,
       torSocksPort: 9050,
       analyticsConsent: false,
