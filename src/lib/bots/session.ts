@@ -22,7 +22,7 @@ import {
   setBotEnabled,
   uninstallBot,
 } from './runtime';
-import type { BotPermission, BotOutgoingMessage, BotUpdate, BotCommand } from './types';
+import { isValidCommand, type BotPermission, type BotOutgoingMessage, type BotUpdate, type BotCommand } from './types';
 import { echoBotManifest } from '../../../examples/bots/echo/manifest';
 import { novafatherManifest } from '../../../examples/bots/novafather/manifest';
 
@@ -62,6 +62,8 @@ export class BotSession {
     installBot: (manifest, granted) => this.installBot(manifest, granted),
     setBotEnabled: (botId, enabled) => this.setBotEnabled(botId, enabled),
     setGatewayUrl: (botId, gatewayUrl) => this.setGatewayUrl(botId, gatewayUrl),
+    setBotCommands: (botId, commands) => this.setBotCommands(botId, commands),
+    setBotDescription: (botId, description) => this.setBotDescription(botId, description),
     uninstallBot: (botId) => this.uninstallBot(botId),
   };
 
@@ -139,6 +141,40 @@ export class BotSession {
       try { new URL(gatewayUrl); } catch { throw new BotInstallError('Gateway URL must be a valid URL'); }
     }
     bot.manifest.gatewayUrl = gatewayUrl;
+    await this.storage.save(registry);
+    this.registry = registry;
+  }
+
+  /** Replace an installed bot's command menu (Phase B6 / NovaFather). */
+  public async setBotCommands(botId: string, commands: BotCommand[]): Promise<void> {
+    await this.ensureReady();
+    if (!Array.isArray(commands) || commands.length > 100) {
+      throw new BotInstallError('A bot may advertise up to 100 commands');
+    }
+    const normalized = commands.map((c) => ({
+      command: String(c.command ?? '').toLowerCase(),
+      description: String(c.description ?? '').slice(0, 256),
+    }));
+    if (!normalized.every((c) => isValidCommand(c.command))) {
+      throw new BotInstallError('Command names use a-z, 0-9 and _ (max 32 chars)');
+    }
+    const registry = await this.storage.load();
+    const bot = registry.bots.find((b) => b.manifest.id === botId);
+    if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
+    bot.manifest.commands = normalized;
+    await this.storage.save(registry);
+    this.registry = registry;
+  }
+
+  /** Update or clear an installed bot's description (Phase B6 / NovaFather). */
+  public async setBotDescription(botId: string, description: string | undefined): Promise<void> {
+    await this.ensureReady();
+    const registry = await this.storage.load();
+    const bot = registry.bots.find((b) => b.manifest.id === botId);
+    if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
+    const trimmed = description?.trim().slice(0, 512);
+    if (trimmed) bot.manifest.description = trimmed;
+    else delete bot.manifest.description;
     await this.storage.save(registry);
     this.registry = registry;
   }

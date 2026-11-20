@@ -256,6 +256,8 @@ export interface BotAdminApi {
   installBot(manifest: unknown, granted: readonly BotPermission[]): Promise<InstalledBot>;
   setBotEnabled(botId: string, enabled: boolean): Promise<void>;
   setGatewayUrl(botId: string, gatewayUrl: string | undefined): Promise<void>;
+  setBotCommands(botId: string, commands: BotCommand[]): Promise<void>;
+  setBotDescription(botId: string, description: string | undefined): Promise<void>;
   uninstallBot(botId: string): Promise<void>;
 }
 
@@ -290,6 +292,10 @@ export interface BotContext {
   setBotEnabled(botId: string, enabled: boolean): Promise<void>;
   /** Attach or clear an L2/L3 gateway URL (requires `manage_bots`). */
   setGatewayUrl(botId: string, gatewayUrl: string | undefined): Promise<void>;
+  /** Replace the command list of an installed bot (requires `manage_bots`). */
+  setBotCommands(botId: string, commands: BotCommand[]): Promise<void>;
+  /** Update the description of an installed bot (requires `manage_bots`). */
+  setBotDescription(botId: string, description: string | undefined): Promise<void>;
   /** Remove an installed bot (requires `manage_bots`). */
   uninstallBot(botId: string): Promise<void>;
 }
@@ -369,6 +375,8 @@ export class BotRuntime {
       installBot: async (manifestInput, granted) => requireAdmin().installBot(manifestInput, granted),
       setBotEnabled: async (botId, enabled) => requireAdmin().setBotEnabled(botId, enabled),
       setGatewayUrl: async (botId, gatewayUrl) => requireAdmin().setGatewayUrl(botId, gatewayUrl),
+      setBotCommands: async (botId, commands) => requireAdmin().setBotCommands(botId, commands),
+      setBotDescription: async (botId, description) => requireAdmin().setBotDescription(botId, description),
       uninstallBot: async (botId) => requireAdmin().uninstallBot(botId),
       onUpdate: (handler) => {
         const arr = this.handlers.get(manifest.id) ?? [];

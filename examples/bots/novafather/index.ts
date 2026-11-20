@@ -579,16 +579,24 @@ async function handlePendingAction(
       try {
         const commands = JSON.parse(text);
         if (!Array.isArray(commands)) throw new Error('Not an array');
-        // In real impl, would call bot.setCommands
+        await ctx.setBotCommands(action.data.botId, commands);
+        state.bots = await ctx.listBots();
         await ctx.sendMessage(chatId, `✅ Commands updated (${commands.length} commands)`);
-      } catch {
-        await ctx.sendMessage(chatId, '❌ Invalid JSON. Use format: [{"command": "start", "description": "..."}]');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid command list';
+        await ctx.sendMessage(chatId, `❌ ${message}\n\nUse format: [{"command": "start", "description": "..."}]`);
         return;
       }
     } else if (action.type === 'desc_bot') {
-      action.data.description = text;
-      // In real impl, would update bot manifest
-      await ctx.sendMessage(chatId, `✅ Description updated: ${text}`);
+      try {
+        await ctx.setBotDescription(action.data.botId, text);
+        state.bots = await ctx.listBots();
+        await ctx.sendMessage(chatId, `✅ Description updated: ${text}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not update description';
+        await ctx.sendMessage(chatId, `❌ ${message}`);
+        return;
+      }
     }
     state.pendingAction = undefined;
     await saveUserState(ctx, userId, state);

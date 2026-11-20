@@ -227,12 +227,13 @@ the bot's private key):
 - [x] `/setgateway` updates the installed manifest through
       `BotSession.setGatewayUrl` (a `none` value clears it and invalid URLs are
       rejected); the list refreshes from the registry afterwards.
-- [ ] `/token`, `/revoke`, `/setwebhook`, `/setcommands`, `/setdescription`
-      still use chat-local demo state; wiring them to the gateway token store
-      and manifest update API is open.
-- [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots`, the
-      toggle callback and the gateway flow through `BotRuntime` +
-      `BotAdminApi`; transport-level E2E is still missing.
+- [x] `/setcommands` (validated JSON, max 100) and `/setdescription` update
+      the installed manifest through `BotSession`.
+- [ ] `/token`, `/revoke`, `/setwebhook` still use chat-local demo state;
+      wiring them to the gateway token store and webhook API is open.
+- [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots`, toggle,
+      gateway and command-list updates through `BotRuntime` + `BotAdminApi`;
+      transport-level E2E is still missing.
 
 ### Phase B7 — Mini Apps (deferred; 1 week when scheduled)
 

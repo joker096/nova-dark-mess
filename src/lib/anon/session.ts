@@ -193,6 +193,40 @@ export interface ReceivedAnonPacket {
   profile: PacketProfile;
 }
 
+/**
+ * Why a packet was dropped. Only `undecodable` packets may be acknowledged
+ * without showing them to the user:
+ *
+ * - `undecodable`: not a Nova packet at all (truncated, wrong padding, foreign
+ *   traffic). Nothing can ever be recovered from it, so keeping it only fills
+ *   the queue.
+ * - `unreadable`: a well-formed sealed packet this key cannot open. It may still
+ *   belong to another recipient or an older identity, so it must stay queued
+ *   until the TTL instead of being destroyed.
+ */
+export type DroppedPacketReason = 'undecodable' | 'unreadable';
+
+export interface DroppedAnonPacket {
+  packetId: string;
+  reason: DroppedPacketReason;
+  profile?: PacketProfile;
+}
+
+export interface ReceiveAnonOptions {
+  /**
+   * Acknowledge packets that cannot be decoded so they leave the queue instead
+   * of sitting there until the TTL. Defaults to off: acknowledging is what
+   * permanently deletes a packet from the relay, so callers opt in.
+   */
+  ackUndecodable?: boolean;
+}
+
+export interface AnonReceiveResult {
+  packets: ReceivedAnonPacket[];
+  /** Packets that were polled but not returned, with the reason. */
+  dropped: DroppedAnonPacket[];
+}
+
 export async function receiveAnonPackets(
   transport: AnonTransport,
   queueId: string,
@@ -200,24 +234,73 @@ export async function receiveAnonPackets(
   recipientPrivateKey: string,
   limit = 32,
   signingKey?: string,
+  options: ReceiveAnonOptions = {},
 ): Promise<ReceivedAnonPacket[]> {
+  const { packets } = await receiveAnonPacketsDetailed(
+    transport,
+    queueId,
+    recipientToken,
+    recipientPrivateKey,
+    limit,
+    signingKey,
+    options,
+  );
+  return packets;
+}
+
+/**
+ * Same as `receiveAnonPackets`, plus the list of dropped packets. Use this when
+ * the caller needs to tell the user that something was unreadable.
+ */
+export async function receiveAnonPacketsDetailed(
+  transport: AnonTransport,
+  queueId: string,
+  recipientToken: string,
+  recipientPrivateKey: string,
+  limit = 32,
+  signingKey?: string,
+  options: ReceiveAnonOptions = {},
+): Promise<AnonReceiveResult> {
   const polled = await transport.poll(queueId, recipientToken, limit, signingKey);
   const packets = (polled as PollResult).packets || [];
   const messages: ReceivedAnonPacket[] = [];
+  const dropped: DroppedAnonPacket[] = [];
+
   for (const packet of packets) {
+    let bytes: Uint8Array;
+    let profile: PacketProfile;
+    let jsonBytes: Uint8Array;
     try {
-      const bytes = base64ToUint8(packet.payload);
+      bytes = base64ToUint8(packet.payload);
       // Senders pick the profile per payload (files use 'large'), so the
       // receiver must derive it from the length instead of assuming 'standard'.
-      const profile = profileForPacketSize(bytes.length);
-      const jsonBytes = decodeFixedPacket(bytes, profile);
+      profile = profileForPacketSize(bytes.length);
+      jsonBytes = decodeFixedPacket(bytes, profile);
+    } catch {
+      dropped.push({ packetId: packet.packetId, reason: 'undecodable' });
+      continue;
+    }
+
+    try {
       const json = new TextDecoder().decode(jsonBytes);
       const sealed = JSON.parse(json);
       const plaintext = await unsealMessageAsync(recipientPrivateKey, sealed);
       messages.push({ packetId: packet.packetId, body: plaintext, profile });
     } catch {
-      // Skip malformed packets; leave them for TTL cleanup.
+      // Shaped like a Nova packet but this key cannot open it: leave it for the
+      // TTL so a co-recipient or a later identity can still read it.
+      dropped.push({ packetId: packet.packetId, reason: 'unreadable', profile });
     }
   }
-  return messages;
+
+  if (options.ackUndecodable) {
+    const undecodableIds = dropped
+      .filter((packet) => packet.reason === 'undecodable')
+      .map((packet) => packet.packetId);
+    if (undecodableIds.length > 0) {
+      await transport.ack(queueId, recipientToken, undecodableIds, signingKey);
+    }
+  }
+
+  return { packets: messages, dropped };
 }

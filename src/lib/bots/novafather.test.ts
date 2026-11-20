@@ -64,6 +64,8 @@ function setup(bots: InstalledBot[] = []) {
       if (bot) bot.enabled = enabled;
     }),
     setGatewayUrl: vi.fn(async () => {}) as BotAdminApi['setGatewayUrl'],
+    setBotCommands: vi.fn(async () => {}) as BotAdminApi['setBotCommands'],
+    setBotDescription: vi.fn(async () => {}) as BotAdminApi['setBotDescription'],
     uninstallBot: vi.fn(async (botId: string) => {
       const index = bots.findIndex((b) => b.manifest.id === botId);
       if (index >= 0) bots.splice(index, 1);
@@ -161,5 +163,45 @@ describe('NovaFather system bot', () => {
 
     expect(admin.setGatewayUrl).toHaveBeenCalledWith('echo', 'https://gateway.example.com');
     expect(sink.sent.some((m) => m.text.includes('Gateway URL set'))).toBe(true);
+  });
+
+  it('updates a bot command list through the admin API', async () => {
+    const echo: InstalledBot = {
+      manifest: echoBotManifest,
+      grantedPermissions: [...echoBotManifest.requestedPermissions],
+      installedAt: Date.now(),
+      enabled: true,
+    };
+    const { runtime, admin } = setup([echo]);
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/mybots', 'mybots'));
+    await runtime.deliverUpdate({
+      type: 'callback_query',
+      payload: {
+        id: 'cb_commands',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        messageId: 'm_list',
+        data: 'commands:echo',
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+    await runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: 'm_commands',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        text: '[{"command":"ping","description":"Ping the bot"}]',
+        isCommand: false,
+        mentionsBot: false,
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+
+    expect(admin.setBotCommands).toHaveBeenCalledWith('echo', [
+      { command: 'ping', description: 'Ping the bot' },
+    ]);
   });
 });

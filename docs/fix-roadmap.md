@@ -150,10 +150,16 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `createFileEnvelopes` → `sendAnonMessage` → relay → `receiveAnonPackets` →
   `assembleFile` for `small`, `standard` and `large`, asserting the profile and
   byte equality (assembly verifies SHA-256).
-  Remaining, not fixed here: a packet that still fails to decode (truncated or
-  foreign) is skipped without an ACK, so it stays in the queue until TTL. The
-  profile fix removes the wedge for real file traffic; dropping unreadable
-  packets needs an ACK contract change in `receiveAnonPackets`.
+  Residual fixed 2026-11-20: `receiveAnonPacketsDetailed()` now reports what was
+  polled but not returned, split into `undecodable` (not a Nova packet at all:
+  truncated, wrong padding, foreign traffic — nothing can ever be recovered) and
+  `unreadable` (valid sealing this key cannot open — may belong to a co-recipient
+  or an older identity). Acknowledging deletes a packet from the relay, so it is
+  opt-in (`ackUndecodable`) and applies to `undecodable` only; `unreadable`
+  packets keep their TTL. The anonymous inbox opts in for trash, so garbage no
+  longer occupies a queue slot until TTL. Covered by three tests in
+  `src/lib/anon/session.test.ts` (ACK on request, redelivery of unreadable
+  packets, no ACK by default).
 
 - [x] **F1.3 Stop presenting demo peers as verified contacts.** _(done 2026-11-18)_
   Evidence: `SecurityContext.tsx:219` (`checkPeerKey`) builds the key-change
