@@ -17,6 +17,7 @@ import {
   type InstalledBot,
   type MessageSink,
   NOVA_BOTS,
+  generateBotSecret,
   installBot,
   setBotBlocked,
   setBotEnabled,
@@ -122,11 +123,21 @@ export class BotSession {
           grantedPermissions: [...manifest.requestedPermissions],
           installedAt: Date.now(),
           enabled: true,
+          webAppSecret: generateBotSecret(),
         };
         this.registry = { bots: [installed, ...this.registry.bots] };
         await this.storage.save(this.registry);
       }
     }
+    // Backfill secrets for bots installed before Mini Apps existed.
+    let secretsAdded = false;
+    for (const bot of this.registry.bots) {
+      if (!bot.webAppSecret) {
+        bot.webAppSecret = generateBotSecret();
+        secretsAdded = true;
+      }
+    }
+    if (secretsAdded) await this.storage.save(this.registry);
     this.runtimes = this.buildRuntimes();
     await this.loadRuntimes();
   }
@@ -181,6 +192,25 @@ export class BotSession {
 
   public listBots(): readonly InstalledBot[] {
     return this.registry.bots;
+  }
+
+  /**
+   * Per-bot Mini App signing secret. Created lazily for old installs so the
+   * value never leaves the encrypted registry.
+   */
+  public async getWebAppSecret(botId: string): Promise<string | null> {
+    await this.ensureReady();
+    const bot = this.registry.bots.find((b) => b.manifest.id === botId);
+    if (!bot) return null;
+    if (!bot.webAppSecret) {
+      bot.webAppSecret = generateBotSecret();
+      const registry = await this.storage.load();
+      const stored = registry.bots.find((b) => b.manifest.id === botId);
+      if (stored) stored.webAppSecret = bot.webAppSecret;
+      await this.storage.save(registry);
+      this.registry = registry;
+    }
+    return bot.webAppSecret;
   }
 
   public isBot(botId: string): boolean {

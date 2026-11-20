@@ -11,7 +11,8 @@ tests and must not break the existing secure-messaging baseline.
 management but still has demo-only token/webhook/gateway commands and no
 transport-level E2E. B8 is in progress: local report/block and the
 threat-model addendum landed, the E2E install flow and the `NOVA_BOTS` flag
-exist. B7 remains deferred.
+exist. B7 is partially implemented (bridge, sandboxed iframe, signed initData);
+a static CSP `frame-src` allowlist is still open.
 
 ## 0. Scope and non-goals
 
@@ -237,14 +238,20 @@ the bot's private key):
       gateway and command-list updates through `BotRuntime` + `BotAdminApi`;
       transport-level E2E is still missing.
 
-### Phase B7 — Mini Apps (deferred; 1 week when scheduled)
+### Phase B7 — Mini Apps — 🟡 Partial
 
-- [ ] `postMessage` bridge: `ready`, `close`, main button, theme params,
-      `initData` signed with the bot identity key.
-- [ ] iframe `sandbox="allow-scripts allow-forms"` — **no `allow-same-origin`**
-      (the old repo's flaw); host on a separate origin registered by the bot
-      owner; `frame-src` allowlist in the CSP in `index.html`.
-- [ ] `web_app` button type becomes available; `inline_query` update type.
+- [x] `postMessage` bridge in `src/components/MiniAppIframe.tsx`: app→host
+      `ready`/`close_requested`/`main_button_clicked`/`inline_query`; host→app
+      `ready` with signed `initData` and theme params, `main_button`, `close`.
+- [x] `initData` is HMAC-SHA256 signed with a per-install secret stored in the
+      encrypted bot registry (`getWebAppSecret`), not with the bot id; old
+      installs are backfilled. The app receives the signature, never the secret.
+- [x] iframe uses `sandbox="allow-scripts allow-forms"` — **no
+      `allow-same-origin`** — and only HTTPS URLs are accepted.
+- [ ] `frame-src` allowlist in the CSP: Mini App URLs are per-bot, so a static
+      allowlist needs a product decision (separate origin per owner). Not added.
+- [x] `web_app` button type opens the Mini App; `inline_query` updates are
+      accepted by the runtime and routed from the bridge.
 
 ### Phase B8 — Security review & release (1 week) — 🟡 In progress
 

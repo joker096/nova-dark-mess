@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InMemoryBotStorage, type MessageSink } from './runtime';
 import { BotSession } from './session';
+import { createInitData, serializeInitData, verifyInitData } from './miniApp';
 import type { BotOutgoingMessage, BotUpdate } from './types';
 
 function messageUpdate(): BotUpdate {
@@ -19,6 +20,19 @@ function messageUpdate(): BotUpdate {
 }
 
 describe('BotSession — blocked and disabled bots', () => {
+  it('issues a stable per-bot secret for Mini App initData', async () => {
+    const session = new BotSession(new InMemoryBotStorage());
+    await session.ensureReady();
+
+    const secret = await session.getWebAppSecret('echo');
+    expect(secret).toMatch(/^[0-9a-f]{64}$/);
+
+    const signed = createInitData('echo', 'me', secret!);
+    expect(verifyInitData(serializeInitData(signed), secret!)).not.toBeNull();
+    expect(await session.getWebAppSecret('echo')).toBe(secret);
+    expect(await session.getWebAppSecret('missing-bot')).toBeNull();
+  });
+
   it('loads local bot modules so installed bots answer', async () => {
     const sent: BotOutgoingMessage[] = [];
     const sink: MessageSink = {
