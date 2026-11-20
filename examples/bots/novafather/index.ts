@@ -34,7 +34,12 @@ interface UserState {
           'token_bot' | 'revoke_token' | 'webhook_bot' | 'webhook_url' |
           'gateway_bot' | 'gateway_url' | 'commands_bot' | 'commands_list' |
           'desc_bot' | 'desc_text';
-    data: Partial<BotConfig> & { botId?: string; token?: string };
+    data: Partial<BotConfig> & {
+      botId?: string;
+      token?: string;
+      webhookUrl?: string;
+      gatewayUrl?: string;
+    };
   };
   bots: InstalledBot[];
 }
@@ -131,16 +136,11 @@ function formatHelp(): string {
 const novafatherBot: BotModule = {
   init(ctx: BotContext): void {
     ctx.onUpdate(async (update) => {
+      // Membership events carry no message/command payload to answer.
+      if (update.type === 'my_chat_member') return;
       const chatId = update.payload.chat.id;
       const userId = update.payload.from;
       const state = await getUserState(ctx, userId);
-
-      // Sync installed bots
-      const session = ctx.storage as any;
-      if (session?.listBots) {
-        state.bots = session.listBots();
-        await saveUserState(ctx, userId, state);
-      }
 
       if (update.type === 'message' && update.payload.isCommand) {
         const cmd = update.payload.command;
