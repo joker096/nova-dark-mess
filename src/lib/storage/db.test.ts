@@ -9,14 +9,14 @@ import { indexedDB as fakeIndexedDB } from 'fake-indexeddb';
 
 // fake-indexeddb does not ship IDBKeyRange; install a minimal shim so
 // EncryptedDatabase.getEncryptedMessages can use index.getAll(IDBKeyRange.only(...)).
-(globalThis as unknown as { IDBKeyRange?: IDBKeyRange }).IDBKeyRange = {
-  only: (value: unknown) => ({ type: 'exact', value }) as IDBKeyRange,
+(globalThis as unknown as { IDBKeyRange?: unknown }).IDBKeyRange = {
+  only: (value: unknown) => ({ type: 'exact', value }),
   lowerBound: (_lower: unknown, _open?: boolean) =>
-    ({ type: 'bound' }) as IDBKeyRange,
+    ({ type: 'bound' }),
   upperBound: (_upper: unknown, _open?: boolean) =>
-    ({ type: 'bound' }) as IDBKeyRange,
+    ({ type: 'bound' }),
   bound: (_lower: unknown, _upper: unknown, _lo?: boolean, _uo?: boolean) =>
-    ({ type: 'bound' }) as IDBKeyRange,
+    ({ type: 'bound' }),
 };
 
 import { EncryptedDatabase } from './db';
