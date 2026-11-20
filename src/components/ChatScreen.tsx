@@ -271,6 +271,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             // pause so the "typing" bubble is visible to the user.
             setTimeout(() => setBotTyping(false), 800);
           },
+          sendTyping: async (_chatId, isTyping) => {
+            setBotTyping(isTyping);
+          },
           edit: async (edit) => {
             let applied = false;
             setMessages((prev) => {

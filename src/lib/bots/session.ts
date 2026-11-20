@@ -43,6 +43,10 @@ class LocalMessageSink implements MessageSink {
   public async answerCallback(): Promise<void> {
     /* Toast presentation is handled by the ChatScreen callback hint. */
   }
+
+  public async sendTyping(): Promise<void> {
+    /* No-op for L1 local sink; ChatScreen handles typing via botTyping state. */
+  }
 }
 
 export class BotSession {

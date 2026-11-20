@@ -47,6 +47,7 @@ import {
   hasWrappedMasterKey,
 } from '../lib/security/vaultKey';
 import { P2PManager } from '../lib/p2p/p2pManager';
+import { completeOnboarding, resetOnboarding } from '../lib/onboarding';
 
 const KEYCHAIN_SERVICE = 'nova-dark-messenger';
 const PIN_SALT_KEY = 'pin_salt';
@@ -121,6 +122,15 @@ export interface SecurityContextType {
   /** Rebuilds the identity from a 12/24-word phrase, keeping the same fingerprint. */
   restoreIdentityFromMnemonic: (mnemonic: string) => Promise<UserIdentity>;
   clearLocalEncryptedData: () => Promise<void>;
+  /**
+   * Forgot-PIN recovery: erases local encrypted data, restores the identity from
+   * its recovery phrase and removes the old PIN so the app opens unlocked.
+   */
+  recoverAccessWithMnemonic: (mnemonic: string) => Promise<UserIdentity>;
+  /** Same as above, but restores identity and local data from an encrypted backup. */
+  recoverAccessWithBackup: (backupContent: string, passphrase: string) => Promise<BackupPayload>;
+  /** Erases the identity, local data and PIN, then sends the app back to onboarding. */
+  resetLocalAccount: () => Promise<void>;
 }
 
 export const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -234,7 +244,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [lockOnHide, setLockOnHideState] = useState(true);
-  const [pinLength, setPinLengthState] = useState(6);
+  const [pinLength, setPinLengthState] = useState(4);
   const [p2pManager, setP2pManagerState] = useState<P2PManager | null>(null);
   const [peerFingerprintsByChat, setPeerFingerprintsByChatState] = useState<Record<string, string>>(
     {},
@@ -386,7 +396,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setPinEnabled(enabledPin);
           setIsLocked(enabledPin);
           setPinLockoutUntil(getPinLockoutUntil());
-          setPinLengthState(6);
+          setPinLengthState(localStorage.getItem(PIN_LENGTH_KEY) === '6' ? 6 : 4);
           setLockOnHideState(localStorage.getItem(LOCK_ON_HIDE_KEY) !== 'false');
           setBiometricEnabled(Boolean(getBiometricCredentialId()));
         } catch (error) {
@@ -770,17 +780,51 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return unwrappedMasterKey;
   }, []);
 
-  const clearLocalEncryptedData = useCallback(async () => {
+  /** Clears local state without touching the PIN, so recovery can stay on screen. */
+  const wipeLocalState = useCallback(async () => {
     if (storageReadyRef.current) {
-      await dbInstance.clearAll();
+      await dbInstance.clearAll().catch(() => undefined);
     }
     sessionsRef.current = {};
     setRatchetSessions({});
     clearStoredIdentity();
     setIs2FAEnabled(false);
     setTotpSecret(generateTOTPSecret());
+    unwrappedMasterKey = null;
+  }, []);
+
+  const clearLocalEncryptedData = useCallback(async () => {
+    await wipeLocalState();
     await removePin();
-  }, [removePin]);
+  }, [wipeLocalState, removePin]);
+
+  const recoverAccessWithMnemonic = useCallback(
+    async (mnemonic: string): Promise<UserIdentity> => {
+      await wipeLocalState();
+      const restored = await restoreIdentityFromMnemonic(mnemonic);
+      completeOnboarding('restore');
+      await removePin();
+      return restored;
+    },
+    [wipeLocalState, restoreIdentityFromMnemonic, removePin],
+  );
+
+  const recoverAccessWithBackup = useCallback(
+    async (backupContent: string, passphrase: string): Promise<BackupPayload> => {
+      await wipeLocalState();
+      const restored = await importEncryptedBackup(backupContent, passphrase);
+      completeOnboarding('restore');
+      await removePin();
+      return restored;
+    },
+    [wipeLocalState, importEncryptedBackup, removePin],
+  );
+
+  const resetLocalAccount = useCallback(async () => {
+    await wipeLocalState();
+    await removePin();
+    resetOnboarding();
+  }, [wipeLocalState, removePin]);
 
   // Keep the vault-wrapped flag in sync with whether a PIN-wrapped master key
   // exists at rest (F2.2).
@@ -838,6 +882,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         importEncryptedBackup,
         restoreIdentityFromMnemonic,
         clearLocalEncryptedData,
+        recoverAccessWithMnemonic,
+        recoverAccessWithBackup,
+        resetLocalAccount,
       }}
     >
       {children}

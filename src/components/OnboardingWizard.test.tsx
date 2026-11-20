@@ -12,6 +12,7 @@ const securityMocks = vi.hoisted(() => ({
   identity: { mnemonic: 'a b c d e f g h i j k l m n o p q r s t u v w x' },
   restoreIdentityFromMnemonic: vi.fn(async () => undefined),
   setPin: vi.fn(async () => undefined),
+  setPinLength: vi.fn(),
   exportEncryptedBackup: vi.fn(async () => new Blob(['backup'])),
   importEncryptedBackup: vi.fn(async () => ({})),
 }));
@@ -39,28 +40,37 @@ vi.mock('../hooks/useAccount', () => ({
   }),
 }));
 
-const advanceToFinish = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
+const answerPhraseCheck = () => {
+  for (let round = 0; round < 3; round += 1) {
+    const panel = screen.getByTestId('onboarding-phrase-check');
+    expect(panel.getAttribute('data-round')).toBe(String(round));
+    const options = screen.getAllByTestId('phrase-check-option');
+    for (const option of options) {
+      fireEvent.click(option);
+      const after = screen.queryByTestId('onboarding-phrase-check');
+      if (!after || after.getAttribute('data-round') !== String(round)) break;
+    }
+  }
+};
+
+const createIdentity = () => {
+  fireEvent.click(screen.getByText('onboarding.createOption'));
   fireEvent.change(screen.getByLabelText('onboarding.nameLabel'), {
     target: { value: 'Mira' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.getStarted' }));
-  fireEvent.click(screen.getByText('onboarding.createOption'));
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.savedPhrase' }));
+  answerPhraseCheck();
+};
+
+const advanceToFinish = () => {
+  createIdentity();
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
 };
 
 const advanceToBackup = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
-  fireEvent.change(screen.getByLabelText('onboarding.nameLabel'), {
-    target: { value: 'Mira' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.getStarted' }));
-  fireEvent.click(screen.getByText('onboarding.createOption'));
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.savedPhrase' }));
+  createIdentity();
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
 };
 
@@ -70,6 +80,7 @@ describe('OnboardingWizard', () => {
     mocks.updateAccount.mockReset();
     securityMocks.restoreIdentityFromMnemonic.mockReset().mockResolvedValue(undefined);
     securityMocks.setPin.mockReset().mockResolvedValue(undefined);
+    securityMocks.setPinLength.mockReset();
     securityMocks.exportEncryptedBackup.mockReset().mockResolvedValue(new Blob(['backup']));
     securityMocks.importEncryptedBackup.mockReset().mockResolvedValue({});
   });
@@ -79,18 +90,22 @@ describe('OnboardingWizard', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders the language selection step first', () => {
+  it('starts with a welcome screen and opens the language picker on demand', () => {
     render(<OnboardingWizard onDone={() => {}} />);
+    expect(screen.getByTestId('onboarding-welcome')).toBeTruthy();
+    expect(screen.getByText('onboarding.createOption')).toBeTruthy();
+    expect(screen.getByText('onboarding.restoreOption')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /English/ }));
     expect(screen.getByTestId('onboarding-language')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'onboarding.continue' })).toBeTruthy();
-    expect(screen.getByText('English')).toBeTruthy();
+    expect(screen.getByText('Русский')).toBeTruthy();
   });
 
-  it('requires a Unicode nickname before identity setup and saves it without a phone number', async () => {
+  it('requires a Unicode nickname and saves it without a phone number', async () => {
     const onDone = vi.fn();
     render(<OnboardingWizard onDone={onDone} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
+    fireEvent.click(screen.getByText('onboarding.createOption'));
     expect(screen.getByTestId('onboarding-nickname')).toBeTruthy();
 
     const continueButton = screen.getByRole('button', { name: 'onboarding.continue' });
@@ -107,9 +122,8 @@ describe('OnboardingWizard', () => {
     expect((continueButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(continueButton);
 
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.getStarted' }));
-    fireEvent.click(screen.getByText('onboarding.createOption'));
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.savedPhrase' }));
+    answerPhraseCheck();
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.startMessaging' }));
@@ -171,16 +185,49 @@ describe('OnboardingWizard', () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:backup-test');
     expect(click).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('onboarding.backupReminder')).toBeNull();
   });
 
-  it('restores from a selected encrypted backup before finishing account setup', async () => {
+  it('shows a backup reminder when the backup step is skipped', () => {
     render(<OnboardingWizard onDone={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
+    advanceToFinish();
+    expect(screen.getByTestId('onboarding-done')).toBeTruthy();
+    expect(screen.getByText('onboarding.backupReminder')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.backupNow' }));
+    expect(screen.getByTestId('onboarding-backup')).toBeTruthy();
+  });
+
+  it('restores an identity from its phrase, then asks only for a name and PIN', async () => {
+    render(<OnboardingWizard onDone={() => {}} />);
+    fireEvent.click(screen.getByText('onboarding.restoreOption'));
+    expect(screen.getByTestId('onboarding-choice')).toBeTruthy();
+    fireEvent.click(screen.getByText('onboarding.restoreTitle'));
+
+    fireEvent.change(screen.getByLabelText('onboarding.phraseLabel'), {
+      target: { value: '  A B C D E F G H I J K L M N O P Q R S T U V W X  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.restoreAction' }));
+
+    await waitFor(() => {
+      expect(securityMocks.restoreIdentityFromMnemonic).toHaveBeenCalledWith(
+        'a b c d e f g h i j k l m n o p q r s t u v w x',
+      );
+      expect(screen.getByTestId('onboarding-nickname')).toBeTruthy();
+    });
+
     fireEvent.change(screen.getByLabelText('onboarding.nameLabel'), {
       target: { value: 'Mira' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.getStarted' }));
+    expect(screen.getByTestId('onboarding-security')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
+    expect(screen.getByTestId('onboarding-done')).toBeTruthy();
+    expect(screen.queryByTestId('onboarding-backup')).toBeNull();
+  });
+
+  it('restores from a selected encrypted backup before finishing account setup', async () => {
+    render(<OnboardingWizard onDone={() => {}} />);
+    fireEvent.click(screen.getByText('onboarding.restoreOption'));
     fireEvent.click(screen.getByRole('button', { name: /settings.importBackup/ }));
 
     const backupFile = new File(['encrypted contents'], 'identity.nova-backup', {
@@ -202,7 +249,7 @@ describe('OnboardingWizard', () => {
         'encrypted contents',
         'correct horse',
       );
-      expect(screen.getByTestId('onboarding-security')).toBeTruthy();
+      expect(screen.getByTestId('onboarding-nickname')).toBeTruthy();
     });
   });
 });

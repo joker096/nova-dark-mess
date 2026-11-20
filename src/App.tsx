@@ -318,6 +318,7 @@ export default function App() {
   );
   const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
   const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
+  const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
 
   useEffect(() => {
     void getBotSession().ensureReady();
@@ -578,10 +579,19 @@ export default function App() {
         return;
       }
       if (target.type === 'bot') {
-        // Open the bot's chat and, if the link carried a start payload, send
-        // /start <payload> once the chat mounts (docs/bots-roadmap.md §B2).
-        setPendingBotStart(target.startPayload ? { chatId: target.id, payload: target.startPayload } : null);
-        navigate('chat-katie', { chatId: target.id });
+        // Check if bot is installed
+        const session = getBotSession();
+        const bot = session.listBots().find((b) => b.manifest.id === target.id);
+        
+        if (bot) {
+          // Bot is installed - open chat and send /start if payload provided
+          setPendingBotStart(target.startPayload ? { chatId: target.id, payload: target.startPayload } : null);
+          navigate('chat-katie', { chatId: target.id });
+        } else {
+          // Bot not installed - open Settings → Bots with install prompt
+          setPendingBotInstall({ id: target.id, startPayload: target.startPayload });
+          setIsSettingsOpen(true);
+        }
         return;
       }
       if (
@@ -1161,6 +1171,8 @@ export default function App() {
           onClose={() => setIsSettingsOpen(false)}
           onOpenAnalytics={openAnalytics}
           getBotSession={getBotSession}
+          pendingBotInstall={pendingBotInstall}
+          onBotInstallHandled={() => setPendingBotInstall(null)}
         />
       </Suspense>
 
