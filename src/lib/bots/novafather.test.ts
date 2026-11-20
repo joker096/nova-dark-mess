@@ -63,6 +63,7 @@ function setup(bots: InstalledBot[] = []) {
       const bot = bots.find((b) => b.manifest.id === botId);
       if (bot) bot.enabled = enabled;
     }),
+    setGatewayUrl: vi.fn(async () => {}) as BotAdminApi['setGatewayUrl'],
     uninstallBot: vi.fn(async (botId: string) => {
       const index = bots.findIndex((b) => b.manifest.id === botId);
       if (index >= 0) bots.splice(index, 1);
@@ -121,5 +122,44 @@ describe('NovaFather system bot', () => {
     });
 
     expect(admin.setBotEnabled).toHaveBeenCalledWith('echo', false);
+  });
+
+  it('sets a gateway URL through the admin API', async () => {
+    const echo: InstalledBot = {
+      manifest: echoBotManifest,
+      grantedPermissions: [...echoBotManifest.requestedPermissions],
+      installedAt: Date.now(),
+      enabled: true,
+    };
+    const { sink, runtime, admin } = setup([echo]);
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/mybots', 'mybots'));
+    await runtime.deliverUpdate({
+      type: 'callback_query',
+      payload: {
+        id: 'cb_gateway',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        messageId: 'm_list',
+        data: 'gateway:echo',
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+    await runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: 'm_gateway_url',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        text: 'https://gateway.example.com',
+        isCommand: false,
+        mentionsBot: false,
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+
+    expect(admin.setGatewayUrl).toHaveBeenCalledWith('echo', 'https://gateway.example.com');
+    expect(sink.sent.some((m) => m.text.includes('Gateway URL set'))).toBe(true);
   });
 });

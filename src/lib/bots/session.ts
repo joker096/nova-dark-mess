@@ -61,6 +61,7 @@ export class BotSession {
     listBots: () => this.registry.bots,
     installBot: (manifest, granted) => this.installBot(manifest, granted),
     setBotEnabled: (botId, enabled) => this.setBotEnabled(botId, enabled),
+    setGatewayUrl: (botId, gatewayUrl) => this.setGatewayUrl(botId, gatewayUrl),
     uninstallBot: (botId) => this.uninstallBot(botId),
   };
 
@@ -139,6 +140,7 @@ export class BotSession {
     }
     bot.manifest.gatewayUrl = gatewayUrl;
     await this.storage.save(registry);
+    this.registry = registry;
   }
 
   public listBots(): readonly InstalledBot[] {
