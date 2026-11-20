@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Radio,
@@ -1126,7 +1126,7 @@ export default function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[var(--nova-accent-color, #ff4e18)]/15 border border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)]">
+              <div className="w-10 h-10 rounded-2xl bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
                 <Users className="w-5 h-5" />
               </div>
               <div className="min-w-0">
@@ -1155,7 +1155,7 @@ export default function App() {
                   navigate('chat-katie', { chatId: pendingInvite.chatId });
                   setPendingInvite(null);
                 }}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-xs font-semibold text-white transition cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-xs font-semibold text-white transition cursor-pointer"
               >
                 {t('chat.joinAccept')}
               </button>

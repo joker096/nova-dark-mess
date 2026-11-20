@@ -52,7 +52,7 @@ import {
 import { createHandle } from '../lib/crypto/handles';
 import { isPremium } from '../lib/premium';
 import { LazyMedia } from './LazyMedia';
-import { readImageFile } from '../lib/ui/image';
+import { createThumbnail } from '../lib/media/imageThumbnail';
 
 interface ProfileScreenProps {
   profileId: string;
@@ -181,7 +181,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setAvatarMessage(t('profile.avatarProcessing', { defaultValue: 'Preparing photo…' }));
     // Downscale before storing: a full-size phone photo does not fit into the
     // localStorage quota, which made the avatar look saved until a reload.
-    void readImageFile(file)
+    void createThumbnail(file, { maxWidth: 512, maxHeight: 512, quality: 0.85 })
       .then((dataUrl) => updateAvatarEverywhere(dataUrl))
       .catch(() =>
         setAvatarMessage(t('profile.avatarSaveFailed', { defaultValue: 'Could not save the photo.' })),
@@ -1816,7 +1816,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     className="w-full py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer border border-white/10"
                     data-testid="toggle-camera-scan"
                   >
-                    <Camera className="w-4 h-4 text-[var(--nova-accent-color, #ff4e18)]" />
+                    <Camera className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)]" />
                     <span>{isScanningCamera ? 'Stop camera scan' : 'Scan QR with camera'}</span>
                   </button>
 
@@ -1830,7 +1830,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         className="w-full h-full object-cover"
                         data-testid="camera-video-preview"
                       />
-                      <div className="absolute inset-2 border-2 border-dashed border-[var(--nova-accent-color, #ff4e18)]/60 rounded-xl pointer-events-none" />
+                      <div className="absolute inset-2 border-2 border-dashed border-[var(--nova-accent-color,#ff4e18)]/60 rounded-xl pointer-events-none" />
                       <button
                         type="button"
                         onClick={() => {
@@ -1839,7 +1839,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           }
                           stopCameraScan();
                         }}
-                        className="absolute bottom-2 px-3 py-1 bg-[var(--nova-accent-color, #ff4e18)] text-white text-[11px] font-semibold rounded-lg shadow-md cursor-pointer"
+                        className="absolute bottom-2 px-3 py-1 bg-[var(--nova-accent-color,#ff4e18)] text-white text-[11px] font-semibold rounded-lg shadow-md cursor-pointer"
                         data-testid="capture-qr-button"
                       >
                         Capture QR
@@ -1894,7 +1894,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           void handleSyncHistoryOnSecondary(offer.code, offer.publicKey);
                         }
                       }}
-                      className="w-full py-2 bg-[var(--nova-accent-color, #ff4e18)]/20 hover:bg-[var(--nova-accent-color, #ff4e18)]/30 text-white text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color, #ff4e18)]/40"
+                      className="w-full py-2 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-white text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40"
                       data-testid="sync-history-secondary"
                     >
                       Sync history stream

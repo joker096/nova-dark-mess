@@ -13,10 +13,10 @@ export const ACCENT_COLORS: Record<'default' | 'sapphire' | 'amethyst' | 'emeral
 };
 
 const LIGHT_ACCENT_COLORS: Record<string, string> = {
-  '#ff4e18': '#c2410c',
-  '#22d3ee': '#0e7490',
-  '#f472b6': '#be185d',
-  '#10b981': '#047857',
+  '#ff4e18': '#f9551c',
+  '#22d3ee': '#0891b2',
+  '#f472b6': '#db2777',
+  '#10b981': '#059669',
 };
 
 /**
@@ -24,8 +24,14 @@ const LIGHT_ACCENT_COLORS: Record<string, string> = {
  * that carries white text is too dark to read as an icon on the near-black
  * canvas, so the dark theme lifts it; the light theme reuses the deep tint.
  */
+const DARK_ACCENT_TEXT_COLORS: Record<string, string> = {
+  '#ff4e18': '#ff8a5c',
+  '#22d3ee': '#67e8f9',
+  '#f472b6': '#f9a8d4',
+  '#10b981': '#4ade9f',
+};
 
-let selectedTheme: AppTheme = 'system';
+let selectedTheme: AppTheme = 'dark';
 let systemThemeQuery: MediaQueryList | null = null;
 
 const FONT_SIZE_PX: Record<FontSize, string> = {
@@ -45,9 +51,9 @@ export function isFontSize(value: unknown): value is FontSize {
 export function readAppTheme(): AppTheme {
   try {
     const saved = localStorage.getItem(APP_THEME_KEY);
-    return isAppTheme(saved) ? saved : 'system';
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
   } catch {
-    return 'system';
+    return 'dark';
   }
 }
 
@@ -70,11 +76,13 @@ export function resolveTheme(theme: AppTheme): 'light' | 'dark' {
 
 function setAccentColorVariable(color: string): void {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const resolvedColor = isLight
-    ? LIGHT_ACCENT_COLORS[color.toLowerCase()] ?? color
-    : color;
+  const key = color.toLowerCase();
+  const resolvedColor = isLight ? LIGHT_ACCENT_COLORS[key] ?? color : color;
+  const textColor = isLight
+    ? LIGHT_ACCENT_COLORS[key] ?? color
+    : DARK_ACCENT_TEXT_COLORS[key] ?? color;
   document.documentElement.style.setProperty('--nova-accent-color', resolvedColor);
-  document.documentElement.style.setProperty('--nova-accent-text', resolvedColor);
+  document.documentElement.style.setProperty('--nova-accent-text', textColor);
 }
 
 export function applyAppTheme(theme: AppTheme): void {

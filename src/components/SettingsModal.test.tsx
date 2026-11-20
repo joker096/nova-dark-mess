@@ -128,7 +128,7 @@ describe('SettingsModal', () => {
     expect(localStorage.getItem('nova_app_theme')).toBe('light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     expect(document.documentElement.style.colorScheme).toBe('light');
-    expect(document.documentElement.style.getPropertyValue('--nova-accent-color')).toBe('#c2410c');
+    expect(document.documentElement.style.getPropertyValue('--nova-accent-color')).toBe('#f9551c');
     expect(document.body.style.backgroundColor).toBe('var(--nova-canvas)');
   });
 

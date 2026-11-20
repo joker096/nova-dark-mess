@@ -60,14 +60,14 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
 <>
     {/* FLOATING IN-CHAT SEARCH MATCH NAVIGATOR */}
     {isSearchOpen && searchQuery.trim() && matchingMessages.length > 0 && (
-      <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[#151622]/95 backdrop-blur-xl border border-[var(--nova-accent-color, #ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
+      <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[#151622]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0">
+          <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
             <Search className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-semibold text-white truncate">
-              Word: <span className="text-[var(--nova-accent-color, #ff4e18)]">&quot;{searchQuery}&quot;</span>
+              Word: <span className="text-[var(--nova-accent-color,#ff4e18)]">&quot;{searchQuery}&quot;</span>
             </span>
             <span className="text-[10px] text-[#8e93a0]">
               Match {activeMatchIndex + 1} of {matchingMessages.length} •{' '}
@@ -82,12 +82,12 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
             className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
             title={t('common.previous')}
           >
-            <ChevronUp className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
+            <ChevronUp className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
             <span className="text-[11px] font-semibold">Prev</span>
           </button>
           <button
             onClick={handleNextMatch}
-            className="px-2 py-1 rounded-lg bg-[var(--nova-accent-color, #ff4e18)]/20 hover:bg-[var(--nova-accent-color, #ff4e18)]/30 border border-[var(--nova-accent-color, #ff4e18)]/40 text-[var(--nova-accent-color, #ff4e18)] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
+            className="px-2 py-1 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-accent-color,#ff4e18)] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
             title={t('common.next')}
           >
             <span className="text-[11px] font-semibold">Next</span>
@@ -99,9 +99,9 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
 
     {/* FORWARD SELECTION TOOLBAR */}
     {isForwardSelecting && (
-      <div className="px-4 py-2.5 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+      <div className="px-4 py-2.5 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30">
+          <div className="w-7 h-7 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
             <Forward className="w-4 h-4" />
           </div>
           <div className="min-w-0">
@@ -114,7 +114,7 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleOpenForwardModal}
-            className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color, #ff4e18)] hover:bg-[var(--nova-accent-color, #ff5d2b)] text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color, #ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
           >
             <Forward className="w-3.5 h-3.5" />
             <span>Forward</span>
@@ -133,18 +133,18 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
 
     {/* Reply Preview Banner */}
     {replyingTo && (
-      <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color, #ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+      <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
         <div
           onClick={() => handleJumpToMessage(replyingTo.id)}
           className="flex items-center gap-2.5 truncate cursor-pointer group flex-1 mr-2"
           title={t('chat.replyingTo')}
         >
-          <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color, #ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color, #ff4e18)] shrink-0 border border-[var(--nova-accent-color, #ff4e18)]/30">
+          <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
             <Reply className="w-3.5 h-3.5" />
           </div>
           <div className="truncate flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-[var(--nova-accent-color, #ff4e18)] font-bold text-[11px] group-hover:underline">
+              <span className="text-[var(--nova-accent-color,#ff4e18)] font-bold text-[11px] group-hover:underline">
                 Replying to {replyingTo.senderId === 'me' ? t('chat.yourself') : profile.name}
               </span>
               <span className="text-[10px] text-white/40">· Click to jump</span>
@@ -170,11 +170,11 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
 
     {/* SCHEDULED MESSAGES QUEUE BANNER */}
     {scheduledMessages.length > 0 && (
-      <div className="px-4 py-1.5 bg-[#181926]/95 backdrop-blur-md border-t border-[var(--nova-accent-color, #ff4e18)]/30 flex items-center justify-between text-xs z-20 animate-in fade-in slide-in-from-bottom-1">
+      <div className="px-4 py-1.5 bg-[#181926]/95 backdrop-blur-md border-t border-[var(--nova-accent-color,#ff4e18)]/30 flex items-center justify-between text-xs z-20 animate-in fade-in slide-in-from-bottom-1">
         <div className="flex items-center gap-2 truncate">
-          <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)] shrink-0 animate-pulse" />
+          <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0 animate-pulse" />
           <span className="text-white/85 truncate text-[11px]">
-            <strong className="text-[var(--nova-accent-color, #ff4e18)] font-semibold">
+            <strong className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">
               {scheduledMessages.length}
             </strong>{' '}
             {scheduledMessages.length === 1 ? 'message scheduled' : 'messages scheduled'} (
@@ -198,7 +198,7 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
               setMessages((msgs) => [...msgs, newMsg]);
               triggerPinnedToast('Sent scheduled message now');
             }}
-            className="text-[10px] text-[var(--nova-accent-color, #ff4e18)] hover:text-[#ff6e38] font-semibold hover:underline cursor-pointer"
+            className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] hover:text-[#ff6e38] font-semibold hover:underline cursor-pointer"
           >
             Send Now
           </button>

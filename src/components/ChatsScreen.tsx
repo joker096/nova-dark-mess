@@ -19,7 +19,10 @@ import {
   Sparkles,
   Archive,
   Cloud,
+  UserPlus,
+  Upload,
 } from 'lucide-react';
+import { getAllDrafts, subscribeDraftChanges } from '../lib/messaging/drafts';
 import {
   MOCK_STORIES,
   MOCK_CHATS,
@@ -156,6 +159,16 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [groupVersion, setGroupVersion] = useState(0);
+
+  // Message drafts auto-synced across views for one-handed convenience
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => getAllDrafts());
+  const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+
+  useEffect(() => {
+    return subscribeDraftChanges(() => {
+      setDrafts(getAllDrafts());
+    });
+  }, []);
 
 
   // Folders State with localStorage persistence
@@ -803,10 +816,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                               </div>
                             ) : (
                               <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-[#20222a] relative">
-                                <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
-                                <div className="w-full h-full bg-[#232530] flex items-center justify-center text-xs font-bold text-white/70">
-                                  {chat.name.slice(0, 2).toUpperCase()}
-                                </div>
+                                {chat.avatar ? (
+                                  <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-[#232530] flex items-center justify-center text-xs font-bold text-white/70">
+                                    {chat.name.slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1137,7 +1153,14 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
                     <div className="flex items-center justify-between">
                       <p className="text-[13px] text-[#868b98] truncate font-normal leading-snug pr-2">
-                        {chat.snippet}
+                        {drafts[chat.id] ? (
+                          <>
+                            <span className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">{t('chat.draft', { defaultValue: 'Draft' })}: </span>
+                            <span className="text-white/80">{drafts[chat.id]}</span>
+                          </>
+                        ) : (
+                          chat.snippet
+                        )}
                       </p>
 
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -1261,6 +1284,80 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
         </div>
       </>
     )}
+
+      {/* Floating Action Button (FAB) in the thumb zone for One-Handed Operation */}
+      <div className="fixed bottom-20 right-4 z-40 md:hidden flex flex-col items-end pointer-events-auto">
+        {/* FAB Quick Action Bottom Sheet / Menu */}
+        {isFabMenuOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setIsFabMenuOpen(false)}
+            />
+            <div
+              role="dialog"
+              aria-label="Quick Actions"
+              className="relative z-50 mb-3 w-56 rounded-3xl border border-white/15 bg-[#171822]/98 p-2 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom-5 zoom-in-95 duration-200 space-y-1"
+            >
+              <button
+                type="button"
+onClick={() => {
+                  setIsFabMenuOpen(false);
+                  setNewChatModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <span>{t('chats.newChat', { defaultValue: 'New Chat' })}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFabMenuOpen(false);
+                  setGroupModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span>{t('chats.newGroup', { defaultValue: 'New Group' })}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFabMenuOpen(false);
+                  document.getElementById('vcf-file-input')?.click();
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                  <Upload className="w-4 h-4" />
+                </div>
+                <span>{t('contacts.import', { defaultValue: 'Import VCF' })}</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsFabMenuOpen((prev) => !prev)}
+          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 active:scale-90 cursor-pointer ${
+            isFabMenuOpen
+              ? 'bg-white/15 text-white rotate-45'
+              : 'bg-gradient-to-tr from-[var(--nova-accent-color,#ff4e18)] to-[#ff7a45] text-white shadow-[var(--nova-accent-color,#ff4e18)]/50 hover:scale-105'
+          }`}
+          aria-label={t('chats.newAction', { defaultValue: 'New Action' })}
+          title={t('chats.newAction', { defaultValue: 'New Action' })}
+        >
+          <Plus className="w-6 h-6 stroke-[2.5]" />
+        </button>
+      </div>
 
       {/* Floating Bottom Navigation Bar */}
       <div className="absolute bottom-3 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">

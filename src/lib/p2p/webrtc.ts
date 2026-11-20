@@ -174,9 +174,9 @@ export class P2PMessengerChannel {
     // In relay-only mode the peer connection refuses host/srflx candidates:
     // media can only flow through a TURN relay, so the peer never learns the
     // local IP addresses and the STUN servers are never contacted.
-    const relayOnly = this.icePolicy === 'relay-only' && TURN_SERVERS.length > 0;
+    const relayOnly = this.icePolicy === 'relay-only' && this.iceServers.length > 0;
     const pc = new RTCPeerConnection({
-      iceServers: relayOnly ? TURN_SERVERS : this.iceServers,
+      iceServers: relayOnly ? this.iceServers : this.iceServers,
       ...(relayOnly ? { iceTransportPolicy: 'relay' as const } : {}),
     });
     this.pc = pc;

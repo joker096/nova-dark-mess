@@ -11,6 +11,22 @@ export type MediaCallStatus =
   | 'failed'
   | 'ended';
 
+/** Call quality metrics sampled from RTCPeerConnection.getStats(). */
+export interface CallQualityStats {
+  /** Estimated send bitrate in bits per second. */
+  sendBitrateBps: number;
+  /** Estimated receive bitrate in bits per second. */
+  receiveBitrateBps: number;
+  /** Outgoing packet loss ratio (0–1). */
+  sendPacketLoss: number;
+  /** Incoming packet loss ratio (0–1). */
+  receivePacketLoss: number;
+  /** Current round-trip time in milliseconds. */
+  rttMs: number;
+  /** Timestamp of the last sample. */
+  sampledAt: number;
+}
+
 export interface MediaCallOptions {
   localFingerprint: string;
   peerFingerprint: string;
@@ -24,6 +40,7 @@ export interface MediaCallOptions {
 type StatusListener = (status: MediaCallStatus) => void;
 type StreamListener = (stream: MediaStream) => void;
 type ErrorListener = (error: Error) => void;
+type QualityListener = (stats: CallQualityStats) => void;
 
 /**
  * Encrypted-compatible WebRTC audio/video call session. Reuses the same
@@ -37,10 +54,12 @@ export class P2PMediaCall {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private status: MediaCallStatus = 'idle';
+  private qualityStats: CallQualityStats | null = null;
   private readonly statusListeners = new Set<StatusListener>();
   private readonly localStreamListeners = new Set<StreamListener>();
   private readonly remoteStreamListeners = new Set<StreamListener>();
   private readonly errorListeners = new Set<ErrorListener>();
+  private readonly qualityListeners = new Set<QualityListener>();
 
   constructor(options: MediaCallOptions) {
     this.options = options;
@@ -79,6 +98,16 @@ export class P2PMediaCall {
   public onError(listener: ErrorListener): () => void {
     this.errorListeners.add(listener);
     return () => this.errorListeners.delete(listener);
+  }
+
+  public onQualityStats(listener: QualityListener): () => void {
+    this.qualityListeners.add(listener);
+    if (this.qualityStats) listener(this.qualityStats);
+    return () => this.qualityListeners.delete(listener);
+  }
+
+  public getQualityStats(): CallQualityStats | null {
+    return this.qualityStats;
   }
 
   private setStatus(status: MediaCallStatus): void {
@@ -173,10 +202,25 @@ export class P2PMediaCall {
 
     if (state.status === 'connected') {
       this.setStatus('connected');
+      // Start quality monitoring when connected
+      if (this.channel) {
+        this.channel.startQualityMonitoring({
+          pollIntervalMs: 1000,
+          onStats: (stats) => {
+            this.qualityStats = stats;
+            this.qualityListeners.forEach((listener) => listener(stats));
+          },
+        });
+      }
     } else if (state.status === 'failed') {
       this.setStatus('failed');
     } else if (state.status === 'connecting' && this.status === 'idle') {
       this.setStatus('connecting');
+    } else if (state.status === 'disconnected') {
+      // Stop quality monitoring when disconnected
+      if (this.channel) {
+        this.channel.stopQualityMonitoring();
+      }
     }
   }
 
@@ -218,6 +262,9 @@ export class P2PMediaCall {
     this.localStream = null;
     this.remoteStream = null;
 
+    if (this.channel) {
+      this.channel.stopQualityMonitoring();
+    }
     this.channel?.close();
     this.channel = null;
     this.signaling?.close();
