@@ -74,8 +74,8 @@ export class BridgeClient {
   }
 
   /** Get all configured bridges with their transport configs. */
-  getBridgesWithConfig(): Array<BridgeConfig & { transport: TransportConfig }> {
-    return this.bridges.map((b) => ({ ...b, transport: transportFromBridge(b) }));
+  getBridgesWithConfig(): Array<BridgeConfig & { transportConfig: TransportConfig }> {
+    return this.bridges.map((b) => ({ ...b, transportConfig: transportFromBridge(b) }));
   }
 
   /** Add a user-configured bridge. */
