@@ -3,7 +3,7 @@
  * Free & legal movie catalog with verified streaming links.
  * Sources: YouTube Movies (free), Archive.org, Tubi, Pluto TV, Crackle, Plex Free, Public Domain.
  */
-import type { BotContext, BotModule, BotStorage } from '../../../src/lib/bots/runtime';
+import type { BotContext, BotModule } from '../../../src/lib/bots/runtime';
 import { movieCatalogBotManifest } from './manifest';
 
 export const manifest = movieCatalogBotManifest;
@@ -53,15 +53,6 @@ interface HistoryEntry {
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Only include sources that are legally free (ad-supported or public domain)
-const LEGAL_SOURCES = {
-  youtube: { name: 'YouTube Movies (Free)', baseUrl: 'https://www.youtube.com/watch?v=', trusted: true },
-  archive: { name: 'Internet Archive', baseUrl: 'https://archive.org/details/', trusted: true },
-  tubi: { name: 'Tubi', baseUrl: 'https://tubi.tv/movies/', trusted: true },
-  pluto: { name: 'Pluto TV', baseUrl: 'https://pluto.tv/movies/', trusted: true },
-  crackle: { name: 'Crackle', baseUrl: 'https://www.crackle.com/', trusted: true },
-  plex: { name: 'Plex Free Movies', baseUrl: 'https://watch.plex.tv/', trusted: true },
-  public_domain: { name: 'Public Domain', baseUrl: '', trusted: true },
-} as const;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Movie Database — Curated Legal Free Movies
@@ -374,88 +365,12 @@ function getMoviesByRating(minRating?: number): Movie[] {
   return MOVIES.filter(m => !minRating || m.rating >= minRating);
 }
 
-function getMoviesByGenreAndFilters(genre: string, minYear?: number, maxYear?: number, minRating?: number): Movie[] {
-  return MOVIES.filter(m => {
-    const genreMatch = m.genre.some(g => g.toLowerCase() === genre.toLowerCase());
-    if (!genreMatch) return false;
-    if (minYear && m.year < minYear) return false;
-    if (maxYear && m.year > maxYear) return false;
-    if (minRating && m.rating < minRating) return false;
-    return true;
-  });
-}
 
-function formatMovieCard(movie: Movie): string {
-  const genres = movie.genre.join(', ');
-  const sources = movie.streamUrls.filter(s => s.verified).map(s => `✅ ${s.name}`).join('\n');
-  const posterLine = movie.posterUrl ? `🖼 <a href="${movie.posterUrl}">Poster</a>\n` : '';
-  return `🎬 <b>${movie.title}</b> (${movie.year})\n` +
-    `⭐ ${movie.rating}/10 | ${genres}\n` +
-    `📖 ${movie.description}\n` +
-    posterLine +
-    `🔗 <b>Legal free sources:</b>\n${sources}`;
-}
 
-function createMovieKeyboard(movie: Movie): any[][] {
-  const keyboard: any[][] = [];
-  const safeSources = sanitizeStreamSources(movie.streamUrls);
 
-  safeSources.forEach(source => {
-    const icon = source.source === 'youtube' ? '▶️' :
-                 source.source === 'archive' ? '📚' :
-                 source.source === 'public_domain' ? '🆓' : '📺';
-    keyboard.push([{ text: `${icon} ${source.name}`, url: source.url }]);
-  });
 
-  keyboard.push([
-    { text: '➕ Watchlist', callback_data: `watchlist_add:${movie.id}` },
-    { text: '🎲 Random', callback_data: 'random' },
-  ]);
-  keyboard.push([
-    { text: '🔍 Search', callback_data: 'search' },
-    { text: '🏠 Main Menu', callback_data: 'main_menu' },
-  ]);
 
-  return keyboard;
-}
-
-function createMainKeyboard(): any[][] {
-  return [
-    [{ text: '🔥 Popular', callback_data: 'popular' }],
-    [{ text: '🎭 Genres', callback_data: 'genres' }],
-    [{ text: '🔍 Search', callback_data: 'search' }],
-    [{ text: '🎲 Random Movie', callback_data: 'random' }],
-    [{ text: '⭐ My Watchlist', callback_data: 'watchlist' }],
-    [{ text: '📜 History', callback_data: 'history' }],
-    [{ text: '❓ FAQ / Help', callback_data: 'faq' }],
-  ];
-}
-
-function createGenresKeyboard(page = 0): any[][] {
-  const perPage = 8;
-  const start = page * perPage;
-  const end = start + perPage;
-  const pageGenres = GENRES.slice(start, end);
-
-  const keyboard: any[][] = [];
-  for (let i = 0; i < pageGenres.length; i += 2) {
-    const row = pageGenres.slice(i, i + 2).map(g => ({
-      text: g,
-      callback_data: `genre:${g.toLowerCase()}`,
-    }));
-    keyboard.push(row);
-  }
-
-  const nav: any[] = [];
-  if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `genres_page:${page - 1}` });
-  if (end < GENRES.length) nav.push({ text: 'Next ➡️', callback_data: `genres_page:${page + 1}` });
-  if (nav.length > 0) keyboard.push(nav);
-
-  keyboard.push([{ text: '🏠 Main Menu', callback_data: 'main_menu' }]);
-  return keyboard;
-}
-
-function addFilterButtons(keyboard: any[][], baseCallback: string, lang: string = 'en'): void {
+function addFilterButtons(keyboard: any[][], baseCallback: string, _lang: string = 'en'): void {
   keyboard.push([
     { text: '📅 Year: All', callback_data: `${baseCallback}_filter:year:all` },
     { text: '⭐ Rating: All', callback_data: `${baseCallback}_filter:rating:all` },
@@ -496,7 +411,7 @@ function createPopularKeyboard(page = 0, filters: { year?: string; rating?: numb
   const keyboard: any[][] = [];
   pageMovies.forEach(movie => {
     keyboard.push([{ text: `🎬 ${movie.title} (${movie.year}) ⭐${movie.rating}`, callback_data: `movie:${movie.id}` }]);
-  }
+  });
 
   const nav: any[] = [];
   if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `popular_page:${page - 1}` });
@@ -530,7 +445,7 @@ function createSearchResultsKeyboard(movies: Movie[], query: string, page = 0, f
   const keyboard: any[][] = [];
   pageMovies.forEach(movie => {
     keyboard.push([{ text: `🎬 ${movie.title} (${movie.year}) ⭐${movie.rating}`, callback_data: `movie:${movie.id}` }]);
-  }
+  });
 
   const nav: any[] = [];
   if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `search_page:${page - 1}:${encodeURIComponent(query)}` });
@@ -542,38 +457,7 @@ function createSearchResultsKeyboard(movies: Movie[], query: string, page = 0, f
   return keyboard;
 }
 
-function createWatchlistKeyboard(watchlist: string[]): any[][] {
-  if (watchlist.length === 0) {
-    return [[{ text: '🏠 Main Menu', callback_data: 'main_menu' }]];
-  }
-  const keyboard: any[][] = [];
-  watchlist.slice(0, 10).forEach(id => {
-    const movie = MOVIES.find(m => m.id === id);
-    if (movie) {
-      keyboard.push([{ text: `⭐ ${movie.title} (${movie.year})`, callback_data: `movie:${movie.id}` }]);
-    }
-  });
-  keyboard.push([{ text: '🗑 Clear Watchlist', callback_data: 'watchlist_clear' }]);
-  keyboard.push([{ text: '🏠 Main Menu', callback_data: 'main_menu' }]);
-  return keyboard;
-}
 
-function createHistoryKeyboard(history: HistoryEntry[]): any[][] {
-  if (history.length === 0) {
-    return [[{ text: '🏠 Main Menu', callback_data: 'main_menu' }]];
-  }
-  const keyboard: any[][] = [];
-  [...history].reverse().slice(0, 10).forEach(entry => {
-    const movie = MOVIES.find(m => m.id === entry.movieId);
-    if (movie) {
-      const date = new Date(entry.timestamp).toLocaleDateString();
-      keyboard.push([{ text: `📜 ${movie.title} (${movie.year}) — ${date}`, callback_data: `movie:${movie.id}` }]);
-    }
-  });
-  keyboard.push([{ text: '🗑 Clear History', callback_data: 'history_clear' }]);
-  keyboard.push([{ text: '🏠 Main Menu', callback_data: 'main_menu' }]);
-  return keyboard;
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // FAQ Data
@@ -1184,8 +1068,6 @@ function createTranslatedFAQKeyboard(categoryId?: string, lang: string = 'en'): 
   }
 
   const questions = FAQ_DATA.filter(f => f.category === categoryId);
-  const cat = FAQ_CATEGORIES.find(c => c.id === categoryId);
-  const catLabel = cat ? getFAQCategoryLabel(cat.id, lang) : 'FAQ';
 
   questions.forEach((faq, index) => {
     const shortQ = faq.question.length > 40 ? faq.question.slice(0, 37) + '…' : faq.question;
@@ -1198,11 +1080,9 @@ function createTranslatedFAQKeyboard(categoryId?: string, lang: string = 'en'): 
 }
 
 function formatTranslatedFAQAnswer(faq: FAQEntry, categoryId: string, index: number, lang: string): string {
-  const cat = FAQ_CATEGORIES.find(c => c.id === categoryId);
-  const catLabel = cat ? getFAQCategoryLabel(cat.id, lang) : categoryId;
   const total = FAQ_DATA.filter(f => f.category === categoryId).length;
   return `❓ <b>${faq.question}</b>\n\n${faq.answer}\n\n` +
-    `<i>Category: ${catLabel} | Question ${index + 1}/${total}</i>`;
+    `<i>Category: ${getFAQCategoryLabel(categoryId, lang)} | Question ${index + 1}/${total}</i>`;
 }
 
 function createTranslatedMainKeyboard(lang: string): any[][] {
@@ -1217,28 +1097,6 @@ function createTranslatedMainKeyboard(lang: string): any[][] {
   ];
 }
 
-function createTranslatedMovieKeyboard(movie: Movie, lang: string): any[][] {
-  const keyboard: any[][] = [];
-  const safeSources = sanitizeStreamSources(movie.streamUrls);
-
-  safeSources.forEach(source => {
-    const icon = source.source === 'youtube' ? '▶️' :
-                 source.source === 'archive' ? '📚' :
-                 source.source === 'public_domain' ? '🆓' : '📺';
-    keyboard.push([{ text: `${icon} ${source.name}`, url: source.url }]);
-  });
-
-  keyboard.push([
-    { text: t('watchlist_btn', lang), callback_data: `watchlist_add:${movie.id}` },
-    { text: t('random_btn', lang), callback_data: 'random' },
-  ]);
-  keyboard.push([
-    { text: t('search_btn', lang), callback_data: 'search' },
-    { text: t('main_menu', lang), callback_data: 'main_menu' },
-  ]);
-
-  return keyboard;
-}
 
 function createTranslatedWatchlistKeyboard(watchlist: string[], lang: string): any[][] {
   if (watchlist.length === 0) {
@@ -1281,7 +1139,7 @@ function createTranslatedPopularKeyboard(page = 0, lang: string = 'en'): any[][]
   const keyboard: any[][] = [];
   movies.forEach(movie => {
     keyboard.push([{ text: `🎬 ${movie.title} (${movie.year}) ⭐${movie.rating}`, callback_data: `movie:${movie.id}` }]);
-  }
+  });
 
   const nav: any[] = [];
   if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `popular_page:${page - 1}` });
@@ -1324,7 +1182,7 @@ function createTranslatedSearchResultsKeyboard(movies: Movie[], query: string, p
   const keyboard: any[][] = [];
   pageMovies.forEach(movie => {
     keyboard.push([{ text: `🎬 ${movie.title} (${movie.year}) ⭐${movie.rating}`, callback_data: `movie:${movie.id}` }]);
-  }
+  });
 
   const nav: any[] = [];
   if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `search_page:${page - 1}:${encodeURIComponent(query)}` });
@@ -1339,37 +1197,7 @@ function createTranslatedSearchResultsKeyboard(movies: Movie[], query: string, p
 // Storage Helpers (per-user, using bot context storage)
 // ──────────────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'movie_catalog_user_';
-  const keyboard: any[][] = [];
 
-  if (!categoryId) {
-    // Show categories
-    FAQ_CATEGORIES.forEach(cat => {
-      keyboard.push([{ text: `${cat.emoji} ${cat.label}`, callback_data: `faq_cat:${cat.id}` }]);
-    });
-    keyboard.push([{ text: '🏠 Main Menu', callback_data: 'main_menu' }]);
-    return keyboard;
-  }
-
-  // Show questions for category
-  const questions = FAQ_DATA.filter(f => f.category === categoryId);
-  const cat = FAQ_CATEGORIES.find(c => c.id === categoryId);
-  const catLabel = cat ? cat.label : 'FAQ';
-
-  questions.forEach((faq, index) => {
-    const shortQ = faq.question.length > 40 ? faq.question.slice(0, 37) + '…' : faq.question;
-    keyboard.push([{ text: `❓ ${shortQ}`, callback_data: `faq_q:${categoryId}:${index}` }]);
-  });
-
-  keyboard.push([{ text: '⬅️ Back to Categories', callback_data: 'faq' }]);
-  keyboard.push([{ text: '🏠 Main Menu', callback_data: 'main_menu' }]);
-  return keyboard;
-}
-
-function formatFAQAnswer(faq: FAQEntry, categoryId: string, index: number): string {
-  return `❓ <b>${faq.question}</b>\n\n${faq.answer}\n\n` +
-    `<i>Category: ${FAQ_CATEGORIES.find(c => c.id === categoryId)?.label || categoryId} | Question ${index + 1}/${FAQ_DATA.filter(f => f.category === categoryId).length}</i>`;
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Storage Helpers (per-user, using bot context storage)
@@ -1378,23 +1206,17 @@ function formatFAQAnswer(faq: FAQEntry, categoryId: string, index: number): stri
 const STORAGE_KEY = 'movie_catalog_user_';
 
 async function getUserData(ctx: BotContext, userId: string): Promise<UserData> {
-  const storage = ctx.storage as BotStorage | undefined;
-  if (!storage) {
-    return { watchlist: [], history: [], preferences: { genres: [], notifications: true } };
-  }
   try {
-    const data = await storage.get(`${STORAGE_KEY}${userId}`);
+    const data = await ctx.storage.get(`${STORAGE_KEY}${userId}`);
     if (data) return JSON.parse(data);
-  } catch { }
+  } catch { /* ignore unreadable bot state */ }
   return { watchlist: [], history: [], preferences: { genres: [], notifications: true } };
 }
 
 async function saveUserData(ctx: BotContext, userId: string, data: UserData): Promise<void> {
-  const storage = ctx.storage as BotStorage | undefined;
-  if (!storage) return;
   try {
-    await storage.set(`${STORAGE_KEY}${userId}`, JSON.stringify(data));
-  } catch { }
+    await ctx.storage.set(`${STORAGE_KEY}${userId}`, JSON.stringify(data));
+  } catch { /* ignore unreadable bot state */ }
 }
 
 async function addToWatchlist(ctx: BotContext, userId: string, movieId: string): Promise<boolean> {
@@ -1407,11 +1229,6 @@ async function addToWatchlist(ctx: BotContext, userId: string, movieId: string):
   return false;
 }
 
-async function removeFromWatchlist(ctx: BotContext, userId: string, movieId: string): Promise<void> {
-  const data = await getUserData(ctx, userId);
-  data.watchlist = data.watchlist.filter(id => id !== movieId);
-  await saveUserData(ctx, userId, data);
-}
 
 async function clearWatchlist(ctx: BotContext, userId: string): Promise<void> {
   const data = await getUserData(ctx, userId);
@@ -1440,9 +1257,11 @@ async function clearHistory(ctx: BotContext, userId: string): Promise<void> {
 const movieCatalogBot: BotModule = {
   init(ctx: BotContext): void {
     ctx.onUpdate(async (update) => {
+      // Membership events carry no message/command payload to answer.
+      if (update.type === 'my_chat_member') return;
       const chatId = update.payload.chat.id;
       const userId = update.payload.from;
-      const lang = ctx.language || 'en';
+      const lang = (ctx.language || 'en') as SupportedLang;
 
       if (update.type === 'message' && update.payload.isCommand) {
         const cmd = update.payload.command;
@@ -1579,7 +1398,7 @@ const movieCatalogBot: BotModule = {
       if (update.type === 'callback_query') {
         const data = update.payload.data;
         const { id: queryId, chat, messageId } = update.payload;
-        const lang = ctx.language || 'en';
+        const lang = (ctx.language || 'en') as SupportedLang;
 
         if (data === 'main_menu') {
           await ctx.editMessage(chat.id, messageId,
@@ -1661,7 +1480,6 @@ const movieCatalogBot: BotModule = {
 
         if (data.startsWith('faq_cat:')) {
           const categoryId = data.split(':')[1];
-          const cat = FAQ_CATEGORIES.find(c => c.id === categoryId);
           await ctx.editMessage(chat.id, messageId,
             `❓ <b>${getFAQCategoryLabel(categoryId, lang)}</b>\n\nSelect a question:`,
             { keyboard: createTranslatedFAQKeyboard(categoryId, lang) }
@@ -1826,28 +1644,6 @@ const movieCatalogBot: BotModule = {
         return;
       }
 
-      if (update.type === 'inline_query') {
-        const query = update.payload.query.trim().toLowerCase();
-        const results = query ? searchMovies(query) : MOVIES.slice(0, 20);
-        const lang = update.payload.language || 'en';
-
-        await ctx.answerInlineQuery(update.payload.id, results.slice(0, 20).map(movie => {
-          const localized = getLocalizedMovie(movie, lang);
-          return {
-            type: 'article',
-            id: movie.id,
-            title: `${localized.title} (${movie.year})`,
-            description: `⭐ ${movie.rating}/10 | ${localized.genre.join(', ')}`,
-            input_message_content: {
-              message_text: formatLocalizedMovieCard(movie, lang),
-              parse_mode: 'HTML',
-            },
-            reply_markup: { inline_keyboard: createLocalizedMovieKeyboard(movie, lang) },
-            thumbnail_url: movie.posterUrl,
-          };
-        }));
-        return;
-      }
     });
   },
 };
