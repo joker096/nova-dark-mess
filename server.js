@@ -608,7 +608,9 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
     const matched = verifyPaymentoSignatureAny(rawBody, provided);
     if (matched) {
       signatureOk = true;
-      console.log('[paymento] IPN signature matched secret:', String(matched).slice(0, 6) + '…' + String(matched).slice(-4));
+      // Never log the signing secret (not even a prefix/suffix): logs are
+      // shipped off-host and an HMAC secret is enough to forge payment IPNs.
+      console.log('[paymento] IPN signature matched');
     } else {
       sigError = 'bad signature';
     }
@@ -625,7 +627,9 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
       contentType: req.headers['content-type'],
       secretsConfigured: PAYMENTO_SECRETS.length,
       providedSignature: String(provided).slice(0, 16),
-      rawBody: rawBody.toString('utf8').slice(0, 600),
+      // Body content can carry payer PII and is attacker-controlled; log only
+      // its size so a bad IPN can still be diagnosed without leaking data.
+      bodyBytes: rawBody.length,
     });
 
     return res.status(400).json({ ok: false, reason: 'bad signature' });

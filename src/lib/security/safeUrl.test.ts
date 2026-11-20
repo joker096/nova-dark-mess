@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeExternalUrl, toSafeExternalUrl } from './safeUrl';
+import { isSafeExternalUrl, sanitizeDownloadMime, toSafeExternalUrl } from './safeUrl';
 
 describe('safe external URLs', () => {
   it('accepts http, https and mailto links', () => {
@@ -32,5 +32,22 @@ describe('safe external URLs', () => {
   it('normalizes accepted URLs', () => {
     expect(toSafeExternalUrl(' https://example.com ')).toBe('https://example.com/');
     expect(toSafeExternalUrl('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('download MIME sanitization', () => {
+  it('keeps inert image, audio, video and plain-text types', () => {
+    expect(sanitizeDownloadMime('image/png')).toBe('image/png');
+    expect(sanitizeDownloadMime('audio/mpeg')).toBe('audio/mpeg');
+    expect(sanitizeDownloadMime('video/mp4')).toBe('video/mp4');
+    expect(sanitizeDownloadMime('text/plain;charset=utf-8')).toBe('text/plain');
+  });
+
+  it('coerces active document types to a download-only MIME', () => {
+    expect(sanitizeDownloadMime('text/html')).toBe('application/octet-stream');
+    expect(sanitizeDownloadMime('image/svg+xml')).toBe('application/octet-stream');
+    expect(sanitizeDownloadMime('application/xhtml+xml')).toBe('application/octet-stream');
+    expect(sanitizeDownloadMime('application/javascript')).toBe('application/octet-stream');
+    expect(sanitizeDownloadMime(undefined)).toBe('application/octet-stream');
   });
 });

@@ -651,6 +651,29 @@ export function listMutedSites(userId) {
     .map((k) => k.site_id);
 }
 
+/** ──────────────────────────────────────────────────────────────────────
+ * Anonymous push registrations (phase F) — disk-based, persistent
+ *
+ * Stores only `pushToken -> queueId`. No sender, no content, no fingerprint.
+ * One token per queue so the notification service cannot link contacts.
+ * ────────────────────────────────────────────────────────────────────── */
+
+const pushRegistrations = new EntityStore('push-registrations');
+
+export function registerPushToken(pushToken, queueId) {
+  const rec = pushRegistrations.create({ id: pushToken, push_token: pushToken, queue_id: queueId, created_at: Date.now() });
+  return rec;
+}
+
+export function getPushQueueId(pushToken) {
+  const rec = pushRegistrations.get(pushToken);
+  return rec ? rec.queue_id : null;
+}
+
+export function listPushRegistrations() {
+  return pushRegistrations.list().map((r) => ({ push_token: r.push_token, queue_id: r.queue_id, created_at: r.created_at }));
+}
+
 export function getNotifyRateLimit() {
   return NOTIFY_DAILY_LIMIT;
 }

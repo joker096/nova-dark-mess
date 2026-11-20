@@ -35,3 +35,16 @@ export function toSafeExternalUrl(value: unknown): string | null {
 export function isSafeExternalUrl(value: unknown): value is string {
   return toSafeExternalUrl(value) !== null;
 }
+
+/**
+ * MIME types that may be embedded in a `data:` download link. Active document
+ * formats (HTML, SVG, XML) are coerced to `application/octet-stream`, which
+ * only downloads and never executes in the app origin.
+ */
+const SAFE_DOWNLOAD_MIME = /^(image\/(png|jpeg|gif|webp|avif)|audio\/[a-z0-9.+-]+|video\/(mp4|webm|ogg)|text\/plain|application\/(pdf|zip|octet-stream))$/i;
+
+export function sanitizeDownloadMime(value: unknown): string {
+  if (typeof value !== 'string') return 'application/octet-stream';
+  const mime = value.split(';')[0].trim();
+  return SAFE_DOWNLOAD_MIME.test(mime) ? mime : 'application/octet-stream';
+}
