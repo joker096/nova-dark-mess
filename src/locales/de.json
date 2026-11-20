@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Deaktivieren",
     "enable": "Aktivieren",
-    "notInstalled": "Bot nicht installiert. Bitte installieren Sie ihn zuerst."
+    "notInstalled": "Bot nicht installiert. Bitte installieren Sie ihn zuerst.",
+    "blocked": "Blockiert",
+    "unblock": "Entsperren"
   },
   "moderation": {
     "title": "Moderation und Einsprüche",
@@ -278,7 +280,18 @@
     "importPack": "Lokales Sticker-Paket importieren",
     "importError": "Dieses Sticker-Paket konnte nicht importiert werden",
     "importedPack": "Importiertes Paket",
-    "removePack": "Paket entfernen"
+    "removePack": "Paket entfernen",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Umfrage",
@@ -444,7 +457,16 @@
     "play": "Abspielen",
     "pause": "Pause",
     "delete": "Löschen",
-    "duration": "Dauer"
+    "duration": "Dauer",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Videotelefonat",
@@ -611,7 +633,10 @@
     "termsOfService": "Nutzungsbedingungen",
     "privacyPolicy": "Datenschutzrichtlinie",
     "rerunSetup": "Einrichtung erneut starten",
-    "moderation": "Moderation & Einsprüche"
+    "moderation": "Moderation & Einsprüche",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -861,6 +886,10 @@
     "startBot": "Starten",
     "block": "Blockieren",
     "blockBot": "Bot blockieren",
+    "unblockBot": "Bot entsperren",
+    "botBlockFailed": "Bot konnte nicht blockiert werden",
+    "botUnblocked": "Bot entsperrt",
+    "botUnblockFailed": "Bot konnte nicht entsperrt werden",
     "blockBotConfirm": "Diesen Bot blockieren? Sie erhalten keine Nachrichten mehr von ihm.",
     "botBlocked": "Bot blockiert",
     "reportBot": "Bot melden",
@@ -878,7 +907,9 @@
     "ipHidden": "IP versteckt",
     "ipHiddenTitle": "Medien laufen über TURN — Ihre IP ist vor dem Peer verborgen",
     "ipVisible": "IP sichtbar",
-    "ipVisibleTitle": "Direkter P2P-Mediastream: der Peer sieht Ihre IP. Aktivieren Sie 'IP in Anrufen verbergen' in Einstellungen → Datenschutz, um Medien über TURN zu leiten."
+    "ipVisibleTitle": "Direkter P2P-Mediastream: der Peer sieht Ihre IP. Aktivieren Sie 'IP in Anrufen verbergen' in Einstellungen → Datenschutz, um Medien über TURN zu leiten.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Analysten-Dashboard",
@@ -1028,7 +1059,30 @@
     "noComments": "Noch keine Kommentare",
     "commentPlaceholder": "Kommentar schreiben...",
     "sendComment": "Kommentar senden",
-    "sharePost": "Beitrag teilen"
+    "sharePost": "Beitrag teilen",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} möchte beitreten",
@@ -1182,7 +1236,8 @@
     "recoverBody": "Der PIN entsperrt lokale Daten auf diesem Gerät. Wenn Sie ihn vergessen haben, stellen Sie den Zugang mit Ihrer Wiederherstellungsphrase oder einer Backup-Datei wieder her. Nur auf diesem Gerät gespeicherte Nachrichten werden gelöscht.",
     "recoverWithPhrase": "Mit Wiederherstellungsphrase",
     "recoverWithBackup": "Aus Backup-Datei",
-    "recoverResetConfirm": "Ja, alles löschen"
+    "recoverResetConfirm": "Ja, alles löschen",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Mesh-Karte",

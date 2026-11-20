@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Uitschakelen",
     "enable": "Inschakelen",
-    "notInstalled": "Bot niet geïnstalleerd. Installeer hem eerst."
+    "notInstalled": "Bot niet geïnstalleerd. Installeer hem eerst.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Moderatie en bezwaar",
@@ -382,7 +384,16 @@
     "play": "Spelen",
     "pause": "Pauze",
     "delete": "Verwijderen",
-    "duration": "Duur"
+    "duration": "Duur",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Videogesprek",
@@ -549,7 +560,10 @@
     "moderation": "Moderatie en bezwaar",
     "biometricUnlockWithPin": "Vingerafdruk/gezichtsontgrendeling (met terugval van pincode)",
     "biometricHintWithPin": "Gebruik vingerafdruk of gezicht om te ontgrendelen. Als reserve is altijd een pincode vereist.",
-    "changePin": "Pincode wijzigen"
+    "changePin": "Pincode wijzigen",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "Begin",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP verborgen",
     "ipHiddenTitle": "Media loopt via TURN — je IP is verborgen voor de peer",
     "ipVisible": "IP zichtbaar",
-    "ipVisibleTitle": "Directe P2P-mediastream: de peer kan je IP zien. Schakel 'Mijn IP verbergen in gesprekken' in Instellingen → Privacy in om media via TURN te routeren."
+    "ipVisibleTitle": "Directe P2P-mediastream: de peer kan je IP zien. Schakel 'Mijn IP verbergen in gesprekken' in Instellingen → Privacy in om media via TURN te routeren.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Analytics-dashboard",
@@ -882,7 +902,18 @@
     "importPack": "Lokaal stickerpakket importeren",
     "importError": "Kan dit stickerpakket niet importeren",
     "importedPack": "Geïmporteerd pakket",
-    "removePack": "Pak verwijderen"
+    "removePack": "Pak verwijderen",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Opiniepeiling",
@@ -1020,7 +1051,30 @@
     "noComments": "Nog geen opmerkingen",
     "commentPlaceholder": "Schrijf een reactie...",
     "sendComment": "Stuur commentaar",
-    "sharePost": "Deel bericht"
+    "sharePost": "Deel bericht",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "Publiceer tijd",
@@ -1182,7 +1236,8 @@
     "recoverBody": "De PIN ontgrendelt lokale gegevens op dit apparaat. Ben je hem vergeten, herstel dan toegang met je herstelzin of een back-upbestand. Berichten die alleen op dit apparaat staan, worden gewist.",
     "recoverWithPhrase": "Met herstelzin",
     "recoverWithBackup": "Vanuit back-upbestand",
-    "recoverResetConfirm": "Ja, alles wissen"
+    "recoverResetConfirm": "Ja, alles wissen",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Mesh-kaart",

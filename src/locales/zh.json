@@ -84,7 +84,9 @@
     "badge": "机器人",
     "disable": "禁用",
     "enable": "使能够",
-    "notInstalled": "未安装机器人。请先安装。"
+    "notInstalled": "未安装机器人。请先安装。",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "审核和上诉",
@@ -382,7 +384,16 @@
     "play": "玩",
     "pause": "暂停",
     "delete": "删除",
-    "duration": "持续时间"
+    "duration": "持续时间",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "视频通话",
@@ -549,7 +560,10 @@
     "moderation": "审核和上诉",
     "biometricUnlockWithPin": "指纹/面部解锁（带 PIN 后备）",
     "biometricHintWithPin": "使用指纹或人脸解锁。始终需要 PIN 作为后备。",
-    "changePin": "更改密码"
+    "changePin": "更改密码",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "开始",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP 隐藏",
     "ipHiddenTitle": "媒体经 TURN 传输 — 您的 IP 对对方隐藏",
     "ipVisible": "IP 可见",
-    "ipVisibleTitle": "直接 P2P 媒体流：对方可看到您的 IP。在设置 → 隐私中启用“通话中隐藏我的 IP”以通过 TURN 路由媒体。"
+    "ipVisibleTitle": "直接 P2P 媒体流：对方可看到您的 IP。在设置 → 隐私中启用“通话中隐藏我的 IP”以通过 TURN 路由媒体。",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "分析仪表板",
@@ -882,7 +902,18 @@
     "importPack": "导入本地贴纸包",
     "importError": "无法导入此贴纸包",
     "importedPack": "进口包",
-    "removePack": "拆下包装"
+    "removePack": "拆下包装",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "民意调查",
@@ -1020,7 +1051,30 @@
     "noComments": "还没有评论",
     "commentPlaceholder": "写评论...",
     "sendComment": "发送评论",
-    "sharePost": "分享帖子"
+    "sharePost": "分享帖子",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "发布时间",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN 用于解锁本设备上的本地数据。如果忘记，可使用恢复助记词或备份文件恢复访问。仅存储在本设备上的消息将被清除。",
     "recoverWithPhrase": "用助记词",
     "recoverWithBackup": "从备份文件",
-    "recoverResetConfirm": "是，全部清除"
+    "recoverResetConfirm": "是，全部清除",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "网格图",

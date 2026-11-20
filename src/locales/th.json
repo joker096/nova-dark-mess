@@ -84,7 +84,9 @@
     "badge": "บอท",
     "disable": "ปิดการใช้งาน",
     "enable": "เปิดใช้งาน",
-    "notInstalled": "ยังไม่ได้ติดตั้งบอท กรุณาติดตั้งก่อน"
+    "notInstalled": "ยังไม่ได้ติดตั้งบอท กรุณาติดตั้งก่อน",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "การกลั่นกรองและการอุทธรณ์",
@@ -278,7 +280,18 @@
     "importPack": "นำเข้าแพ็กสติกเกอร์แบบทางเลือก",
     "importError": "ไม่สามารถนำเข้าแพ็กนี้",
     "importedPack": "แพ็กที่นำเข้า",
-    "removePack": "นำออกแพ็ก"
+    "removePack": "นำออกแพ็ก",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "โพล",
@@ -444,7 +457,16 @@
     "play": "เล่น",
     "pause": "พัก",
     "delete": "ลบ",
-    "duration": "ระยะเวลา"
+    "duration": "ระยะเวลา",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "วิดีโอคอล",
@@ -611,7 +633,10 @@
     "termsOfService": "ข้อกำหนดในการใช้บริการ",
     "privacyPolicy": "นโยบายความเป็นส่วนตัว",
     "rerunSetup": "เริ่มการตั้งค่าอีกครั้ง",
-    "moderation": "การกลั่นกรองและการอุทธรณ์"
+    "moderation": "การกลั่นกรองและการอุทธรณ์",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -861,6 +886,10 @@
     "startBot": "เริ่ม",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -878,7 +907,9 @@
     "ipHidden": "IP ซ่อน",
     "ipHiddenTitle": "สื่อผ่าน TURN — IP ของคุณถูกซ่อนจากฝ่ายตรงข้าม",
     "ipVisible": "IP แสดง",
-    "ipVisibleTitle": "สตรีมมีเดีย P2P โดยตรง: ฝ่ายตรงข้ามมองเห็น IP ของคุณ เปิดใช้งาน 'ซ่อน IP ของฉันในการโทร' ใน การตั้งค่า → ความเป็นส่วนตัว เพื่อส่งสื่อผ่าน TURN"
+    "ipVisibleTitle": "สตรีมมีเดีย P2P โดยตรง: ฝ่ายตรงข้ามมองเห็น IP ของคุณ เปิดใช้งาน 'ซ่อน IP ของฉันในการโทร' ใน การตั้งค่า → ความเป็นส่วนตัว เพื่อส่งสื่อผ่าน TURN",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "แดชบอร์ดวิเคราะห์ข้อมูล",
@@ -1028,7 +1059,30 @@
     "noComments": "ยังไม่มีความคิดเห็น",
     "commentPlaceholder": "เขียนความคิดเห็น...",
     "sendComment": "ส่งความคิดเห็น",
-    "sharePost": "แชร์โพสต์"
+    "sharePost": "แชร์โพสต์",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} ต้องการเข้าร่วม",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN ใช้ปลดล็อกข้อมูลในเครื่องนี้ หากลืม ให้กู้คืนการเข้าถึงด้วยวลีกู้คืนหรือไฟล์สำรอง ข้อความที่เก็บไว้ในเครื่องนี้จะถูกลบ",
     "recoverWithPhrase": "ด้วยวลีกู้คืน",
     "recoverWithBackup": "จากไฟล์สำรอง",
-    "recoverResetConfirm": "ใช่ ลบทั้งหมด"
+    "recoverResetConfirm": "ใช่ ลบทั้งหมด",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "แผนที่เมช",

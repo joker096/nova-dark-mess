@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Devre dışı bırakmak",
     "enable": "Olanak vermek",
-    "notInstalled": "Bot yüklü değil. Lütfen önce yükleyin."
+    "notInstalled": "Bot yüklü değil. Lütfen önce yükleyin.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Moderasyon ve itirazlar",
@@ -278,7 +280,18 @@
     "importPack": "Yerel çıkartma paketi içe aktar",
     "importError": "Bu çıkartma paketi içe aktarılamadı",
     "importedPack": "İçe aktarılan paket",
-    "removePack": "Paketin kaldır"
+    "removePack": "Paketin kaldır",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Anket",
@@ -444,7 +457,16 @@
     "play": "Oynat",
     "pause": "Duraklat",
     "delete": "Sil",
-    "duration": "Süre"
+    "duration": "Süre",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Video görüşmesi",
@@ -611,7 +633,10 @@
     "termsOfService": "Kullanım koşulları",
     "privacyPolicy": "Gizlilik politikası",
     "rerunSetup": "Kurulumu yeniden çalıştır",
-    "moderation": "Moderasyon ve itirazlar"
+    "moderation": "Moderasyon ve itirazlar",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -861,6 +886,10 @@
     "startBot": "Başlat",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -878,7 +907,9 @@
     "ipHidden": "IP Gizli",
     "ipHiddenTitle": "Medya TURN üzerinden — IP'niz karşı taraftan gizli",
     "ipVisible": "IP Görünür",
-    "ipVisibleTitle": "Doğrudan P2P medya akışı: karşı taraf IP'nizi görebilir. Ayarlar → Gizlilik'te 'Aramalarda IP'mi Gizle'yi etkinleştirerek medyayı TURN üzerinden yönlendirin."
+    "ipVisibleTitle": "Doğrudan P2P medya akışı: karşı taraf IP'nizi görebilir. Ayarlar → Gizlilik'te 'Aramalarda IP'mi Gizle'yi etkinleştirerek medyayı TURN üzerinden yönlendirin.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Analitik Paneli",
@@ -1028,7 +1059,30 @@
     "noComments": "Henüz yorum yok",
     "commentPlaceholder": "Yorum yaz...",
     "sendComment": "Yorumu gönder",
-    "sharePost": "Gönderiyi paylaş"
+    "sharePost": "Gönderiyi paylaş",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} katılmak istiyor",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN bu cihazdaki yerel verilerin kilidini açar. Unuttuysanız kurtarma ifadeniz veya bir yedek dosyayla erişimi geri yükleyin. Yalnızca bu cihazda saklanan mesajlar silinir.",
     "recoverWithPhrase": "Kurtarma ifadesiyle",
     "recoverWithBackup": "Yedek dosyasından",
-    "recoverResetConfirm": "Evet, her şeyi sil"
+    "recoverResetConfirm": "Evet, her şeyi sil",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Mesh Haritası",

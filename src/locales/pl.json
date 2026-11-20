@@ -84,7 +84,9 @@
     "badge": "Nerw",
     "disable": "Wyłącz",
     "enable": "Włącz",
-    "notInstalled": "Bot nie jest zainstalowany. Najpierw go zainstaluj."
+    "notInstalled": "Bot nie jest zainstalowany. Najpierw go zainstaluj.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Moderacja i odwołania",
@@ -382,7 +384,16 @@
     "play": "Zagraj",
     "pause": "Pauza",
     "delete": "Usuń",
-    "duration": "Czas trwania"
+    "duration": "Czas trwania",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Rozmowa wideo",
@@ -549,7 +560,10 @@
     "moderation": "Moderacja i odwołania",
     "biometricUnlockWithPin": "Odblokowanie odciskiem palca/twarzą (z kodem PIN) awaryjna)",
     "biometricHintWithPin": "Użyj odcisku palca lub twarzy, aby odblokować. PIN jest zawsze wymagany jako rezerwowy.",
-    "changePin": "Zmień PIN"
+    "changePin": "Zmień PIN",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "Start",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP Ukryte",
     "ipHiddenTitle": "Media przez TURN — Twój IP jest ukryte przed rozmówcą",
     "ipVisible": "IP Widoczne",
-    "ipVisibleTitle": "Bezpośredni strumień P2P: rozmówca widzi Twoje IP. Włącz 'Ukryj mój IP w rozmowach' w Ustawieniach → Prywatność, by kierować media przez TURN."
+    "ipVisibleTitle": "Bezpośredni strumień P2P: rozmówca widzi Twoje IP. Włącz 'Ukryj mój IP w rozmowach' w Ustawieniach → Prywatność, by kierować media przez TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Panel analityczny",
@@ -882,7 +902,18 @@
     "importPack": "Importuj lokalny pakiet naklejek",
     "importError": "Nie można zaimportować tego pakietu naklejek",
     "importedPack": "Importowana paczka",
-    "removePack": "Usuń opakowanie"
+    "removePack": "Usuń opakowanie",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Ankieta",
@@ -1020,7 +1051,30 @@
     "noComments": "Nie ma jeszcze żadnych komentarzy",
     "commentPlaceholder": "Napisz komentarz...",
     "sendComment": "Wyślij komentarz",
-    "sharePost": "Udostępnij post"
+    "sharePost": "Udostępnij post",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "Czas publikacji",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN odblokowuje lokalne dane na tym urządzeniu. Jeśli go zapomniałeś, odzyskaj dostęp za pomocą frazy odzyskiwania lub pliku kopii zapasowej. Wiadomości przechowywane tylko na tym urządzeniu zostaną usunięte.",
     "recoverWithPhrase": "Za pomocą frazy",
     "recoverWithBackup": "Z pliku kopii",
-    "recoverResetConfirm": "Tak, usuń wszystko"
+    "recoverResetConfirm": "Tak, usuń wszystko",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Mapa siatki",

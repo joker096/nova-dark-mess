@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Nonaktifkan",
     "enable": "Aktifkan",
-    "notInstalled": "Bot belum dipasang. Pasang dulu."
+    "notInstalled": "Bot belum dipasang. Pasang dulu.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Moderasi & banding",
@@ -278,7 +280,18 @@
     "importPack": "Impor paket stiker lokal",
     "importError": "Paket stiker ini tidak dapat diimpor",
     "importedPack": "Paket diimpor",
-    "removePack": "Hapus paket"
+    "removePack": "Hapus paket",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Polling",
@@ -444,7 +457,16 @@
     "play": "Putar",
     "pause": "Jeda",
     "delete": "Hapus",
-    "duration": "Durasi"
+    "duration": "Durasi",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Panggilan video",
@@ -611,7 +633,10 @@
     "termsOfService": "Ketentuan layanan",
     "privacyPolicy": "Kebijakan privasi",
     "rerunSetup": "Jalankan pengaturan lagi",
-    "moderation": "Moderasi & banding"
+    "moderation": "Moderasi & banding",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -861,6 +886,10 @@
     "startBot": "Mulai",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -878,7 +907,9 @@
     "ipHidden": "IP Tersembunyi",
     "ipHiddenTitle": "Media melewati TURN — IP Anda tersembunyi dari lawan bicara",
     "ipVisible": "IP Terlihat",
-    "ipVisibleTitle": "Aliran Media P2P Langsung: lawan bicara bisa melihat IP Anda. Aktifkan 'Sembunyikan IP di Panggilan' di Pengaturan → Privasi untuk mengarahkan media melalui TURN."
+    "ipVisibleTitle": "Aliran Media P2P Langsung: lawan bicara bisa melihat IP Anda. Aktifkan 'Sembunyikan IP di Panggilan' di Pengaturan → Privasi untuk mengarahkan media melalui TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Dasbor Analitik",
@@ -1028,7 +1059,30 @@
     "noComments": "Belum ada komentar",
     "commentPlaceholder": "Tulis komentar...",
     "sendComment": "Kirim komentar",
-    "sharePost": "Bagikan postingan"
+    "sharePost": "Bagikan postingan",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} ingin bergabung",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN membuka data lokal di perangkat ini. Jika lupa, pulihkan akses dengan frasa pemulihan atau file cadangan. Pesan yang hanya tersimpan di perangkat ini akan dihapus.",
     "recoverWithPhrase": "Dengan frasa",
     "recoverWithBackup": "Dari file cadangan",
-    "recoverResetConfirm": "Ya, hapus semua"
+    "recoverResetConfirm": "Ya, hapus semua",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Peta Mesh",

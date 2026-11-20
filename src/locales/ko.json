@@ -84,7 +84,9 @@
     "badge": "봇",
     "disable": "비활성화",
     "enable": "할 수 있게 하다",
-    "notInstalled": "봇이 설치되지 않았습니다. 먼저 설치하세요."
+    "notInstalled": "봇이 설치되지 않았습니다. 먼저 설치하세요.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "검토 및 항소",
@@ -382,7 +384,16 @@
     "play": "플레이",
     "pause": "일시중지",
     "delete": "삭제",
-    "duration": "기간"
+    "duration": "기간",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "영상통화",
@@ -549,7 +560,10 @@
     "moderation": "검토 및 항소",
     "biometricUnlockWithPin": "지문/얼굴 잠금 해제(PIN 대체)",
     "biometricHintWithPin": "지문이나 얼굴을 사용하여 잠금 해제합니다. 대체에는 PIN이 항상 필요합니다.",
-    "changePin": "PIN 변경"
+    "changePin": "PIN 변경",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "시작",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP 숨김",
     "ipHiddenTitle": "미디어가 TURN을 통해 전달됨 — 상대방에게 내 IP 숨김",
     "ipVisible": "IP 표시",
-    "ipVisibleTitle": "직접 P2P 미디어 스트림: 상대방이 내 IP를 볼 수 있음. 설정 → 개인정보에서 '통화 중 내 IP 숨기기'를 활성화하여 미디어를 TURN으로 라우팅하세요."
+    "ipVisibleTitle": "직접 P2P 미디어 스트림: 상대방이 내 IP를 볼 수 있음. 설정 → 개인정보에서 '통화 중 내 IP 숨기기'를 활성화하여 미디어를 TURN으로 라우팅하세요.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "분석 대시보드",
@@ -882,7 +902,18 @@
     "importPack": "로컬 스티커 팩 가져오기",
     "importError": "이 스티커 팩을 가져올 수 없습니다.",
     "importedPack": "수입팩",
-    "removePack": "팩 제거"
+    "removePack": "팩 제거",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "설문조사",
@@ -1020,7 +1051,30 @@
     "noComments": "아직 댓글이 없습니다",
     "commentPlaceholder": "댓글을 쓰세요...",
     "sendComment": "댓글 보내기",
-    "sharePost": "게시물 공유"
+    "sharePost": "게시물 공유",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "게시 시간",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN은 이 기기의 로컬 데이터를 잠금 해제합니다. 잊었다면 복구 문구나 백업 파일로 접근을 복구하세요. 이 기기에만 저장된 메시지는 삭제됩니다.",
     "recoverWithPhrase": "복구 문구 사용",
     "recoverWithBackup": "백업 파일에서",
-    "recoverResetConfirm": "예, 모두 삭제"
+    "recoverResetConfirm": "예, 모두 삭제",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "메쉬 맵",

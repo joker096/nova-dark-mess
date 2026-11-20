@@ -84,7 +84,9 @@
     "badge": "ボットをキャンセルする",
     "disable": "無効にする",
     "enable": "を無効にする",
-    "notInstalled": "ボットがインストールされていません。先にインストールしてください。"
+    "notInstalled": "ボットがインストールされていません。先にインストールしてください。",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "モデレーションと異議申し立て",
@@ -382,7 +384,16 @@
     "play": "遊ぶ",
     "pause": "一時停止",
     "delete": "削除",
-    "duration": "期間"
+    "duration": "期間",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "ビデオ通話",
@@ -549,7 +560,10 @@
     "moderation": "モデレーションと異議申し立て",
     "biometricUnlockWithPin": "指紋/顔認証ロック解除 (PIN フォールバックあり)",
     "biometricHintWithPin": "指紋または顔認証を使用してロックを解除します。 PIN はフォールバックとして常に必要です。",
-    "changePin": "PIN の変更"
+    "changePin": "PIN の変更",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "開始",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP非表示",
     "ipHiddenTitle": "メディアはTURN経由 — 相手からあなたのIPが隠されます",
     "ipVisible": "IP表示",
-    "ipVisibleTitle": "直接P2Pメディアストリーム: 相手があなたのIPを見れます。設定→プライバシーの「通話でIPを隠す」を有効にして、メディアをTURN経由でルーティングしてください。"
+    "ipVisibleTitle": "直接P2Pメディアストリーム: 相手があなたのIPを見れます。設定→プライバシーの「通話でIPを隠す」を有効にして、メディアをTURN経由でルーティングしてください。",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "分析ダッシュボード",
@@ -882,7 +902,18 @@
     "importPack": "ローカルステッカーパックをインポートする",
     "importError": "このステッカー パックをインポートできませんでした",
     "importedPack": "輸入パック",
-    "removePack": "パックを外す"
+    "removePack": "パックを外す",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "投票",
@@ -1020,7 +1051,30 @@
     "noComments": "まだコメントはありません",
     "commentPlaceholder": "コメントを書いてください...",
     "sendComment": "コメントを送信",
-    "sharePost": "投稿をシェアする"
+    "sharePost": "投稿をシェアする",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "公開時間",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PINはこの端末のローカルデータを解除します。忘れた場合は、リカバリーフレーズまたはバックアップファイルでアクセスを復元してください。この端末にのみ保存されたメッセージは削除されます。",
     "recoverWithPhrase": "フレーズで復元",
     "recoverWithBackup": "バックアップファイルから",
-    "recoverResetConfirm": "はい、すべて消去"
+    "recoverResetConfirm": "はい、すべて消去",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "メッシュマップ",

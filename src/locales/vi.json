@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Vô hiệu hóa",
     "enable": "Cho phép",
-    "notInstalled": "Bot chưa được cài đặt. Vui lòng cài đặt trước."
+    "notInstalled": "Bot chưa được cài đặt. Vui lòng cài đặt trước.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Kiểm duyệt và khiếu nại",
@@ -278,7 +280,18 @@
     "importPack": "Nhập gói nhãn dán cục bộ",
     "importError": "Không thể nhập gói nhãn dán này",
     "importedPack": "Gói đã nhập",
-    "removePack": "Xóa gói"
+    "removePack": "Xóa gói",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Bình chọn",
@@ -444,7 +457,16 @@
     "play": "Phát",
     "pause": "Tạm dừng",
     "delete": "Xóa",
-    "duration": "Thời lượng"
+    "duration": "Thời lượng",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Gọi video",
@@ -611,7 +633,10 @@
     "termsOfService": "Điều khoản dịch vụ",
     "privacyPolicy": "Chính sách quyền riêng tư",
     "rerunSetup": "Chạy lại thiết lập",
-    "moderation": "Kiểm duyệt và khiếu nại"
+    "moderation": "Kiểm duyệt và khiếu nại",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -861,6 +886,10 @@
     "startBot": "Bắt đầu",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -878,7 +907,9 @@
     "ipHidden": "IP Ẩn",
     "ipHiddenTitle": "Media qua TURN — IP của bạn ẩn khỏi đối tác",
     "ipVisible": "IP Hiện",
-    "ipVisibleTitle": "Luồng Media P2P Trực Tiếp: đối tác có thể thấy IP của bạn. Bật 'Ẩn IP của tôi trong cuộc gọi' trong Cài đặt → Quyền Riêng Tư để định tuyến media qua TURN."
+    "ipVisibleTitle": "Luồng Media P2P Trực Tiếp: đối tác có thể thấy IP của bạn. Bật 'Ẩn IP của tôi trong cuộc gọi' trong Cài đặt → Quyền Riêng Tư để định tuyến media qua TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Bảng điều khiển phân tích",
@@ -1028,7 +1059,30 @@
     "noComments": "Chưa có bình luận",
     "commentPlaceholder": "Viết bình luận...",
     "sendComment": "Gửi bình luận",
-    "sharePost": "Chia sẻ bài viết"
+    "sharePost": "Chia sẻ bài viết",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} muốn tham gia",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN mở khóa dữ liệu cục bộ trên thiết bị này. Nếu quên, hãy khôi phục quyền truy cập bằng cụm từ khôi phục hoặc tệp sao lưu. Tin nhắn chỉ lưu trên thiết bị này sẽ bị xóa.",
     "recoverWithPhrase": "Bằng cụm từ",
     "recoverWithBackup": "Từ tệp sao lưu",
-    "recoverResetConfirm": "Có, xóa tất cả"
+    "recoverResetConfirm": "Có, xóa tất cả",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Bản đồ Mesh",
