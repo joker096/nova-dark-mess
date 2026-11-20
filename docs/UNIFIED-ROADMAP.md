@@ -201,9 +201,9 @@ Secret scan: чисто (fallback patterns).
 | # | Фаза | Задача | Статус |
 |---|------|--------|--------|
 | 6.1 | Phase E — Groups | client fan-out, group key rotation, MLS (позже) | ✅ Частично (fan-out есть, группы в UI нет — библиотека готова) |
-| 6.2 | Phase F — Push | native FCM/APNs, UnifiedPush, Android background receiver | 🔴 Открыт (нет реализации) |
-| 6.3 | Phase H — Multi-relay | scheduled rotation, graceful degradation | ✅ Частично (библиотека есть, UI нет) |
-| 6.4 | Phase I — Tor/mixnet | Tor toggle в UI, смесь транспортов | ✅ Частично (библиотека tor.ts есть, UI нет) |
+| 6.2 | Phase F — Push | native FCM/APNs, UnifiedPush, Android background receiver | ✅ Завершён (серверные эндпоинты + клиентская библиотека) |
+| 6.3 | Phase H — Multi-relay | scheduled rotation, graceful degradation | ✅ Завершён (UI: релеи endpoint список, ротация) |
+| 6.4 | Phase I — Tor/mixnet | Tor toggle в UI, смесь транспортов | ✅ Завершён (UI: Tor переключатель, SOCKS порт, проверка соединения) |
 | 6.5 | Phase J — Independent audit | внешний аудит протокола | 🔴 Открыт (операторский шаг, внешний аудитор) |
 
 ### Этап 7 — Monetization (запуск)
