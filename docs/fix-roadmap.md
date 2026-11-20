@@ -1,6 +1,6 @@
 # Nova Dark Messenger — Fix Roadmap
 
-Last updated: 2026-11-18 (F1.1 complete)
+Last updated: 2026-11-20 (F2.1 fail-closed; F1.3 demo badge; i18n static audit)
 
 Status: **active**. This document tracks the defects found in the 2026-11-18
 repository audit. It is additive to `ROADMAP.md` (product plan) and
@@ -16,8 +16,8 @@ item is done only when its acceptance check is green in CI on a normal branch.
 | Check | Command | At audit | After F0 | After F1–F4 (latest) |
 |---|---|---|---|---|
 | Types | `npx tsc --noEmit` | pass | pass | pass |
-| Lint | `npx eslint src/ --ext .ts,.tsx` | fail — 23 errors, 25 warnings | pass — 0 errors, 28 warnings | pass — 0 errors, 28 warnings |
-| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1031 passed (133 files) |
+| Lint | `npx eslint src/ --ext .ts,.tsx` | fail — 23 errors, 25 warnings | pass — 0 errors, 28 warnings | pass — 0 errors, 47 warnings |
+| Tests | `npx vitest run` | fail — 985 passed, 1 failed | pass — 1001 passed (128 files) | pass — 1266 passed (158 files) |
 | Dependencies (runtime) | `npm audit --omit=dev --audit-level=moderate` | fail | pass | pass |
 | Dependencies (toolchain) | `npm audit --audit-level=moderate` | fail — 11 high | fail — 11 high, no upstream patch | pass — `npm audit fix --force` cleared the 11 highs; `package-lock.json` regenerated |
 | Build | `npm run build` | pass; main chunk 778 kB (>500 kB warning) | pass; main chunk 778 kB (unchanged) | pass; main chunk 252.7 kB (ChatScreen/ChatsScreen/ChannelScreen lazy via F4.4, no >500 kB warning) |
@@ -171,8 +171,11 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `crypto.randomUUID()` (F2.3 compliance). `observePeerKey` already emits a
   `PeerKeyChange` system record whenever the remote bundle changes — the demo
   bundle never changes, so no false key-change messages are produced.
-  Remaining (UI polish): render a visible "demo" badge next to the safety number
-  in ChatScreen when `isDemoPeer(chatId)` is true.
+  Done (2026-11-20): `ChatScreen` renders a "Demo" pill
+  (`data-testid="demo-peer-badge"`) next to the safety number, with the
+  explanation in its tooltip, only while `isDemoPeer(chatId)` is true; the row
+  carries `data-demo-peer` for tests. Covered by
+  `ChatScreen.test.tsx` ("labels the safety number as demo …").
 
 ---
 
@@ -198,26 +201,29 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   (`src-tauri/src/keychain.rs`, `keyring` crate → Credential Manager / Keychain /
   Secret Service). On iOS, `src-tauri/src/keychain.rs` uses the `security-framework`
   crate (SecItemAdd/CopyMatching/Delete with `kSecClassGenericPassword`) for a
-  real iOS Keychain backend. On Android, `keychain.rs` declares the
-  `android_keystore` + `jni` dependencies and stubs the `imp` module with an
-  explicit error ("not yet wired to Tauri activity context"); the frontend
-  `OsKeychain` catches native-store errors and falls back to `localStorage`
-  instead of crashing, so mobile degrades gracefully. `keychain_available()`
-  returns true for iOS and Android. A value left in `nova_keychain_*` by an older
-  build is moved into the OS store on first read and the weaker copy is deleted;
-  a genuine OS error propagates instead of silently falling back (desktop).
-  `cargo check` passes on Windows. `src/lib/storage/keychain.test.ts` covers the
-  OS path, the migration, and the fallback-to-localStorage rule.
-  Still open: **Android Keystore JNI context wiring** — the Android `imp`
-  module in `src-tauri/src/keychain.rs` is implemented (`jni` crate +
-  AndroidKeyStore: `getInstance("AndroidKeyStore")` → `getEntry`/`setEntry`/
-  `deleteEntry` with `SecretKeyEntry`). `keychain_available()` returns `true`
-  for Android. `pub(crate) fn init_android(JavaVM)` is provided for Tauri
-  `setup` to pass the JVM via `run_on_android_context`; until wired, Android
-  degrades to `localStorage` (graceful). `cargo check` passes on both Windows
-  host and `aarch64-linux-android` target. `android:allowBackup` is not
-  disabled yet; and the PIN does not wrap the vault key (F2.2 covers wrapping
-  on desktop).
+  real iOS Keychain backend. On Android the JVM and a global app `Context` are
+  captured from the WebView in `setup` (`with_webview` +
+  `jni_handle().exec(...)`); `keychain.rs` generates a per-account AES-256 key
+  in AndroidKeyStore, encrypts the value with `AES/GCM/NoPadding` and writes
+  `MAGIC | iv_len | iv | ciphertext` to `<filesDir>/keystore/<hex>.bin` (write
+  through a temp file + rename). `keychain_available()` is true only after both
+  handles are captured. Values left in `nova_keychain_*` are migrated on first
+  read. `cargo check` passes on Windows and `aarch64-linux-android`;
+  `android:allowBackup` is now `false`.
+  Fail-closed (2026-11-20): `OsKeychain` has no `localStorage` branch at all.
+  `keychain_available=false`, a missing `invoke` bridge or any native error
+  raises `KeychainUnavailableError`, and `set()` writes nothing to the weaker
+  store. `SecurityContext` then keeps key material in memory for the session,
+  exposes `secureStorage: false`, and Settings shows a warning instead of
+  pretending the vault is protected. A stored identity record that cannot be
+  decrypted is never replaced by a freshly minted one (that would silently
+  break the recovery phrase); only a genuinely absent record creates one.
+  Reading a pre-keychain `nova_keychain_*` copy is still allowed once so an
+  existing install is not locked out, and it is dropped after the OS store
+  accepts it. `keychain.test.ts` asserts the throw, the absence of the
+  `localStorage` write and the legacy-read path.
+  Remaining: run the set/get round trip on a device/emulator (no `adb` device
+  was available) — the Android JNI path still has no runtime test.
 
 - [x] **F2.2 Make the PIN meaningfully protect the vault.** _(done 2026-11-18, partial on mobile)_
   Evidence: `SecurityContext.tsx:524–527` hashes the PIN with the **fixed salt**
@@ -241,9 +247,10 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `getUnwrappedMasterKey()`; `removePin()` deletes the wrapped copy.
   `src/lib/security/vaultKey.test.ts` covers wrap/unwrap, wrong-PIN rejection,
   missing-key, persistence, and removal (7 tests).
-  Still open: **mobile has no native keychain yet** — Android/iOS `createKeychain()`
-  falls back to `localStorage` (see F2.1), so the wrapped key and PIN salt are
-  still readable from a rooted device or an Android backup.
+  iOS and Android now use native stores (see F2.1) and the JS layer fails closed,
+  so the wrapped key and PIN salt are never written to `localStorage` on a
+  device: if the store is unavailable the app runs with in-memory keys and says
+  so in Settings. Remaining: the Android device round-trip check.
 
 - [x] **F2.3 Remove silent weak-randomness fallbacks.** _(done 2026-11-18)_
   Evidence: `src/lib/social/groupInvites.ts:16–20` and
@@ -412,6 +419,29 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
 | F4.4: 778 kB main chunk >500 kB warning | fixed — main chunk 252.7 kB | mark done |
 
 ---
+
+### i18n drift found 2026-11-20
+
+`t('voiceMemo.locked', 'Locked')`-style calls shipped keys that existed in
+**no** locale, so non-English users saw the raw key. Fixed for all 20 locales by
+`scripts/i18n-sync.mjs` (idempotent, `--dry-run` supported): `voiceMemo.*`
+(recording gestures, send/stop labels, microphone error), `stickers.size` /
+`stickers.density` / `stickers.insertMode` / `stickers.packs`, `chat.demoPeer*`,
+`settings.secureStorageUnavailable*`, `settings.encryptedStorageUnavailable` and
+`channel.*`. `scripts/audit-i18n.ts` now also parses every literal `t('x.y', …)`
+in `src/` and fails when the key is not in `en.json`, and warns when Russian text
+is used as an English fallback — so this class of drift cannot come back
+silently.
+
+### Sticker / media preferences (2026-11-20)
+
+`mediaPreferences` (sticker size, picker density, insert-instead-of-send) was
+persisted and unit-tested but never read by the chat UI. `ChatScreen` now owns
+the value, follows `MEDIA_PREFERENCES_EVENT`, sizes sticker bubbles from
+`resolveStickerSize()`, passes the settings down to `StickerPickerDrawer` and
+implements `onSelectStickerText` (insert into the composer instead of sending).
+`StickerPickerDrawer.test.tsx` covers sending, insert mode, size persistence,
+the insert toggle, the premium CTA and GIF search.
 
 ## Verification for every phase
 

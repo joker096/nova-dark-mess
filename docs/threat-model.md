@@ -62,6 +62,33 @@ marketing claim should be traceable to a line here.
 | PaymentO | payment metadata the store collects | identity keys (device id only) |
 | Mesh map presence (opt-in) | hashed id `ph1.<hex>`, TTL window | raw fingerprint, any content |
 
+## Bots (L1 local, L2/L3 gateway)
+
+Bots are not a trusted part of the client. The default is deny, and the user
+grants each permission explicitly at install time; a manifest update that asks
+for more permissions requires re-consent (`pendingConsent` in
+`src/lib/bots/runtime.ts`).
+
+| Threat | Mitigation |
+|---|---|
+| Malicious bot reading chats it was not granted | `BotContext` checks `read_messages` / `send_messages` / `edit` / `delete` / `inline_keyboard` / `media` on every call; no ambient filesystem, network or identity access |
+| Bot flooding a chat | Runtime rate limit (~20 messages/s per bot) plus the gateway's per-chat limit (~1/s) |
+| Bot spamming a group | `mention_only` privacy mode: only commands, mentions and callbacks are delivered unless the user granted more |
+| Phishing through inline buttons | The component shows the button text and the resolved action (`callback_data`, URL or Mini App) on long-press before dispatch |
+| Blocked bot still replying | `InstalledBot.blocked` is persisted in the encrypted registry and checked before every update/callback; the UI offers Unblock explicitly |
+| Gateway owner reading messages | L2/L3 is E2EE with the bot's own key, but the gateway holds that key — the owner can read chats with the bot. The client must not label gateway bots as more private than they are |
+| Bot token leak (L3) | Gateway stores only a hash of its token and shows it once; the core app never embeds key material in a token |
+| SSRF through `webhook_url` | https only, private/loopback/link-local ranges denied, re-validated after DNS resolution and redirects |
+| Webhook forgery/replay | HMAC-SHA256 signature, timestamp window, replay guard |
+| Fake "verified" badge | Not implemented; there is no verified tier yet and the UI must not imply one |
+| Report data leaving the device | Reports are local-only (`src/lib/bots/reports.ts`): bot id, reason, timestamp; no message text and no network request |
+
+Residual limits: a local L1 bot runs in the app's origin, so a bug in the bot
+module is a bug in the app (the sandbox is the permission-checked context, not
+a separate process); L2/L3 availability depends on the owner's gateway. Treat a
+third-party bot as untrusted code and review its manifest before granting
+`read_messages`.
+
 ## Anonymous queue layer (experimental)
 
 | Component | Sees | Never sees |
