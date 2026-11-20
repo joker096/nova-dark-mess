@@ -2,11 +2,15 @@ name: Widget E2E CI
 
 on:
   push:
+    # The workflow file itself counts: a broken action reference must be
+    # caught by a run, not by the next unrelated widget change.
     paths:
       - 'packages/widget/**'
+      - '.github/workflows/widget-e2e.yml'
   pull_request:
     paths:
       - 'packages/widget/**'
+      - '.github/workflows/widget-e2e.yml'
 
 jobs:
   widget-e2e:
@@ -38,9 +42,15 @@ jobs:
         run: npm run test:e2e
 
       # ── Secret scanning ──────────────────────────────────────────────────
+      # gitleaks-action's tags are plain version numbers (`v2`), so the old
+      # `@v1.18.0` reference made every widget run fail while resolving the
+      # action, before any test executed. The rule set and the allowlist are
+      # shared with the main CI job through `.gitleaks.toml`.
       - name: Scan for secrets (gitleaks)
-        uses: gitleaks/gitleaks-action@v1.18.0
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
         with:
           command: detect
-          flags: --no-git --source packages/widget --config ../../.gitleaks.toml --exit-code 1
+          flags: --no-git --source packages/widget --config ${{ github.workspace }}/.gitleaks.toml --exit-code 1
           report: true
