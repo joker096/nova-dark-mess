@@ -5,6 +5,7 @@ import {
   isAllowedRelayUrl,
   isAnonInvite,
   receiveAnonPackets,
+  receiveAnonPacketsDetailed,
   sendAnonMessage,
   type AnonInvite,
 } from './session';
@@ -412,7 +413,33 @@ export async function receiveInboxMessages(
       packets.map(({ packetId }) => packetId),
     );
   }
+  // Trash that is not a Nova packet can never be decoded, so acknowledging and
+  // deleting it frees the queue slot instead of letting it sit until the TTL
+  // (F1.2). Well-formed packets we cannot open are left alone by the session.
+  await ackUndecodableInboxPackets(transport, inbox, limit);
   return packets.map(({ body, offer }) => ({ body, offer }));
+}
+
+/** ACK the packets in this inbox that are not Nova packets at all. */
+async function ackUndecodableInboxPackets(
+  transport: AnonTransport,
+  inbox: LocalInbox,
+  limit = 32,
+): Promise<void> {
+  try {
+    await receiveAnonPacketsDetailed(
+      transport,
+      inbox.queueId,
+      inbox.recipientToken,
+      inbox.recipientPrivateKey,
+      limit,
+      inbox.signingKey,
+      { ackUndecodable: true },
+    );
+  } catch {
+    // Best effort: the next poll retries, and a failure here must not turn a
+    // successful receive into an error.
+  }
 }
 
 export async function receiveInboxPackets(
