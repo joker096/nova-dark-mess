@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Maximize, Send } from 'lucide-react';
 import type { FromMiniAppMessage, ToMiniAppMessage } from '../lib/bots/miniApp';
-import { createInitData, iframeOrigin, serializeInitData } from '../lib/bots/miniApp';
+import { createInitData, DEFAULT_THEME_PARAMS, iframeOrigin, serializeInitData } from '../lib/bots/miniApp';
 
 interface MiniAppIframeProps {
   /** Bot id (used in initData). */
@@ -88,6 +88,11 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
         case 'mini_app.ready':
           readyRef.current = true;
           setState((s) => ({ ...s, loaded: true, error: null }));
+          post({
+            type: 'mini_app.ready',
+            initData: serializeInitData(createInitData(botId, userId, secret)),
+            themeParams: DEFAULT_THEME_PARAMS,
+          });
           break;
         case 'mini_app.close_requested':
           onClose();
@@ -100,7 +105,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
           break;
       }
     },
-    [onClose, onInlineQuery, onMainButtonClick],
+    [botId, onClose, onInlineQuery, onMainButtonClick, post, secret, userId],
   );
 
   useEffect(() => {

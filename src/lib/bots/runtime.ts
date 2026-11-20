@@ -50,6 +50,12 @@ export interface InstalledBot {
    * disabling: the bot gets no updates, and the UI asks before unblocking.
    */
   blocked?: boolean;
+  /**
+   * Per-install HMAC secret used to sign Mini App `initData` (Phase B7).
+   * Lives only in the encrypted registry; the Mini App receives the signature,
+   * never this value.
+   */
+  webAppSecret?: string;
 }
 
 export interface BotRegistry {
@@ -58,6 +64,13 @@ export interface BotRegistry {
 
 export function emptyBotRegistry(): BotRegistry {
   return { bots: [] };
+}
+
+/** 32 random bytes as hex; used as a per-bot Mini App signing secret. */
+export function generateBotSecret(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Storage abstraction so tests can run without IndexedDB while production
@@ -149,6 +162,7 @@ export async function installBot(
     grantedPermissions: [...grantedSet],
     installedAt: now,
     enabled: true,
+    webAppSecret: generateBotSecret(),
   };
   await storage.save({ bots: [...registry.bots, installed] });
   return installed;

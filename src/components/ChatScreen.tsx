@@ -366,12 +366,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [loadedMessagesChatId, setLoadedMessagesChatId] = useState(chatId);
 
   /** Mini App currently opened from a `web_app` button (Phase B7). */
-  const [openMiniApp, setOpenMiniApp] = useState<{ botId: string; webAppUrl: string } | null>(null);
+  const [openMiniApp, setOpenMiniApp] = useState<{ botId: string; webAppUrl: string; secret: string } | null>(null);
 
   /** Open a bot's Mini App from an inline `web_app` button. */
-  const handleOpenWebApp = useCallback((bId: string, webAppUrl: string) => {
-    setOpenMiniApp({ botId: bId, webAppUrl });
-  }, []);
+  const handleOpenWebApp = useCallback(async (bId: string, webAppUrl: string) => {
+    if (!getBotSession) return;
+    const secret = await getBotSession().getWebAppSecret(bId);
+    if (!secret) return;
+    setOpenMiniApp({ botId: bId, webAppUrl, secret });
+  }, [getBotSession]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -6310,7 +6313,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               botId={openMiniApp.botId}
               webAppUrl={openMiniApp.webAppUrl}
               userId="me"
-              secret={openMiniApp.botId}
+              secret={openMiniApp.secret}
               onClose={() => setOpenMiniApp(null)}
               onInlineQuery={(query) => {
                 setOpenMiniApp(null);

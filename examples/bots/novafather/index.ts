@@ -31,14 +31,10 @@ interface BotConfig {
 interface UserState {
   pendingAction?: {
     type: 'newbot_name' | 'newbot_username' | 'newbot_desc' | 'newbot_perms' |
-          'token_bot' | 'revoke_token' | 'webhook_bot' | 'webhook_url' |
           'gateway_bot' | 'gateway_url' | 'commands_bot' | 'commands_list' |
           'desc_bot' | 'desc_text';
     data: Partial<BotConfig> & {
       botId?: string;
-      token?: string;
-      webhookUrl?: string;
-      gatewayUrl?: string;
     };
   };
   bots: InstalledBot[];
@@ -56,7 +52,6 @@ function saveUserState(ctx: BotContext, userId: string, state: UserState): Promi
 
 function createMainKeyboard(): any[][] {
   return [
-    [{ text: '📋 My Bots', callback_data: 'mybots' }],
     [{ text: '📋 My Bots', callback_data: 'mybots' }],
     [{ text: '🔑 Manage Tokens', callback_data: 'tokens' }],
     [{ text: '🔗 Webhook', callback_data: 'webhook' }],
@@ -183,26 +178,13 @@ const novafatherBot: BotModule = {
           return;
         }
 
-        if (cmd === 'token') {
-          if (state.bots.length === 0) {
-            await ctx.sendMessage(chatId, 'No bots available. Create one first with /newbot.');
-            return;
-          }
+        if (cmd === 'token' || cmd === 'revoke') {
           await ctx.sendMessage(chatId,
-            '🔑 <b>Manage Tokens</b>\n\nSelect a bot to generate or view its L3 tokens:',
-            { keyboard: createBotListKeyboard(state.bots, 'token') }
-          );
-          return;
-        }
-
-        if (cmd === 'revoke') {
-          if (state.bots.length === 0) {
-            await ctx.sendMessage(chatId, 'No bots available.');
-            return;
-          }
-          await ctx.sendMessage(chatId,
-            '🗑 <b>Revoke Token</b>\n\nSelect a bot to revoke its token:',
-            { keyboard: createBotListKeyboard(state.bots, 'revoke') }
+            '🔑 <b>L3 tokens are issued by the gateway</b>\n\n' +
+            'The app never creates or stores bot tokens: the gateway does, in its '
+            + '<code>botToken</code> option. Start the gateway with that token and '
+            + 'it will authenticate <code>/bot&lt;token&gt;/…</code> requests. '
+            + 'Revoke a token by restarting the gateway with a new one.'
           );
           return;
         }
@@ -317,6 +299,52 @@ const novafatherBot: BotModule = {
           return;
         }
 
+        if (data === 'mybots') {
+          await ctx.editMessage(chat.id, messageId,
+            state.bots.length > 0
+              ? `📋 <b>My Bots</b> (${state.bots.length}):\n\nTap a bot to manage it:`
+              : '📋 <b>My Bots</b>\n\nNo bots are installed. Add one from <b>Settings → Bots</b>.',
+            { keyboard: state.bots.length > 0 ? createBotListKeyboard(state.bots, 'manage') : createMainKeyboard() }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (data === 'tokens') {
+          await ctx.editMessage(chat.id, messageId,
+            '🔑 <b>L3 tokens are issued by the gateway</b>\n\nThe app never creates or stores bot tokens; the gateway does, in its <code>botToken</code> option. Restart it with a new token to revoke the old one.',
+            { keyboard: createMainKeyboard() }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (data === 'webhook') {
+          await ctx.editMessage(chat.id, messageId,
+            '🔗 <b>Webhooks are gateway-side</b>\n\nCall <code>setWebhook</code> on the bot gateway (or use the gateway API). The local app only attaches the gateway URL to a bot with 🌐 Gateway.',
+            { keyboard: createMainKeyboard() }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (data === 'gateway' || data === 'commands' || data === 'description') {
+          await ctx.editMessage(chat.id, messageId,
+            state.bots.length > 0
+              ? `Select a bot to update its ${data}:`
+              : 'No bots are installed.',
+            { keyboard: state.bots.length > 0 ? createBotListKeyboard(state.bots, data) : createMainKeyboard() }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (data === 'help') {
+          await ctx.editMessage(chat.id, messageId, formatHelp(), { keyboard: createMainKeyboard() });
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
         if (data.startsWith('perm_toggle:')) {
           const perm = data.split(':')[1];
           if (state.pendingAction?.type === 'newbot_perms') {
@@ -398,39 +426,18 @@ const novafatherBot: BotModule = {
         }
 
         if (action === 'token') {
-          state.pendingAction = { type: 'token_bot', data: { botId } };
-          await saveUserState(ctx, userId, state);
-          await ctx.editMessage(chat.id, messageId,
-            `🔑 <b>Token for ${bot.manifest.name}</b>\n\nL3 tokens allow using the bot with Telegram Bot API libraries (grammY, telegraf, aiogram).\n\n<i>Feature: generates a new token. Existing tokens remain valid until revoked.</i>`,
-            { keyboard: [
-              [{ text: '🔄 Generate Token', callback_data: `token_gen:${botId}` }],
-              [{ text: '🗑 Revoke All', callback_data: `token_revoke_all:${botId}` }],
-              [{ text: '⬅️ Back', callback_data: `manage:${botId}` }],
-            ]}
-          );
-          await ctx.answerCallbackQuery(queryId);
+          await ctx.answerCallbackQuery(queryId, {
+            text: 'L3 tokens live in the gateway config, not in the app',
+            showAlert: true,
+          });
           return;
         }
 
-        if (action === 'token_gen') {
-          // In real impl, would generate and store token hash
-          await ctx.answerCallbackQuery(queryId, { text: 'Token generated! (Feature pending L3 gateway integration)', showAlert: true });
-          return;
-        }
-
-        if (action === 'webhook') {
-          state.pendingAction = { type: 'webhook_bot', data: { botId } };
-          await saveUserState(ctx, userId, state);
-          await ctx.editMessage(chat.id, messageId,
-            `🔗 <b>Webhook for ${bot.manifest.name}</b>\n\nEnter the webhook URL (HTTPS required):\n\n<i>Example: https://your-domain.com/bot<token></i>`,
-            { keyboard: [[{ text: '❌ Cancel', callback_data: `manage:${botId}` }]] }
-          );
-          await ctx.answerCallbackQuery(queryId);
-          return;
-        }
-
-        if (action === 'deletewebhook') {
-          await ctx.answerCallbackQuery(queryId, { text: 'Webhook deleted (feature pending)', showAlert: true });
+        if (action === 'webhook' || action === 'deletewebhook') {
+          await ctx.answerCallbackQuery(queryId, {
+            text: 'Webhooks are configured on the gateway with setWebhook',
+            showAlert: true,
+          });
           return;
         }
 
@@ -555,14 +562,9 @@ async function handlePendingAction(
     return;
   }
 
-  if (action.type === 'token_bot' || action.type === 'webhook_bot' || 
-      action.type === 'gateway_bot' || action.type === 'commands_bot' || 
+  if (action.type === 'gateway_bot' || action.type === 'commands_bot' ||
       action.type === 'desc_bot') {
-    if (action.type === 'webhook_bot') {
-      action.data.webhookUrl = text;
-      // In real impl, would call gateway.setWebhook
-      await ctx.sendMessage(chatId, `✅ Webhook set to: ${text}`);
-    } else if (action.type === 'gateway_bot') {
+    if (action.type === 'gateway_bot') {
       const value = text.trim();
       const gatewayUrl = value.toLowerCase() === 'none' ? undefined : value;
       try {
