@@ -8,6 +8,13 @@ const STORE_SESSIONS = 'ratchet_sessions';
 const STORE_PREKEYS = 'prekey_store';
 const STORE_SETTINGS = 'security_settings';
 
+function zip<T, U>(a: T[], b: U[]): Array<[T, U]> {
+  const len = Math.min(a.length, b.length);
+  const out: Array<[T, U]> = new Array(len);
+  for (let i = 0; i < len; i++) out[i] = [a[i], b[i]];
+  return out;
+}
+
 export interface StoredEncryptedMessage {
   id: string;
   chatId: string;
@@ -101,6 +108,38 @@ export class EncryptedDatabase {
     );
   }
 
+  /**
+   * Writes multiple encrypted records in a single IndexedDB transaction.
+   * Reduces transaction overhead compared to calling `putEncryptedRecord`
+   * repeatedly.
+   */
+  public batchPutEncryptedRecords(
+    storeName: string,
+    entries: Array<{ key: string; plaintext: string }>,
+  ): Promise<void> {
+    if (!this.db || !this.masterKey) return Promise.reject(new Error('DB not initialized'));
+    if (entries.length === 0) return Promise.resolve();
+
+    return Promise.all(entries.map((e) => encryptAESGCM(e.plaintext, this.masterKey))).then(
+      (encryptedDataList) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = this.db!.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          for (const [entry, encryptedData] of zip(entries, encryptedDataList)) {
+            const record: StoredEncryptedRecord = {
+              key: entry.key,
+              encryptedData,
+              updatedAt: Date.now(),
+            };
+            store.put(record);
+          }
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error ?? new Error('Batch write transaction aborted'));
+        })
+    );
+  }
+
   private getEncryptedRecord(storeName: string, key: string): Promise<string | null> {
     if (!this.db || !this.masterKey) return Promise.reject(new Error('DB not initialized'));
 
@@ -120,6 +159,43 @@ export class EncryptedDatabase {
         }
       };
       req.onerror = () => reject(req.error);
+    });
+  }
+
+  /**
+   * Reads multiple encrypted records in a single IndexedDB transaction.
+   * Returns a map keyed by record key; missing keys are absent from the map.
+   */
+  public batchGetEncryptedRecords(
+    storeName: string,
+    keys: string[],
+  ): Promise<Map<string, string>> {
+    if (!this.db || !this.masterKey) return Promise.reject(new Error('DB not initialized'));
+    if (keys.length === 0) return Promise.resolve(new Map());
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const results = new Map<string, string>();
+      let pending = keys.length;
+
+      for (const key of keys) {
+        const req = store.get(key);
+        req.onsuccess = async () => {
+          const record = req.result as StoredEncryptedRecord | undefined;
+          if (record) {
+            try {
+              results.set(key, await decryptAESGCM(record.encryptedData, this.masterKey!));
+            } catch (err) {
+              reject(err);
+              return;
+            }
+          }
+          pending -= 1;
+          if (pending === 0) resolve(results);
+        };
+        req.onerror = () => reject(req.error);
+      }
     });
   }
 

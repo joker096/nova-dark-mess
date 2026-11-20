@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { isStoryScheduled, storyPublishAt } from '../lib/social/store';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import type { Story } from '../types/messenger';
+import { LazyMedia } from './LazyMedia';
 
 interface StoryViewerProps {
   stories: Story[];
@@ -137,11 +138,11 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       aria-label={t('stories.viewStory')}
     >
       <div className="relative flex h-full w-full max-w-md flex-col overflow-hidden sm:h-[92vh] sm:rounded-[28px] sm:border sm:border-white/10 sm:shadow-2xl sm:shadow-black/80">
-        <img
+        <LazyMedia
           src={activeStory.coverImage}
           alt=""
+          eager
           className="absolute inset-0 h-full w-full object-cover"
-          draggable={false}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/10 to-black/85" />
 
@@ -167,9 +168,14 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         {/* Header */}
         <div className="relative z-20 flex items-center justify-between gap-2 px-3 pt-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/25 bg-black/40">
-              <img src={activeStory.avatar} alt="" className="h-full w-full object-cover" />
-            </div>
+              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/25 bg-black/40">
+                <LazyMedia
+                  src={activeStory.avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  eager
+                />
+              </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-bold text-white">{activeStory.name}</p>
               <p className="flex items-center gap-1 text-[10px] text-white/65">

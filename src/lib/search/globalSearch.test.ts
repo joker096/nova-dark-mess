@@ -35,4 +35,32 @@ describe('globalSearch', () => {
     expect(snippet).toContain('needle');
     expect(snippet.startsWith('…')).toBe(true);
   });
+
+  it('caches results for repeated same-query searches', () => {
+    const items = [
+      { id: '1', chatId: 'c1', chatName: 'Alice', kind: 'message' as const, text: 'Hello world', timestamp: 10 },
+    ];
+
+    const first = searchGlobal(items, 'hello');
+    const second = searchGlobal(items, 'hello');
+
+    expect(second).toBe(first); // same cached array reference
+
+    // A different query is not served from cache
+    const other = searchGlobal(items, 'world');
+    expect(other).toHaveLength(1);
+    expect(other).not.toBe(first);
+  });
+
+  it('does not cache results for a different items array (WeakMap isolation)', () => {
+    const itemsA = [
+      { id: '1', chatId: 'c1', chatName: 'Alice', kind: 'message' as const, text: 'Hello world', timestamp: 10 },
+    ];
+    const itemsB = [
+      { id: '1', chatId: 'c1', chatName: 'Alice', kind: 'message' as const, text: 'Goodbye world', timestamp: 10 },
+    ];
+
+    expect(searchGlobal(itemsA, 'hello')).toHaveLength(1);
+    expect(searchGlobal(itemsB, 'hello')).toHaveLength(0);
+  });
 });

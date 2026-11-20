@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { dbInstance } from '../lib/storage/db';
+import { LazyMedia } from './LazyMedia';
 import {
   ackInboxPackets,
   contactFromOffer,
@@ -1609,13 +1610,14 @@ export const AnonymousMessengerScreen: React.FC<{
                   </button>
                 </div>
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-white p-3">
-                  {inviteQr ? (
-                    <img
-                      src={inviteQr}
-                      alt={labels.showQr}
-                      className="h-48 w-48 max-w-full"
-                    />
-                  ) : (
+                {inviteQr ? (
+                  <LazyMedia
+                    src={inviteQr}
+                    alt={labels.showQr}
+                    eager
+                    className="h-48 w-48 max-w-full"
+                  />
+                ) : (
                     <p role={qrError ? 'alert' : 'status'} className="text-center text-xs text-red-600">
                       {qrError ? labels.qrFailed : labels.qrLoading}
                     </p>

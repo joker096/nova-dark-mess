@@ -77,6 +77,8 @@ export interface BotIncomingMessage {
   mentionsBot: boolean;
   from: string;
   timestamp: number;
+  /** User's language code (e.g., 'en', 'ru', 'uk'). */
+  language?: string;
 }
 
 export interface BotCallbackQuery {
@@ -87,6 +89,8 @@ export interface BotCallbackQuery {
   data: string;
   from: string;
   timestamp: number;
+  /** User's language code (e.g., 'en', 'ru', 'uk'). */
+  language?: string;
 }
 
 /** Inline query from a Mini App / composer (Phase B7). */
@@ -99,6 +103,8 @@ export interface BotInlineQuery {
   offset: string;
   from: string;
   timestamp: number;
+  /** User's language code (e.g., 'en', 'ru', 'uk'). */
+  language?: string;
 }
 
 export type BotUpdate =
@@ -115,6 +121,10 @@ export interface BotSendMessageOptions {
   keyboard?: InlineKeyboard;
   /** Silent message: no notification sound. */
   silent?: boolean;
+  /** Photo URL to send with the message (requires 'media' permission). */
+  photo?: string;
+  /** Caption for the photo (shown below the image). */
+  caption?: string;
 }
 
 export interface BotOutgoingMessage {
@@ -123,6 +133,10 @@ export interface BotOutgoingMessage {
   text: string;
   keyboard?: InlineKeyboard;
   timestamp: number;
+  /** Photo URL sent with the message. */
+  photo?: string;
+  /** Caption for the photo. */
+  caption?: string;
 }
 
 export interface BotMessageEdit {

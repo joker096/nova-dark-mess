@@ -216,6 +216,8 @@ export interface BotModule {
 export interface BotContext {
   readonly manifest: BotManifest;
   readonly grantedPermissions: readonly BotPermission[];
+  /** User's language code (e.g., 'en', 'ru', 'uk'). Updated per update. */
+  readonly language: string;
   onUpdate(handler: (update: BotUpdate) => void | Promise<void>): void;
   sendMessage(chatId: string, text: string, options?: BotSendMessageOptions): Promise<BotOutgoingMessage>;
   editMessage(chatId: string, messageId: string, text: string, options?: BotSendMessageOptions): Promise<boolean>;
@@ -237,6 +239,7 @@ export class BotRuntime {
   private readonly updateLog: BotUpdate[] = [];
   private readonly rateLimit = new Map<number, { count: number; reset: number }>();
   private readonly RATE_LIMIT = 20; // messages per second
+  private currentLanguage = 'en';
 
   constructor(
     private readonly bot: InstalledBot,
@@ -254,10 +257,14 @@ export class BotRuntime {
       }
     };
 
+    const self = this;
     return {
       manifest,
       get grantedPermissions() {
         return [...permissions()];
+      },
+      get language() {
+        return self.currentLanguage;
       },
       onUpdate: (handler) => {
         const arr = this.handlers.get(manifest.id) ?? [];
@@ -277,12 +284,23 @@ export class BotRuntime {
           }
           keyboard = options.keyboard;
         }
+        // Handle photo (requires 'media' permission)
+        if (options?.photo) {
+          require('media');
+          try {
+            new URL(options.photo);
+          } catch {
+            throw new PermissionDeniedError('sendMessage: photo must be a valid URL');
+          }
+        }
         const message: BotOutgoingMessage = {
           messageId: `bot_${manifest.id}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
           chat: { id: chatId, kind: 'direct' },
           text,
           keyboard,
           timestamp: Date.now(),
+          photo: options?.photo,
+          caption: options?.caption,
         };
         // Rate limit: ~20 msg/sec per bot.
         const now = Date.now();
@@ -345,6 +363,17 @@ export class BotRuntime {
         (payload !== null && (payload.isCommand || payload.mentionsBot));
       if (!allowed) return false;
     }
+    // Extract language from update payload
+    let lang = 'en';
+    if (update.type === 'message' || update.type === 'edited_message') {
+      lang = update.payload.language || 'en';
+    } else if (update.type === 'callback_query') {
+      lang = update.payload.language || 'en';
+    } else if (update.type === 'inline_query') {
+      lang = update.payload.language || 'en';
+    }
+    this.currentLanguage = lang;
+
     this.updateLog.push(update);
     if (this.updateLog.length > 200) this.updateLog.shift();
     const handlers = this.handlers.get(this.bot.manifest.id);

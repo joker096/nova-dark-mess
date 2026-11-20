@@ -13,6 +13,7 @@ import {
   ChevronUp,
   ChevronsUpDown,
   Bell,
+  BellOff,
   Clock,
   Trash2,
   Copy,
@@ -33,7 +34,7 @@ import {
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
-import { isSubscribed, setSubscribed } from '../lib/social/channelSubscriptions';
+import { isSubscribed, setSubscribed, isNotificationsEnabled, setNotificationsEnabledForChannel } from '../lib/social/channelSubscriptions';
 import { buildDeepLink } from '../lib/network/deepLinks';
 import { formatCount } from '../lib/ui';
 import type {
@@ -53,6 +54,7 @@ import { PostCommentsSheet } from './PostCommentsSheet';
 import { ReportSheet } from './ReportSheet';
 import { SponsoredPostCard } from './SponsoredPostCard';
 import { getDemoCampaign } from '../lib/ads/demoCampaign';
+import { LazyMedia } from './LazyMedia';
 import {
   AD_PREFS_CHANGED_EVENT,
   isAdDismissed,
@@ -232,10 +234,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [subscribed, setSubscribedState] = useState(() => isSubscribed(channelId));
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => isNotificationsEnabled(channelId));
 
   // The channel can change without unmounting this screen.
   useEffect(() => {
     setSubscribedState(isSubscribed(channelId));
+    setNotificationsEnabled(isNotificationsEnabled(channelId));
   }, [channelId]);
 
   const toggleSubscription = () => {
@@ -243,6 +247,13 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     setSubscribedState(next);
     setSubscribed(channelId, next);
     showToast(next ? t('channel.subscribed') : t('channel.unsubscribed'));
+  };
+
+  const toggleNotifications = () => {
+    const next = !notificationsEnabled;
+    setNotificationsEnabled(next);
+    setNotificationsEnabledForChannel(channelId, next);
+    showToast(next ? t('channel.notificationsEnabled') : t('channel.notificationsDisabled'));
   };
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [postComposerOpen, setPostComposerOpen] = useState(false);
@@ -860,19 +871,37 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   onClick={() => setSearchOpen(true)}
                 />
 
+                {/* Subscribe button - icon only, colored when subscribed */}
                 <button
                   type="button"
                   onClick={toggleSubscription}
                   aria-pressed={subscribed}
-                  className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition active:scale-95 cursor-pointer ${
+                  aria-label={subscribed ? t('channel.unsubscribe') : t('channel.subscribe')}
+                  className={`flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 transition active:scale-95 cursor-pointer ${
                     subscribed
-                      ? 'border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/10'
-                      : 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/25'
+                      ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
+                      : 'border-white/10 bg-white/[0.06] text-white/60 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  <Bell className="h-3.5 w-3.5" />
-                  <span>{subscribed ? t('channel.subscribed') : t('channel.subscribe')}</span>
+                  <Bell className="h-4 w-4" />
                 </button>
+
+                {/* Notifications toggle - bell with/without slash */}
+                {subscribed && (
+                  <button
+                    type="button"
+                    onClick={toggleNotifications}
+                    aria-pressed={notificationsEnabled}
+                    aria-label={notificationsEnabled ? t('channel.disableNotifications') : t('channel.enableNotifications')}
+                    className={`flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 ml-1 transition active:scale-95 cursor-pointer ${
+                      notificationsEnabled
+                        ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
+                        : 'border-white/10 bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/70'
+                    }`}
+                  >
+                    {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                  </button>
+                )}
 
                 <NovaMenu
                   label={t('common.more')}
@@ -918,6 +947,18 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                             icon: channel.hideSubscriberCount ? <Eye /> : <EyeOff />,
                             onSelect: () =>
                               onToggleSubscriberPrivacy(channel.id, !channel.hideSubscriberCount),
+                          },
+                        ]
+                      : []),
+                    ...(subscribed
+                      ? [
+                          {
+                            key: 'notifications',
+                            label: notificationsEnabled
+                              ? t('channel.disableNotifications')
+                              : t('channel.enableNotifications'),
+                            icon: notificationsEnabled ? <Bell /> : <BellOff />,
+                            onSelect: toggleNotifications,
                           },
                         ]
                       : []),
@@ -1319,7 +1360,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                                     : 'aspect-square'
                                 }`}
                               >
-                                <img
+                                <LazyMedia
                                   src={src}
                                   alt={post.title}
                                   className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -1653,11 +1694,12 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           onClick={() => setLightbox(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-xl animate-in fade-in"
         >
-          <img
+          <LazyMedia
             src={lightbox.images[lightbox.index]}
             alt={t('common.photo')}
-            onClick={(event) => event.stopPropagation()}
+            eager
             className="max-h-[90vh] max-w-full rounded-2xl object-contain"
+            onClick={(event) => event.stopPropagation()}
           />
           {lightbox.images.length > 1 && (
             <>
@@ -1720,12 +1762,37 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           <button
             type="button"
             onClick={toggleSubscription}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--nova-accent-color)] text-sm font-semibold text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
             aria-label={t('channel.subscribe')}
           >
-            <Bell className="h-4 w-4" />
-            {t('channel.subscribe')} · {formatCount(channel.subscribers)}
+            <Bell className="h-5 w-5" />
+            <span className="text-sm font-medium">{t('channel.subscribe')}</span>
+            <span className="text-xs opacity-80">{formatCount(channel.subscribers)}</span>
           </button>
+        )}
+        {!channel.isOwned && subscribed && (
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={toggleSubscription}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/60 hover:bg-white/10 hover:text-white transition"
+              aria-label={t('channel.unsubscribe')}
+            >
+              <Bell className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleNotifications}
+              className={`flex h-11 w-11 items-center justify-center rounded-full border ${
+                notificationsEnabled
+                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
+                  : 'border-white/10 bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/70'
+              } transition`}
+              aria-label={notificationsEnabled ? t('channel.disableNotifications') : t('channel.enableNotifications')}
+            >
+              {notificationsEnabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+            </button>
+          </div>
         )}
 
         {channel.isOwned && onCreatePost && (

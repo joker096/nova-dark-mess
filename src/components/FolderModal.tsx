@@ -23,6 +23,7 @@ import {
 import { usePremium } from '../hooks/usePremium';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { ChatFolder, ChatItem } from '../types/messenger';
+import { LazyMedia } from './LazyMedia';
 
 interface FolderModalProps {
   isOpen: boolean;
@@ -319,10 +320,11 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="w-7 h-7 rounded-full overflow-hidden bg-[#20222a] shrink-0 border border-white/10 flex items-center justify-center text-[10px] font-bold">
                           {chat.avatar && !chat.isChannel ? (
-                            <img
+                            <LazyMedia
                               src={chat.avatar}
                               alt=""
                               className="w-full h-full object-cover"
+                              eager
                             />
                           ) : (
                             <span>{chat.name.slice(0, 2).toUpperCase()}</span>

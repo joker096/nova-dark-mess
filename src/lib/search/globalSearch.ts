@@ -32,6 +32,45 @@ function normalizeTerm(term: string): string {
   return term.trim().toLowerCase();
 }
 
+/**
+ * In-memory cache for search results, keyed by the items array reference
+ * (WeakMap so entries are dropped when the index is GC'd) and by query +
+ * options. Repeated searches with the same query against the same index hit
+ * RAM instead of re-scanning every message.
+ */
+const searchResultCache = new WeakMap<
+  GlobalSearchItem[],
+  Map<string, GlobalSearchResult[]>
+>();
+
+function cacheKey(query: string, options: GlobalSearchOptions): string {
+  return `${query}|${JSON.stringify(options)}`;
+}
+
+function getCachedResults(
+  items: GlobalSearchItem[],
+  query: string,
+  options: GlobalSearchOptions,
+): GlobalSearchResult[] | null {
+  const byQuery = searchResultCache.get(items);
+  if (!byQuery) return null;
+  return byQuery.get(cacheKey(query, options)) ?? null;
+}
+
+function setCachedResults(
+  items: GlobalSearchItem[],
+  query: string,
+  options: GlobalSearchOptions,
+  results: GlobalSearchResult[],
+): void {
+  let byQuery = searchResultCache.get(items);
+  if (!byQuery) {
+    byQuery = new Map();
+    searchResultCache.set(items, byQuery);
+  }
+  byQuery.set(cacheKey(query, options), results);
+}
+
 export function tokenizeQuery(query: string): string[] {
   return query
     .split(/\s+/)
@@ -67,6 +106,9 @@ export function searchGlobal(
   query: string,
   options: GlobalSearchOptions = {},
 ): GlobalSearchResult[] {
+  const cached = getCachedResults(items, query, options);
+  if (cached) return cached;
+
   const terms = tokenizeQuery(query);
   if (terms.length === 0) return [];
 
@@ -95,7 +137,9 @@ export function searchGlobal(
     return (b.timestamp ?? 0) - (a.timestamp ?? 0);
   });
 
-  return results.slice(0, limit);
+  const finalResults = results.slice(0, limit);
+  setCachedResults(items, query, options, finalResults);
+  return finalResults;
 }
 
 export function buildSearchSnippet(text: string, query: string, radius = 40): string {

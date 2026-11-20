@@ -16,6 +16,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { useAccount } from '../hooks/useAccount';
+import { LazyMedia } from './LazyMedia';
 
 interface VideoCallOverlayProps {
   isOpen: boolean;
@@ -238,9 +239,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               )}`}
             />
           ) : (
-            <img
+            <LazyMedia
               src={avatar}
               alt={name}
+              eager
               className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${getFilterStyle(
                 activeFilter
               )}`}
@@ -313,9 +315,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             )}`}
           />
         ) : (
-          <img
+          <LazyMedia
             src={avatar}
             alt={name}
+            eager
             className={`w-full h-full object-cover scale-[1.02] transition-all duration-700 ${getFilterStyle(
               activeFilter
             )}`}
@@ -431,9 +434,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                   } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
                 />
               ) : account.avatar ? (
-                <img
+                <LazyMedia
                   src={account.avatar}
                   alt="You"
+                  eager
                   className={`w-full h-full object-cover transition-transform duration-300 ${
                     cameraFacing === 'back' ? 'scale-x-[-1]' : ''
                   } ${activeFilter === 'noir' ? 'grayscale' : ''}`}

@@ -24,9 +24,12 @@ export interface TransportBackend {
 
 export interface TransportManagerOptions {
   backends: TransportBackend[];
-  autoProbeInterval?: number; // ms, default: 30000
+  /** Interval between automatic probe rounds (ms). Default: 60000. */
+  autoProbeInterval?: number; // ms, default: 60000
   probeTimeout?: number; // ms, default: 5000
   failoverThreshold?: number; // consecutive failures before failover, default: 3
+  /** Minimum ms between probes of the same backend. Default: 30000. */
+  minProbeInterval?: number; // ms, default: 30000
 }
 
 export interface TransportStatus {
@@ -50,13 +53,16 @@ export class TransportManager {
   private options: Required<TransportManagerOptions>;
   private messageHandlers: Array<(data: Uint8Array) => void> = [];
   private statusChangeHandlers: Array<(status: TransportStatus) => void> = [];
+  private cachedStatus: TransportStatus | null = null;
+  private statusDirty = true;
 
   constructor(options: TransportManagerOptions) {
     this.options = {
       backends: options.backends,
-      autoProbeInterval: options.autoProbeInterval ?? 30000,
-      probeTimeout: options.probeTimeout ?? 5000,
+      autoProbeInterval: options.autoProbeInterval ?? 60_000,
+      probeTimeout: options.probeTimeout ?? 5_000,
       failoverThreshold: options.failoverThreshold ?? 3,
+      minProbeInterval: options.minProbeInterval ?? 30_000,
     };
 
     // Register backends
@@ -73,13 +79,15 @@ export class TransportManager {
 
     // Select initial backend (highest priority available)
     this.currentBackend = this.selectBestBackend()?.id ?? null;
+    this.markStatusDirty();
   }
 
   /**
    * Get current transport status.
    */
   getStatus(): TransportStatus {
-    return {
+    if (!this.statusDirty && this.cachedStatus) return this.cachedStatus;
+    this.cachedStatus = {
       current: this.currentBackend,
       status: this.status,
       latency: this.latency,
@@ -94,6 +102,13 @@ export class TransportManager {
         ]),
       ) as TransportStatus['backends'],
     };
+    this.statusDirty = false;
+    return this.cachedStatus;
+  }
+
+  private markStatusDirty(): void {
+    this.statusDirty = true;
+    this.cachedStatus = null;
   }
 
   /**
@@ -110,11 +125,13 @@ export class TransportManager {
     const backend = this.selectBestBackend();
     if (!backend) {
       this.status = 'blocked';
+      this.markStatusDirty();
       this.notifyStatusChange();
       throw new Error('No available transport backend');
     }
 
     await this.connectToBackend(backend.id);
+    this.markStatusDirty();
   }
 
   /**
@@ -130,6 +147,7 @@ export class TransportManager {
     this.currentBackend = null;
     this.status = 'disconnected';
     this.latency = 0;
+    this.markStatusDirty();
     this.notifyStatusChange();
   }
 
@@ -153,6 +171,7 @@ export class TransportManager {
     try {
       await backend!.send(data);
       this.consecutiveFailures = 0;
+      this.markStatusDirty();
     } catch (err) {
       this.consecutiveFailures++;
       if (this.consecutiveFailures >= this.options.failoverThreshold) {
@@ -182,7 +201,15 @@ export class TransportManager {
    * Probe all backends to measure latency and availability.
    */
   async probeAllBackends(): Promise<void> {
+    const now = Date.now();
     const promises = Array.from(this.backends.values()).map(async (backend) => {
+      // Skip backends probed recently to avoid redundant radio wakeups.
+      if (
+        backend.lastProbe !== null &&
+        now - backend.lastProbe < this.options.minProbeInterval
+      ) {
+        return;
+      }
       const start = Date.now();
       try {
         // Simple probe - try to connect and measure latency
@@ -202,6 +229,7 @@ export class TransportManager {
 
     await Promise.all(promises);
     this.selectBestBackend();
+    this.markStatusDirty();
   }
 
   /**
@@ -249,6 +277,7 @@ export class TransportManager {
 
     if (available.length === 0) {
       this.status = 'blocked';
+      this.markStatusDirty();
       this.notifyStatusChange();
       return;
     }
@@ -259,6 +288,8 @@ export class TransportManager {
 
     await this.disconnect();
     await this.connectToBackend(next.id);
+    this.markStatusDirty();
+    this.notifyStatusChange();
   }
 
   private selectBestBackend(): TransportBackend | null {
@@ -288,9 +319,11 @@ export class TransportManager {
       this.status = 'connected';
       this.latency = backend.latency;
       this.consecutiveFailures = 0;
+      this.markStatusDirty();
       this.notifyStatusChange();
     } catch (err) {
       this.status = 'blocked';
+      this.markStatusDirty();
       this.notifyStatusChange();
       throw err;
     }
@@ -310,6 +343,7 @@ export class TransportManager {
     }
 
     this.notifyStatusChange();
+    this.markStatusDirty();
   }
 
   private handleIncomingMessage(data: Uint8Array): void {

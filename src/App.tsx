@@ -16,6 +16,7 @@ import {
   NovaBadge,
 } from './lib/ui';
 import { ChannelListPanel } from './components/ChannelListPanel';
+import { LazyMedia } from './components/LazyMedia';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
@@ -72,6 +73,8 @@ import { useSecurity } from './hooks/useSecurity';
 import { P2PManager } from './lib/p2p/p2pManager';
 import { P2PSignalingClient } from './lib/p2p/signaling';
 import { MeshRelay } from './lib/p2p/relay';
+import { TransportManager } from './lib/network/TransportManager';
+import type { TransportBackend } from './lib/network/TransportManager';
 import { isPremium } from './lib/premium';
 import { useSocialData } from './hooks/useSocialData';
 import { KYIV_CHANNEL_ID } from './lib/social/store';
@@ -89,6 +92,7 @@ import { playSound } from './lib/notifications/sounds';
 import { buildLiveMeshSnapshot, clearLastGpsFix, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
 import { heartbeatPresence, fetchPresence, resolvePresenceIds } from './lib/p2p/presence';
 import { loadPrivacyPrefs } from './lib/network/privacyMode';
+import { flushOfflineQueueViaRelay } from './lib/network/offlineRelay';
 import { markJoinPending } from './lib/social/groupJoinRequests';
 import { applyContactOverrides } from './lib/contacts/contactOverrides';
 import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
@@ -107,8 +111,9 @@ const OnboardingWizard = lazy(() =>
 type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous' | 'sites';
 
 export default function App() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { account } = useAccount();
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const { isLocked, pinHash, unlock, identity, isInitialized, setP2PManager, peerFingerprintsByChat } = useSecurity();
   const premium = isPremium();
 
@@ -121,6 +126,7 @@ export default function App() {
   // Keep the latest fingerprint→chatId map so P2PManager.onMessage can route
   // incoming messages to the right bot without recreating the transport.
   const peerFingerprintsRef = useRef(peerFingerprintsByChat);
+  const relayRef = useRef<MeshRelay | null>(null);
   useEffect(() => {
     peerFingerprintsRef.current = peerFingerprintsByChat;
   }, [peerFingerprintsByChat]);
@@ -135,13 +141,47 @@ export default function App() {
     let manager: P2PManager | null = null;
     let signaling: P2PSignalingClient | null = null;
     let relay: MeshRelay | null = null;
+    let transportManager: TransportManager | null = null;
     const start = async () => {
       signaling = new P2PSignalingClient();
       relay = new MeshRelay(identity.fingerprint);
+      relayRef.current = relay;
+
+      // Multi-backend transport manager: WebRTC DataChannel is handled per-peer
+      // directly by P2PManager (channel.sendData). TransportManager provides the
+      // fallback mesh relay (BroadcastChannel) plus auto-probing, latency
+      // tracking and failover, and is extensible to WebSocket/TOR backends.
+      const meshBackend: TransportBackend = {
+        id: 'mesh',
+        name: 'Mesh Relay',
+        priority: 1,
+        isAvailable: true,
+        isBlocked: false,
+        latency: 0,
+        lastProbe: null,
+        async connect() { /* mesh relay is connectionless */ },
+        async disconnect() { /* no-op */ },
+        async send(data: Uint8Array) {
+          const payload = JSON.parse(new TextDecoder().decode(data));
+          if (!relay!.send(identity.fingerprint, payload)) {
+            throw new Error('Mesh relay send failed');
+          }
+        },
+      };
+
+      const transportManager = new TransportManager({
+        backends: [meshBackend],
+        autoProbeInterval: 30_000,
+        probeTimeout: 5_000,
+        failoverThreshold: 3,
+      });
+      await transportManager.connect();
+
       manager = new P2PManager({ 
         identity, 
         signaling, 
         relay,
+        transportManager,
         // B4 (L2 gateway transport): route incoming P2P/relay messages to bots
         // so they receive updates even when the chat screen is not mounted.
         onMessage: (fromFingerprint, text) => {
@@ -161,6 +201,7 @@ export default function App() {
               mentionsBot: false,
               from: 'other',
               timestamp: Date.now(),
+              language,
             },
           });
         },
@@ -171,11 +212,36 @@ export default function App() {
     void start();
     return () => {
       manager?.close();
+      transportManager?.disconnect();
       signaling?.close();
       relay?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity, setP2PManager]);
+
+  // Auto-flush the offline message queue when connectivity returns or on a
+  // periodic tick, so messages sent while offline are delivered without the
+  // user having to open Settings → Join Outbox → Retry.
+  useEffect(() => {
+    const flush = async () => {
+      const relay = relayRef.current;
+      if (!relay) return;
+      try {
+        await flushOfflineQueueViaRelay(relay);
+      } catch {
+        /* relay flush failures are retried on the next tick */
+      }
+    };
+
+    const onOnline = () => void flush();
+    window.addEventListener('online', onOnline);
+
+    const interval = window.setInterval(flush, 30_000);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.clearInterval(interval);
+    };
+  }, []);
   const {
     stories,
     channels,
@@ -907,13 +973,14 @@ export default function App() {
             className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
             title={`${account.displayName} (Online)`}
           >
-            {account.avatar && (
-              <img
+            {account.avatar && !avatarLoadFailed && (
+              <LazyMedia
                 src={account.avatar}
                 alt={account.displayName}
+                eager
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                onError={() => {
+                  setAvatarLoadFailed(true);
                 }}
               />
             )}

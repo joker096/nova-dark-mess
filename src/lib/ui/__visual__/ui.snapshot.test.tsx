@@ -98,7 +98,7 @@ describe('UI visual snapshot - NovaAvatar', () => {
     const { container } = render(
       <NovaAvatar src="https://example.com/a.jpg" name="Katie" size="sm" status="online" showStatus />,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="relative w-6 h-6"><img alt="Katie" class="rounded-full object-cover border border-white/10 flex items-center justify-center overflow-hidden w-6 h-6 " src="https://example.com/a.jpg"><span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0c0d11] shadow-sm bg-emerald-400" aria-label="online"></span></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="relative w-6 h-6"><img alt="Katie" class="rounded-full object-cover border border-white/10 flex items-center justify-center overflow-hidden w-6 h-6 " loading="lazy" decoding="async" src="https://example.com/a.jpg"><span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0c0d11] shadow-sm bg-emerald-400" aria-label="online"></span></div>"`);
     expect(screen.getByAltText('Katie')).toHaveAttribute('src', 'https://example.com/a.jpg');
     expect(screen.getByLabelText('online').className).toContain('bg-emerald-400');
   });

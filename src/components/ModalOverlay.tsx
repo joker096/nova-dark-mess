@@ -1,6 +1,7 @@
-import { ReactNode, useEffect, useRef, useCallback, useState } from 'react';
+import React, { ReactNode, useEffect, useRef, useCallback, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Maximize, Minimize, Download } from 'lucide-react';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
+import { LazyMedia } from './LazyMedia';
 
 interface ModalOverlayProps {
   isOpen: boolean;
@@ -185,10 +186,11 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
       >
-        <img
-          ref={imgRef}
+        <LazyMedia
           src={src}
           alt={alt}
+          imgRef={imgRef}
+          eager
           className={`max-w-full max-h-[85vh] object-contain transition-transform duration-100 ${isDragging ? 'cursor-grabbing' : 'cursor-zoom-in'}`}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,

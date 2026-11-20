@@ -19,6 +19,7 @@ import { ChatMessage } from '../../types/messenger';
 import { PremiumFeature } from '../../hooks/usePremium';
 import { useLanguage } from '../../context/LanguageContext';
 import { CHAT_THEME_KEY, CHAT_THEME_ORDER, ChatTheme, PREMIUM_THEMES } from './chatTheme';
+import { LazyMedia } from '../LazyMedia';
 
 interface ChatHeaderProps {
   onBack: () => void;
@@ -402,9 +403,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 }`}
                 title={t('common.profile')}
               >
-                <img
+                <LazyMedia
                   src={profile.avatar}
                   alt={profile.name}
+                  eager
                   className="w-full h-full object-cover"
                 />
                 {/* Real-time live status beacon on avatar */}

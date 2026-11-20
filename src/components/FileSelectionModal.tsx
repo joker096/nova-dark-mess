@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X,
   Image as ImageIcon,
@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { ModalOverlay } from './ModalOverlay';
 import { DocumentAttachment } from '../types/messenger';
+import { LazyMedia } from './LazyMedia';
+import { mediaCache } from '../lib/media/mediaCache';
+import { createThumbnail } from '../lib/media/imageThumbnail';
 
 interface FileSelectionModalProps {
   isOpen: boolean;
@@ -135,6 +138,8 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Generated thumbnails keyed by image URL, cached in mediaCache for reuse.
+  const thumbnailsRef = useRef<Map<string, string>>(new Map());
 
   const toggleImageSelect = (id: string) => {
     setSelectedDocId(null);
@@ -191,6 +196,50 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
       setSelectedDocId(customId);
     }
   };
+
+  // Generate and cache thumbnails for images so the picker renders small
+  // previews instead of full-resolution photos. Cross-origin images are
+  // fetched via mediaCache; decode failures fall back to the full url.
+  useEffect(() => {
+    let cancelled = false;
+    const pending: Promise<void>[] = [];
+    for (const img of SIMULATED_IMAGES) {
+      if (cancelled) break;
+      const cached = mediaCache.get(img.url);
+      if (cached) {
+        thumbnailsRef.current.set(
+          img.url,
+          URL.createObjectURL(new Blob([cached.data as unknown as ArrayBuffer], { type: cached.mime }))
+        );
+        continue;
+      }
+      if (thumbnailsRef.current.has(img.url)) continue;
+      pending.push(
+        (async () => {
+          try {
+            const dataUrl = await createThumbnail(img.url, {
+              maxWidth: 160,
+              maxHeight: 120,
+              quality: 0.5,
+            });
+            if (!cancelled) thumbnailsRef.current.set(img.url, dataUrl);
+          } catch {
+            /* decode/fetch failed: fall back to full url */
+          }
+        })()
+      );
+    }
+    void Promise.all(pending);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const getThumbnailUrl = useCallback((url: string) => {
+    const thumb = thumbnailsRef.current.get(url);
+    if (thumb) return thumb;
+    return url;
+  }, []);
 
   const hasSelected = selectedImageIds.length > 0 || selectedDocId !== null;
 
@@ -352,8 +401,8 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                         : 'border-white/10 hover:border-white/30'
                     }`}
                   >
-                    <img
-                      src={img.url}
+                    <LazyMedia
+                      src={getThumbnailUrl(img.url)}
                       alt={img.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />

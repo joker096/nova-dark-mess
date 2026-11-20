@@ -45,6 +45,7 @@ interface RenderMarkdownProps {
 }
 
 export function renderMarkdown({ text, onLinkPress }: RenderMarkdownProps): ReactNode {
+  if (!text) return <></>;
   // Links: [text](url) — processed first on raw text
   const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
   const parts: Array<string | { type: 'link'; text: string; url: string }> = [];

@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { ImgHTMLAttributes } from 'react';
+import { LazyMedia } from '../../components/LazyMedia';
 
 interface NovaAvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'size'> {
   name?: string;
@@ -52,11 +53,12 @@ export const NovaAvatar = forwardRef<HTMLDivElement, NovaAvatarProps>(
         className={`relative ${sizeClass}`}
       >
         {hasImage ? (
-          <img
+          <LazyMedia
             src={src}
             alt={name || ''}
+            eager
             className={`${BASE_AVATAR} ${sizeClass} ${className ?? ''}`}
-            {...props}
+            {...(props as Record<string, unknown>)}
           />
         ) : (
           <div

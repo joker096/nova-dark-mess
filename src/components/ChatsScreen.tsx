@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { LazyMedia } from './LazyMedia';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { useAccount } from '../hooks/useAccount';
 import {
@@ -574,13 +575,10 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             title={t('profile.title')}
           >
             {account.avatar && (
-              <img
+              <LazyMedia
                 src={account.avatar}
                 alt={account.displayName}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
               />
             )}
             <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
@@ -800,25 +798,18 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                             ) : chat.groupAvatars ? (
                               <div className="w-12 h-12 rounded-full bg-[#20222a] relative overflow-hidden border border-white/10 flex items-center justify-center">
                                 <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                                  <img src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
+                                  <LazyMedia src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="absolute top-0.5 right-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                                  <img src={chat.groupAvatars[1]} alt="" className="w-full h-full object-cover" />
+                                  <LazyMedia src={chat.groupAvatars[1]} alt="" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="absolute bottom-0.5 left-3 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                                  <img src={chat.groupAvatars[2]} alt="" className="w-full h-full object-cover" />
+                                  <LazyMedia src={chat.groupAvatars[2]} alt="" className="w-full h-full object-cover" />
                                 </div>
                               </div>
                             ) : (
                               <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-[#20222a] relative">
-                                <img
-                                  src={chat.avatar}
-                                  alt={chat.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                  }}
-                                />
+                                <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
                                 <div className="w-full h-full bg-[#232530] flex items-center justify-center text-xs font-bold text-white/70">
                                   {chat.name.slice(0, 2).toUpperCase()}
                                 </div>
@@ -904,13 +895,10 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                               CH
                             </div>
                           ) : (
-                            <img
+                            <LazyMedia
                               src={match.chatAvatar}
                               alt=""
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
                             />
                           )}
                         </div>
@@ -964,7 +952,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                   className="w-[84px] h-[116px] rounded-[20px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-white/5 shadow-md shadow-black/40"
                   aria-label={`Story from ${story.name}`}
                 >
-                  <img
+                  <LazyMedia
                     src={story.coverImage}
                     alt={story.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
@@ -980,7 +968,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
                   <div className="absolute bottom-2 inset-x-0 flex flex-col items-center">
                     <div className="w-6 h-6 rounded-full overflow-hidden border-[1.5px] border-[var(--nova-accent-color)] shadow-sm mb-1 bg-black/40">
-                      <img
+                      <LazyMedia
                         src={story.avatar}
                         alt=""
                         className="w-full h-full object-cover"
@@ -1116,25 +1104,18 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     ) : chat.groupAvatars ? (
                       <div className="w-12 h-12 rounded-full bg-[#20222a] relative overflow-hidden border border-white/10 flex items-center justify-center">
                         <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                          <img src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
+                          <LazyMedia src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
                         </div>
                         <div className="absolute top-0.5 right-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                          <img src={chat.groupAvatars[1]} alt="" className="w-full h-full object-cover" />
+                          <LazyMedia src={chat.groupAvatars[1]} alt="" className="w-full h-full object-cover" />
                         </div>
                         <div className="absolute bottom-0.5 left-3 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
-                          <img src={chat.groupAvatars[2]} alt="" className="w-full h-full object-cover" />
+                          <LazyMedia src={chat.groupAvatars[2]} alt="" className="w-full h-full object-cover" />
                         </div>
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-[#20222a] relative">
-                        <img
-                          src={chat.avatar}
-                          alt={chat.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
+                        <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
                         <div className="w-full h-full bg-[#232530] flex items-center justify-center text-xs font-bold text-white/70">
                           {chat.name.slice(0, 2).toUpperCase()}
                         </div>
