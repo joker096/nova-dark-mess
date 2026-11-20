@@ -643,6 +643,7 @@
     "activeSessions": "活跃会话",
     "dataStorage": "数据与存储",
     "storageUsage": "存储使用情况",
+    "storageLoading": "Loading…",
     "autoDownload": "自动下载媒体",
     "clearCache": "清除缓存",
     "dataBackup": "备份与恢复",
@@ -701,7 +702,10 @@
     "termsOfService": "服务条款",
     "privacyPolicy": "隐私政策",
     "rerunSetup": "再次运行安装程序",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "聊天壁纸",

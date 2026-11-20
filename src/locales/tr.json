@@ -583,6 +583,7 @@
     "activeSessions": "Aktif oturumlar",
     "dataStorage": "Veri ve depolama",
     "storageUsage": "Depolama kullanımı",
+    "storageLoading": "Loading…",
     "autoDownload": "Medya otomatik indirme",
     "clearCache": "Önbelleği temizle",
     "dataBackup": "Yedekleme ve geri yükleme",

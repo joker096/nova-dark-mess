@@ -643,6 +643,7 @@
     "activeSessions": "सक्रिय सत्र",
     "dataStorage": "डेटा एवं भंडारण",
     "storageUsage": "भंडारण उपयोग",
+    "storageLoading": "Loading…",
     "autoDownload": "ऑटो-डाउनलोड मीडिया",
     "clearCache": "कैश साफ़ करें",
     "dataBackup": "बैकअप और पुनर्स्थापना",
@@ -701,7 +702,10 @@
     "termsOfService": "सेवा की शर्तें",
     "privacyPolicy": "गोपनीयता नीति",
     "rerunSetup": "सेटअप फिर से चलाएँ",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "चैट वॉलपेपर",

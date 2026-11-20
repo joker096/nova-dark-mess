@@ -585,6 +585,7 @@
     "activeSessions": "Sesiones activas",
     "dataStorage": "Datos y almacenamiento",
     "storageUsage": "Uso de almacenamiento",
+    "storageLoading": "Loading…",
     "autoDownload": "Descarga automática de medios",
     "clearCache": "Borrar caché",
     "dataBackup": "Copia de seguridad y restauración",

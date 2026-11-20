@@ -643,6 +643,7 @@
     "activeSessions": "Sessioni attive",
     "dataStorage": "Dati e archiviazione",
     "storageUsage": "Utilizzo dello spazio di archiviazione",
+    "storageLoading": "Loading…",
     "autoDownload": "Scarica automaticamente i contenuti multimediali",
     "clearCache": "Cancella cache",
     "dataBackup": "Backup e ripristino",
@@ -701,7 +702,10 @@
     "termsOfService": "Termini di servizio",
     "privacyPolicy": "Informativa sulla privacy",
     "rerunSetup": "Esegui nuovamente la configurazione",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "Sfondo della chat",

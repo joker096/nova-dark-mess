@@ -438,6 +438,7 @@
     "activeSessions": "Активнi сесiї",
     "dataStorage": "Данi та пам'ять",
     "storageUsage": "Використання пам'ятi",
+    "storageLoading": "Loading…",
     "autoDownload": "Автозавантаження медiа",
     "clearCache": "Очистити кеш",
     "dataBackup": "Резервне копіювання",

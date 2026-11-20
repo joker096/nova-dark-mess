@@ -643,6 +643,7 @@
     "activeSessions": "활성 세션",
     "dataStorage": "데이터 및 스토리지",
     "storageUsage": "스토리지 사용량",
+    "storageLoading": "Loading…",
     "autoDownload": "미디어 자동 다운로드",
     "clearCache": "캐시 지우기",
     "dataBackup": "백업 및 복원",
@@ -701,7 +702,10 @@
     "termsOfService": "서비스 약관",
     "privacyPolicy": "개인 정보 보호 정책",
     "rerunSetup": "설정을 다시 실행하세요.",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "biometricUnlockWithPin": "Fingerprint/Face unlock (with PIN fallback)",
+    "biometricHintWithPin": "Use fingerprint or face to unlock. PIN is always required as fallback.",
+    "changePin": "Change PIN"
   },
   "wallpaper": {
     "title": "채팅 배경화면",
