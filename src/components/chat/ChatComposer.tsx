@@ -5,6 +5,7 @@ import { ScrollableRow } from '../../lib/ui/ScrollableRow';
 import { ChatMessage, DocumentAttachment, VoiceNoteData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 import { VoiceMemoInput, VoiceMemoInputHandle } from '../VoiceMemoInput';
+import { LazyMedia } from '../LazyMedia';
 
 interface ChatComposerProps {
   isAttachmentMenuOpen: boolean;
@@ -195,7 +196,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
                 {stagedAttachment.images.slice(0, 3).map((url, i) => (
-                  <img
+                  <LazyMedia
                     key={i}
                     src={url}
                     alt=""

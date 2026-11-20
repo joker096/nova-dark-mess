@@ -51,6 +51,7 @@ import {
 } from '../lib/p2p/deviceLinking';
 import { createHandle } from '../lib/crypto/handles';
 import { isPremium } from '../lib/premium';
+import { LazyMedia } from './LazyMedia';
 
 interface ProfileScreenProps {
   profileId: string;
@@ -634,10 +635,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div className="relative mb-3">
           <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[var(--nova-accent-color)]/40 shadow-xl shadow-black/80">
             {avatar && !avatarLoadFailed ? (
-              <img
+              <LazyMedia
                 src={avatar}
                 alt={profile.name}
                 className="w-full h-full rounded-full object-cover"
+                eager
                 onError={() => setAvatarLoadFailed(true)}
               />
             ) : (
@@ -1226,11 +1228,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         aria-label={item.caption || t('profile.sharedMedia')}
                         className="aspect-square rounded-2xl overflow-hidden bg-[#181921] border border-white/5 relative group cursor-pointer active:scale-95 transition shadow-sm hover:border-white/20"
                       >
-                        <img
+                        <LazyMedia
                           src={item.type === 'video' ? item.thumbnail || item.url : item.url}
                           alt={item.caption || t('profile.sharedMedia')}
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                          loading="lazy"
                         />
 
                         {/* Video Specific Badges & Overlays */}
@@ -1404,10 +1405,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div className="fixed inset-0 z-50 bg-[#0c0d12]/95 backdrop-blur-xl flex flex-col items-center justify-between py-16 px-6 animate-in fade-in">
           <div className="flex flex-col items-center space-y-3 mt-8">
             <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[var(--nova-accent-color)] shadow-2xl p-1 animate-pulse">
-              <img
+              <LazyMedia
                 src={avatar}
                 alt=""
                 className="w-full h-full rounded-full object-cover"
+                eager
               />
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
@@ -1592,7 +1594,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
             ) : (
               <div className="relative max-w-sm w-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#14151b]">
-                <img
+                <LazyMedia
                   src={activeMediaItem.url}
                   alt={activeMediaItem.caption || ''}
                   className="w-full h-auto max-h-[65vh] object-cover rounded-3xl"

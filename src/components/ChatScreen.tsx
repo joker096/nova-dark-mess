@@ -64,6 +64,7 @@ import { HttpMessageSink } from '../lib/bots/httpSink';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
+import { LazyMedia } from './LazyMedia';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
 import { WallpaperSettingsModal } from './WallpaperSettingsModal';
 import { ScheduleMessageModal } from './ScheduleMessageModal';
@@ -2841,7 +2842,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   </span>
                 </>
               ) : (
-                <img
+                <LazyMedia
                   src={url}
                   alt=""
                   className="h-full w-full object-cover transition duration-300 hover:scale-105"
@@ -3048,11 +3049,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   aria-label={t('common.profile')}
                 >
                   <span className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 ring-2 ring-[var(--nova-accent-color, #ff4e18)]/20 shrink-0">
-                    <img
-                      src={profile.avatar}
-                      alt={profile.name}
-                      className="w-full h-full object-cover"
-                    />
+                      <LazyMedia
+                        src={profile.avatar}
+                        alt={profile.name}
+                        className="w-full h-full object-cover"
+                      />
                     {isProfileOnline && !isTyping && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
                     )}
@@ -3520,7 +3521,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   {currentPinnedMsg.images && currentPinnedMsg.images.length > 0 ? (
                     <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                      <img
+                      <LazyMedia
                         src={currentPinnedMsg.images[0]}
                         alt=""
                         className="w-full h-full object-cover"
@@ -4964,7 +4965,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
                   {stagedAttachment.images.slice(0, 3).map((url, i) => (
-                    <img
+                    <LazyMedia
                       key={i}
                       src={url}
                       alt=""
@@ -5672,7 +5673,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   onClick={() => handleForwardToChat(chat.id)}
                   className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition cursor-pointer"
                 >
-                  <img
+                  <LazyMedia
                     src={chat.avatar}
                     alt=""
                     className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
@@ -5881,9 +5882,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   className="max-h-[85vh] max-w-[85vw] rounded-xl bg-black"
                 />
               ) : (
-                <img
+                <LazyMedia
                   src={mediaLightbox.urls[mediaLightbox.index]}
                   alt={`Media ${mediaLightbox.index + 1}`}
+                  eager
                   className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
                 />
               )}

@@ -3,6 +3,7 @@ import { Check, Image as ImageIcon, Upload } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { MEDIA_PRESETS, type MediaPreset } from '../data/mediaPresets';
 import { readImageFile } from '../lib/ui/image';
+import { LazyMedia } from './LazyMedia';
 
 interface ImagePickerProps {
   value: string | null;
@@ -57,7 +58,12 @@ export const ImagePicker: React.FC<ImagePickerProps> = ({
         className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#101118] ${ASPECT_CLASS[aspect]}`}
       >
         {value ? (
-          <img src={value} alt="" className="h-full w-full object-cover" />
+          <LazyMedia
+            src={value}
+            alt=""
+            eager
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/30">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5">
@@ -105,7 +111,12 @@ export const ImagePicker: React.FC<ImagePickerProps> = ({
                   : 'border-white/5 opacity-70 hover:opacity-100'
               }`}
             >
-              <img src={preset.url} alt="" className="h-full w-full object-cover" />
+              <LazyMedia
+                src={preset.url}
+                alt=""
+                eager
+                className="h-full w-full object-cover"
+              />
               {selected && (
                 <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-white shadow">
                   <Check className="h-2.5 w-2.5" />

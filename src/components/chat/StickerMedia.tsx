@@ -1,5 +1,6 @@
 import React from 'react';
 import { StickerData } from '../../types/messenger';
+import { LazyMedia } from '../LazyMedia';
 
 export function isVideoStickerSource(url?: string): boolean {
   if (!url) return false;
@@ -41,12 +42,13 @@ export const StickerMedia: React.FC<StickerMediaProps> = ({
   const source = sticker.animationUrl || sticker.imageUrl || sticker.thumbUrl;
   if (source) {
     return (
-      <img
+      <LazyMedia
         src={source}
         alt={sticker.name}
         className={className}
         draggable={false}
         data-testid={`sticker-image-${sticker.id}`}
+        eager
       />
     );
   }

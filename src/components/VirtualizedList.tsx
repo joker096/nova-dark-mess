@@ -58,10 +58,18 @@ export function VirtualizedList<T>({
   const heightsRef = useRef<Map<number, number>>(new Map());
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const scrollTicking = useRef(false);
+  const onScrollRef = useRef(onScroll);
+
+  // Keep the latest onScroll handler without recreating handleScroll (and thus
+  // re-attaching the DOM listener) on every render when the parent passes an
+  // inline arrow function.
+  useLayoutEffect(() => {
+    onScrollRef.current = onScroll;
+  });
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      onScroll?.(e);
+      onScrollRef.current?.(e);
       const value = e.currentTarget.scrollTop;
       if (scrollTicking.current) return;
       scrollTicking.current = true;
@@ -70,7 +78,7 @@ export function VirtualizedList<T>({
         setScrollTop((prev) => (prev === value ? prev : value));
       });
     },
-    [onScroll],
+    [],
   );
 
   // Track the visible viewport height from the DOM so the window follows
@@ -100,7 +108,7 @@ export function VirtualizedList<T>({
         setRecompute((k) => k + 1);
       }
     });
-  }, [items, scrollTop, recompute]);
+  }, [items, recompute]);
 
   const getItemSize = useCallback(
     (index: number) => heightsRef.current.get(index) ?? itemHeight,

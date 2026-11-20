@@ -4,6 +4,7 @@ import { STICKER_PACKS, MOCK_GIFS } from '../../data/stickers';
 import { StickerData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePremium } from '../../hooks/usePremium';
+import { LazyMedia } from '../LazyMedia';
 import {
   addImportedStickerPack,
   allStickerEntries,
@@ -553,7 +554,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 onClick={() => onSendGif(gif.url, gif.title)}
                 className="group relative rounded-2xl overflow-hidden h-24 bg-black/40 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
               >
-                <img
+                <LazyMedia
                   src={gif.previewUrl}
                   alt={gif.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"

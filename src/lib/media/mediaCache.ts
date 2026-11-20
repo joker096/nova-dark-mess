@@ -152,3 +152,6 @@ export function createMediaCache(options: MediaCacheOptions = {}) {
 }
 
 export type MediaCache = ReturnType<typeof createMediaCache>;
+
+/** Shared application-wide media cache. */
+export const mediaCache = createMediaCache();

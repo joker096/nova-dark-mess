@@ -1,4 +1,5 @@
 import React from 'react';
+import { LazyMedia } from './LazyMedia';
 
 interface ChannelAvatarProps {
   avatar?: string;
@@ -40,7 +41,12 @@ export const ChannelAvatar: React.FC<ChannelAvatarProps> = ({
       <div
         className={`${SIZE_CLASS[size]} shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#20222a] ${className ?? ''}`.trim()}
       >
-        <img src={avatar} alt={name} className="h-full w-full object-cover" />
+        <LazyMedia
+  src={avatar}
+  alt={name}
+  className="h-full w-full object-cover"
+  eager
+/>
       </div>
     );
   }

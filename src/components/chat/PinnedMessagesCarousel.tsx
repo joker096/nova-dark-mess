@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, Mic, Pin, PinOff, X } from 'lucide-react';
 import { ChatMessage } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
+import { LazyMedia } from '../LazyMedia';
 
 interface PinnedMessagesCarouselProps {
   isPinnedCarouselOpen: boolean;
@@ -96,7 +97,7 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
               <div className="flex items-start gap-2.5 min-w-0 flex-1">
                 {currentPinnedMsg.images && currentPinnedMsg.images.length > 0 ? (
                   <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                    <img
+                    <LazyMedia
                       src={currentPinnedMsg.images[0]}
                       alt=""
                       className="w-full h-full object-cover"

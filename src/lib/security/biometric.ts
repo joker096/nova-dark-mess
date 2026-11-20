@@ -7,6 +7,8 @@
  * leaves the device and no key material is derived from the biometric result.
  */
 
+import { getCachedItem, setCachedItem } from '../storage/localStorageCache';
+
 const CREDENTIAL_ID_KEY = 'nova_biometric_credential_id';
 
 function randomChallenge(): Uint8Array<ArrayBuffer> {
@@ -54,7 +56,11 @@ export async function isBiometricSupported(): Promise<boolean> {
 
 export function getBiometricCredentialId(): string | null {
   try {
-    return localStorage.getItem(CREDENTIAL_ID_KEY);
+    const cached = getCachedItem<string>(CREDENTIAL_ID_KEY);
+    if (cached !== null) return cached;
+    const value = localStorage.getItem(CREDENTIAL_ID_KEY);
+    setCachedItem(CREDENTIAL_ID_KEY, value);
+    return value;
   } catch {
     return null;
   }
@@ -97,6 +103,7 @@ export async function registerBiometricCredential(): Promise<string | null> {
     if (!credential) return null;
     const id = toBase64Url(credential.rawId);
     localStorage.setItem(CREDENTIAL_ID_KEY, id);
+    setCachedItem(CREDENTIAL_ID_KEY, id);
     return id;
   } catch {
     return null;

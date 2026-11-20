@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   X,
   Play,
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { ChatMessage, SharedMediaItem } from '../types/messenger';
 import { KATIE_SHARED_MEDIA, CONTACT_PROFILES } from '../data/mockMessengerData';
+import { LazyMedia } from './LazyMedia';
+import { createThumbnail } from '../lib/media/imageThumbnail';
 
 interface SharedMediaSectionProps {
   messages: ChatMessage[];
@@ -42,6 +44,8 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Thumbnails generated on demand for chat-shared images that lack one.
+  const generatedThumbnailsRef = useRef<Map<string, string>>(new Map());
 
   const showToast = (text: string) => {
     setToastMessage(text);
@@ -97,6 +101,38 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
 
     return list;
   }, [messages]);
+
+  // Generate thumbnails on demand for images missing one, so the gallery
+  // renders small previews instead of full-resolution photos.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const item of allMediaItems) {
+        if (cancelled) return;
+        if (item.type !== 'image' || item.thumbnail) continue;
+        if (generatedThumbnailsRef.current.has(item.url)) continue;
+        try {
+          const thumb = await createThumbnail(item.url, {
+            maxWidth: 200,
+            maxHeight: 200,
+            quality: 0.6,
+          });
+          if (!cancelled) generatedThumbnailsRef.current.set(item.url, thumb);
+        } catch {
+          /* cross-origin or decode failure: fall back to full url */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [allMediaItems]);
+
+  const getThumbnailUrl = useCallback(
+    (item: SharedMediaItem) =>
+      generatedThumbnailsRef.current.get(item.url) ?? item.thumbnail ?? item.url,
+    [],
+  );
 
   // 2. Filter by type (all / photos / videos) and search query
   const filteredMedia = useMemo(() => {
@@ -369,11 +405,10 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                       className="group relative aspect-square rounded-xl overflow-hidden bg-[#181922] border border-white/5 hover:border-[var(--nova-accent-color)]/60 cursor-pointer shadow-md transition-all duration-200 active:scale-[0.97]"
                     >
                       {/* Media Image / Thumbnail */}
-                      <img
-                        src={item.thumbnail || item.url}
+                      <LazyMedia
+                        src={getThumbnailUrl(item)}
                         alt={item.caption || 'Shared media'}
                         className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-300"
-                        loading="lazy"
                       />
 
                       {/* Video Indicator Overlay */}
@@ -517,7 +552,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                   }}
                   className="flex items-center justify-center"
                 >
-                  <img
+                  <LazyMedia
                     src={activeLightboxItem.url}
                     alt={activeLightboxItem.caption || 'Shared photo'}
                     className="max-h-[75vh] max-w-full object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"

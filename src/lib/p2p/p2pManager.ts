@@ -20,6 +20,7 @@ import { encodePqSecret, generatePqKemKeyPair } from '../crypto/postQuantum';
 import { P2PConnectionState, P2PMessengerChannel } from './webrtc';
 import { P2PSignalingClient, SignalingMessage } from './signaling';
 import { MeshRelay } from './relay';
+import { TransportManager } from '../network/TransportManager';
 
 export interface P2PStorage {
   loadPreKeyStore<T>(owner: string): Promise<T | null>;
@@ -51,6 +52,9 @@ export interface P2PManagerOptions {
   onError?: (error: Error, peerFingerprint?: string) => void;
   /** Cached prekey bundles older than this are refreshed before re-keying. */
   bundleMaxAgeMs?: number;
+  /** Optional multi-backend transport used as fallback when WebRTC/DataChannel
+   *  is unavailable or blocked. */
+  transportManager?: TransportManager;
 }
 
 interface PeerRecord {
@@ -75,6 +79,7 @@ export class P2PManager {
   private readonly signaling: P2PSignalingClient;
   private readonly storage?: P2PStorage;
   private readonly relay?: MeshRelay;
+  private readonly transportManager?: TransportManager;
   private readonly onMessage?: (from: string, plaintext: string) => void;
   private readonly onPeerStateChange?: (state: P2PConnectionState) => void;
   private readonly onError?: (error: Error, peer?: string) => void;
@@ -90,6 +95,7 @@ export class P2PManager {
     this.signaling = options.signaling ?? new P2PSignalingClient({ url: options.signalingUrl });
     this.storage = options.storage;
     this.relay = options.relay;
+    this.transportManager = options.transportManager;
     this.onMessage = options.onMessage;
     this.onPeerStateChange = options.onPeerStateChange;
     this.onError = options.onError;
@@ -543,6 +549,15 @@ export class P2PManager {
     }
     if (this.relay?.send(peer.fingerprint, payload)) {
       return true;
+    }
+    if (this.transportManager) {
+      const data = new TextEncoder().encode(JSON.stringify(payload));
+      try {
+        void this.transportManager.send(data);
+        return true;
+      } catch (err) {
+        this.onError?.(err instanceof Error ? err : new Error(String(err)), peer.fingerprint);
+      }
     }
     peer.pendingPayloads.push(payload);
     return false;
