@@ -44,6 +44,7 @@ import {
   ShieldCheck,
   VolumeX,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -73,6 +74,10 @@ import { PollCreateModal } from './PollCreateModal';
 import { MessageInlineKeyboard } from './MessageInlineKeyboard';
 import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
+import {
+  isNotificationsEnabled,
+  setNotificationsEnabledForChannel,
+} from '../lib/social/channelSubscriptions';
 import { renderMarkdown } from '../lib/markdown';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
@@ -879,7 +884,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }, [chatId, triggerPinnedToast]);
 
   const [inputText, setInputText] = useState('');
-  const [formatState, setFormatState] = useState<{ bold: boolean; italic: boolean; code: boolean; strike: boolean }>({
+  const [formatState, _setFormatState] = useState<{ bold: boolean; italic: boolean; code: boolean; strike: boolean }>({
     bold: false,
     italic: false,
     code: false,
@@ -959,6 +964,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   });
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState<boolean>(() =>
+    isNotificationsEnabled(chatId),
+  );
+
+  const toggleChatNotifications = () => {
+    const next = !chatNotificationsEnabled;
+    setChatNotificationsEnabled(next);
+    setNotificationsEnabledForChannel(chatId, next);
+    void triggerPinnedToast(next ? t('chat.notificationsEnabled') : t('chat.notificationsDisabled'));
+  };
   const moreMenuAnchorRef = useRef<HTMLButtonElement | null>(null);
   const moreMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -2597,11 +2612,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
       return prev ? `${open}${prev}${close}` : prev;
     });
-    mainInputRef.current?.focus();
-  };
-
-  const toggleFormat = (fmt: keyof typeof formatState) => {
-    setFormatState((prev) => ({ ...prev, [fmt]: !prev[fmt] }));
     mainInputRef.current?.focus();
   };
 
@@ -5779,6 +5789,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color, #ff4e18)]" />
                 <span>{t('chat.chatTheme')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  toggleChatNotifications();
+                  setIsMoreMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition cursor-pointer ${
+                  chatNotificationsEnabled
+                    ? 'text-white/80 hover:bg-white/5'
+                    : 'text-[#8c919d] hover:bg-white/5'
+                }`}
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>
+                  {chatNotificationsEnabled
+                    ? t('chat.disableNotifications')
+                    : t('chat.enableNotifications')}
+                </span>
               </button>
               {scheduledMessages.length > 0 && (
                 <button
