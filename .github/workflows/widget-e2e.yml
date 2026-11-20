@@ -1,0 +1,46 @@
+name: Widget E2E CI
+
+on:
+  push:
+    paths:
+      - 'packages/widget/**'
+  pull_request:
+    paths:
+      - 'packages/widget/**'
+
+jobs:
+  widget-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/widget/package-lock.json
+
+      - name: Install widget dependencies
+        working-directory: packages/widget
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: packages/widget
+        run: npx playwright install chromium --with-deps
+
+      - name: Build widget
+        working-directory: packages/widget
+        run: npm run build
+
+      - name: Run Playwright e2e tests
+        working-directory: packages/widget
+        run: npm run test:e2e
+
+      # ── Secret scanning ──────────────────────────────────────────────────
+      - name: Scan for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v1.18.0
+        with:
+          command: detect
+          flags: --no-git --source packages/widget --config ../../.gitleaks.toml --exit-code 1
+          report: true
