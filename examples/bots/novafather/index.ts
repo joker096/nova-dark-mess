@@ -438,7 +438,7 @@ const novafatherBot: BotModule = {
           state.pendingAction = { type: 'gateway_bot', data: { botId } };
           await saveUserState(ctx, userId, state);
           await ctx.editMessage(chat.id, messageId,
-            `🌐 <b>Gateway for ${bot.manifest.name}</b>\n\nEnter the L2/L3 gateway URL:\n\n<i>Example: https://gateway.your-domain.com</i>\n\n<i>The bot will use this gateway for L2/L3 transport instead of local L1 mode.</i>`,
+            `🌐 <b>Gateway for ${bot.manifest.name}</b>\n\nEnter the L2/L3 gateway URL, or "none" to clear it:\n\n<i>Example: https://gateway.your-domain.com</i>\n\n<i>The bot will use this gateway for L2/L3 transport instead of local L1 mode.</i>`,
             { keyboard: [[{ text: '❌ Cancel', callback_data: `manage:${botId}` }]] }
           );
           await ctx.answerCallbackQuery(queryId);
@@ -563,9 +563,18 @@ async function handlePendingAction(
       // In real impl, would call gateway.setWebhook
       await ctx.sendMessage(chatId, `✅ Webhook set to: ${text}`);
     } else if (action.type === 'gateway_bot') {
-      action.data.gatewayUrl = text;
-      // In real impl, would update bot manifest
-      await ctx.sendMessage(chatId, `✅ Gateway URL set: ${text}`);
+      const value = text.trim();
+      const gatewayUrl = value.toLowerCase() === 'none' ? undefined : value;
+      try {
+        await ctx.setGatewayUrl(action.data.botId, gatewayUrl);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid gateway URL';
+        await ctx.sendMessage(chatId, `❌ ${message}\n\nSend a valid https:// URL or "none" to clear.`);
+        return;
+      }
+      state.bots = await ctx.listBots();
+      await ctx.sendMessage(chatId,
+        gatewayUrl ? `✅ Gateway URL set: ${gatewayUrl}` : '✅ Gateway URL cleared');
     } else if (action.type === 'commands_bot') {
       try {
         const commands = JSON.parse(text);

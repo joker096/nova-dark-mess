@@ -224,12 +224,15 @@ the bot's private key):
       a bundled code module, so the command explains that a manifest must be
       installed via Settings → Bots. Creating an L1 module from chat remains
       out of scope until a template/storage design exists.
-- [ ] `/token`, `/revoke`, `/setwebhook`, `/setgateway`, `/setcommands`,
-      `/setdescription` still use chat-local demo state; wiring them to
-      `BotSession.setGatewayUrl` and the gateway token store is open.
-- [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots` and the
-      toggle callback through `BotRuntime` + `BotAdminApi`; transport-level E2E
-      is still missing.
+- [x] `/setgateway` updates the installed manifest through
+      `BotSession.setGatewayUrl` (a `none` value clears it and invalid URLs are
+      rejected); the list refreshes from the registry afterwards.
+- [ ] `/token`, `/revoke`, `/setwebhook`, `/setcommands`, `/setdescription`
+      still use chat-local demo state; wiring them to the gateway token store
+      and manifest update API is open.
+- [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots`, the
+      toggle callback and the gateway flow through `BotRuntime` +
+      `BotAdminApi`; transport-level E2E is still missing.
 
 ### Phase B7 — Mini Apps (deferred; 1 week when scheduled)
 
