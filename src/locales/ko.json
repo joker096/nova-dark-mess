@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "통화 품질",
+    "callQualityTitle": "실시간 통화 품질 메트릭",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "손실: ",
+    "callQualityGood": "최상",
+    "callQualityFair": "보통",
+    "callQualityPoor": "나쁨",
+    "ipHidden": "IP 숨김",
+    "ipHiddenTitle": "미디어가 TURN을 통해 전달됨 — 상대방에게 내 IP 숨김",
+    "ipVisible": "IP 표시",
+    "ipVisibleTitle": "직접 P2P 미디어 스트림: 상대방이 내 IP를 볼 수 있음. 설정 → 개인정보에서 '통화 중 내 IP 숨기기'를 활성화하여 미디어를 TURN으로 라우팅하세요."
   },
   "analytics": {
     "title": "분석 대시보드",

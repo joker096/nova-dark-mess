@@ -869,7 +869,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "جودة المكالمة",
+    "callQualityTitle": "مقاييس جودة المكالمة في الوقت الفعلي",
+    "callQualityBitrateUp": "كيلوبت/ث ↑",
+    "callQualityBitrateDown": "كيلوبت/ث ↓",
+    "callQualityRtt": "مilis RTT",
+    "callQualityLoss": "فقدان: ",
+    "callQualityGood": "ممتاز",
+    "callQualityFair": "مقبول",
+    "callQualityPoor": "سيء",
+    "ipHidden": "IP مخفي",
+    "ipHiddenTitle": "الوسائط تمر عبر TURN — عنوان IP الخاص بك مخفي عن الطرف الآخر",
+    "ipVisible": "IP مرئي",
+    "ipVisibleTitle": "تدفق وسائط P2P مباشر: الطرف الآخر يمكنه رؤية عنوان IP الخاص بك. فعّل 'إخفاء IP في المكالمات' في الإعدادات → الخصوصية لتوجيه الوسائط عبر TURN."
   },
   "analytics": {
     "title": "لوحة التحليلات",

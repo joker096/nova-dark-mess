@@ -865,7 +865,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Arama Kalitesi",
+    "callQualityTitle": "Gerçek Zamanlı Arama Kalitesi Metrikleri",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Kayıp: ",
+    "callQualityGood": "Mükemmel",
+    "callQualityFair": "Kabul Edilebilir",
+    "callQualityPoor": "Kötü",
+    "ipHidden": "IP Gizli",
+    "ipHiddenTitle": "Medya TURN üzerinden — IP'niz karşı taraftan gizli",
+    "ipVisible": "IP Görünür",
+    "ipVisibleTitle": "Doğrudan P2P medya akışı: karşı taraf IP'nizi görebilir. Ayarlar → Gizlilik'te 'Aramalarda IP'mi Gizle'yi etkinleştirerek medyayı TURN üzerinden yönlendirin."
   },
   "analytics": {
     "title": "Analitik Paneli",

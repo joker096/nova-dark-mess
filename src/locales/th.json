@@ -865,7 +865,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "คุณภาพการโทร",
+    "callQualityTitle": "เมตริกคุณภาพการโทรแบบเรียลไทม์",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "สูญเสีย: ",
+    "callQualityGood": "ดีเยี่ยม",
+    "callQualityFair": "ปานกลาง",
+    "callQualityPoor": "แย่",
+    "ipHidden": "IP ซ่อน",
+    "ipHiddenTitle": "สื่อผ่าน TURN — IP ของคุณถูกซ่อนจากฝ่ายตรงข้าม",
+    "ipVisible": "IP แสดง",
+    "ipVisibleTitle": "สตรีมมีเดีย P2P โดยตรง: ฝ่ายตรงข้ามมองเห็น IP ของคุณ เปิดใช้งาน 'ซ่อน IP ของฉันในการโทร' ใน การตั้งค่า → ความเป็นส่วนตัว เพื่อส่งสื่อผ่าน TURN"
   },
   "analytics": {
     "title": "แดชบอร์ดวิเคราะห์ข้อมูล",

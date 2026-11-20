@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "通話品質",
+    "callQualityTitle": "リアルタイム通話品質メトリクス",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "損失: ",
+    "callQualityGood": "優秀",
+    "callQualityFair": "普通",
+    "callQualityPoor": "不良",
+    "ipHidden": "IP非表示",
+    "ipHiddenTitle": "メディアはTURN経由 — 相手からあなたのIPが隠されます",
+    "ipVisible": "IP表示",
+    "ipVisibleTitle": "直接P2Pメディアストリーム: 相手があなたのIPを見れます。設定→プライバシーの「通話でIPを隠す」を有効にして、メディアをTURN経由でルーティングしてください。"
   },
   "analytics": {
     "title": "分析ダッシュボード",

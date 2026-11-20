@@ -1024,7 +1024,20 @@
     "blockBot": "Заблокувати бота",
     "blockBotConfirm": "Заблокувати цього бота? Ви перестанете отримувати від нього повідомлення.",
     "block": "Заблокувати",
-    "botBlocked": "Бот заблоковано"
+    "botBlocked": "Бот заблоковано",
+    "callQuality": "Якість дзвінка",
+    "callQualityTitle": "Метрики якості дзвінка в реальному часі",
+    "callQualityBitrateUp": "кбіт/с ↑",
+    "callQualityBitrateDown": "кбіт/с ↓",
+    "callQualityRtt": "мс RTT",
+    "callQualityLoss": "Втрати: ",
+    "callQualityGood": "Відмінно",
+    "callQualityFair": "Нормально",
+    "callQualityPoor": "Погано",
+    "ipHidden": "IP приховано",
+    "ipHiddenTitle": "Медіа через TURN — ваш IP прихований від співрозмовника",
+    "ipVisible": "IP видиме",
+    "ipVisibleTitle": "Прямий P2P медіапотік: співрозмовник бачить ваш IP. Увімкніть 'Ховати IP у дзвінках' в Налаштуваннях → Приватність, щоб маршрутизувати медіа через TURN."
   },
   "chats": {
     "joinRequestNotice": "{{who}} просить долучитися",

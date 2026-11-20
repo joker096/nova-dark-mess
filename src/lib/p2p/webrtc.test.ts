@@ -57,7 +57,7 @@ describe('P2PMessengerChannel — ICE privacy policy', () => {
     }
   });
 
-  it('falls back to direct ICE when relay-only is requested but no TURN is configured', () => {
+  it('falls back to direct ICE when relay-only is requested but no TURN servers provided', () => {
     vi.stubGlobal('RTCPeerConnection', FakePC);
     try {
       const channel = new P2PMessengerChannel(
@@ -67,8 +67,8 @@ describe('P2PMessengerChannel — ICE privacy policy', () => {
         { icePolicy: 'relay-only' },
       );
       (channel as unknown as { ensurePeerConnection(): void }).ensurePeerConnection();
-      // TURN_SERVERS is empty in the default build: no relay policy, no relay
-      // config that would silently break every connection.
+      // No iceServers provided: falls back to direct ICE with STUN servers
+      // (no relay policy, no relay config that would silently break every connection).
       expect(FakePC.lastConfig?.iceTransportPolicy).toBeUndefined();
       expect(FakePC.lastConfig?.iceServers).toEqual([
         { urls: 'stun:stun.l.google.com:19302' },
@@ -81,23 +81,22 @@ describe('P2PMessengerChannel — ICE privacy policy', () => {
 });
 
 describe('P2PMessengerChannel — relay-only with TURN configured', () => {
-  it('enforces the relay transport policy when TURN servers exist', async () => {
-    const original = [...TURN_SERVERS];
-    TURN_SERVERS.push({ urls: 'turn:turn.example:3478' });
+  it('enforces the relay transport policy when iceServers provided', async () => {
     vi.stubGlobal('RTCPeerConnection', FakePC);
     try {
       const channel = new P2PMessengerChannel(
         'me',
         'peer',
         new FakeSignaling() as unknown as P2PSignalingClient,
-        { icePolicy: 'relay-only' },
+        { 
+          icePolicy: 'relay-only',
+          iceServers: [{ urls: 'turn:turn.example:3478' }],
+        },
       );
       (channel as unknown as { ensurePeerConnection(): void }).ensurePeerConnection();
       expect(FakePC.lastConfig?.iceTransportPolicy).toBe('relay');
       expect(FakePC.lastConfig?.iceServers).toEqual([{ urls: 'turn:turn.example:3478' }]);
     } finally {
-      TURN_SERVERS.length = 0;
-      TURN_SERVERS.push(...original);
       vi.unstubAllGlobals();
     }
   });

@@ -4,6 +4,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { VideoCallOverlay } from './VideoCallOverlay';
+import { LanguageProvider } from '../context/LanguageContext';
+
+function renderWithLanguage(ui: React.ReactElement) {
+  return render(<LanguageProvider>{ui}</LanguageProvider>);
+}
 
 const onEndCall = vi.fn();
 
@@ -36,12 +41,12 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders nothing when isOpen false', () => {
-    const { container } = render(<VideoCallOverlay isOpen={false} onEndCall={onEndCall} />);
+    const { container } = renderWithLanguage(<VideoCallOverlay isOpen={false} onEndCall={onEndCall} />);
     expect(container.innerHTML).toBe('');
   });
 
   it('renders minimized PiP tile with accent border and shadow', () => {
-    render(
+    renderWithLanguage(
       <VideoCallOverlay
         isOpen
         isMinimized
@@ -64,7 +69,7 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders full-screen overlay with dark bg and animate-in', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const img = screen.getByAltText('Katie Rogers');
     const overlay = findAncestor(img, ['bg-[#08090d]']);
     expect(overlay).toBeTruthy();
@@ -74,7 +79,7 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders connecting state with amber ping dot', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const text = screen.getByText('Connecting...');
     expect(text).toBeTruthy();
     const row = text.parentElement!;
@@ -83,7 +88,7 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('transitions to connected state with green pulse after timer', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     act(() => {
       vi.advanceTimersByTime(1200);
     });
@@ -95,14 +100,14 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders top bar controls: minimize, encryption badge, quality badge', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} onMinimize={vi.fn()} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} onMinimize={vi.fn()} contactName="Katie Rogers" />);
     expect(screen.getByTitle('Minimize to Picture-in-Picture')).toBeTruthy();
     expect(screen.getByText('End-to-end Encrypted')).toBeTruthy();
     expect(screen.getByText('1080p 60fps')).toBeTruthy();
   });
 
   it('renders self view PIP with camera on and viewfinder brackets', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const selfView = screen.getByTestId('self-view');
     expect(selfView.getAttribute('aria-label')).toBe('Your camera preview');
     expect(selfView.className).toContain('rounded-2xl');
@@ -112,14 +117,14 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders camera off state with VideoOff icon', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const camBtn = screen.getByTitle('Turn camera off');
     fireEvent.click(camBtn);
     expect(screen.getByText('Camera Off')).toBeTruthy();
   });
 
   it('renders filter notification pill when filter active', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const filterBtn = screen.getByTitle('Video Filter (Current: none)');
     fireEvent.click(filterBtn);
     const pill = screen.getByText('Filter: STUDIO').closest('div')!;
@@ -128,7 +133,7 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders bottom dock with camera, mic, flip, speaker, filter, end call', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const endBtn = screen.getByTitle('End Video Call');
     const dock = findAncestor(endBtn, ['bg-[#12131c]/90', 'rounded-full']);
     expect(dock).toBeTruthy();

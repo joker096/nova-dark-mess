@@ -803,7 +803,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Qualità Chiamata",
+    "callQualityTitle": "Metriche Qualità Chiamata in Tempo Reale",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Perdita: ",
+    "callQualityGood": "Eccellente",
+    "callQualityFair": "Accettabile",
+    "callQualityPoor": "Scarsa",
+    "ipHidden": "IP Nascosto",
+    "ipHiddenTitle": "Media tramite TURN — il tuo IP è nascosto al peer",
+    "ipVisible": "IP Visibile",
+    "ipVisibleTitle": "Flusso Media P2P Diretto: il peer può vedere il tuo IP. Attiva 'Nascondi il mio IP nelle chiamate' in Impostazioni → Privacy per instradare i media tramite TURN."
   },
   "analytics": {
     "title": "Pannello di analisi",

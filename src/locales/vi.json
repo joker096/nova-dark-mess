@@ -865,7 +865,20 @@
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
-    "reportSubmitted": "Report submitted: "
+    "reportSubmitted": "Report submitted: ",
+    "callQuality": "Chất Lượng Cuộc Gọi",
+    "callQualityTitle": "Chỉ Số Chất Lượng Cuộc Gọi Thời Gian Thực",
+    "callQualityBitrateUp": "kbps ↑",
+    "callQualityBitrateDown": "kbps ↓",
+    "callQualityRtt": "ms RTT",
+    "callQualityLoss": "Mất: ",
+    "callQualityGood": "Tuyệt Vời",
+    "callQualityFair": "Bình Thường",
+    "callQualityPoor": "Kém",
+    "ipHidden": "IP Ẩn",
+    "ipHiddenTitle": "Media qua TURN — IP của bạn ẩn khỏi đối tác",
+    "ipVisible": "IP Hiện",
+    "ipVisibleTitle": "Luồng Media P2P Trực Tiếp: đối tác có thể thấy IP của bạn. Bật 'Ẩn IP của tôi trong cuộc gọi' trong Cài đặt → Quyền Riêng Tư để định tuyến media qua TURN."
   },
   "analytics": {
     "title": "Bảng điều khiển phân tích",
