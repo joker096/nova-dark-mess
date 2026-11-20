@@ -1263,5 +1263,10 @@
   "app": {
     "name": "Nova Messenger",
     "tagline": "Безпечний та красивий месенджер"
+  },
+  "botReports": {
+    "empty": "You have not reported any bots yet",
+    "submitted": "Thanks, your report was saved on this device",
+    "oneDay": "Last 24 hours"
   }
 }
