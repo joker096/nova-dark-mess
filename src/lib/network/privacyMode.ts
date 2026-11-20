@@ -7,6 +7,10 @@
  * `readBatteryStatus`), which keeps this module pure and testable.
  */
 
+import type { RelayEndpoint } from '../anon/relays';
+import { selectRelaysForContact, shouldRotateQueue, nextRelay } from '../anon/relays';
+import { isOnionUrl, checkTorRunning, type TorCheckResult } from '../anon/tor';
+
 export type PresenceTtl = 'short' | 'normal' | 'long';
 
 export interface PrivacyPrefs {
@@ -19,6 +23,11 @@ export interface PrivacyPrefs {
   presenceTtl: PresenceTtl;
   /** Route WebRTC media through TURN only, hiding the local IP from peers. */
   webrtcRelayOnly: boolean;
+  /** Multi-relay: configured relay endpoints for traffic splitting (stage 6.3). */
+  relayEndpoints: RelayEndpoint[];
+  /** Tor: route relay traffic through local SOCKS proxy (stage 6.4). */
+  torEnabled: boolean;
+  torSocksPort: number;
 }
 
 export interface BatteryStatus {
@@ -34,6 +43,9 @@ export const DEFAULT_PRIVACY_PREFS: PrivacyPrefs = {
   presenceHashing: true,
   presenceTtl: 'normal',
   webrtcRelayOnly: false,
+  relayEndpoints: [],
+  torEnabled: false,
+  torSocksPort: 9050,
 };
 
 const PRESENCE_TTLS: PresenceTtl[] = ['short', 'normal', 'long'];
@@ -68,6 +80,23 @@ export function loadPrivacyPrefs(): PrivacyPrefs {
         typeof parsed.webrtcRelayOnly === 'boolean'
           ? parsed.webrtcRelayOnly
           : DEFAULT_PRIVACY_PREFS.webrtcRelayOnly,
+      relayEndpoints: Array.isArray(parsed.relayEndpoints)
+        ? parsed.relayEndpoints.filter(
+            (e): e is RelayEndpoint =>
+              typeof e === 'object' &&
+              e !== null &&
+              typeof e.id === 'string' &&
+              typeof e.url === 'string',
+          )
+        : DEFAULT_PRIVACY_PREFS.relayEndpoints,
+      torEnabled:
+        typeof parsed.torEnabled === 'boolean'
+          ? parsed.torEnabled
+          : DEFAULT_PRIVACY_PREFS.torEnabled,
+      torSocksPort:
+        typeof parsed.torSocksPort === 'number' && parsed.torSocksPort > 0
+          ? parsed.torSocksPort
+          : DEFAULT_PRIVACY_PREFS.torSocksPort,
     };
   } catch {
     return { ...DEFAULT_PRIVACY_PREFS };
@@ -143,4 +172,51 @@ export function coverTrafficIntervalMs(
   if (!shouldEmitCoverTraffic(prefs, battery)) return null;
   const base = 60_000;
   return battery.charging ? base : base * 2;
+}
+
+/** ──────────────────────────────────────────────────────────────────────
+ * Multi-relay helpers (stage 6.3)
+ * ────────────────────────────────────────────────────────────────────── */
+
+/** Select primary/secondary relays for a contact seed. Returns null when no relays configured. */
+export function selectContactRelays(
+  prefs: PrivacyPrefs,
+  contactSeed: string,
+): { primary: RelayEndpoint; secondary?: RelayEndpoint } | null {
+  if (prefs.relayEndpoints.length === 0) return null;
+  return selectRelaysForContact(prefs.relayEndpoints, contactSeed);
+}
+
+/** Whether a queue created at `createdAt` should be rotated to another relay. */
+export function queueNeedsRotation(
+  prefs: PrivacyPrefs,
+  createdAt: number,
+  now: number = Date.now(),
+): boolean {
+  return shouldRotateQueue(createdAt, now);
+}
+
+/** Get the next relay in rotation after `current`. */
+export function rotateToNextRelay(
+  prefs: PrivacyPrefs,
+  current: RelayEndpoint,
+): RelayEndpoint | null {
+  if (prefs.relayEndpoints.length <= 1) return null;
+  return nextRelay(current, prefs.relayEndpoints);
+}
+
+/** ──────────────────────────────────────────────────────────────────────
+ * Tor helpers (stage 6.4)
+ * ────────────────────────────────────────────────────────────────────── */
+
+/** Validate that a string is a .onion URL. */
+export function isValidTorEndpoint(url: string): boolean {
+  return isOnionUrl(url);
+}
+
+/** Probe the local Tor SOCKS listener. Returns the check result. */
+export async function probeTor(
+  socksPort: number,
+): Promise<TorCheckResult> {
+  return checkTorRunning({ socksPort });
 }

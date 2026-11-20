@@ -362,6 +362,9 @@ describe('SettingsModal', () => {
       presenceHashing: true,
       presenceTtl: 'normal',
       webrtcRelayOnly: false,
+      relayEndpoints: [],
+      torEnabled: false,
+      torSocksPort: 9050,
     });
     delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
   });
