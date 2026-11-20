@@ -125,7 +125,13 @@
     "upload": "अपलोड करें",
     "imageUploadFailed": "वह छवि लोड नहीं हो सकी. कोई अन्य फ़ाइल आज़माएँ.",
     "more": "अधिक",
-    "undo": "पूर्ववत करें"
+    "undo": "पूर्ववत करें",
+    "forgotPin": "PIN भूल गए?",
+    "recoverTitle": "खाता पुनर्प्राप्ति",
+    "recoverBody": "PIN इस डिवाइस का स्थानीय डेटा खोलता है। भूल गए हों तो रिकवरी वाक्यांश या बैकअप फ़ाइल से पहुँच बहाल करें। सिर्फ़ इस डिवाइस पर रखे संदेश मिट जाएँगे।",
+    "recoverWithPhrase": "वाक्यांश से",
+    "recoverWithBackup": "बैकअप फ़ाइल से",
+    "recoverResetConfirm": "हाँ, सब मिटा दें"
   },
   "channels": "चैनल",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "यह बॉट मदद के लिए तैयार है। शुरू करने के लिए शुरू करें पर टैप करें।",
+    "botWelcomeTitle": "बॉट में आपका स्वागत है!",
+    "startBot": "शुरू करें"
   },
   "stories": {
     "title": "कहानियां",
@@ -943,7 +952,13 @@
     "doneBody": "आपकी पहचान तैयार है. संदेशों को निकलने से पहले इस डिवाइस पर एन्क्रिप्ट किया जाता है।",
     "startMessaging": "संदेश भेजना प्रारंभ करें",
     "languageTitle": "अपनी भाषा चुनें",
-    "languageBody": "वह भाषा चुनें जिसका आप उपयोग करना चाहते हैं. आप इसे बाद में सेटिंग में बदल सकते हैं."
+    "languageBody": "वह भाषा चुनें जिसका आप उपयोग करना चाहते हैं. आप इसे बाद में सेटिंग में बदल सकते हैं.",
+    "downloadPhrase": "वाक्यांश डाउनलोड करें",
+    "phraseCheckTitle": "अपना वाक्यांश जाँचें",
+    "phraseCheckPrompt": "शब्द #{{position}} चुनें",
+    "phraseCheckWrong": "ग़लत शब्द। अपना लिखा वाक्यांश जाँचें और फिर कोशिश करें।",
+    "backupReminder": "आपने अभी तक बैकअप नहीं सहेजा है। इसके बिना फ़ोन खोने पर इस डिवाइस पर रखी चैट बहाल नहीं हो सकेंगी।",
+    "backupNow": "बैकअप बनाएँ"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "बॉट इंस्टॉल नहीं है। कृपया पहले इसे इंस्टॉल करें।"
   },
   "sites": {
     "title": "Sites",

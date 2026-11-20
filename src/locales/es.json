@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "Emojis",
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "forgotPin": "¿Olvidaste el PIN?",
+    "recoverTitle": "Recuperación de la cuenta",
+    "recoverBody": "El PIN desbloquea los datos locales de este dispositivo. Si lo olvidaste, recupera el acceso con tu frase de recuperación o un archivo de copia de seguridad. Los mensajes guardados solo en este dispositivo se borrarán.",
+    "recoverWithPhrase": "Con la frase",
+    "recoverWithBackup": "Desde archivo",
+    "recoverResetConfirm": "Sí, borrar todo"
   },
   "chats": {
     "joinRequestNotice": "{{who}} quiere unirse",
@@ -449,7 +455,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Este bot está listo para ayudarte. Toca Iniciar para comenzar.",
+    "botWelcomeTitle": "¡Bienvenido al bot!",
+    "startBot": "Iniciar"
   },
   "stories": {
     "title": "Historias",
@@ -946,7 +955,13 @@
     "doneBody": "Tu identidad está lista. Los mensajes se cifran en este dispositivo antes de salir.",
     "startMessaging": "Empezar a chatear",
     "languageTitle": "Elige tu idioma",
-    "languageBody": "Elige el idioma de la interfaz. Puedes cambiarlo después en Ajustes."
+    "languageBody": "Elige el idioma de la interfaz. Puedes cambiarlo después en Ajustes.",
+    "downloadPhrase": "Descargar frase",
+    "phraseCheckTitle": "Verifica tu frase",
+    "phraseCheckPrompt": "Elige la palabra n.º {{position}}",
+    "phraseCheckWrong": "Palabra incorrecta. Revisa la frase que anotaste e inténtalo de nuevo.",
+    "backupReminder": "Aún no has guardado una copia de seguridad. Sin ella, los chats guardados en este dispositivo no se podrán recuperar si pierdes el teléfono.",
+    "backupNow": "Crear copia"
   },
   "ads": {
     "label": "Ad",
@@ -1067,7 +1082,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot no instalado. Instálalo primero."
   },
   "sites": {
     "title": "Sites",

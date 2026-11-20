@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "Emoji",
-    "undo": "Urungkan"
+    "undo": "Urungkan",
+    "forgotPin": "Lupa PIN?",
+    "recoverTitle": "Pemulihan akun",
+    "recoverBody": "PIN membuka data lokal di perangkat ini. Jika lupa, pulihkan akses dengan frasa pemulihan atau file cadangan. Pesan yang hanya tersimpan di perangkat ini akan dihapus.",
+    "recoverWithPhrase": "Dengan frasa",
+    "recoverWithBackup": "Dari file cadangan",
+    "recoverResetConfirm": "Ya, hapus semua"
   },
   "chats": {
     "joinRequestNotice": "{{who}} ingin bergabung",
@@ -447,7 +453,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Bot ini siap membantu. Ketuk Mulai untuk memulai.",
+    "botWelcomeTitle": "Selamat datang di bot!",
+    "startBot": "Mulai"
   },
   "stories": {
     "title": "Cerita",
@@ -943,7 +952,13 @@
     "doneBody": "Identitas Anda siap. Pesan dienkripsi di perangkat ini sebelum dikirim.",
     "startMessaging": "Mulai mengobrol",
     "languageTitle": "Pilih bahasa",
-    "languageBody": "Pilih bahasa antarmuka. Anda dapat mengubahnya nanti di Pengaturan."
+    "languageBody": "Pilih bahasa antarmuka. Anda dapat mengubahnya nanti di Pengaturan.",
+    "downloadPhrase": "Unduh frasa",
+    "phraseCheckTitle": "Verifikasi frasa",
+    "phraseCheckPrompt": "Pilih kata #{{position}}",
+    "phraseCheckWrong": "Kata salah. Periksa frasa yang Anda tulis dan coba lagi.",
+    "backupReminder": "Anda belum menyimpan cadangan. Tanpa cadangan, chat yang tersimpan di perangkat ini tidak dapat dipulihkan jika ponsel hilang.",
+    "backupNow": "Buat cadangan"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot belum dipasang. Pasang dulu."
   },
   "sites": {
     "title": "Sites",

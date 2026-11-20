@@ -125,7 +125,13 @@
     "upload": "Carica",
     "imageUploadFailed": "Impossibile caricare l'immagine. Prova un altro file.",
     "more": "Di più",
-    "undo": "Annulla"
+    "undo": "Annulla",
+    "forgotPin": "PIN dimenticato?",
+    "recoverTitle": "Recupero account",
+    "recoverBody": "Il PIN sblocca i dati locali su questo dispositivo. Se lo hai dimenticato, recupera l'accesso con la frase di recupero o un file di backup. I messaggi salvati solo su questo dispositivo verranno cancellati.",
+    "recoverWithPhrase": "Con la frase",
+    "recoverWithBackup": "Da un file",
+    "recoverResetConfirm": "Sì, cancella tutto"
   },
   "channels": "Canali",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Questo bot è pronto ad aiutarti. Tocca Avvia per iniziare.",
+    "botWelcomeTitle": "Benvenuto nel bot!",
+    "startBot": "Avvia"
   },
   "stories": {
     "title": "Storie",
@@ -943,7 +952,13 @@
     "doneBody": "La tua identità è pronta. I messaggi vengono crittografati su questo dispositivo prima di partire.",
     "startMessaging": "Inizia a inviare messaggi",
     "languageTitle": "Scegli la tua lingua",
-    "languageBody": "Scegli la lingua che desideri utilizzare. Puoi modificarlo in seguito in Impostazioni."
+    "languageBody": "Scegli la lingua che desideri utilizzare. Puoi modificarlo in seguito in Impostazioni.",
+    "downloadPhrase": "Scarica frase",
+    "phraseCheckTitle": "Verifica la frase",
+    "phraseCheckPrompt": "Scegli la parola n. {{position}}",
+    "phraseCheckWrong": "Parola errata. Controlla la frase annotata e riprova.",
+    "backupReminder": "Non hai ancora salvato un backup. Senza di esso, le chat memorizzate su questo dispositivo non potranno essere ripristinate se perdi il telefono.",
+    "backupNow": "Crea backup"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot non installato. Installalo prima."
   },
   "sites": {
     "title": "Sites",

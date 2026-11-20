@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "Emojiler",
-    "undo": "Geri al"
+    "undo": "Geri al",
+    "forgotPin": "PIN'i mi unuttunuz?",
+    "recoverTitle": "Hesap kurtarma",
+    "recoverBody": "PIN bu cihazdaki yerel verilerin kilidini açar. Unuttuysanız kurtarma ifadeniz veya bir yedek dosyayla erişimi geri yükleyin. Yalnızca bu cihazda saklanan mesajlar silinir.",
+    "recoverWithPhrase": "Kurtarma ifadesiyle",
+    "recoverWithBackup": "Yedek dosyasından",
+    "recoverResetConfirm": "Evet, her şeyi sil"
   },
   "chats": {
     "joinRequestNotice": "{{who}} katılmak istiyor",
@@ -447,7 +453,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Bu bot yardıma hazır. Başlamak için Başlat'a dokunun.",
+    "botWelcomeTitle": "Bota hoş geldiniz!",
+    "startBot": "Başlat"
   },
   "stories": {
     "title": "Hikayeler",
@@ -943,7 +952,13 @@
     "doneBody": "Kimliğiniz hazır. Mesajlar cihazdan çıkmadan önce şifrelenir.",
     "startMessaging": "Mesajlaşmaya başla",
     "languageTitle": "Dilini seç",
-    "languageBody": "Arayüz dilini seç. Daha sonra Ayarlar'dan değiştirebilirsin."
+    "languageBody": "Arayüz dilini seç. Daha sonra Ayarlar'dan değiştirebilirsin.",
+    "downloadPhrase": "İfadeyi indir",
+    "phraseCheckTitle": "İfadenizi doğrulayın",
+    "phraseCheckPrompt": "{{position}}. kelimeyi seçin",
+    "phraseCheckWrong": "Yanlış kelime. Yazdığınız ifadeyi kontrol edip tekrar deneyin.",
+    "backupReminder": "Henüz yedek kaydetmediniz. Telefon kaybolursa bu cihazdaki sohbetler yedek olmadan geri yüklenemez.",
+    "backupNow": "Yedek oluştur"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot yüklü değil. Lütfen önce yükleyin."
   },
   "sites": {
     "title": "Sites",

@@ -125,7 +125,13 @@
     "upload": "Завантажити",
     "imageUploadFailed": "Не вдалося завантажити зображення. Спробуйте інший файл.",
     "more": "Ще",
-    "undo": "Скасувати"
+    "undo": "Скасувати",
+    "forgotPin": "Забули PIN-код?",
+    "recoverTitle": "Відновлення доступу",
+    "recoverBody": "PIN відкриває локальні дані на цьому пристрої. Якщо ви його забули, відновіть доступ за фразою відновлення або з файлу резервної копії. Повідомлення, що зберігаються лише тут, буде стерто.",
+    "recoverWithPhrase": "За фразою",
+    "recoverWithBackup": "З файлу",
+    "recoverResetConfirm": "Так, стерти все"
   },
   "channels": "Канали",
   "chats": {
@@ -294,15 +300,18 @@
     "e2eeKeyChanged": "Security code changed",
     "callbackToast": "{{text}}",
     "format": {
-      "bold": "Bold",
-      "italic": "Italic",
-      "code": "Code",
-      "strike": "Strikethrough"
+      "bold": "Жирний",
+      "italic": "Курсив",
+      "code": "Код",
+      "strike": "Закреслений"
     },
-    "notificationsEnabled": "Notifications enabled",
-    "notificationsDisabled": "Notifications disabled",
-    "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "notificationsEnabled": "Сповіщення увімкнено",
+    "notificationsDisabled": "Сповіщення вимкнено",
+    "disableNotifications": "Вимкнути сповіщення",
+    "enableNotifications": "Увімкнути сповіщення",
+    "botWelcomeTitle": "Ласкаво просимо до бота!",
+    "botWelcomeText": "Цей бот готовий допомогти. Натисніть «Почати», щоб розпочати.",
+    "startBot": "Почати"
   },
   "stories": {
     "title": "Сторіз",
@@ -953,7 +962,13 @@
     "doneBody": "Ваш акаунт готовий. Повідомлення шифруються на цьому пристрої перед надсиланням.",
     "startMessaging": "Почати спілкування",
     "languageTitle": "Оберіть мову",
-    "languageBody": "Оберіть мову інтерфейсу. Її можна змінити пізніше в налаштуваннях."
+    "languageBody": "Оберіть мову інтерфейсу. Її можна змінити пізніше в налаштуваннях.",
+    "downloadPhrase": "Завантажити фразу",
+    "phraseCheckTitle": "Перевірте фразу",
+    "phraseCheckPrompt": "Виберіть слово №{{position}}",
+    "phraseCheckWrong": "Неправильне слово. Перевірте записану фразу та спробуйте ще раз.",
+    "backupReminder": "Ви ще не зберегли резервну копію. Без неї чати, що зберігаються на цьому пристрої, не відновити в разі втрати телефона.",
+    "backupNow": "Створити копію"
   },
   "ads": {
     "label": "Ad",
@@ -1074,7 +1089,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Бот не встановлено. Спочатку встановіть його."
   },
   "sites": {
     "title": "Sites",

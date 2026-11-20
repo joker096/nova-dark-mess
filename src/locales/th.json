@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "อีโมจิ",
-    "undo": "เลิกทำ"
+    "undo": "เลิกทำ",
+    "forgotPin": "ลืม PIN?",
+    "recoverTitle": "กู้คืนบัญชี",
+    "recoverBody": "PIN ใช้ปลดล็อกข้อมูลในเครื่องนี้ หากลืม ให้กู้คืนการเข้าถึงด้วยวลีกู้คืนหรือไฟล์สำรอง ข้อความที่เก็บไว้ในเครื่องนี้จะถูกลบ",
+    "recoverWithPhrase": "ด้วยวลีกู้คืน",
+    "recoverWithBackup": "จากไฟล์สำรอง",
+    "recoverResetConfirm": "ใช่ ลบทั้งหมด"
   },
   "chats": {
     "joinRequestNotice": "{{who}} ต้องการเข้าร่วม",
@@ -447,7 +453,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "บอทนี้พร้อมช่วยคุณ แตะเริ่มเพื่อเริ่มต้น",
+    "botWelcomeTitle": "ยินดีต้อนรับสู่บอท!",
+    "startBot": "เริ่ม"
   },
   "stories": {
     "title": "สตอรี่",
@@ -943,7 +952,13 @@
     "doneBody": "ตัวตนของคุณพร้อมแล้ว ข้อความถูกเข้ารหัสบนเครื่องก่อนส่ง",
     "startMessaging": "เริ่มแชท",
     "languageTitle": "เลือกภาษา",
-    "languageBody": "เลือกภาษาของอินเทอร์เฟซ สามารถเปลี่ยนภายหลังได้ในการตั้งค่า"
+    "languageBody": "เลือกภาษาของอินเทอร์เฟซ สามารถเปลี่ยนภายหลังได้ในการตั้งค่า",
+    "downloadPhrase": "ดาวน์โหลดวลี",
+    "phraseCheckTitle": "ตรวจสอบวลี",
+    "phraseCheckPrompt": "เลือกคำลำดับที่ {{position}}",
+    "phraseCheckWrong": "คำไม่ถูกต้อง ตรวจสอบวลีที่จดไว้แล้วลองอีกครั้ง",
+    "backupReminder": "คุณยังไม่ได้บันทึกข้อมูลสำรอง หากโทรศัพท์หาย จะกู้คืนแชทที่เก็บไว้ในเครื่องนี้ไม่ได้",
+    "backupNow": "สร้างข้อมูลสำรอง"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "ยังไม่ได้ติดตั้งบอท กรุณาติดตั้งก่อน"
   },
   "sites": {
     "title": "Sites",

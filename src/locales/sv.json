@@ -125,7 +125,13 @@
     "upload": "Ladda upp",
     "imageUploadFailed": "Det gick inte att ladda den bilden. Försök med en annan fil.",
     "more": "Mer",
-    "undo": "Ångra"
+    "undo": "Ångra",
+    "forgotPin": "Glömt PIN-koden?",
+    "recoverTitle": "Kontoåterställning",
+    "recoverBody": "PIN-koden låser upp lokal data på den här enheten. Om du glömt den kan du återställa åtkomst med din återställningsfras eller en säkerhetskopiefil. Meddelanden som bara finns på enheten raderas.",
+    "recoverWithPhrase": "Med återställningsfras",
+    "recoverWithBackup": "Från säkerhetskopiefil",
+    "recoverResetConfirm": "Ja, radera allt"
   },
   "channels": "Kanaler",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Den här boten är redo att hjälpa dig. Tryck på Start för att börja.",
+    "botWelcomeTitle": "Välkommen till boten!",
+    "startBot": "Start"
   },
   "stories": {
     "title": "Berättelser",
@@ -943,7 +952,13 @@
     "doneBody": "Din identitet är klar. Meddelanden krypteras på den här enheten innan de lämnar.",
     "startMessaging": "Börja skicka meddelanden",
     "languageTitle": "Välj ditt språk",
-    "languageBody": "Välj det språk du vill använda. Du kan ändra det senare i Inställningar."
+    "languageBody": "Välj det språk du vill använda. Du kan ändra det senare i Inställningar.",
+    "downloadPhrase": "Ladda ner frasen",
+    "phraseCheckTitle": "Kontrollera frasen",
+    "phraseCheckPrompt": "Välj ord nr {{position}}",
+    "phraseCheckWrong": "Fel ord. Kontrollera den nedskrivna frasen och försök igen.",
+    "backupReminder": "Du har inte sparat någon säkerhetskopia än. Utan den kan chattar som bara finns på den här enheten inte återställas om telefonen tappas bort.",
+    "backupNow": "Skapa säkerhetskopia"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Boten är inte installerad. Installera den först."
   },
   "sites": {
     "title": "Sites",

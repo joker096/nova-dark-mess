@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "Biểu tượng cảm xúc",
-    "undo": "Hoàn tác"
+    "undo": "Hoàn tác",
+    "forgotPin": "Quên PIN?",
+    "recoverTitle": "Khôi phục tài khoản",
+    "recoverBody": "PIN mở khóa dữ liệu cục bộ trên thiết bị này. Nếu quên, hãy khôi phục quyền truy cập bằng cụm từ khôi phục hoặc tệp sao lưu. Tin nhắn chỉ lưu trên thiết bị này sẽ bị xóa.",
+    "recoverWithPhrase": "Bằng cụm từ",
+    "recoverWithBackup": "Từ tệp sao lưu",
+    "recoverResetConfirm": "Có, xóa tất cả"
   },
   "chats": {
     "joinRequestNotice": "{{who}} muốn tham gia",
@@ -447,7 +453,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Bot này sẵn sàng trợ giúp. Nhấn Bắt đầu để bắt đầu.",
+    "botWelcomeTitle": "Chào mừng đến với bot!",
+    "startBot": "Bắt đầu"
   },
   "stories": {
     "title": "Truyện",
@@ -943,7 +952,13 @@
     "doneBody": "Danh tính đã sẵn sàng. Tin nhắn được mã hóa trên thiết bị trước khi gửi.",
     "startMessaging": "Bắt đầu nhắn tin",
     "languageTitle": "Chọn ngôn ngữ",
-    "languageBody": "Chọn ngôn ngữ giao diện. Bạn có thể đổi sau trong Cài đặt."
+    "languageBody": "Chọn ngôn ngữ giao diện. Bạn có thể đổi sau trong Cài đặt.",
+    "downloadPhrase": "Tải cụm từ",
+    "phraseCheckTitle": "Kiểm tra cụm từ",
+    "phraseCheckPrompt": "Chọn từ số {{position}}",
+    "phraseCheckWrong": "Sai từ. Hãy kiểm tra lại cụm từ đã ghi và thử lại.",
+    "backupReminder": "Bạn chưa lưu bản sao lưu. Nếu mất điện thoại, các cuộc trò chuyện chỉ lưu trên thiết bị này sẽ không thể khôi phục.",
+    "backupNow": "Tạo bản sao lưu"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot chưa được cài đặt. Vui lòng cài đặt trước."
   },
   "sites": {
     "title": "Sites",

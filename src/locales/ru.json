@@ -125,7 +125,13 @@
     "upload": "Загрузить",
     "imageUploadFailed": "Не удалось загрузить изображение. Попробуйте другой файл.",
     "more": "Ещё",
-    "undo": "Отменить"
+    "undo": "Отменить",
+    "forgotPin": "Забыли PIN-код?",
+    "recoverTitle": "Восстановление доступа",
+    "recoverBody": "PIN открывает локальные данные на этом устройстве. Если вы его забыли, восстановите доступ по фразе восстановления или из файла резервной копии. Сообщения, хранящиеся только здесь, будут стёрты.",
+    "recoverWithPhrase": "По фразе",
+    "recoverWithBackup": "Из файла",
+    "recoverResetConfirm": "Да, стереть всё"
   },
   "channels": "Каналы",
   "chats": {
@@ -294,15 +300,18 @@
     "e2eeKeyChanged": "Код безопасности изменён",
     "callbackToast": "{{text}}",
     "format": {
-      "bold": "Bold",
-      "italic": "Italic",
-      "code": "Code",
-      "strike": "Strikethrough"
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "code": "Код",
+      "strike": "Зачеркнутый"
     },
-    "notificationsEnabled": "Notifications enabled",
-    "notificationsDisabled": "Notifications disabled",
-    "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "notificationsEnabled": "Уведомления включены",
+    "notificationsDisabled": "Уведомления выключены",
+    "disableNotifications": "Выключить уведомления",
+    "enableNotifications": "Включить уведомления",
+    "botWelcomeTitle": "Добро пожаловать в бота!",
+    "botWelcomeText": "Этот бот готов помочь вам. Нажмите Начать, чтобы начать.",
+    "startBot": "Начать"
   },
   "stories": {
     "title": "Истории",
@@ -949,7 +958,13 @@
     "doneBody": "Ваш аккаунт готов. Сообщения шифруются на этом устройстве перед отправкой.",
     "startMessaging": "Начать общение",
     "languageTitle": "Выберите язык",
-    "languageBody": "Выберите язык интерфейса. Его можно изменить позже в настройках."
+    "languageBody": "Выберите язык интерфейса. Его можно изменить позже в настройках.",
+    "downloadPhrase": "Скачать фразу",
+    "phraseCheckTitle": "Проверьте фразу",
+    "phraseCheckPrompt": "Выберите слово №{{position}}",
+    "phraseCheckWrong": "Неверное слово. Проверьте записанную фразу и попробуйте снова.",
+    "backupReminder": "Вы ещё не сохранили резервную копию. Без неё чаты, хранящиеся на этом устройстве, не восстановить при потере телефона.",
+    "backupNow": "Создать копию"
   },
   "ads": {
     "label": "Ad",
@@ -1069,9 +1084,11 @@
     "cancel": "Cancel",
     "commandMenu": "Bot commands",
     "badge": "Bot",
-    "disable": "Disable",
-    "enable": "Enable"
+"disable": "Disable",
+    "enable": "Enable",
+    "notInstalled": "Бот не установлен. Пожалуйста, установите его сначала."
   },
+
   "sites": {
     "title": "Сайты",
     "noSites": "Ещё нет сайтов",

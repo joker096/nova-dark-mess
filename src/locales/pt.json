@@ -125,7 +125,13 @@
     "upload": "Carregar",
     "imageUploadFailed": "Não foi possível carregar essa imagem. Tente outro arquivo.",
     "more": "Mais",
-    "undo": "Desfazer"
+    "undo": "Desfazer",
+    "forgotPin": "Esqueceu o PIN?",
+    "recoverTitle": "Recuperação da conta",
+    "recoverBody": "O PIN desbloqueia os dados locais deste dispositivo. Se o esqueceu, recupere o acesso com sua frase de recuperação ou um arquivo de backup. As mensagens armazenadas apenas neste dispositivo serão apagadas.",
+    "recoverWithPhrase": "Com a frase",
+    "recoverWithBackup": "De um arquivo",
+    "recoverResetConfirm": "Sim, apagar tudo"
   },
   "channels": "Canais",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Este bot está pronto para ajudar. Toque em Iniciar para começar.",
+    "botWelcomeTitle": "Bem-vindo ao bot!",
+    "startBot": "Iniciar"
   },
   "stories": {
     "title": "Histórias",
@@ -943,7 +952,13 @@
     "doneBody": "Sua identidade está pronta. As mensagens são criptografadas neste dispositivo antes de saírem.",
     "startMessaging": "Começar a enviar mensagens",
     "languageTitle": "Escolha seu idioma",
-    "languageBody": "Escolha o idioma que deseja usar. Você pode alterá-lo mais tarde em Configurações."
+    "languageBody": "Escolha o idioma que deseja usar. Você pode alterá-lo mais tarde em Configurações.",
+    "downloadPhrase": "Baixar frase",
+    "phraseCheckTitle": "Confirme a frase",
+    "phraseCheckPrompt": "Escolha a palavra nº {{position}}",
+    "phraseCheckWrong": "Palavra errada. Verifique a frase anotada e tente novamente.",
+    "backupReminder": "Você ainda não salvou um backup. Sem ele, as conversas armazenadas neste dispositivo não poderão ser restauradas se o telefone for perdido.",
+    "backupNow": "Criar backup"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot não instalado. Instale-o primeiro."
   },
   "sites": {
     "title": "Sites",

@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "رموز تعبيرية",
-    "undo": "تراجع"
+    "undo": "تراجع",
+    "forgotPin": "هل نسيت رمز PIN؟",
+    "recoverTitle": "استعادة الحساب",
+    "recoverBody": "يفتح رمز PIN البيانات المحلية على هذا الجهاز. إذا نسيته، فاستعد الوصول بعبارة الاسترداد أو بملف نسخة احتياطية. ستُمسح الرسائل المخزنة على هذا الجهاز فقط.",
+    "recoverWithPhrase": "بعبارة الاسترداد",
+    "recoverWithBackup": "من ملف نسخة احتياطية",
+    "recoverResetConfirm": "نعم، امسح كل شيء"
   },
   "chats": {
     "joinRequestNotice": "{{who}} يريد الانضمام",
@@ -455,7 +461,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "هذا البوت جاهز للمساعدة. اضغط على بدء للبدء.",
+    "botWelcomeTitle": "مرحبًا بك في البوت!",
+    "startBot": "بدء"
   },
   "stories": {
     "title": "القصص",
@@ -955,7 +964,13 @@
     "doneBody": "هويتك جاهزة. تُشفَّر الرسائل على هذا الجهاز قبل إرسالها.",
     "startMessaging": "ابدأ المراسلة",
     "languageTitle": "اختر لغتك",
-    "languageBody": "اختر لغة الواجهة. يمكنك تغييرها لاحقًا في الإعدادات."
+    "languageBody": "اختر لغة الواجهة. يمكنك تغييرها لاحقًا في الإعدادات.",
+    "downloadPhrase": "تنزيل العبارة",
+    "phraseCheckTitle": "تحقق من العبارة",
+    "phraseCheckPrompt": "اختر الكلمة رقم {{position}}",
+    "phraseCheckWrong": "كلمة خاطئة. راجع العبارة المكتوبة وحاول مرة أخرى.",
+    "backupReminder": "لم تحفظ نسخة احتياطية بعد. بدونها لا يمكن استعادة المحادثات المخزنة على هذا الجهاز إذا فُقد الهاتف.",
+    "backupNow": "إنشاء نسخة احتياطية"
   },
   "ads": {
     "label": "Ad",
@@ -1076,7 +1091,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "البوت غير مثبت. يرجى تثبيته أولاً."
   },
   "sites": {
     "title": "Sites",

@@ -125,7 +125,13 @@
     "upload": "Upload",
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
-    "undo": "Undo"
+    "undo": "Undo",
+    "forgotPin": "Forgot PIN?",
+    "recoverTitle": "Account recovery",
+    "recoverBody": "The PIN unlocks local data on this device. If you forgot it, restore access with your recovery phrase or a backup file. Messages stored only on this device will be erased.",
+    "recoverWithPhrase": "Recovery phrase",
+    "recoverWithBackup": "Backup file",
+    "recoverResetConfirm": "Yes, erase everything"
   },
   "channels": "Channels",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeTitle": "Welcome to the bot!",
+    "botWelcomeText": "This bot is ready to help you. Tap Start to begin.",
+    "startBot": "Start"
   },
   "stories": {
     "title": "Stories",
@@ -943,7 +952,13 @@
     "doneBody": "Your identity is ready. Messages are encrypted on this device before they leave.",
     "startMessaging": "Start messaging",
     "languageTitle": "Choose your language",
-    "languageBody": "Pick the language you want to use. You can change it later in Settings."
+    "languageBody": "Pick the language you want to use. You can change it later in Settings.",
+    "downloadPhrase": "Download phrase",
+    "phraseCheckTitle": "Check your phrase",
+    "phraseCheckPrompt": "Choose word #{{position}}",
+    "phraseCheckWrong": "Wrong word. Check your written phrase and try again.",
+    "backupReminder": "You haven't saved a backup yet. Without one, chats stored on this device can't be restored if the phone is lost.",
+    "backupNow": "Create backup"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot not installed. Please install it first."
   },
   "sites": {
     "title": "Sites",

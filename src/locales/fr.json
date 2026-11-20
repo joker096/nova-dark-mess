@@ -125,7 +125,13 @@
     "upload": "Télécharger",
     "imageUploadFailed": "Impossible de charger cette image. Essayez un autre fichier.",
     "more": "Plus",
-    "undo": "Annuler"
+    "undo": "Annuler",
+    "forgotPin": "PIN oublié ?",
+    "recoverTitle": "Récupération du compte",
+    "recoverBody": "Le PIN déverrouille les données locales de cet appareil. Si vous l'avez oublié, récupérez l'accès avec votre phrase de récupération ou un fichier de sauvegarde. Les messages stockés uniquement sur cet appareil seront effacés.",
+    "recoverWithPhrase": "Avec la phrase",
+    "recoverWithBackup": "Depuis un fichier",
+    "recoverResetConfirm": "Oui, tout effacer"
   },
   "channels": "Canaux",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Ce bot est prêt à vous aider. Appuyez sur Démarrer pour commencer.",
+    "botWelcomeTitle": "Bienvenue dans le bot !",
+    "startBot": "Démarrer"
   },
   "stories": {
     "title": "Histoires",
@@ -943,7 +952,13 @@
     "doneBody": "Votre identité est prête. Les messages sont cryptés sur cet appareil avant leur départ.",
     "startMessaging": "Démarrer la messagerie",
     "languageTitle": "Choisissez votre langue",
-    "languageBody": "Choisissez la langue que vous souhaitez utiliser. Vous pourrez le modifier ultérieurement dans Paramètres."
+    "languageBody": "Choisissez la langue que vous souhaitez utiliser. Vous pourrez le modifier ultérieurement dans Paramètres.",
+    "downloadPhrase": "Télécharger la phrase",
+    "phraseCheckTitle": "Vérifiez votre phrase",
+    "phraseCheckPrompt": "Choisissez le mot n° {{position}}",
+    "phraseCheckWrong": "Mot incorrect. Vérifiez la phrase que vous avez notée et réessayez.",
+    "backupReminder": "Vous n'avez pas encore enregistré de sauvegarde. Sans elle, les discussions stockées sur cet appareil seront perdues en cas de perte du téléphone.",
+    "backupNow": "Créer une sauvegarde"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot non installé. Veuillez d'abord l'installer."
   },
   "sites": {
     "title": "Sites",
