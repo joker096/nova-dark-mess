@@ -1234,5 +1234,10 @@
     "oauthTitle": "Sign in with Mess",
     "oauthDesc": "Authorize the site via OAuth 2.0. Copy the link and open it in the app.",
     "oauthCopy": "Copy link"
+  },
+  "botReports": {
+    "empty": "You have not reported any bots yet",
+    "submitted": "Thanks, your report was saved on this device",
+    "oneDay": "Last 24 hours"
   }
 }

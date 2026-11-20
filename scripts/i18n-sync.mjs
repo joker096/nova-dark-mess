@@ -56,6 +56,11 @@ const FALLBACK_ONLY_KEYS = {
   common: {
     copyFailed: 'Could not copy',
   },
+  botReports: {
+    empty: 'You have not reported any bots yet',
+    submitted: 'Thanks, your report was saved on this device',
+    oneDay: 'Last 24 hours',
+  },
   settings: {
     secureStorageUnavailable: 'Secure key storage is unavailable',
     secureStorageUnavailableHint:

@@ -1265,5 +1265,10 @@
   "app": {
     "name": "Nova Messenger",
     "tagline": "مessaging آمن وجميل"
+  },
+  "botReports": {
+    "empty": "You have not reported any bots yet",
+    "submitted": "Thanks, your report was saved on this device",
+    "oneDay": "Last 24 hours"
   }
 }
