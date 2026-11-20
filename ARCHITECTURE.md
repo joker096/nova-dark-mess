@@ -10,7 +10,7 @@ Client-first secure messaging application built with React 19, TypeScript, Vite,
 - **Storage**: IndexedDB (encrypted via AES-256-GCM + PBKDF2), localStorage (settings/PIN hash)
 - **i18n**: i18next + react-i18next — **10 locales**: `en`, `ru`, `uk`, `de`, `es`, `tr`, `id`, `vi`, `ar`, `th`
 - **P2P**: WebRTC DataChannel + audio/video media tracks (simulated call fallback), BroadcastChannel (local testing), WebSocket signaling client
-- **Mobile**: Tauri v2 — `productName: "Nova Dark Messenger"`
+- **Mobile**: Tauri v2 — `productName: "Nova Dark Messenger"` (see [docs/TAURI-ANDROID-GUIDE.md](docs/TAURI-ANDROID-GUIDE.md))
 
 ## Directory Layout
 ```
@@ -159,6 +159,11 @@ RatchetMessagePayload {
   x3dh?: X3DHHeader  // only on first message
 }
 ```
+
+## Native Shell (Tauri)
+- Rust core in `src-tauri/`, generated Android project in `src-tauri/gen/android/` (assets there are build output — do not edit by hand)
+- Android JNI access goes through the WebView handle (`with_webview` + `jni_handle().exec(...)`); Tauri 2 has no public `AndroidApp`/`activity()`
+- Read [docs/TAURI-ANDROID-GUIDE.md](docs/TAURI-ANDROID-GUIDE.md) before changing native code: JNI/JavaVM rules, keychain limits, biometrics (WebAuthn does not work in the Android WebView), and how to verify with `cargo check --target aarch64-linux-android`
 
 ## Local Storage
 - IndexedDB `NovaDarkMessengerDB` v2

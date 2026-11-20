@@ -17,6 +17,7 @@ import {
   type MessageSink,
   NOVA_BOTS,
   installBot,
+  setBotBlocked,
   setBotEnabled,
   uninstallBot,
 } from './runtime';
@@ -69,8 +70,22 @@ export class BotSession {
   /** Switch the registry storage (e.g. from in-memory to the encrypted vault) once it becomes available. */
   public switchStorage(storage: BotStorage): void {
     this.storage = storage;
-    this.runtimes = new Map(
+    this.runtimes = this.buildRuntimes();
+    void this.loadRuntimes();
+  }
+
+  private buildRuntimes(): Map<string, BotRuntime> {
+    return new Map(
       this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
+    );
+  }
+
+  /** Load entry modules for every enabled, unblocked bot. Idempotent per runtime. */
+  private async loadRuntimes(): Promise<void> {
+    await Promise.all(
+      this.registry.bots
+        .filter((bot) => bot.enabled && !bot.blocked)
+        .map((bot) => this.runtimes.get(bot.manifest.id)?.loadModule()),
     );
   }
 
@@ -85,6 +100,10 @@ export class BotSession {
 
   private async initialize(): Promise<void> {
     if (!NOVA_BOTS) return;
+    // Start from the persisted registry: bots installed or blocked in a
+    // previous session must survive a restart (the dev fixtures are only
+    // added when missing, not used to replace the stored list).
+    this.registry = await this.storage.load();
     const devFixtures = [echoBotManifest, novafatherManifest];
     for (const manifest of devFixtures) {
       if (!this.registry.bots.some((b) => b.manifest.id === manifest.id)) {
@@ -98,9 +117,8 @@ export class BotSession {
         await this.storage.save(this.registry);
       }
     }
-    this.runtimes = new Map(
-      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
-    );
+    this.runtimes = this.buildRuntimes();
+    await this.loadRuntimes();
   }
 
   /** Gateway URL management (Phase B6 / NovaFather). */
@@ -124,6 +142,36 @@ export class BotSession {
     return this.registry.bots.some((b) => b.manifest.id === botId);
   }
 
+  /** True when the user blocked this bot; blocked bots receive no updates. */
+  public isBlocked(botId: string): boolean {
+    return this.registry.bots.some((b) => b.manifest.id === botId && b.blocked === true);
+  }
+
+  /** Block/unblock a bot and persist the decision (Phase B8). */
+  public async setBlocked(botId: string, blocked: boolean): Promise<void> {
+    await this.ensureReady();
+    await setBotBlocked(botId, blocked, this.storage);
+    this.registry = await this.storage.load();
+    await this.rebuildRuntime(botId);
+  }
+
+  private async rebuildRuntime(botId: string): Promise<void> {
+    const bot = this.registry.bots.find((b) => b.manifest.id === botId);
+    if (!bot) {
+      this.runtimes.delete(botId);
+      return;
+    }
+    const runtime = new BotRuntime(bot, this.sink, this.storage);
+    this.runtimes.set(botId, runtime);
+    if (bot.enabled && !bot.blocked) await runtime.loadModule();
+  }
+
+  /** True when the bot is installed and not disabled/blocked. */
+  private acceptsUpdates(botId: string): boolean {
+    const bot = this.registry.bots.find((b) => b.manifest.id === botId);
+    return Boolean(bot && bot.enabled && !bot.blocked);
+  }
+
   /** Commands advertised by the bot, used by the slash-command menu in the composer. */
   public getBotCommands(botId: string): BotCommand[] {
     const bot = this.registry.bots.find((b) => b.manifest.id === botId);
@@ -135,6 +183,7 @@ export class BotSession {
    * runtime accepted the update.
    */
   public dispatchCallback(botId: string, chatId: string, messageId: string, callbackData: string): boolean {
+    if (!this.acceptsUpdates(botId)) return false;
     const runtime = this.runtimes.get(botId);
     if (!runtime) return false;
     void runtime.deliverUpdate({
@@ -157,6 +206,7 @@ export class BotSession {
    * callback_query, ...).
    */
   public deliverUpdate(botId: string, update: BotUpdate): boolean {
+    if (!this.acceptsUpdates(botId)) return false;
     const runtime = this.runtimes.get(botId);
     if (!runtime) return false;
     void runtime.deliverUpdate(update);
@@ -174,10 +224,9 @@ export class BotSession {
    */
   public setMessageSink(sink: MessageSink): void {
     this.sink = sink;
-    // Re-create runtimes with the new sink
-    this.runtimes = new Map(
-      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
-    );
+    // Re-create runtimes with the new sink and re-register their handlers.
+    this.runtimes = this.buildRuntimes();
+    void this.loadRuntimes();
   }
 
   /** Install a bot with explicit per-permission consent (Phase B3). */
@@ -188,9 +237,8 @@ export class BotSession {
     await this.ensureReady();
     const installed = await installBot(manifestInput, granted, this.storage);
     this.registry = await this.storage.load();
-    this.runtimes = new Map(
-      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
-    );
+    this.runtimes = this.buildRuntimes();
+    await this.loadRuntimes();
     return installed;
   }
 
@@ -198,6 +246,9 @@ export class BotSession {
     await this.ensureReady();
     await setBotEnabled(botId, enabled, this.storage);
     this.registry = await this.storage.load();
+    // The runtime keeps a snapshot of the bot, so rebuild it or the new
+    // enabled state would not be visible to deliverUpdate().
+    await this.rebuildRuntime(botId);
   }
 
   public async uninstallBot(botId: string): Promise<void> {

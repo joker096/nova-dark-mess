@@ -45,6 +45,11 @@ export interface InstalledBot {
   installedAt: number;
   /** False when the user disabled the bot without uninstalling it. */
   enabled: boolean;
+  /**
+   * True when the user blocked the bot (Phase B8). Blocking is stronger than
+   * disabling: the bot gets no updates, and the UI asks before unblocking.
+   */
+  blocked?: boolean;
 }
 
 export interface BotRegistry {
@@ -176,6 +181,19 @@ export async function setBotEnabled(botId: string, enabled: boolean, storage: Bo
   await storage.save(registry);
 }
 
+/** Block or unblock a bot. A blocked bot receives no updates (Phase B8). */
+export async function setBotBlocked(
+  botId: string,
+  blocked: boolean,
+  storage: BotStorage,
+): Promise<void> {
+  const registry = await storage.load();
+  const bot = registry.bots.find((b) => b.manifest.id === botId);
+  if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
+  bot.blocked = blocked;
+  await storage.save(registry);
+}
+
 /** Attach or detach an L2 gateway URL for a bot (Phase B6 / NovaFather). */
 export async function setGatewayUrl(
   botId: string,
@@ -215,6 +233,20 @@ export interface BotModule {
   init(ctx: BotContext): void | Promise<void>;
 }
 
+/**
+ * Local bot entry points are bundled at build time: a manifest's `entryPoint`
+ * is a virtual path, not something `import()` can resolve at runtime. Only
+ * modules under `examples/bots/` are accepted for L1 bots.
+ */
+const LOCAL_BOT_MODULES = import.meta.glob<{
+  default?: BotModule;
+  init?: BotModule['init'];
+}>([
+  '/examples/bots/echo/index.ts',
+  '/examples/bots/novafather/index.ts',
+  '/examples/bots/movie-catalog/index.ts',
+]);
+
 export interface BotContext {
   readonly manifest: BotManifest;
   readonly grantedPermissions: readonly BotPermission[];
@@ -228,6 +260,16 @@ export interface BotContext {
   setCommands(commands: BotCommand[]): Promise<void>;
   /** Send a typing indicator for the bot in a chat. */
   sendTyping(chatId: string, isTyping: boolean): Promise<void>;
+  /**
+   * Bot-scoped key/value state (localStorage on this device). Keys are namespaced
+   * by bot id, so one bot cannot read another bot's state. No secrets here:
+   * manifests/permissions stay in the encrypted registry.
+   */
+  readonly storage: {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<void>;
+    remove(key: string): Promise<void>;
+  };
 }
 
 export class PermissionDeniedError extends Error { }
@@ -244,6 +286,7 @@ export class BotRuntime {
   private readonly rateLimit = new Map<number, { count: number; reset: number }>();
   private readonly RATE_LIMIT = 20; // messages per second
   private currentLanguage = 'en';
+  private moduleLoaded = false;
 
   constructor(
     private readonly bot: InstalledBot,
@@ -262,8 +305,32 @@ export class BotRuntime {
     };
 
     const self = this;
+    const stateKey = (key: string) => `nova_bot_state_${manifest.id}_${key}`;
     return {
       manifest,
+      storage: {
+        get: async (key) => {
+          try {
+            return localStorage.getItem(stateKey(key));
+          } catch {
+            return null;
+          }
+        },
+        set: async (key, value) => {
+          try {
+            localStorage.setItem(stateKey(key), value);
+          } catch {
+            /* quota/disabled storage: keep the bot running without state */
+          }
+        },
+        remove: async (key) => {
+          try {
+            localStorage.removeItem(stateKey(key));
+          } catch {
+            /* ignore */
+          }
+        },
+      },
       get grantedPermissions() {
         return [...permissions()];
       },
@@ -409,11 +476,23 @@ export class BotRuntime {
 
   /** Load the bot's entry-point module and run init(ctx) to register onUpdate handlers. */
   public async loadModule(): Promise<void> {
+    if (this.moduleLoaded) return;
+    this.moduleLoaded = true;
     const entryPoint = this.bot.manifest.entryPoint;
     if (!entryPoint) return;
     try {
-      const mod = await import(entryPoint);
-      const init = mod.default ?? mod.init;
+      const normalized = entryPoint.replace(/^\.?\//, '');
+      const loader = Object.entries(LOCAL_BOT_MODULES).find(
+        ([path]) => path.replace(/^\//, '') === normalized,
+      )?.[1];
+      if (!loader) {
+        console.error(`Bot ${this.bot.manifest.id} entryPoint is not a bundled local bot: ${entryPoint}`);
+        return;
+      }
+      const mod = await loader();
+      // Modules may export `init` directly or a BotModule object as default.
+      const exported = mod.default ?? mod.init;
+      const init = typeof exported === 'function' ? exported : exported?.init;
       if (typeof init === 'function') {
         await init(this.createContext());
       }
