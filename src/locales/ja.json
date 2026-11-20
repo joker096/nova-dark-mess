@@ -125,7 +125,13 @@
     "upload": "アップロード",
     "imageUploadFailed": "その画像を読み込めませんでした。別のファイルを試してください。",
     "more": "もっと見る",
-    "undo": "元に戻す"
+    "undo": "元に戻す",
+    "forgotPin": "PINをお忘れですか？",
+    "recoverTitle": "アカウントの復元",
+    "recoverBody": "PINはこの端末のローカルデータを解除します。忘れた場合は、リカバリーフレーズまたはバックアップファイルでアクセスを復元してください。この端末にのみ保存されたメッセージは削除されます。",
+    "recoverWithPhrase": "フレーズで復元",
+    "recoverWithBackup": "バックアップファイルから",
+    "recoverResetConfirm": "はい、すべて消去"
   },
   "channels": "チャンネル",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "このボットはお手伝いの準備ができています。開始をタップして始めてください。",
+    "botWelcomeTitle": "ボットへようこそ！",
+    "startBot": "開始"
   },
   "stories": {
     "title": "ストーリー",
@@ -943,7 +952,13 @@
     "doneBody": "あなたのアイデンティティは準備ができています。メッセージは送信前にこのデバイス上で暗号化されます。",
     "startMessaging": "メッセージングを開始する",
     "languageTitle": "言語を選択してください",
-    "languageBody": "使用したい言語を選択してください。後から「設定」で変更できます。"
+    "languageBody": "使用したい言語を選択してください。後から「設定」で変更できます。",
+    "downloadPhrase": "フレーズをダウンロード",
+    "phraseCheckTitle": "フレーズを確認",
+    "phraseCheckPrompt": "{{position}}番目の単語を選択",
+    "phraseCheckWrong": "単語が違います。書き留めたフレーズを確認して、もう一度お試しください。",
+    "backupReminder": "バックアップがまだ保存されていません。バックアップがないと、この端末に保存されたチャットはスマートフォンを紛失した際に復元できません。",
+    "backupNow": "バックアップを作成"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "ボットがインストールされていません。先にインストールしてください。"
   },
   "sites": {
     "title": "Sites",

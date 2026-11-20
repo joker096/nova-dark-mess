@@ -125,7 +125,13 @@
     "upload": "Uploaden",
     "imageUploadFailed": "Kan die afbeelding niet laden. Probeer een ander bestand.",
     "more": "Meer",
-    "undo": "Ongedaan maken"
+    "undo": "Ongedaan maken",
+    "forgotPin": "PIN vergeten?",
+    "recoverTitle": "Accountherstel",
+    "recoverBody": "De PIN ontgrendelt lokale gegevens op dit apparaat. Ben je hem vergeten, herstel dan toegang met je herstelzin of een back-upbestand. Berichten die alleen op dit apparaat staan, worden gewist.",
+    "recoverWithPhrase": "Met herstelzin",
+    "recoverWithBackup": "Vanuit back-upbestand",
+    "recoverResetConfirm": "Ja, alles wissen"
   },
   "channels": "Kanalen",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Deze bot staat klaar om te helpen. Tik op Start om te beginnen.",
+    "botWelcomeTitle": "Welkom bij de bot!",
+    "startBot": "Start"
   },
   "stories": {
     "title": "Verhalen",
@@ -943,7 +952,13 @@
     "doneBody": "Je identiteit is klaar. Berichten worden op dit apparaat gecodeerd voordat ze vertrekken.",
     "startMessaging": "Begin met berichten sturen",
     "languageTitle": "Kies uw taal",
-    "languageBody": "Kies de taal die u wilt gebruiken. Je kunt dit later wijzigen in Instellingen."
+    "languageBody": "Kies de taal die u wilt gebruiken. Je kunt dit later wijzigen in Instellingen.",
+    "downloadPhrase": "Herstelzin downloaden",
+    "phraseCheckTitle": "Controleer je herstelzin",
+    "phraseCheckPrompt": "Kies woord #{{position}}",
+    "phraseCheckWrong": "Verkeerd woord. Controleer je opgeschreven herstelzin en probeer opnieuw.",
+    "backupReminder": "Je hebt nog geen back-up opgeslagen. Zonder back-up kunnen chats op dit apparaat niet worden hersteld als je telefoon kwijt is.",
+    "backupNow": "Back-up maken"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot niet geïnstalleerd. Installeer hem eerst."
   },
   "sites": {
     "title": "Sites",

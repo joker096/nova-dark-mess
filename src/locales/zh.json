@@ -125,7 +125,13 @@
     "upload": "上传",
     "imageUploadFailed": "无法加载该图像。尝试另一个文件。",
     "more": "更多",
-    "undo": "撤消"
+    "undo": "撤消",
+    "forgotPin": "忘记 PIN？",
+    "recoverTitle": "账户恢复",
+    "recoverBody": "PIN 用于解锁本设备上的本地数据。如果忘记，可使用恢复助记词或备份文件恢复访问。仅存储在本设备上的消息将被清除。",
+    "recoverWithPhrase": "用助记词",
+    "recoverWithBackup": "从备份文件",
+    "recoverResetConfirm": "是，全部清除"
   },
   "channels": "渠道",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "此机器人已准备好提供帮助。点按“开始”即可开始。",
+    "botWelcomeTitle": "欢迎使用机器人！",
+    "startBot": "开始"
   },
   "stories": {
     "title": "故事",
@@ -943,7 +952,13 @@
     "doneBody": "您的身份已准备好。消息在离开前会在此设备上进行加密。",
     "startMessaging": "开始发送消息",
     "languageTitle": "选择您的语言",
-    "languageBody": "选择您要使用的语言。您可以稍后在“设置”中更改它。"
+    "languageBody": "选择您要使用的语言。您可以稍后在“设置”中更改它。",
+    "downloadPhrase": "下载助记词",
+    "phraseCheckTitle": "验证助记词",
+    "phraseCheckPrompt": "选择第 {{position}} 个词",
+    "phraseCheckWrong": "词语错误。请检查你记下的助记词并重试。",
+    "backupReminder": "你还没有保存备份。若手机丢失，仅存储在本设备上的聊天记录将无法恢复。",
+    "backupNow": "创建备份"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "未安装机器人。请先安装。"
   },
   "sites": {
     "title": "Sites",

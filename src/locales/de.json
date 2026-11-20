@@ -125,7 +125,13 @@
     "imageUploadFailed": "Could not load that image. Try another file.",
     "more": "More",
     "emojis": "Emojis",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "forgotPin": "PIN vergessen?",
+    "recoverTitle": "Kontozugang wiederherstellen",
+    "recoverBody": "Der PIN entsperrt lokale Daten auf diesem Gerät. Wenn Sie ihn vergessen haben, stellen Sie den Zugang mit Ihrer Wiederherstellungsphrase oder einer Backup-Datei wieder her. Nur auf diesem Gerät gespeicherte Nachrichten werden gelöscht.",
+    "recoverWithPhrase": "Mit Wiederherstellungsphrase",
+    "recoverWithBackup": "Aus Backup-Datei",
+    "recoverResetConfirm": "Ja, alles löschen"
   },
   "chats": {
     "joinRequestNotice": "{{who}} möchte beitreten",
@@ -447,7 +453,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Dieser Bot ist bereit zu helfen. Tippen Sie auf „Start“, um zu beginnen.",
+    "botWelcomeTitle": "Willkommen beim Bot!",
+    "startBot": "Start"
   },
   "stories": {
     "title": "Stories",
@@ -943,7 +952,13 @@
     "doneBody": "Deine Identität ist bereit. Nachrichten werden vor dem Senden auf diesem Gerät verschlüsselt.",
     "startMessaging": "Chat starten",
     "languageTitle": "Sprache wählen",
-    "languageBody": "Wähle die Sprache der Oberfläche. Du kannst sie später in den Einstellungen ändern."
+    "languageBody": "Wähle die Sprache der Oberfläche. Du kannst sie später in den Einstellungen ändern.",
+    "downloadPhrase": "Phrase herunterladen",
+    "phraseCheckTitle": "Phrase prüfen",
+    "phraseCheckPrompt": "Wählen Sie Wort Nr. {{position}}",
+    "phraseCheckWrong": "Falsches Wort. Prüfen Sie Ihre notierte Phrase und versuchen Sie es erneut.",
+    "backupReminder": "Sie haben noch kein Backup gespeichert. Ohne eines lassen sich die auf diesem Gerät gespeicherten Chats bei Verlust des Telefons nicht wiederherstellen.",
+    "backupNow": "Backup erstellen"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot nicht installiert. Bitte installieren Sie ihn zuerst."
   },
   "sites": {
     "title": "Sites",

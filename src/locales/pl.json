@@ -125,7 +125,13 @@
     "upload": "Prześlij",
     "imageUploadFailed": "Nie można załadować tego obrazu. Spróbuj innego pliku.",
     "more": "Więcej",
-    "undo": "Cofnij"
+    "undo": "Cofnij",
+    "forgotPin": "Nie pamiętasz PIN-u?",
+    "recoverTitle": "Odzyskiwanie konta",
+    "recoverBody": "PIN odblokowuje lokalne dane na tym urządzeniu. Jeśli go zapomniałeś, odzyskaj dostęp za pomocą frazy odzyskiwania lub pliku kopii zapasowej. Wiadomości przechowywane tylko na tym urządzeniu zostaną usunięte.",
+    "recoverWithPhrase": "Za pomocą frazy",
+    "recoverWithBackup": "Z pliku kopii",
+    "recoverResetConfirm": "Tak, usuń wszystko"
   },
   "channels": "Kanały",
   "chats": {
@@ -509,7 +515,10 @@
     "notificationsEnabled": "Notifications enabled",
     "notificationsDisabled": "Notifications disabled",
     "disableNotifications": "Disable notifications",
-    "enableNotifications": "Enable notifications"
+    "enableNotifications": "Enable notifications",
+    "botWelcomeText": "Ten bot jest gotowy do pomocy. Dotknij Start, aby rozpocząć.",
+    "botWelcomeTitle": "Witaj w bocie!",
+    "startBot": "Start"
   },
   "stories": {
     "title": "Historie",
@@ -943,7 +952,13 @@
     "doneBody": "Twoja tożsamość jest gotowa. Wiadomości są szyfrowane na tym urządzeniu przed opuszczeniem.",
     "startMessaging": "Rozpocznij wysyłanie wiadomości",
     "languageTitle": "Wybierz swój język",
-    "languageBody": "Wybierz język, którego chcesz używać. Możesz to zmienić później w Ustawieniach."
+    "languageBody": "Wybierz język, którego chcesz używać. Możesz to zmienić później w Ustawieniach.",
+    "downloadPhrase": "Pobierz frazę",
+    "phraseCheckTitle": "Sprawdź frazę",
+    "phraseCheckPrompt": "Wybierz słowo nr {{position}}",
+    "phraseCheckWrong": "Błędne słowo. Sprawdź zapisaną frazę i spróbuj ponownie.",
+    "backupReminder": "Nie zapisano jeszcze kopii zapasowej. Bez niej czatów przechowywanych na tym urządzeniu nie da się przywrócić po utracie telefonu.",
+    "backupNow": "Utwórz kopię"
   },
   "ads": {
     "label": "Ad",
@@ -1064,7 +1079,8 @@
     "commandMenu": "Bot commands",
     "badge": "Bot",
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "notInstalled": "Bot nie jest zainstalowany. Najpierw go zainstaluj."
   },
   "sites": {
     "title": "Sites",
