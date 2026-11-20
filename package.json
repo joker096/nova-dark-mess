@@ -12,6 +12,7 @@
     "tauri:build:android": "tauri android build",
     "posttauri:build:android": "node scripts/copy-android-bundle.mjs",
     "copy:android-bundle": "node scripts/copy-android-bundle.mjs",
+    "android:aab": "npm run tauri:build:android && npm run copy:android-bundle"
     "tauri:build:ios": "tauri ios build",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
