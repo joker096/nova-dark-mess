@@ -13,7 +13,12 @@
  */
 
 import { createKeychain, KEYCHAIN_SERVICE } from '../storage/keychain';
-import { deriveKeyFromPassphrase } from '../storage/kdf';
+import {
+  DEFAULT_ARGON2ID_PARAMS,
+  DEFAULT_KDF_PARAMS,
+  deriveKeyFromPassphrase,
+  type KdfParams,
+} from '../storage/kdf';
 import { encryptAESGCM, decryptAESGCM } from '../crypto/aes';
 
 const WRAPPED_MASTER_KEY_KEY = 'nova_wrapped_master_key';
@@ -41,9 +46,22 @@ async function ensureWrapSalt(): Promise<string> {
   return salt;
 }
 
-async function deriveWrappingKey(pin: string, salt: string): Promise<CryptoKey> {
+interface WrappedKeyFile {
+  /** v2 blobs use Argon2id; blobs without a marker were PBKDF2. */
+  v?: number;
+  kdf?: string;
+  salt: string;
+  ciphertext: string;
+  iv: string;
+}
+
+async function deriveWrappingKey(
+  pin: string,
+  salt: string,
+  params: KdfParams,
+): Promise<CryptoKey> {
   const saltBytes = new TextEncoder().encode(salt);
-  return deriveKeyFromPassphrase(pin, saltBytes, undefined, false);
+  return deriveKeyFromPassphrase(pin, saltBytes, params, false);
 }
 
 /**
@@ -52,9 +70,17 @@ async function deriveWrappingKey(pin: string, salt: string): Promise<CryptoKey> 
  */
 export async function wrapMasterKey(pin: string, masterKey: string): Promise<string> {
   const salt = await ensureWrapSalt();
-  const wrappingKey = await deriveWrappingKey(pin, salt);
+  // A 4-digit PIN has only 10k candidates. Wrap with a memory-hard KDF so an
+  // attacker holding the keychain blob cannot cheaply brute-force it offline.
+  const wrappingKey = await deriveWrappingKey(pin, salt, DEFAULT_ARGON2ID_PARAMS);
   const encrypted = await encryptAESGCM(masterKey, wrappingKey);
-  return JSON.stringify({ salt, ciphertext: encrypted.ciphertext, iv: encrypted.iv });
+  return JSON.stringify({
+    v: 2,
+    kdf: DEFAULT_ARGON2ID_PARAMS.name,
+    salt,
+    ciphertext: encrypted.ciphertext,
+    iv: encrypted.iv,
+  } satisfies WrappedKeyFile);
 }
 
 /**
@@ -70,14 +96,18 @@ export async function unwrapMasterKey(pin: string): Promise<string | null> {
   const wrapped = await kc.get(KEYCHAIN_SERVICE, WRAPPED_MASTER_KEY_KEY);
   if (!wrapped) return null;
 
-  let parsed: { salt: string; ciphertext: string; iv: string };
+  let parsed: WrappedKeyFile;
   try {
-    parsed = JSON.parse(wrapped);
+    parsed = JSON.parse(wrapped) as WrappedKeyFile;
   } catch {
     return null;
   }
 
-  const wrappingKey = await deriveWrappingKey(pin, parsed.salt);
+  // Old blobs have no kdf marker and were wrapped with PBKDF2-600k. Keep
+  // reading them so an update does not lock existing users out; every new
+  // wrap uses Argon2id above.
+  const params = parsed.kdf === 'Argon2id' ? DEFAULT_ARGON2ID_PARAMS : DEFAULT_KDF_PARAMS;
+  const wrappingKey = await deriveWrappingKey(pin, parsed.salt, params);
   try {
     const decrypted = await decryptAESGCM({ ciphertext: parsed.ciphertext, iv: parsed.iv }, wrappingKey);
     unwrappedCache.set(pin, decrypted);

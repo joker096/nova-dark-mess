@@ -60,7 +60,10 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
       const target = targetOriginRef.current;
       if (!iframe || !target || !readyRef.current) return false;
       try {
-        (iframe.contentWindow as Window).postMessage(message, target);
+        // The sandbox has no `allow-same-origin`, so the document has an opaque
+        // origin and only a `*` target is delivered. The receiving side is
+        // still checked by the `event.source === iframe.contentWindow` guard.
+        (iframe.contentWindow as Window).postMessage(message, '*');
         return true;
       } catch {
         return false;
@@ -74,7 +77,9 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
     (event: MessageEvent) => {
       const iframe = iframeRef.current;
       if (!iframe || event.source !== iframe.contentWindow) return;
-      if (targetOriginRef.current && event.origin !== targetOriginRef.current) return;
+      // A sandboxed frame reports origin "null"; the source identity above is
+      // the real boundary. Any other origin must match the declared HTTPS URL.
+      if (event.origin !== 'null' && event.origin !== targetOriginRef.current) return;
 
       const data = event.data as FromMiniAppMessage | null;
       if (!data || typeof data.type !== 'string') return;
@@ -145,15 +150,17 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
 
       {/* Sandboxed iframe — no allow-same-origin. */}
       <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0b0c10]">
-        <iframe
-          ref={iframeRef}
-          className="w-full h-full block"
-          src={`${webAppUrl}#${serializeInitData(createInitData(botId, userId, secret))}`}
-          title={`Nova Mini App: ${botId}`}
-          sandbox="allow-scripts allow-forms"
-          referrerPolicy="no-referrer"
-          loading="eager"
-        />
+        {origin ? (
+          <iframe
+            ref={iframeRef}
+            className="w-full h-full block"
+            src={`${webAppUrl}#${serializeInitData(createInitData(botId, userId, secret))}`}
+            title={`Nova Mini App: ${botId}`}
+            sandbox="allow-scripts allow-forms"
+            referrerPolicy="no-referrer"
+            loading="eager"
+          />
+        ) : null}
         {!state.loaded && !state.error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60">
             <span className="animate-pulse">Loading Mini App…</span>

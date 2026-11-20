@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Nova Dark Messenger",
-  "version": "1.0.55",
+  "version": "1.0.56",
   "identifier": "com.messanger.e2e",
   "build": {
     "frontendDist": "../dist",
@@ -20,7 +20,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: asset: http://asset.localhost; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss:; frame-src https:; child-src https:; object-src 'none'; base-uri 'none'; form-action 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https: wss: ws: http:; frame-src https:; child-src https:; object-src 'none'; base-uri 'none'"
     }
   },
   "plugins": {

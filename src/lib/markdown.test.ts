@@ -42,6 +42,17 @@ describe('renderMarkdown', () => {
     expect(html).toContain('link');
   });
 
+  it('does not turn javascript: or data: links into anchors', () => {
+    const script = renderToHtml('[click](javascript:alert(1))');
+    expect(script).not.toContain('<a');
+    expect(script).not.toContain('href=');
+    expect(script).toContain('click');
+
+    const data = renderToHtml('[file](data:text/html,<script>alert(1)</script>)');
+    expect(data).not.toContain('<a');
+    expect(data).not.toContain('href=');
+  });
+
   it('renders blockquote > text', () => {
     const html = renderToHtml('> quote');
     expect(html).toContain('quote');

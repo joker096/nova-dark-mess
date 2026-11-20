@@ -16,6 +16,7 @@
  */
 
 import React, { ReactNode } from 'react';
+import { toSafeExternalUrl } from './security/safeUrl';
 
 /** Splits text into segments separated by a delimiter pair (open/close). */
 function splitByPair(
@@ -68,13 +69,20 @@ export function renderMarkdown({ text, onLinkPress }: RenderMarkdownProps): Reac
         if (typeof part === 'string') {
           return renderBlocks(part, { onLinkPress }, `p-${i}`);
         }
+        // Message text is attacker-controlled: only http(s)/mailto links may
+        // become anchors. A `javascript:` or `data:` URL would otherwise run
+        // in the app origin when clicked.
+        const safeUrl = toSafeExternalUrl(part.url);
+        if (!safeUrl) {
+          return <span key={`link-${i}`}>{part.text}</span>;
+        }
         return (
           <a
             key={`link-${i}`}
-            href={part.url}
+            href={safeUrl}
             onClick={(e) => {
               e.preventDefault();
-              void onLinkPress?.(part.url);
+              void onLinkPress?.(safeUrl);
             }}
             className="text-[var(--nova-accent-color,#ff4e18)] hover:underline underline underline-offset-2 hover:text-[var(--nova-accent-color,#ff5d2b)] transition"
             target="_blank"
