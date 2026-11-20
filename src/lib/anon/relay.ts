@@ -134,6 +134,7 @@ export class InMemoryAnonRelay {
     signingKey?: string,
   ): PollResult {
     const queue = this.getQueue(queueId);
+    if (Date.now() > queue.expiresAt) throw new Error('Queue expired');
     if (queue.tokens.recipientToken !== recipientToken) throw new Error('Invalid recipient token');
     const auth = signingKey
       ? signQueueCommand(signingKey, {
@@ -162,6 +163,7 @@ export class InMemoryAnonRelay {
     signingKey?: string,
   ): boolean {
     const queue = this.getQueue(queueId);
+    if (Date.now() > queue.expiresAt) throw new Error('Queue expired');
     if (queue.tokens.recipientToken !== recipientToken) throw new Error('Invalid recipient token');
     const auth = signingKey
       ? signQueueCommand(signingKey, {
@@ -187,6 +189,7 @@ export class InMemoryAnonRelay {
     signingKey?: string,
   ): void {
     const queue = this.getQueue(queueId);
+    if (Date.now() > queue.expiresAt) throw new Error('Queue expired');
     if (queue.tokens.recipientToken !== recipientToken) throw new Error('Invalid recipient token');
     const auth = signingKey
       ? signQueueCommand(signingKey, {
