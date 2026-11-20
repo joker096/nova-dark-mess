@@ -505,7 +505,11 @@
       "italic": "Italic",
       "code": "Code",
       "strike": "Strikethrough"
-    }
+    },
+    "notificationsEnabled": "Notifications enabled",
+    "notificationsDisabled": "Notifications disabled",
+    "disableNotifications": "Disable notifications",
+    "enableNotifications": "Enable notifications"
   },
   "stories": {
     "title": "Histoires",
