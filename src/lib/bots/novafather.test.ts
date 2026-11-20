@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import novafatherBot from '../../../examples/bots/novafather';
 import { novafatherManifest } from '../../../examples/bots/novafather/manifest';
+import { echoBotManifest } from '../../../examples/bots/echo/manifest';
 import {
   BotRuntime,
   InMemoryBotStorage,
+  type BotAdminApi,
   type InstalledBot,
   type MessageSink,
 } from './runtime';
@@ -46,20 +48,37 @@ function command(text: string, name: string): BotUpdate {
   };
 }
 
+function setup(bots: InstalledBot[] = []) {
+  const sink = makeSink();
+  const installed: InstalledBot = {
+    manifest: novafatherManifest,
+    grantedPermissions: [...novafatherManifest.requestedPermissions],
+    installedAt: Date.now(),
+    enabled: true,
+  };
+  const admin = {
+    listBots: vi.fn(() => bots),
+    installBot: vi.fn(),
+    setBotEnabled: vi.fn(async (botId: string, enabled: boolean) => {
+      const bot = bots.find((b) => b.manifest.id === botId);
+      if (bot) bot.enabled = enabled;
+    }),
+    uninstallBot: vi.fn(async (botId: string) => {
+      const index = bots.findIndex((b) => b.manifest.id === botId);
+      if (index >= 0) bots.splice(index, 1);
+    }),
+  } satisfies BotAdminApi;
+  const runtime = new BotRuntime(installed, sink, new InMemoryBotStorage(), admin);
+  return { sink, runtime, admin };
+}
+
 describe('NovaFather system bot', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   it('answers /start with its main menu keyboard', async () => {
-    const sink = makeSink();
-    const installed: InstalledBot = {
-      manifest: novafatherManifest,
-      grantedPermissions: [...novafatherManifest.requestedPermissions],
-      installedAt: Date.now(),
-      enabled: true,
-    };
-    const runtime = new BotRuntime(installed, sink, new InMemoryBotStorage());
+    const { sink, runtime } = setup();
     await novafatherBot.init(runtime.createContext());
 
     expect(await runtime.deliverUpdate(command('/start', 'start'))).toBe(true);
@@ -68,18 +87,39 @@ describe('NovaFather system bot', () => {
     expect(sink.sent[0].keyboard?.length).toBeGreaterThan(0);
   });
 
-  it('reports an empty bot list before /newbot creates one', async () => {
-    const sink = makeSink();
-    const installed: InstalledBot = {
-      manifest: novafatherManifest,
-      grantedPermissions: [...novafatherManifest.requestedPermissions],
-      installedAt: Date.now(),
-      enabled: true,
-    };
-    const runtime = new BotRuntime(installed, sink, new InMemoryBotStorage());
+  it('reports an empty installed-bot list', async () => {
+    const { sink, runtime } = setup();
     await novafatherBot.init(runtime.createContext());
 
     expect(await runtime.deliverUpdate(command('/mybots', 'mybots'))).toBe(true);
-    expect(sink.sent[0].text).toContain('no bots yet');
+    expect(sink.sent[0].text).toContain('No bots are installed');
+  });
+
+  it('lists installed bots and toggles one through the admin API', async () => {
+    const echo: InstalledBot = {
+      manifest: echoBotManifest,
+      grantedPermissions: [...echoBotManifest.requestedPermissions],
+      installedAt: Date.now(),
+      enabled: true,
+    };
+    const { sink, runtime, admin } = setup([echo]);
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/mybots', 'mybots'));
+    expect(sink.sent[0].text).toContain('My Bots</b> (1)');
+
+    await runtime.deliverUpdate({
+      type: 'callback_query',
+      payload: {
+        id: 'cb_toggle',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        messageId: 'm_list',
+        data: 'toggle:echo',
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+
+    expect(admin.setBotEnabled).toHaveBeenCalledWith('echo', false);
   });
 });
