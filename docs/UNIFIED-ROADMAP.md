@@ -68,7 +68,32 @@ Secret scan: чисто (fallback patterns).
 |---|--------|--------|--------|
 | 4.1 | site-gateway stores persistent (handoff, bot, oauth, user-notifications) | ✅ | `276b191` |
 
-### Этап 5-9 — ❌ Не начаты
+### Этап 5 (WP plugin polishing) — ✅ Частично (1/1)
+| # | Задача | Статус | Коммит |
+|---|--------|--------|--------|
+| 5.1 | First-party proxy URL field | ✅ | `e91a19c` |
+
+### Этап 6 (Anonymity) — ✅ Частично (1/1)
+| # | Задача | Статус | Коммит |
+|---|--------|--------|--------|
+| 6.1 | Enforce queue expiresAt on poll/ack/delete | ✅ | `05fb0d0` |
+
+### Этап 7 (Монетизация) — ✅ Частично (1/1)
+| # | Задача | Статус | Коммит |
+|---|--------|--------|--------|
+| 7.1 | Ad server MVP (campaigns, creatives, impressions, stats) | ✅ | `a1ec247` |
+
+### Этап 8 (Mobile) — 🟡 Частично
+| # | Задача | Статус |
+|---|--------|--------|
+| 8.1 | Android APK + deep link | ✅ (локально верифицировано) |
+| 8.2 | Android CI (android-e2e.yml) | ✅ (workflow existiert, зеленый запуск pending) |
+| 8.3 | iOS project | ❌ (требует macOS + Xcode) |
+
+### Этап 9 (Антицензура) — ✅ Частично (1/1)
+| # | Задача | Статус | Коммит |
+|---|--------|--------|--------|
+| 9.1 | Anti-censorship transports + bridge client | ✅ | `f4f9c11` |
 
 `.e2e/`, `.env`, `.open-mem/`, `dist/`, `.andromity/`, `server/site-gateway/data/` — игнорируются `.gitignore`.
 
