@@ -13,6 +13,7 @@ if ( ! class_exists( 'Mess_Chat_Settings' ) ) {
 		const OPTION_LANGUAGE     = 'mess_chat_language';
 		const OPTION_POSITION     = 'mess_chat_position';
 		const OPTION_FIRST_PARTY  = 'mess_chat_first_party';
+		const OPTION_PROXY_URL    = 'mess_chat_proxy_url';
 		const CONNECT_NONCE       = 'mess_chat_connect_nonce';
 
 		public static function register() {
@@ -41,6 +42,11 @@ if ( ! class_exists( 'Mess_Chat_Settings' ) ) {
 				'sanitize_callback' => 'wp_validate_boolean',
 				'default'         => false,
 			) );
+			register_setting( 'mess_chat_group', self::OPTION_PROXY_URL, array(
+				'type'            => 'string',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_proxy_url' ),
+				'default'         => '',
+			) );
 		}
 
 		public static function sanitize_site_id( $value ) {
@@ -57,6 +63,14 @@ if ( ! class_exists( 'Mess_Chat_Settings' ) ) {
 			return in_array( $value, array( 'bottom-right', 'bottom-left' ), true ) ? $value : 'bottom-right';
 		}
 
+		public static function sanitize_proxy_url( $value ) {
+			$value = esc_url_raw( $value );
+			if ( $value && ! preg_match( '|^https?://|i', $value ) ) {
+				$value = '';
+			}
+			return rtrim( $value, '/' );
+		}
+
 		public static function render_page() {
 			if ( ! current_user_can( 'manage_options' ) ) {
 				return;
@@ -67,6 +81,7 @@ if ( ! class_exists( 'Mess_Chat_Settings' ) ) {
 			$language    = get_option( self::OPTION_LANGUAGE, 'en' );
 			$position    = get_option( self::OPTION_POSITION, 'bottom-right' );
 			$first_party = (bool) get_option( self::OPTION_FIRST_PARTY, false );
+			$proxy_url   = get_option( self::OPTION_PROXY_URL, '' );
 			$nonce       = wp_create_nonce( self::CONNECT_NONCE );
 
 			$connect_url = add_query_arg( array(
@@ -121,6 +136,13 @@ if ( ! class_exists( 'Mess_Chat_Settings' ) ) {
 								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_FIRST_PARTY ); ?>" value="1" <?php checked( $first_party, true ); ?> />
 								<label><?php _e( 'Serve the widget loader from your own domain (helps bypass ad blockers).', 'mess-chat' ); ?></label>
 								<p class="description"><?php _e( 'Requires server-side proxy configuration. See plugin documentation.', 'mess-chat' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php _e( 'Proxy URL', 'mess-chat' ); ?></th>
+							<td>
+								<input type="url" name="<?php echo esc_attr( self::OPTION_PROXY_URL ); ?>" value="<?php echo esc_attr( $proxy_url ); ?>" class="regular-text" />
+								<p class="description"><?php printf( __( 'Your first-party proxy base URL (no trailing slash), e.g. <code>https://chat.%1$s</code>. Leave empty to use %2$s.', 'mess-chat' ), esc_html( get_bloginfo( 'domain' ) ), esc_html( 'https://mess.cvr.name/widget/loader.js' ) ); ?></p>
 							</td>
 						</tr>
 					</table>

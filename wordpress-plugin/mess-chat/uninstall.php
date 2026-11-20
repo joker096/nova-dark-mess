@@ -10,3 +10,4 @@ delete_option( 'mess_chat_enabled' );
 delete_option( 'mess_chat_language' );
 delete_option( 'mess_chat_position' );
 delete_option( 'mess_chat_first_party' );
+delete_option( 'mess_chat_proxy_url' );
