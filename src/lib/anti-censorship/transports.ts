@@ -34,6 +34,8 @@ export interface BridgeConfig {
   secret?: string;
   /** When this bridge was last known to work (ms). */
   last_good_at?: number;
+  /** Fallback order — lower = tried first. */
+  priority?: number;
 }
 
 /**
