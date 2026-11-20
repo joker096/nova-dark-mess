@@ -229,8 +229,10 @@ the bot's private key):
       rejected); the list refreshes from the registry afterwards.
 - [x] `/setcommands` (validated JSON, max 100) and `/setdescription` update
       the installed manifest through `BotSession`.
-- [ ] `/token`, `/revoke`, `/setwebhook` still use chat-local demo state;
-      wiring them to the gateway token store and webhook API is open.
+- [x] `/token`, `/revoke` and `/setwebhook` no longer pretend to work: they
+      explain that L3 tokens and webhooks are configured on the gateway
+      (`botToken`, `setWebhook`), because the app never holds gateway secrets.
+      The main-menu callbacks for these screens are wired too.
 - [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots`, toggle,
       gateway and command-list updates through `BotRuntime` + `BotAdminApi`;
       transport-level E2E is still missing.
