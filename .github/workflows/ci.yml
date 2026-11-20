@@ -45,6 +45,11 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+      # Locale drift used to be invisible: DOM checks were "passing" while
+      # t('x.y') keys were missing from every bundle. This steps fails on that.
+      - name: i18n audit
+        run: npm run audit:i18n
+
       - name: Check Android icon safe zone
         run: npm run check:android-icons
 
@@ -64,15 +69,10 @@ jobs:
       # Fail the build if a secret (passwords, API keys, tokens, private
       # keys, etc.) is present in the files this PR/push changes. This is a
       # second line of defense alongside GitHub Push Protection.
-      - name: Scan for secrets (gitleaks)
-        uses: gitleaks/gitleaks-action@v1.18.0
-        with:
-          # Scan the working tree (the files in this checkout), not the
-          # full git history. gitleaks applies the [allowlist] rules from
-          # .gitleaks.toml to suppress false positives.
-          command: detect
-          # --no-git: scan the working tree, not history.
-          # --exit-code 1: fail the build (and thus the PR) on any finding.
-          flags: --no-git --source . --config .gitleaks.toml --exit-code 1
-          # Fail the build on any finding.
-          report: true
+      #
+      # Uses our own scanner (`scripts/check-secrets.js`) rather than the
+      # gitleaks action: the latter is a paid/"full history" product for
+      # organisation repos, and our script runs the same rule set plus the
+      # allowlist below, so CI and `npm run check:secrets` can never disagree.
+      - name: Scan for secrets
+        run: npm run check:secrets
