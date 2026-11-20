@@ -365,6 +365,8 @@ describe('SettingsModal', () => {
       relayEndpoints: [],
       torEnabled: false,
       torSocksPort: 9050,
+      analyticsConsent: false,
+      crashReports: false,
     });
     delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
   });

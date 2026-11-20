@@ -52,6 +52,7 @@ import {
 import { createHandle } from '../lib/crypto/handles';
 import { isPremium } from '../lib/premium';
 import { LazyMedia } from './LazyMedia';
+import { readImageFile } from '../lib/ui/image';
 
 interface ProfileScreenProps {
   profileId: string;
@@ -145,14 +146,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [avatar, setAvatar] = useState(profile.avatar);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
   const updateAvatarEverywhere = (value: string) => {
     setAvatar(value);
     setAvatarLoadFailed(false);
+    setAvatarMessage('');
     if (isOwnProfile) {
-      updateAccount({ avatar: value });
+      try {
+        updateAccount({ avatar: value });
+      } catch (error) {
+        setAvatarMessage(
+          error instanceof Error ? error.message : t('profile.avatarSaveFailed', { defaultValue: 'Could not save the photo.' }),
+        );
+      }
       return;
     }
     if (CONTACT_PROFILES[profileId]) {
@@ -165,31 +174,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-
-    let objectUrl = '';
-    try {
-      objectUrl = URL.createObjectURL(file);
-      updateAvatarEverywhere(objectUrl);
-    } catch {
-      void 0;
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage(t('profile.avatarChooseImage', { defaultValue: 'Choose an image file.' }));
+      return;
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result ?? '');
-      if (dataUrl) {
-        updateAvatarEverywhere(dataUrl);
-      }
-      if (objectUrl) {
-        try {
-          URL.revokeObjectURL(objectUrl);
-        } catch {
-          void 0;
-        }
-      }
-    };
-    reader.readAsDataURL(file);
+    setAvatarMessage(t('profile.avatarProcessing', { defaultValue: 'Preparing photo…' }));
+    // Downscale before storing: a full-size phone photo does not fit into the
+    // localStorage quota, which made the avatar look saved until a reload.
+    void readImageFile(file)
+      .then((dataUrl) => updateAvatarEverywhere(dataUrl))
+      .catch(() =>
+        setAvatarMessage(t('profile.avatarSaveFailed', { defaultValue: 'Could not save the photo.' })),
+      );
   };
 
   const handleRemoveAvatar = () => {
@@ -658,7 +654,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 aria-label={t('profile.changeAvatar')}
                 title={t('profile.changeAvatar')}
                 onChange={handleAvatarFileChange}
-                className="hidden"
+                className="sr-only"
               />
               <button
                 type="button"
@@ -683,6 +679,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </>
           )}
         </div>
+
+        {isOwnProfile && avatarMessage && (
+          <p role="status" className="mb-2 max-w-[240px] text-center text-[11px] text-[var(--nova-accent-color)]">
+            {avatarMessage}
+          </p>
+        )}
 
         {editingName ? (
           <div className="flex items-center gap-1.5">

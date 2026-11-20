@@ -63,6 +63,21 @@ html[data-theme='dark'] {
   --nova-border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* Accent ink: icons and labels use the lighter tint so the violet/blue/green
+   accents stay legible on a dark surface, while filled buttons keep the
+   saturated background they pair with white text. */
+html[data-theme='dark'] [class*='text-[var(--nova-accent-color'] {
+  color: var(--nova-accent-text, var(--nova-accent-color)) !important;
+}
+
+html[data-theme='light'] [class*='text-[var(--nova-accent-color'] {
+  color: var(--nova-accent-text, var(--nova-accent-color)) !important;
+}
+
+html[data-theme='dark'] [class*='border-[var(--nova-accent-color'] {
+  border-color: color-mix(in srgb, var(--nova-accent-text, var(--nova-accent-color)) 38%, transparent) !important;
+}
+
 /* Neutral utility classes are remapped for light mode; media calls opt out. */
 html[data-theme='light']
   :is(
@@ -416,11 +431,13 @@ select {
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
+/* No extra inner glow on text fields: the caret and the field's own border
+   are enough feedback. Ringed containers (the chat composer) opt out. */
 input:focus-visible:not([data-inline-focus]),
 textarea:focus-visible,
 select:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--nova-accent-color) 45%, transparent);
+  box-shadow: none;
 }
 
 @media (hover: hover) {

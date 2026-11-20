@@ -457,13 +457,6 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           },
     },
     {
-      key: 'profile',
-      label: t('profile.title'),
-      icon: UserRound,
-      active: activeNavTab === 'profile',
-      onClick: onOpenProfile,
-    },
-    {
       key: 'mesh-map',
       label: t('meshMap.title'),
       icon: MapPin,
@@ -574,16 +567,17 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             aria-label={t('profile.title')}
             title={t('profile.title')}
           >
-            {account.avatar && (
+            {account.avatar ? (
               <LazyMedia
                 src={account.avatar}
                 alt={account.displayName}
                 className="w-full h-full object-cover"
               />
+            ) : (
+              <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
+                {account.displayName.slice(0, 2).toUpperCase()}
+              </div>
             )}
-            <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-white">
-              {account.displayName.slice(0, 2).toUpperCase()}
-            </div>
           </button>
           <div>
             <h1 className="text-[17px] font-bold text-white tracking-tight leading-tight">
@@ -1270,7 +1264,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
 
       {/* Floating Bottom Navigation Bar */}
       <div className="absolute bottom-3 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
-        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-6 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
+        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-5 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
           {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
             <button
               key={key}

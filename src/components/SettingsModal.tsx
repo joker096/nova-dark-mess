@@ -57,6 +57,8 @@ interface SettingsModalProps {
   pendingBotInstall?: { id: string; startPayload?: string } | null;
   /** Called when the bot install flow is handled (dismissed or completed). */
   onBotInstallHandled?: () => void;
+  /** Opens (or starts) a conversation with an installed bot. */
+  onOpenBotChat?: (botId: string) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'nova_messenger_settings';
@@ -164,6 +166,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   getBotSession,
   pendingBotInstall,
   onBotInstallHandled,
+  onOpenBotChat,
 }) => {
   const { t } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
@@ -450,6 +453,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
   }, [isOpen, privacyPrefs.metadataMinimization]);
 
+  // Initialize localAnalytics consent from stored privacy prefs.
+  useEffect(() => {
+    localAnalytics.setAnalyticsConsent(privacyPrefs.analyticsConsent);
+    localAnalytics.setCrashReportsConsent(privacyPrefs.crashReports);
+  }, [privacyPrefs.analyticsConsent, privacyPrefs.crashReports]);
+
   useEffect(() => {
     if (!cacheMsg) return;
     const timer = setTimeout(() => setCacheMsg(null), 2000);
@@ -656,10 +665,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const a = document.createElement('a');
       a.href = url;
       a.download = `nova_backup_${new Date().toISOString().slice(0, 10)}.nova-backup`;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Revoking immediately can cancel the download before the browser reads it.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setBackupMsg('Backup exported');
       setBackupModal(null);
       setExportPassphrase('');
@@ -807,6 +818,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setPinMsg(error instanceof Error ? error.message : String(error));
         return;
       }
+      // Keep the stored length in sync with the PIN that was actually chosen;
+      // otherwise a 6-digit PIN could never be typed again on a 4-digit profile.
+      setPinLength(pinInput.length);
       setPinInput('');
       setIsCreatingPin(false);
       setPinMsg(t('settings.passcodeSet'));
@@ -1325,6 +1339,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Analytics consent (Этап 8.4) */}
+          <ToggleRow
+            label={t('analytics.consent')}
+            enabled={privacyPrefs.analyticsConsent}
+            onToggle={() => {
+              const next = !privacyPrefs.analyticsConsent;
+              setPrivacyPrefs((prev) => {
+                const p = { ...prev, analyticsConsent: next };
+                savePrivacyPrefs(p);
+                return p;
+              });
+              localAnalytics.setAnalyticsConsent(next);
+            }}
+          />
+          {privacyPrefs.analyticsConsent && (
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+              {t('analytics.consentHint')}
+            </p>
+          )}
+          <ToggleRow
+            label={t('analytics.crashReports')}
+            enabled={privacyPrefs.crashReports}
+            onToggle={() => {
+              const next = !privacyPrefs.crashReports;
+              setPrivacyPrefs((prev) => {
+                const p = { ...prev, crashReports: next };
+                savePrivacyPrefs(p);
+                return p;
+              });
+              localAnalytics.setCrashReportsConsent(next);
+            }}
+          />
+          {privacyPrefs.crashReports && (
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+              {t('analytics.crashReportsHint')}
+            </p>
+          )}
           {privacyPrefs.metadataMinimization && (
             <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
               {t('settings.metadataMinimizationHint')}
@@ -1500,7 +1552,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   inputMode="numeric"
                   autoComplete="off"
                   value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, pinLength))}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
                   className="w-[70px] bg-white/[0.03] border border-white/10 rounded-xl px-2 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="0000"
                 />
@@ -1532,18 +1585,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {pinEnabled && (
-            <div className="space-y-1.5 px-1 pb-1">
+          <div className="space-y-1.5 px-1 pb-1">
               <ToggleRow
-                label={t('settings.biometricUnlockWithPin') ?? 'Fingerprint/Face unlock (with PIN fallback)'}
+                label={t('settings.biometricUnlock') ?? t('settings.biometricUnlockWithPin') ?? 'Fingerprint/Face unlock'}
                 enabled={biometricEnabled}
                 onToggle={() => void handleToggleBiometric()}
               />
               <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
-                {biometricSupported 
+                {biometricSupported
                   ? (t('settings.biometricHintWithPin') ?? 'Use fingerprint or face to unlock. PIN is always required as fallback.')
                   : t('settings.biometricUnavailable')}
               </p>
+              {pinEnabled && (
+                <>
               <ToggleRow
                 label={t('settings.lockOnHide')}
                 enabled={lockOnHide}
@@ -1582,8 +1636,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {t('settings.changePin') ?? 'Change PIN'}
                 </button>
               </div>
+                </>
+              )}
             </div>
-          )}
 
           <button
             onClick={handleShowSeedPhrase}
@@ -2133,6 +2188,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </button>
                           ) : (
                             <>
+                              {onOpenBotChat && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBotsOpen(false);
+                                    onClose();
+                                    onOpenBotChat(bot.manifest.id);
+                                  }}
+                                  className="px-2 py-1 rounded-lg border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 text-[10px] font-medium text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/20 active:scale-95"
+                                  title={t('bot.openChat', { defaultValue: 'Open chat' })}
+                                >
+                                  {t('bot.openChat', { defaultValue: 'Open chat' })}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => toggleBot(bot.manifest.id, !bot.enabled)}
@@ -2160,6 +2229,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {installError && (
                 <div className="text-[10px] text-red-400 px-1">{installError}</div>
               )}
+              <p className="px-1 pt-1 text-[10px] leading-relaxed text-[#8c919d]">
+                {t('bot.openChatHint', {
+                  defaultValue:
+                    'Open a bot chat here. Send /start or tap the bot icon in the message field to see its commands.',
+                })}
+              </p>
             </div>
             <div className="p-4 border-t border-white/5 flex gap-2">
               <button

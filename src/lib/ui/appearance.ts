@@ -7,17 +7,23 @@ export const FONT_SIZE_KEY = 'nova_font_size';
 
 export const ACCENT_COLORS: Record<'default' | 'sapphire' | 'amethyst' | 'emerald', string> = {
   default: '#ff4e18',
-  sapphire: '#3B82F6',
-  amethyst: '#8B5CF6',
+  sapphire: '#22d3ee',
+  amethyst: '#f472b6',
   emerald: '#10B981',
 };
 
 const LIGHT_ACCENT_COLORS: Record<string, string> = {
   '#ff4e18': '#c2410c',
-  '#3b82f6': '#1d4ed8',
-  '#8b5cf6': '#6d28d9',
+  '#22d3ee': '#0e7490',
+  '#f472b6': '#be185d',
   '#10b981': '#047857',
 };
+
+/**
+ * Accent used for text and icons (not for filled buttons). A saturated fill
+ * that carries white text is too dark to read as an icon on the near-black
+ * canvas, so the dark theme lifts it; the light theme reuses the deep tint.
+ */
 
 let selectedTheme: AppTheme = 'system';
 let systemThemeQuery: MediaQueryList | null = null;
@@ -68,6 +74,7 @@ function setAccentColorVariable(color: string): void {
     ? LIGHT_ACCENT_COLORS[color.toLowerCase()] ?? color
     : color;
   document.documentElement.style.setProperty('--nova-accent-color', resolvedColor);
+  document.documentElement.style.setProperty('--nova-accent-text', resolvedColor);
 }
 
 export function applyAppTheme(theme: AppTheme): void {

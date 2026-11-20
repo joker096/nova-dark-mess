@@ -18,6 +18,7 @@ import { useAccount } from '../hooks/useAccount';
 import { normalizeNickname } from '../lib/account/account';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
+import { downloadTextFile } from '../lib/ui/download';
 
 interface OnboardingWizardProps {
   onDone: () => void;
@@ -289,10 +290,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       const link = document.createElement('a');
       link.href = url;
       link.download = `nova_backup_${new Date().toISOString().slice(0, 10)}.nova-backup`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Revoking right away can abort the download in some WebViews.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setBackupPassphrase('');
       setBackupPassphraseConfirm('');
       setBackupCreated(true);
@@ -325,14 +328,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       '',
       'Anyone with these words can restore this account. Keep this file offline.',
     ].join('\n');
-    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'nova-recovery-phrase.txt';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadTextFile('nova-recovery-phrase.txt', body);
   };
 
   const answerPhraseQuestion = (answer: string) => {

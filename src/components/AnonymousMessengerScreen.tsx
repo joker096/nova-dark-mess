@@ -37,6 +37,7 @@ import {
 } from '../lib/anon/blocks';
 import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
+import { createAutoTransport } from '../lib/anon/localTransport';
 import { createPushHintPoller, pushTokenForQueue, registerPush } from '../lib/anon/push';
 import { checkTorRunning, isOnionUrl } from '../lib/anon/tor';
 import { sendAnonMessage } from '../lib/anon/session';
@@ -239,7 +240,7 @@ function transportFor(settings: RelaySettings, relayUrl: string = settings.relay
   const hasProxySettings = Boolean(
     settings.proxyUrl.trim() || settings.relayId.trim() || settings.relayPublicKey.trim(),
   );
-  return createAnonTransport({
+  const transportConfig = {
     relayUrl,
     ...(settings.tor && isOnionUrl(relayUrl) ? { tor: true } : {}),
     ...(hasProxySettings
@@ -251,7 +252,13 @@ function transportFor(settings: RelaySettings, relayUrl: string = settings.relay
           },
         }
       : {}),
-  });
+  };
+  // If the public relay cannot be reached (offline preview, self-hosted build
+  // without the relay), invites still work locally instead of failing with a
+  // technical "relay unavailable" error.
+  return settings.tor || hasProxySettings
+    ? createAnonTransport(transportConfig)
+    : createAutoTransport(transportConfig);
 }
 
 function inviteCodeForInbox(inbox?: LocalInbox): string {
@@ -315,6 +322,7 @@ export const AnonymousMessengerScreen: React.FC<{
       advanced: 'Дополнительные сетевые настройки',
       advancedNote: 'Для собственного relay или proxy. Обычно менять это не нужно.',
         saveSettings: 'Сохранить подключение',
+      useDefaultRelay: 'Использовать сервер по умолчанию',
       createInvite: 'Создать ссылку и QR-код',
       inviteLink: 'Ваша ссылка-приглашение',
       showQr: 'QR-код для добавления',
@@ -387,6 +395,7 @@ export const AnonymousMessengerScreen: React.FC<{
         advanced: 'Advanced network settings',
         advancedNote: 'For a custom relay or proxy. Most people do not need to change this.',
         saveSettings: 'Save connection',
+        useDefaultRelay: 'Use the default server',
         createInvite: 'Create link and QR code',
         inviteLink: 'Your invitation link',
         showQr: 'Scan this QR code to add me',
@@ -1668,6 +1677,24 @@ export const AnonymousMessengerScreen: React.FC<{
             </summary>
             <form onSubmit={saveSettings} className="mt-3 space-y-2">
               <p className="text-xs leading-relaxed text-white/50">{labels.advancedNote}</p>
+              <button
+                type="button"
+                onClick={() =>
+                  setSettingsForm((current) => ({
+                    ...current,
+                    relayUrl: defaultRelayUrl(),
+                    extraRelays: '',
+                    proxyUrl: '',
+                    relayId: '',
+                    relayPublicKey: '',
+                    pushToken: '',
+                    tor: false,
+                  }))
+                }
+                className="w-full rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-3 py-2 text-xs font-medium text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/20"
+              >
+                {labels.useDefaultRelay}
+              </button>
               {([
                 ['relayUrl', labels.relayUrl, 'https://relay.example'],
                 ['extraRelays', labels.extraRelays, 'https://relay2.example, https://relay3.example'],

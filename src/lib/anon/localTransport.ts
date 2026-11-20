@@ -6,7 +6,8 @@
 import { CreatedQueue, EnqueueResult, PollResult, AnonPacket } from './types';
 import type { AbuseReportSubmission } from './blocks';
 import type { PowChallenge } from './spam';
-import type { AnonInboxTransport } from './transport';
+import { createAnonTransport, type AnonInboxTransport } from './transport';
+import { queueSigningPublicKey } from './signing';
 
 const STORAGE_PREFIX = 'anon_local_queue_';
 const MAX_QUEUE_SIZE = 1000;
@@ -97,7 +98,9 @@ function generateId(prefix: string, bytes = 16): string {
 function generateToken(): string {
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);
-  return Array.from(arr, (b) => b.toString(16).padStart(2, '0')).join('');
+  let binary = '';
+  for (let i = 0; i < arr.length; i += 1) binary += String.fromCharCode(arr[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export class LocalAnonTransport implements AnonInboxTransport {
@@ -111,7 +114,7 @@ export class LocalAnonTransport implements AnonInboxTransport {
     const recipientToken = generateToken();
     const inviteToken = generateToken().slice(0, 32);
     const signingKey = generateToken();
-    const signingPublicKey = generateToken();
+    const signingPublicKey = queueSigningPublicKey(signingKey);
 
     const queue: LocalQueue = {
       id: queueId,
@@ -210,8 +213,6 @@ export function createAutoTransport(config: {
   tor?: boolean;
   jitter?: boolean;
 }): AnonInboxTransport {
-  const { createAnonTransport } = require('./transport');
-  
   const remoteTransport = createAnonTransport(config);
   const localTransport = new LocalAnonTransport();
   let useLocal = false;
@@ -224,24 +225,24 @@ export function createAutoTransport(config: {
     lastRemoteCheck = now;
 
     try {
-      // Try to create a test queue to verify remote is working
-      const testQueue = remoteTransport.createQueue(60_000);
+      // Try to create a test queue to verify remote is working. The relay
+      // answers asynchronously, so it has to be awaited: an unhandled
+      // rejection here used to take the whole invite flow down.
+      const testQueue = await remoteTransport.createQueue(60_000);
       if (testQueue) {
-        // Clean up test queue
-        await remoteTransport.deleteQueue(testQueue.queueId, testQueue.recipientToken);
-        if (useLocal) {
-          console.log('[anon] Remote relay recovered, switching back');
-          useLocal = false;
-        }
+        const removable = remoteTransport as AnonInboxTransport & {
+          deleteQueue?: (queueId: string, token: string) => Promise<boolean> | boolean;
+        };
+        await Promise.resolve(removable.deleteQueue?.(testQueue.queueId, testQueue.recipientToken)).catch(
+          () => undefined,
+        );
+        if (useLocal) useLocal = false;
         return true;
       }
     } catch {
-      // Remote failed
+      // Remote failed; fall through to local mode.
     }
-    if (!useLocal) {
-      console.warn('[anon] Remote relay unavailable, falling back to local mode');
-      useLocal = true;
-    }
+    useLocal = true;
     return false;
   }
 
@@ -260,7 +261,10 @@ export function createAutoTransport(config: {
     },
     async ack(queueId, recipientToken, packetIds, signingKey) {
       await checkRemote();
-      return useLocal ? localTransport.ack(queueId, recipientToken, packetIds, signingKey) : remoteTransport.ack(queueId, recipientToken, packetIds, signingKey);
+      const acknowledged = useLocal
+        ? await localTransport.ack(queueId, recipientToken, packetIds, signingKey)
+        : await remoteTransport.ack(queueId, recipientToken, packetIds, signingKey);
+      return acknowledged === true;
     },
     async submitAbuseReport(report) {
       await checkRemote();
