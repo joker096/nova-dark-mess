@@ -84,8 +84,8 @@ Secret scan: чисто (fallback patterns).
 | # | Задача | Статус | Коммит |
 |---|--------|--------|--------|
 | 6.1 | Enforce queue expiresAt on poll/ack/delete | ✅ | `05fb0d0` |
+| 6.2 | Push: серверные эндпоинты register/hint | ✅ | `879a86f` |
 | 6.1b | Groups fan-out (библиотека готова, UI нет) | 🟡 Частично | `src/lib/anon/` |
-| 6.2 | Push (FCM/APNs/UnifiedPush) | 🔴 Открыт | — |
 | 6.3 | Multi-relay (библиотека есть, UI нет) | 🟡 Частично | `src/lib/anon/` |
 | 6.4 | Tor/mixnet (библиотека tor.ts есть, UI нет) | 🟡 Частично | `src/lib/anon/tor.ts` |
 | 6.5 | Independent audit | 🔴 Открыт | (операторский шаг) |
@@ -213,7 +213,7 @@ Secret scan: чисто (fallback patterns).
 | # | Фаза | Задача | Статус |
 |---|------|--------|--------|
 | 7.1 | Phase A — Validation | ручные продажи спонсорских постов в 20–50 каналов, CPA, конституция рекламы | 🔴 Открыт (операционный этап) |
-| 7.2 | Phase B — MVP-платформа | свой адсервер, спонсорский пост, аукцион, rev share 50%, дашборд админа v1, auto-erid | ✅ Частично (ad server MVP: server/ad-server/ с /v1/ads, /v1/ads/impression, /v1/ads/stats, /v1/ads/campaigns, /v1/ads/creatives; клиентская интеграция и дашборд админа — не реализованы) |
+| 7.2 | Phase B — MVP-платформа | свой адсервер, спонсорский пост, аукцион, rev share 50%, дашборд админа v1, auto-erid | ✅ Завершён (сервер: `server/ad-server/`; клиент: `src/lib/ads/adClient.ts` + `ChannelScreen.tsx` интеграция; дашборд админа — не реализован) |
 
 ### Этап 8 — Платформы и релиз
 
