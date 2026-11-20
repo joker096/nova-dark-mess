@@ -102,7 +102,10 @@ describe('VideoCallOverlay visual snapshot', () => {
   it('renders top bar controls: minimize, encryption badge, quality badge', () => {
     renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} onMinimize={vi.fn()} contactName="Katie Rogers" />);
     expect(screen.getByTitle('Minimize to Picture-in-Picture')).toBeTruthy();
-    expect(screen.getByText('End-to-end Encrypted')).toBeTruthy();
+    expect(screen.getByText(/end-to-end encrypted/i)).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1200);
+    });
     expect(screen.getByText('1080p 60fps')).toBeTruthy();
   });
 
@@ -147,15 +150,15 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('toggles mic to off state with red bg', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
-    const micBtn = screen.getByTitle('Mute microphone');
-    fireEvent.click(micBtn);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    fireEvent.click(screen.getByTitle('Mute microphone'));
+    const micBtn = screen.getByTitle('Unmute microphone');
     expect(micBtn.className).toContain('bg-red-500/25');
     expect(micBtn.className).toContain('text-red-400');
   });
 
   it('disables flip camera when camera off', () => {
-    render(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const camBtn = screen.getByTitle('Turn camera off');
     fireEvent.click(camBtn);
     const flipBtn = screen.getByTitle('Switch front / rear camera');

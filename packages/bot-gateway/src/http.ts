@@ -181,8 +181,12 @@ export class BotHTTPGateway {
   private async getUpdatesHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = await this.readBody(req);
     const offset = Number(body.offset ?? 0);
-    const limit = Math.min(Math.max(Number(body.limit ?? 100), 1), 100);
-    const timeout = Math.min(Math.max(Number(body.timeout ?? this.options.longPollTimeoutMs ?? 0), 0), 30000);
+    // Malformed input (`limit: -1`, `timeout: 1e9`, strings) must not crash the
+    // handler; NaN would otherwise slip through Math.max/min.
+    const rawLimit = Number(body.limit ?? 100);
+    const rawTimeout = Number(body.timeout ?? this.options.longPollTimeoutMs ?? 0);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 100;
+    const timeout = Number.isFinite(rawTimeout) ? Math.min(Math.max(rawTimeout, 0), 30000) : 0;
 
     // Deliver any pending update that is >= offset.
     const pending = this.longPoll;

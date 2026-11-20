@@ -2,12 +2,21 @@
 /// <reference types="@testing-library/jest-dom" />
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { VoiceMemoInput } from './VoiceMemoInput';
 
 vi.mock('../context/LanguageContext', () => ({
-  useLanguage: () => ({ t: (key: string) => key }),
+  useLanguage: () => ({ t: (key: string) => VOICE_LABELS[key] ?? key }),
 }));
+
+// Real default-locale strings the component relies on via its fallback text.
+const VOICE_LABELS: Record<string, string> = {
+  'voiceMemo.cancel': 'Cancel recording',
+  'voiceMemo.stopAndPreview': 'Stop and preview voice waveform',
+  'voiceMemo.send': 'Send voice note',
+  'voiceMemo.sendNow': 'Send voice note (hold to schedule)',
+  'voiceMemo.recording': 'Recording...',
+};
 vi.mock('./AudioWaveformPlayer', () => ({
   AudioWaveformPlayer: () => null,
 }));
@@ -58,6 +67,7 @@ describe('VoiceMemoInput visual snapshot', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     if (originalMediaDevices) Object.defineProperty(navigator, 'mediaDevices', originalMediaDevices);
     else Reflect.deleteProperty(navigator, 'mediaDevices');
     if (originalCreateObjectUrl) Object.defineProperty(URL, 'createObjectURL', originalCreateObjectUrl);
@@ -68,7 +78,7 @@ describe('VoiceMemoInput visual snapshot', () => {
 
   it('renders idle mic button with dark bg and accent mic', () => {
     render(<VoiceMemoInput onSendVoiceMemo={vi.fn()} />);
-    const btn = screen.getByTitle('Tap to record or hold for push-to-talk voice memo');
+    const btn = screen.getByLabelText('voiceMemo.tapToRecord');
     expect(btn.className).toContain('w-11 h-11 rounded-full');
     expect(btn.className).toContain('bg-[#181920]/95');
     expect(btn.className).toContain('border-white/10');
@@ -80,7 +90,7 @@ describe('VoiceMemoInput visual snapshot', () => {
 
   it('renders disabled mic button when disabled prop set', () => {
     render(<VoiceMemoInput onSendVoiceMemo={vi.fn()} disabled />);
-    const btn = screen.getByTitle('Tap to record or hold for push-to-talk voice memo');
+    const btn = screen.getByLabelText('voiceMemo.tapToRecord');
     expect(btn).toBeDisabled();
   });
 
@@ -93,9 +103,9 @@ describe('VoiceMemoInput visual snapshot', () => {
     vi.stubGlobal('MediaRecorder', TestMediaRecorder);
 
     render(<VoiceMemoInput onSendVoiceMemo={onSendVoiceMemo} />);
-    const mic = screen.getByTitle('Tap to record or hold for push-to-talk voice memo');
+    const mic = screen.getByLabelText('voiceMemo.tapToRecord');
     fireEvent.pointerDown(mic, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
-    fireEvent.pointerUp(mic, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
 
     expect(await screen.findByRole('alert')).toHaveTextContent('voiceMemo.microphoneUnavailable');
     expect(screen.queryByTitle('Stop and preview voice waveform')).toBeNull();
@@ -103,6 +113,7 @@ describe('VoiceMemoInput visual snapshot', () => {
   });
 
   it('records, previews, and sends captured audio from the primary voice button', async () => {
+    vi.useRealTimers();
     const onSendVoiceMemo = vi.fn();
     const track = { stop: vi.fn() };
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -116,17 +127,29 @@ describe('VoiceMemoInput visual snapshot', () => {
     });
 
     render(<VoiceMemoInput onSendVoiceMemo={onSendVoiceMemo} />);
-    const mic = screen.getByTitle('Tap to record or hold for push-to-talk voice memo');
+    const mic = screen.getByLabelText('voiceMemo.tapToRecord');
     fireEvent.pointerDown(mic, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
-    fireEvent.pointerUp(mic, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
 
     await waitFor(() => expect(screen.getByTitle('Stop and preview voice waveform')).toBeTruthy());
+    // Stopping the recorder is async and findBy* can resolve the detached node
+    // from the previous render, so wait until the composer really renders the
+    // staged (preview) tree before grabbing the send button.
     fireEvent.click(screen.getByTitle('Stop and preview voice waveform'));
-
-    const sendButton = await screen.findByTitle('Send voice note (right click to schedule)');
-    expect(sendButton.className).toContain('hover:brightness-110');
-    expect(sendButton.className).not.toContain('ff5d2b');
-    fireEvent.click(sendButton);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    let sendButton: HTMLElement | null = null;
+    await waitFor(() => {
+      const candidate = screen.getByTitle('Send voice note (hold to schedule)');
+      if (candidate.isConnected) sendButton = candidate;
+      expect(candidate.isConnected).toBe(true);
+    });
+    expect(sendButton!.className).toContain('hover:brightness-110');
+    expect(sendButton!.className).not.toContain('ff5d2b');
+    await act(async () => {
+      fireEvent.click(sendButton!);
+    });
 
     await waitFor(() =>
       expect(onSendVoiceMemo).toHaveBeenCalledWith(
@@ -140,6 +163,7 @@ describe('VoiceMemoInput visual snapshot', () => {
     expect(track.stop).toHaveBeenCalled();
   });
 });
+
 
 
 

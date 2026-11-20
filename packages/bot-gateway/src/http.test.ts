@@ -161,6 +161,99 @@ describe('BotHTTPGateway', () => {
     expect(typeof res.body.result[0].message.date).toBe('number');
   });
 
+  it('serves a Telegram-shaped client end-to-end', async () => {
+    // The same request/response shapes grammY/telegraf use: base URL swap only.
+    class FakeTelegramClient {
+      constructor(private readonly token: string) {}
+
+      private async call(method: string, payload: Record<string, unknown>): Promise<any> {
+        const res = await post(`/${method}`, payload, this.token);
+        if (!res.body.ok) throw new Error(res.body.error ?? `HTTP ${res.status}`);
+        return res.body.result;
+      }
+
+      sendMessage(chatId: string, text: string) {
+        return this.call('sendMessage', { chat_id: chatId, text });
+      }
+
+      getUpdates(offset = 0) {
+        return this.call('getUpdates', { offset, timeout: 0 }) as Promise<any[]>;
+      }
+
+      setWebhook(url: string) {
+        return this.call('setWebhook', { url });
+      }
+
+      deleteWebhook() {
+        return this.call('deleteWebhook', {});
+      }
+
+      getMe() {
+        return this.call('getMe', {});
+      }
+
+      setMyCommands(commands: Array<{ command: string; description: string }>) {
+        return this.call('setMyCommands', { commands });
+      }
+    }
+
+    const client = new FakeTelegramClient('test_token_123');
+    expect(await client.getMe()).toMatchObject({ username: expect.any(String) });
+
+    const sentMessage = await client.sendMessage('chat42', 'hello from grammY-shaped client');
+    expect(sentMessage).toMatchObject({ chat: { id: 'chat42' }, text: 'hello from grammY-shaped client' });
+
+    expect(await client.setMyCommands([{ command: 'start', description: 'Start' }])).toEqual(true);
+    expect(await client.setWebhook('https://example.com/hook')).toEqual(true);
+    expect(await client.deleteWebhook()).toEqual(true);
+
+    server.enqueueIncoming('chat42', 'incoming');
+    const updates = await client.getUpdates(0);
+    expect(updates[0].message).toMatchObject({ chat: { id: 'chat42' }, text: 'incoming' });
+  });
+
+  it('survives random and malformed bodies (seeded fuzz)', async () => {
+    // Deterministic LCG so a failure is reproducible from the seed.
+    let state = 0x5eed;
+    const next = () => {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 0x100000000;
+    };
+    const pick = <T>(items: T[]): T => items[Math.floor(next() * items.length)];
+    const methods = ['sendMessage', 'getUpdates', 'setWebhook', 'deleteWebhook', 'getMe', 'answerCallbackQuery', 'setMyCommands'];
+    const values: unknown[] = [
+      null,
+      [],
+      {},
+      { chat_id: 42, text: {} },
+      { url: 'javascript:alert(1)' },
+      { offset: 'not-a-number', limit: -1, timeout: 10 ** 9 },
+      { commands: 'nope' },
+      { webhook_url: 'https://127.0.0.1/x' },
+      { nested: { deep: [1, 2, { three: true }] } },
+    ];
+
+    for (let i = 0; i < 30; i += 1) {
+      const method = pick(methods);
+      const body = pick(values);
+      // getUpdates long-polls for up to 30 s; pin it to an immediate return so
+      // the fuzzer cannot turn one random body into a test timeout.
+      const payload = method === 'getUpdates'
+        ? { ...(body && typeof body === 'object' && !Array.isArray(body) ? body : {}), timeout: 0, offset: 0 }
+        : body;
+      const res = await post(`/${method}`, payload);
+      // Any structured error is fine; a hang or crash is not.
+      expect(res.status).toBeGreaterThanOrEqual(200);
+      expect(res.status).toBeLessThan(600);
+      expect(typeof res.body).toBe('object');
+    }
+
+    // The server is still healthy after the fuzz.
+    const ok = await post('/sendMessage', { chat_id: 'c1', text: 'still alive' });
+    expect(ok.status).toBe(200);
+    expect(ok.body.ok).toBe(true);
+  });
+
   it('delivers webhook with HMAC signature on incoming message', async () => {
     const fetchCalls: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
     const origFetch = (globalThis as any).fetch;

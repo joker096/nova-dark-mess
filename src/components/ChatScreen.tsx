@@ -64,6 +64,7 @@ import type { BotCommand } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
 import type { MessageSink } from '../lib/bots/runtime';
 import { HttpMessageSink } from '../lib/bots/httpSink';
+import { BOT_REPORT_REASONS, recordBotReport, type BotReportReason } from '../lib/bots/reports';
 import { DoodleBackground } from './DoodleBackground';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
@@ -92,6 +93,12 @@ import { NovaAvatar } from '../lib/ui/NovaAvatar';
 import { useAccount } from '../hooks/useAccount';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
+import {
+  MEDIA_PREFERENCES_EVENT,
+  loadMediaPreferences,
+  resolveStickerSize,
+  type MediaPreferences,
+} from '../lib/ui/mediaPreferences';
 import { secureWipeMessage } from '../lib/security/secureWipe';
 import { getDraft, setDraft, clearDraft } from '../lib/messaging/drafts';
 import { dbInstance } from '../lib/storage/db';
@@ -1168,6 +1175,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isReportBotOpen, setIsReportBotOpen] = useState(false);
   const [isBlockBotConfirm, setIsBlockBotConfirm] = useState(false);
+  const [botBlocked, setBotBlocked] = useState(false);
+
+  // Reflect the persisted block state so the menu offers Unblock and the
+  // header can say the bot is blocked (Phase B8).
+  useEffect(() => {
+    if (!getBotSession || !botId) {
+      setBotBlocked(false);
+      return;
+    }
+    setBotBlocked(getBotSession().isBlocked(botId));
+  }, [getBotSession, botId]);
   const [_toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState<boolean>(() =>
@@ -1233,6 +1251,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isStickerDrawerOpen, setIsStickerDrawerOpen] = useState(false);
+  // Sticker view settings live on the device: keep them in sync with the picker
+  // so bubbles and channel posts follow what the user chose.
+  const [mediaPreferences, setMediaPreferences] = useState(loadMediaPreferences);
+  const stickerPx = resolveStickerSize(mediaPreferences.stickerSize);
   const [stagedAttachment, setStagedAttachment] = useState<{
     images?: string[];
     document?: DocumentAttachment;
@@ -1384,6 +1406,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
       if (sendLongPressTimerRef.current) clearTimeout(sendLongPressTimerRef.current);
     };
+  }, []);
+
+  // Sticker size changes in the picker apply to the bubbles immediately, and
+  // to any other open screen that listens for the same event.
+  useEffect(() => {
+    const onPreferences = (event: Event) => {
+      const detail = (event as CustomEvent<MediaPreferences>).detail;
+      if (detail) setMediaPreferences(detail);
+    };
+    window.addEventListener(MEDIA_PREFERENCES_EVENT, onPreferences);
+    return () => window.removeEventListener(MEDIA_PREFERENCES_EVENT, onPreferences);
   }, []);
 
   // Escape dismisses transient gesture-driven overlays
@@ -2517,6 +2550,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     );
   };
 
+  /**
+   * "Insert, don't send" mode: drop the sticker into the composer so it can be
+   * sent together with text. The picker closes and the keyboard comes back.
+   */
+  const handleInsertStickerText = (sticker: StickerData) => {
+    const snippet = `${sticker.emoji} ${sticker.name}`;
+    setInputText((prev) => (prev.trim() ? `${prev} ${snippet}` : snippet));
+    setIsStickerDrawerOpen(false);
+    setIsEmojiPickerOpen(false);
+    mainInputRef.current?.focus();
+  };
+
   const handleSendSticker = (sticker: StickerData) => {
     setIsEmojiPickerOpen(false);
     const messageId = 'm-' + Date.now();
@@ -3511,13 +3556,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2"
+                  data-testid="safety-number-row"
+                  data-demo-peer={isDemoPeer(chatId) ? 'true' : 'false'}
+                >
                   <p className="text-xs font-semibold text-white">
                     {t('chat.e2eeVerification')}
                   </p>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/20">
-                    {t('chat.e2eeDemo')}
-                  </span>
+                  {isDemoPeer(chatId) && (
+                    <span
+                      data-testid="demo-peer-badge"
+                      title={t('chat.demoPeerTitle')}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/20"
+                    >
+                      {t('chat.demoPeer')}
+                    </span>
+                  )}
                   <span
                     data-testid="protection-verified"
                     className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-[var(--nova-warning-text)] border border-amber-500/30"
@@ -4287,7 +4342,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             </p>
                           </div>
                         )}
-                        <div className="w-28 h-28 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                        <div style={{ width: stickerPx, height: stickerPx }} className="flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
@@ -4557,7 +4612,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             </p>
                           </div>
                         )}
-                        <div className="w-28 h-28 flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
+                        <div style={{ width: stickerPx, height: stickerPx }} className="flex items-center justify-center p-1 transition hover:scale-105 active:scale-95 duration-200">
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
@@ -5067,6 +5122,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           }}
           onSendSticker={handleSendSticker}
           onSendGif={handleSendGif}
+          onSelectStickerText={handleInsertStickerText}
+          stickerSize={mediaPreferences.stickerSize}
+          insertInsteadOfSend={mediaPreferences.stickerInsertInsteadOfSend}
+          onPreferencesChange={(change) =>
+            setMediaPreferences((prev) => ({
+              ...prev,
+              ...(change.stickerSize ? { stickerSize: change.stickerSize } : {}),
+              ...(typeof change.insertInsteadOfSend === 'boolean'
+                ? { stickerInsertInsteadOfSend: change.insertInsteadOfSend }
+                : {}),
+            }))
+          }
         />
 
         {/* ROW OF SMART REPLY PILL BUTTONS */}
@@ -5782,11 +5849,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 {t('chat.reportBotDesc', { defaultValue: 'Report this bot for spam, abuse, or violating terms. Your report will be reviewed.' })}
               </p>
               <div className="space-y-2">
-                {['spam', 'abuse', 'malware', 'copyright', 'other'].map((reason) => (
+                {BOT_REPORT_REASONS.map((reason: BotReportReason) => (
                   <button
                     key={reason}
                     type="button"
                     onClick={() => {
+                      if (botId) recordBotReport(botId, reason);
                       showToast(`${t('chat.reportSubmitted', { defaultValue: 'Report submitted: ' })}${reason}`);
                       setIsReportBotOpen(false);
                     }}
@@ -5836,8 +5904,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   type="button"
                   onClick={() => {
                     setIsBlockBotConfirm(false);
-                    // In real impl, would call botSession.blockBot(botId)
-                    showToast(t('chat.botBlocked', { defaultValue: 'Bot blocked' }));
+                    if (!botId || !getBotSession) return;
+                    void getBotSession()
+                      .setBlocked(botId, true)
+                      .then(() => {
+                        setBotBlocked(true);
+                        setBotTyping(false);
+                        showToast(t('chat.botBlocked', { defaultValue: 'Bot blocked' }));
+                      })
+                      .catch(() => {
+                        showToast(t('chat.botBlockFailed', { defaultValue: 'Could not block bot' }));
+                      });
                   }}
                   className="flex-1 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 font-medium hover:bg-red-500/30 transition cursor-pointer"
                 >
@@ -6109,12 +6186,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     type="button"
                     onClick={() => {
                       setIsMoreMenuOpen(false);
+                      if (botBlocked) {
+                        if (!botId || !getBotSession) return;
+                        void getBotSession()
+                          .setBlocked(botId, false)
+                          .then(() => {
+                            setBotBlocked(false);
+                            showToast(t('chat.botUnblocked', { defaultValue: 'Bot unblocked' }));
+                          })
+                          .catch(() => {
+                            showToast(t('chat.botUnblockFailed', { defaultValue: 'Could not unblock bot' }));
+                          });
+                        return;
+                      }
                       setIsBlockBotConfirm(true);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition cursor-pointer"
                   >
                     <Flag className="w-3.5 h-3.5" />
-                    <span>{t('chat.blockBot', { defaultValue: 'Block bot' })}</span>
+                    <span>
+                      {botBlocked
+                        ? t('chat.unblockBot', { defaultValue: 'Unblock bot' })
+                        : t('chat.blockBot', { defaultValue: 'Block bot' })}
+                    </span>
                   </button>
                 </>
               )}

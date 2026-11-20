@@ -80,6 +80,76 @@ describe('BotGateway', () => {
     expect(received[0]).toBe('hello from bot');
   });
 
+  it('joins a group and exchanges sender-key encrypted messages', async () => {
+    const bot = await createAnonymousIdentity();
+    const peer = await createAnonymousIdentity();
+    const bus = createSignalingBus();
+    const { aliceRelay, bobRelay, asMeshRelay } = createRelayPair(
+      bot.fingerprint,
+      peer.fingerprint,
+    );
+
+    const groupMessages: Array<{ groupId: string; sender: string; text: string }> = [];
+    const gateway = new BotGateway({
+      identity: bot,
+      signaling: bus.clientFor(bot.fingerprint),
+      relay: asMeshRelay(aliceRelay),
+      onGroupMessage: (groupId, sender, text) => groupMessages.push({ groupId, sender, text }),
+    });
+    gateways.push(gateway);
+
+    const peerGroupMessages: Array<{ groupId: string; sender: string; text: string }> = [];
+    const peerOneToOneMessages: string[] = [];
+    const peerGateway = new BotGateway({
+      identity: peer,
+      signaling: bus.clientFor(peer.fingerprint),
+      relay: asMeshRelay(bobRelay),
+      onMessage: (_from, text) => peerOneToOneMessages.push(text),
+      onGroupMessage: (groupId, sender, text) => peerGroupMessages.push({ groupId, sender, text }),
+    });
+    gateways.push(peerGateway);
+
+    await gateway.initialize();
+    await peerGateway.initialize();
+    gateway['p2p'].registerPeerBundle(peer.fingerprint, await peerGateway.getPreKeyBundle());
+    peerGateway['p2p'].registerPeerBundle(bot.fingerprint, await gateway.getPreKeyBundle());
+
+    const members = [bot.fingerprint, peer.fingerprint];
+    await gateway.joinGroup('group-1', members, { distribute: false });
+    await peerGateway.joinGroup('group-1', members);
+    // Let the peer's SKDM finish before the bot sends its own: the ratchet
+    // cannot process two simultaneous sends from both sides.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await gateway.distributeGroupKey('group-1');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(gateway.getJoinedGroups()).toEqual(['group-1']);
+    expect(await gateway.sendGroupMessage('group-1', 'hello group')).toBe(true);
+
+    await waitFor(() => peerGroupMessages.length === 1);
+    expect(peerGroupMessages[0]).toEqual({
+      groupId: 'group-1',
+      sender: bot.fingerprint,
+      text: 'hello group',
+    });
+    // A group frame must not surface as a plain 1:1 message.
+    expect(peerOneToOneMessages).toHaveLength(0);
+
+    // The sender sees its own echo once.
+    expect(groupMessages).toEqual([
+      { groupId: 'group-1', sender: bot.fingerprint, text: 'hello group' },
+    ]);
+
+    await gateway.removeGroupMember('group-1', peer.fingerprint);
+    await gateway.sendGroupMessage('group-1', 'after removal');
+    // The removed member is no longer a fan-out target.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(peerGroupMessages).toHaveLength(1);
+
+    await gateway.leaveGroup('group-1');
+    expect(gateway.getJoinedGroups()).toEqual([]);
+  });
+
   it('closes cleanly', async () => {
     const identity = await createAnonymousIdentity();
     const gateway = new BotGateway({ identity });

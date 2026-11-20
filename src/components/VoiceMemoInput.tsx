@@ -11,12 +11,15 @@ import {
   Trash2,
   Send,
   Square,
-  ChevronLeft,
   RefreshCw,
+  ChevronUp,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { VoiceNoteData } from '../types/messenger';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
+import { loadMediaPreferences } from '../lib/ui/mediaPreferences';
 
 export interface VoiceMemoInputHandle {
   startRecording: (pushToTalk?: boolean) => void;
@@ -37,7 +40,11 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     // Recording states
     const [isRecording, setIsRecording] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
+    // Push-to-talk mode: release sends. Hands-free / locked: release keeps recording.
     const [isPushToTalk, setIsPushToTalk] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [isSlidingUp, setIsSlidingUp] = useState(false);
+    const [voiceSendMode] = useState(() => loadMediaPreferences().voiceSendMode);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
     const [, setSlideOffset] = useState(0);
     const [isCanceling, setIsCanceling] = useState(false);
@@ -73,8 +80,12 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
     const isCancelingRef = useRef(false);
     const recordingSecondsRef = useRef(0);
     const recordingRequestRef = useRef(0);
+    const isLockedRef = useRef(false);
 
-    const CANCEL_DRAG_THRESHOLD = 80; // px to the left to cancel
+    // px to slide left to cancel
+    const CANCEL_DRAG_THRESHOLD = 80;
+    // px to slide up to lock hands-free recording
+    const LOCK_DRAG_THRESHOLD = 50;
 
     // Notify parent whenever recording or staged preview is active
     useEffect(() => {
@@ -265,7 +276,13 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           const mime = mediaRecorderRef.current?.mimeType || 'audio/webm';
           const blob = new Blob(audioChunksRef.current, { type: mime });
           if (blob.size === 0) throw new Error('The voice recording is empty');
-          recordedAudioUrlRef.current = URL.createObjectURL(blob);
+          try {
+            if (blob.size > 0) recordedAudioUrlRef.current = URL.createObjectURL(blob);
+          } catch {
+            // Some environments (older WebViews, hardened browsers) refuse blob
+            // URLs; keep the note without a playable source instead of failing.
+            recordedAudioUrlRef.current = null;
+          }
         }
 
         const samples = accumulatedSamplesRef.current;
@@ -283,7 +300,6 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             return Math.min(100, Math.max(20, Math.floor(sinWave + Math.random() * 30 + 15)));
           });
         }
-
         return {
           duration: formattedDuration,
           durationSeconds: durationSecs,
@@ -382,6 +398,9 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       setIsPushToTalk(false);
       isRecordingRef.current = false;
       isPushToTalkRef.current = false;
+      isLockedRef.current = false;
+      setIsLocked(false);
+      setIsSlidingUp(false);
       setRecordingSeconds(0);
       setStagedVoiceNote(null);
       setSlideOffset(0);
@@ -404,257 +423,334 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
       [startRecording, stopAndPreview, sendRecordingDirectly, cancelRecording]
     );
 
-    // Pointer Handlers for Push-to-Talk (Hold-to-record & Slide-to-cancel)
-    const handlePointerDown = (e: React.PointerEvent) => {
-      if (disabled || isRecordingRef.current || isStartingRef.current) return;
+  // 1. STAGED REVIEW MODE: User stopped recording and can listen to the waveform
+  useEffect(() => () => detachGestureListeners(), []);
 
-      pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
-      isHeldRef.current = false;
+  // One-handed gesture model:
+  //  tap → hands-free recording · hold+release → send · hold+slide ↑ → lock · slide ← → cancel
+  // Tracked on window listeners so it keeps working outside the mic button.
+  function onWindowPointerMove(e: PointerEvent) {
+    if (!pointerStartPosRef.current) return;
+    const deltaX = e.clientX - pointerStartPosRef.current.x;
+    const deltaY = pointerStartPosRef.current.y - e.clientY;
 
-      // After 300ms of hold, start push-to-talk recording
-      holdTimeoutRef.current = setTimeout(() => {
-        isHeldRef.current = true;
-        startRecording(true);
-      }, 300);
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-      if (!isRecordingRef.current || !isPushToTalkRef.current || !pointerStartPosRef.current) return;
-
-      const deltaX = e.clientX - pointerStartPosRef.current.x;
-      if (deltaX < 0) {
-        const offset = Math.abs(deltaX);
-        setSlideOffset(offset);
-        if (offset >= CANCEL_DRAG_THRESHOLD) {
-          setIsCanceling(true);
-          isCancelingRef.current = true;
-        } else {
-          setIsCanceling(false);
-          isCancelingRef.current = false;
+    if (!isRecordingRef.current) {
+      // Still waiting for the hold threshold: release the pending start if the
+      // finger travels too far (it is a scroll, not a hold).
+      if (Math.abs(deltaX) > 14 || Math.abs(deltaY) > 14) {
+        if (holdTimeoutRef.current) {
+          clearTimeout(holdTimeoutRef.current);
+          holdTimeoutRef.current = null;
         }
-      }
-    };
-
-    const handlePointerUp = () => {
-      if (holdTimeoutRef.current) {
-        clearTimeout(holdTimeoutRef.current);
-        holdTimeoutRef.current = null;
-      }
-
-      if (!isHeldRef.current) {
-        // Just a quick tap: start hands-free recording mode!
         pointerStartPosRef.current = null;
-        if (!isRecordingRef.current && !isStartingRef.current) {
-          void startRecording(false);
-        }
-        return;
+        detachGestureListeners();
       }
+      return;
+    }
 
-      if (isStartingRef.current && isPushToTalkRef.current) {
-        isHeldRef.current = false;
-        pointerStartPosRef.current = null;
-        setIsPushToTalk(false);
-        isPushToTalkRef.current = false;
-        return;
-      }
+    if (!isPushToTalkRef.current || isLockedRef.current) return;
 
-      // Released from Push-to-Talk
-      if (isRecordingRef.current && isPushToTalkRef.current) {
-        if (isCancelingRef.current) {
-          cancelRecording();
-        } else {
-          void sendRecordingDirectly();
-        }
-      }
+    if (deltaX < 0) {
+      const offset = Math.abs(deltaX);
+      setSlideOffset(offset);
+      const shouldCancel = offset >= CANCEL_DRAG_THRESHOLD;
+      setIsCanceling(shouldCancel);
+      isCancelingRef.current = shouldCancel;
+    }
 
-      isHeldRef.current = false;
-      pointerStartPosRef.current = null;
-    };
+    const shouldShowLockHint = deltaY >= 12 && !isCancelingRef.current;
+    setIsSlidingUp(shouldShowLockHint);
 
-    const handlePointerCancel = () => {
-      if (holdTimeoutRef.current) {
-        clearTimeout(holdTimeoutRef.current);
-        holdTimeoutRef.current = null;
+    if (deltaY >= LOCK_DRAG_THRESHOLD && !isCancelingRef.current) {
+      // Slide up = keep recording hands-free after the thumb is lifted.
+      isLockedRef.current = true;
+      setIsLocked(true);
+      setIsPushToTalk(false);
+      isPushToTalkRef.current = false;
+      setIsSlidingUp(false);
+      setSlideOffset(0);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([15, 30, 15]);
       }
-      if (isStartingRef.current && isPushToTalkRef.current) {
-        isHeldRef.current = false;
-        pointerStartPosRef.current = null;
-        setIsPushToTalk(false);
-        isPushToTalkRef.current = false;
-        return;
-      }
-      if (isRecordingRef.current && isPushToTalkRef.current) {
+    }
+  }
+
+  function onWindowPointerUp() {
+    holdTimeoutRef.current && clearTimeout(holdTimeoutRef.current);
+    holdTimeoutRef.current = null;
+    detachGestureListeners();
+    setIsSlidingUp(false);
+
+    const wasHeld = isHeldRef.current;
+    isHeldRef.current = false;
+    pointerStartPosRef.current = null;
+
+    if (isLockedRef.current) return;
+
+    if (isStartingRef.current && isPushToTalkRef.current) {
+      // Mic permission still pending and the thumb is gone: drop it silently.
+      setIsPushToTalk(false);
+      isPushToTalkRef.current = false;
+      return;
+    }
+
+    if (isRecordingRef.current && isPushToTalkRef.current) {
+      if (isCancelingRef.current) {
         cancelRecording();
+      } else {
+        void sendRecordingDirectly();
       }
-      isHeldRef.current = false;
-      pointerStartPosRef.current = null;
+      return;
+    }
+
+    // Quick tap: start hands-free recording mode.
+    if (!wasHeld && !isRecordingRef.current && !isStartingRef.current) {
+      void startRecording(false);
+    }
+  }
+
+  function onWindowPointerCancel() {
+    holdTimeoutRef.current && clearTimeout(holdTimeoutRef.current);
+    holdTimeoutRef.current = null;
+    detachGestureListeners();
+    setIsSlidingUp(false);
+    pointerStartPosRef.current = null;
+    isHeldRef.current = false;
+
+    if (isLockedRef.current) return;
+
+    if (isStartingRef.current && isPushToTalkRef.current) {
+      setIsPushToTalk(false);
+      isPushToTalkRef.current = false;
+      return;
+    }
+    if (isRecordingRef.current && isPushToTalkRef.current) {
+      cancelRecording();
+    }
+  }
+
+  const detachGestureListeners = () => {
+    window.removeEventListener('pointermove', onWindowPointerMove);
+    window.removeEventListener('pointerup', onWindowPointerUp);
+    window.removeEventListener('pointercancel', onWindowPointerCancel);
+  };
+
+  const beginPointerGesture = (e: React.PointerEvent) => {
+    if (disabled || isRecordingRef.current || isStartingRef.current || isLockedRef.current) return;
+
+    pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isHeldRef.current = false;
+    setIsSlidingUp(false);
+
+    // Classic mode records instantly on touch; lock mode waits a beat so a
+    // quick tap can still mean "hands-free".
+    const begin = () => {
+      isHeldRef.current = true;
+      void startRecording(true);
     };
+    if (voiceSendMode === 'hold') {
+      begin();
+    } else {
+      holdTimeoutRef.current = setTimeout(begin, 260);
+    }
 
-    // 1. STAGED REVIEW MODE: User stopped recording and can listen to the waveform
-    if (stagedVoiceNote) {
-      return (
-        <div className="flex items-center gap-2 animate-in fade-in duration-200 w-full select-none">
-          {/* Delete button */}
-          <button
-            type="button"
-            onClick={() => setStagedVoiceNote(null)}
-            className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
-            title="Discard voice recording"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+    window.addEventListener('pointermove', onWindowPointerMove);
+    window.addEventListener('pointerup', onWindowPointerUp);
+    window.addEventListener('pointercancel', onWindowPointerCancel);
+  };
 
-          {/* Staged Audio Waveform Player */}
-          <div className="flex-1 bg-[#181920]/95 border border-[var(--nova-accent-color)]/45 rounded-full px-3.5 py-1.5 flex items-center justify-between shadow-lg shadow-black/50 min-w-0">
-            <AudioWaveformPlayer
-              voiceNote={stagedVoiceNote}
-              isMe={true}
-              compact={true}
-              accentColor="#ff4e18"
-            />
-          </div>
+  // 1. STAGED REVIEW MODE: User stopped recording and can listen to the waveform
+  if (stagedVoiceNote) {
+    return (
+      <div className="flex items-center gap-2 animate-in fade-in duration-200 w-full select-none">
+        {/* Delete button */}
+        <button
+          type="button"
+          onClick={() => setStagedVoiceNote(null)}
+          className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
+          title="Discard voice recording"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
 
-          {/* Re-record button */}
-          <button
-            type="button"
-            onClick={() => startRecording(false)}
-            className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
-            title="Re-record voice note"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        {/* Staged Audio Waveform Player */}
+        <div className="flex-1 bg-[#181920]/95 border border-[var(--nova-accent-color)]/45 rounded-full px-3.5 py-1.5 flex items-center justify-between shadow-lg shadow-black/50 min-w-0">
+          <AudioWaveformPlayer
+            voiceNote={stagedVoiceNote}
+            isMe={true}
+            compact={true}
+            accentColor="#ff4e18"
+          />
+        </div>
 
-          {/* Send Button */}
-          <button
-            type="button"
-            aria-label={t('voiceMemo.send')}
-            onClick={() => {
-              onSendVoiceMemo(stagedVoiceNote);
-              setStagedVoiceNote(null);
-            }}
-            onContextMenu={(e) => {
+        {/* Re-record button */}
+        <button
+          type="button"
+          onClick={() => startRecording(false)}
+          className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
+          title="Re-record voice note"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+
+        {/* Send Button: tap sends now, long-press schedules */}
+        <button
+          type="button"
+          aria-label={t('voiceMemo.send')}
+          onClick={() => {
+            onSendVoiceMemo(stagedVoiceNote);
+            setStagedVoiceNote(null);
+          }}
+          onPointerDown={() => {
+            holdTimeoutRef.current = setTimeout(() => {
               if (onScheduleVoiceMemo) {
-                e.preventDefault();
                 onScheduleVoiceMemo(stagedVoiceNote);
                 setStagedVoiceNote(null);
               }
-            }}
-            className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)]"
-            title="Send voice note (right click to schedule)"
-          >
-            <Send className="w-4 h-4 ml-0.5" />
-          </button>
-        </div>
-      );
-    }
-
-    // 2. ACTIVE RECORDING MODE (Either Hands-free or Push-to-Talk)
-    if (isRecording) {
-      return (
-        <div
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-          className="flex items-center gap-2 animate-in fade-in duration-200 w-full select-none"
+            }, 550);
+          }}
+          onPointerUp={() => {
+            if (holdTimeoutRef.current) {
+              clearTimeout(holdTimeoutRef.current);
+              holdTimeoutRef.current = null;
+            }
+          }}
+          onPointerLeave={() => {
+            if (holdTimeoutRef.current) {
+              clearTimeout(holdTimeoutRef.current);
+              holdTimeoutRef.current = null;
+            }
+          }}
+          onContextMenu={(e) => {
+            if (onScheduleVoiceMemo) {
+              e.preventDefault();
+              onScheduleVoiceMemo(stagedVoiceNote);
+              setStagedVoiceNote(null);
+            }
+          }}
+          className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)] touch-manipulation"
+          title="Send voice note (hold to schedule)"
         >
-          {/* Cancel / Trash Button */}
-          <button
-            type="button"
-            onClick={cancelRecording}
-            className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-              isCanceling
-                ? 'bg-red-500 text-white border-red-500 scale-110'
-                : 'bg-[#181920]/95 hover:bg-red-950/60 border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400'
-            }`}
-            title="Cancel recording"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <Send className="w-4 h-4 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
 
-          {/* Live Audio Frequency Waveform Console */}
-          <div
-            className={`flex-1 bg-[#181920]/95 border rounded-full px-4 py-2 flex items-center justify-between shadow-lg shadow-black/50 transition-colors min-w-0 ${
-              isCanceling
-                ? 'border-red-500/70 bg-red-950/30'
+
+
+  if (isRecording) {
+    return (
+      <div
+        className="flex items-center gap-2 animate-in fade-in duration-200 w-full select-none"
+      >
+        {/* Cancel / Trash Button */}
+        <button
+          type="button"
+          onClick={cancelRecording}
+          className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            isCanceling
+              ? 'bg-red-500 text-white border-red-500 scale-110'
+              : 'bg-[#181920]/95 hover:bg-red-950/60 border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400'
+          }`}
+          title={t('voiceMemo.cancel', 'Cancel')}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+
+        {/* Live Audio Frequency Waveform Console */}
+        <div
+          className={`flex-1 bg-[#181920]/95 border rounded-full px-4 py-2 flex items-center justify-between shadow-lg shadow-black/50 transition-colors min-w-0 ${
+            isCanceling
+              ? 'border-red-500/70 bg-red-950/30'
+              : isLocked
+                ? 'border-emerald-400/50'
                 : 'border-[var(--nova-accent-color)]/50 focus-within:border-[var(--nova-accent-color)]'
-            }`}
-          >
-            {/* Pulsing Beacon & Duration Counter */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div className="relative flex items-center justify-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-[var(--nova-accent-color)] relative nova-rec-pulse" />
-              </div>
-              <span className="text-xs font-mono font-semibold text-white tracking-wider">
-                {formatTime(recordingSeconds)}
-              </span>
+          }`}
+        >
+          {/* Pulsing Beacon & Duration Counter */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="relative flex items-center justify-center">
+              <span className={`w-2.5 h-2.5 rounded-full relative nova-rec-pulse ${isLocked ? 'bg-emerald-400' : 'bg-[var(--nova-accent-color)]'}`} />
             </div>
-
-            {/* Real-time Responsive Audio Waveform (28 frequency bars) */}
-            <div className="flex items-center gap-[2px] h-6 px-2 flex-1 justify-center max-w-[210px] overflow-hidden">
-              {liveBars.map((height, idx) => (
-                <span
-                  key={idx}
-                  style={{ height: `${height}%` }}
-                  className={`w-1 rounded-full transition-all duration-75 ${
-                    isCanceling
-                      ? 'bg-red-400'
-                      : 'bg-[var(--nova-accent-color)] shadow-[0_0_4px_rgba(255,78,24,0.5)]'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* Slide-to-cancel guidance or Recording Label */}
-            {isPushToTalk ? (
-              <div
-                className={`text-[10px] font-medium flex items-center gap-1 transition-opacity shrink-0 ${
-                  isCanceling ? 'text-red-400 font-bold' : 'text-white/60'
-                }`}
-              >
-                <ChevronLeft className="w-3 h-3 animate-pulse" />
-                <span>{isCanceling ? 'Release to cancel' : 'Slide to cancel'}</span>
-              </div>
-            ) : (
-              <span className="text-[10.5px] text-white/50 font-medium shrink-0">
-                {t('voiceMemo.recording')}
-              </span>
-            )}
+            <span className="text-xs font-mono font-semibold text-white tracking-wider">
+              {formatTime(recordingSeconds)}
+            </span>
           </div>
 
-          {/* Hands-Free Controls: Pause/Preview and Direct Send */}
-          {!isPushToTalk ? (
-            <>
-              <button
-                type="button"
-                onClick={stopAndPreview}
-                className="w-11 h-11 rounded-full bg-[#20222e] hover:bg-[#2b2d3c] border border-white/15 text-white flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md shrink-0"
-                title="Stop and preview voice waveform"
-              >
-                <Square className="w-3.5 h-3.5 fill-white text-white" />
-              </button>
+          {/* Real-time Responsive Audio Waveform (28 frequency bars) */}
+          <div className="flex items-center gap-[2px] h-6 px-2 flex-1 justify-center max-w-[210px] overflow-hidden">
+            {liveBars.map((height, idx) => (
+              <span
+                key={idx}
+                style={{ height: `${height}%` }}
+                className={`w-1 rounded-full transition-all duration-75 ${
+                  isCanceling
+                    ? 'bg-red-400'
+                    : isLocked
+                      ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]'
+                      : 'bg-[var(--nova-accent-color)] shadow-[0_0_4px_rgba(255,78,24,0.5)]'
+                }`}
+              />
+            ))}
+          </div>
 
-              <button
-                type="button"
-                aria-label={t('voiceMemo.send')}
-                onClick={sendRecordingDirectly}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)]"
-                title="Send voice memo now"
-              >
-                <Send className="w-4 h-4 ml-0.5" />
-              </button>
-            </>
-          ) : (
-            /* Push-to-Talk Send Button */
+          {/* Slide guidance / locked label */}
+          {isPushToTalk && !isLocked ? (
             <div
-              className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center shadow-xl shadow-[var(--nova-accent-color)]/50 animate-pulse shrink-0"
-              title="Recording in progress"
+              className={`text-[10px] font-medium flex items-center gap-1 transition-opacity shrink-0 ${
+                isCanceling ? 'text-red-400 font-bold' : 'text-white/60'
+              }`}
             >
-              <Mic className="w-4 h-4" />
+              <span>{isCanceling ? t('voiceMemo.releaseToCancel', 'Release to cancel') : t('voiceMemo.slideToCancelShort', '‹ cancel · lock ↑')}</span>
             </div>
+          ) : (
+            <span className={`text-[10.5px] font-medium shrink-0 flex items-center gap-1 ${isLocked ? 'text-emerald-300' : 'text-white/50'}`}>
+              {isLocked && <Lock className="w-3 h-3" />}
+              {isLocked ? t('voiceMemo.locked', 'Locked') : t('voiceMemo.recording')}
+            </span>
           )}
         </div>
-      );
-    }
+
+        {/* Hands-Free Controls: Pause/Preview and Direct Send */}
+        {!isPushToTalk || isLocked ? (
+          <>
+            <button
+              type="button"
+              onClick={stopAndPreview}
+              className="w-11 h-11 rounded-full bg-[#20222e] hover:bg-[#2b2d3c] border border-white/15 text-white flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md shrink-0"
+              title={t('voiceMemo.stopAndPreview', 'Stop and preview')}
+            >
+              <Square className="w-3.5 h-3.5 fill-white text-white" />
+            </button>
+
+            <button
+              type="button"
+              aria-label={t('voiceMemo.send')}
+              onClick={sendRecordingDirectly}
+              className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:brightness-110 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color)]/40 transition cursor-pointer shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nova-accent-color)]"
+              title={t('voiceMemo.sendNow', 'Send now')}
+            >
+              <Send className="w-4 h-4 ml-0.5" />
+            </button>
+          </>
+        ) : (
+          /* While holding: the right slot doubles as the "slide up to lock" target */
+          <div
+            aria-hidden="true"
+            className={`flex flex-col items-center justify-center w-11 h-11 rounded-full border shrink-0 transition-all duration-150 ${
+              isSlidingUp
+                ? 'bg-emerald-500 text-white border-emerald-400 scale-110 shadow-lg shadow-emerald-500/40'
+                : 'bg-[#181920]/95 text-white/60 border-white/10'
+            }`}
+            title={t('voiceMemo.slideUpToLock', 'Slide up to lock')}
+          >
+            {isSlidingUp ? <Unlock className="w-4 h-4" /> : <ChevronUp className="w-4 h-4 animate-bounce" />}
+          </div>
+        )}
+      </div>
+    );
+  }
 
     // 3. DEFAULT IDLE MICROPHONE BUTTON
     return (
@@ -663,13 +759,14 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           type="button"
           aria-label={t('voiceMemo.tapToRecord')}
           aria-busy={isStarting}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
+          onPointerDown={beginPointerGesture}
           disabled={disabled || isStarting}
           className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-[var(--nova-accent-color)] hover:text-white hover:shadow-lg hover:shadow-[var(--nova-accent-color)]/30 border border-white/10 text-white/80 flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md group touch-manipulation disabled:opacity-60 disabled:cursor-wait"
-          title="Tap to record or hold for push-to-talk voice memo"
+          title={
+            voiceSendMode === 'hold'
+              ? t('voiceMemo.holdToRecord', 'Hold to record, release to send')
+              : t('voiceMemo.oneHandHint', 'Tap to record · hold and slide up to lock · slide left to cancel')
+          }
         >
           <Mic className="w-4 h-4 group-hover:scale-110 transition-transform text-[var(--nova-accent-color)] group-hover:text-white" />
         </button>
