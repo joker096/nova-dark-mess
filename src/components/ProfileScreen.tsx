@@ -90,7 +90,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     .slice(0, 2);
   const { t } = useLanguage();
   const premium = isPremium();
-  const { identity } = useSecurity();
+  const { identity, p2pManager } = useSecurity();
   const ownHandle = identity
     ? createHandle(identity.signingPublicKey, account.displayName).handle
     : null;
@@ -1024,8 +1024,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight flex items-center gap-1">
                     {t('profile.safetyNumber')}
+                    {!p2pManager && (
+                      <span className="text-[10px] font-bold text-[#ff5f2e] bg-[#ff5f2e]/10 px-2 py-0.5 rounded">
+                        DEMO
+                      </span>
+                    )}
                   </p>
                   <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
                     {safetyEmoji}
