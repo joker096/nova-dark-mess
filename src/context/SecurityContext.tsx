@@ -668,7 +668,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         if (result.migrated && result.hash) {
-          // A PIN set before the random salt existed is migrated in place.
+          // A PIN set before the random salt existed is migrated in place. The
+          // new hash was derived with a fresh salt, so it must be persisted too.
+          if (result.salt) await kc.set(KEYCHAIN_SERVICE, PIN_SALT_KEY, result.salt);
           await kc.set(KEYCHAIN_SERVICE, PIN_HASH_KEY, result.hash);
           await kc.set(KEYCHAIN_SERVICE, PIN_ENABLED_KEY, 'true');
           try {
