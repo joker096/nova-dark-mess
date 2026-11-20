@@ -25,6 +25,7 @@ export interface StoredEncryptedMessage {
 
 interface StoredEncryptedRecord {
   key: string;
+  id?: string; // Set when the store uses a different keyPath (e.g. STORE_MESSAGES uses 'id')
   encryptedData: EncryptedData;
   updatedAt: number;
 }
@@ -48,6 +49,12 @@ export class EncryptedDatabase {
 
   public isReady(): boolean {
     return this.db !== null && this.masterKey !== null;
+  }
+
+  public close(): void {
+    this.db?.close();
+    this.db = null;
+    this.masterKey = null;
   }
 
   public async initialize(passphrase: string, salt?: Uint8Array): Promise<void> {
@@ -128,6 +135,7 @@ export class EncryptedDatabase {
           for (const [entry, encryptedData] of zip(entries, encryptedDataList)) {
             const record: StoredEncryptedRecord = {
               key: entry.key,
+              id: entry.key,
               encryptedData,
               updatedAt: Date.now(),
             };
