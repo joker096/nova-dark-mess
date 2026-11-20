@@ -60,6 +60,9 @@ function makeSink(): MessageSink & { sent: BotOutgoingMessage[]; callbackAnswers
     async answerCallback(queryId, options) {
       this.callbackAnswers.push({ id: queryId, text: options?.text });
     },
+    async sendTyping() {
+      // no-op for test
+    },
   };
 }
 

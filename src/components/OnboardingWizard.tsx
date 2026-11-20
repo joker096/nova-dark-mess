@@ -1,5 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Copy, Download, KeyRound, ShieldCheck, Sparkles, Upload, UserRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Copy,
+  Download,
+  Globe,
+  KeyRound,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  UserRound,
+} from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
@@ -11,22 +23,78 @@ interface OnboardingWizardProps {
   onDone: () => void;
 }
 
-type Step = 'language' | 'nickname' | 'welcome' | 'choice' | 'phrase' | 'restoreBackup' | 'security' | 'backup' | 'done';
+type Step =
+  | 'welcome'
+  | 'language'
+  | 'choice'
+  | 'nickname'
+  | 'phrase'
+  | 'phraseCheck'
+  | 'restoreBackup'
+  | 'security'
+  | 'backup'
+  | 'done';
 
-const STEP_ORDER: Step[] = ['language', 'nickname', 'welcome', 'choice', 'phrase', 'restoreBackup', 'security', 'backup', 'done'];
+type RestoreMethod = 'phrase' | 'backup';
+
+interface PhraseQuestion {
+  index: number;
+  correct: string;
+  options: string[];
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 /**
- * First-launch setup. Replaces the "Hello, Joseph" fallback: a new install has to
- * either create a local identity (and save its recovery phrase) or restore one.
+ * Builds a short "pick the word at position N" check so a user cannot move on
+ * before the recovery phrase is actually written down. Positions are spread
+ * across the phrase so the start and the end are both checked.
+ */
+function buildPhraseQuiz(mnemonic: string | undefined): PhraseQuestion[] {
+  const words = (mnemonic ?? '').split(' ').filter(Boolean);
+  if (words.length < 4) return [];
+  const unique = Array.from(new Set(words));
+  const picked: number[] = [];
+  while (picked.length < Math.min(3, words.length)) {
+    const index = Math.floor(Math.random() * words.length);
+    if (!picked.includes(index)) picked.push(index);
+  }
+  return picked.map((index) => {
+    const correct = words[index];
+    const decoys = shuffle(unique.filter((word) => word !== correct)).slice(0, 3);
+    return { index, correct, options: shuffle([correct, ...decoys]) };
+  });
+}
+
+/**
+ * First-launch setup. Two clearly separated paths:
+ *  - create: nickname → recovery phrase → phrase check → PIN → backup;
+ *  - restore: phrase or backup file → nickname → PIN.
+ * Every optional step can be skipped and the PIN is never mandatory.
  */
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) => {
   const { t, language, changeLanguage, languages } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
-  const { identity, restoreIdentityFromMnemonic, setPin, exportEncryptedBackup, importEncryptedBackup } = useSecurity();
-  const { updateAccount } = useAccount();
+  const {
+    identity,
+    restoreIdentityFromMnemonic,
+    setPin,
+    setPinLength,
+    exportEncryptedBackup,
+    importEncryptedBackup,
+  } = useSecurity();
+  const { account, updateAccount } = useAccount();
 
-  const [step, setStep] = useState<Step>('language');
+  const [step, setStep] = useState<Step>('welcome');
   const [path, setPath] = useState<OnboardingPath | null>(null);
+  const [restoreMethod, setRestoreMethod] = useState<RestoreMethod>('phrase');
   const [nickname, setNickname] = useState('');
   const [phraseInput, setPhraseInput] = useState('');
   const [pin, setPinValue] = useState('');
@@ -34,15 +102,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   const [backupFile, setBackupFile] = useState<File | null>(null);
   const [backupPassphrase, setBackupPassphrase] = useState('');
   const [backupPassphraseConfirm, setBackupPassphraseConfirm] = useState('');
+  const [backupCreated, setBackupCreated] = useState(false);
   const [error, setError] = useState('');
   const [afterNickname, setAfterNickname] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [quizRound, setQuizRound] = useState(0);
 
   const words = useMemo(
     () => (identity?.mnemonic ? identity.mnemonic.split(' ') : []),
     [identity],
   );
+  const quiz = useMemo(() => buildPhraseQuiz(identity?.mnemonic), [identity?.mnemonic]);
   const normalizedNickname = useMemo(() => {
     try {
       return normalizeNickname(nickname);
@@ -50,7 +121,80 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       return '';
     }
   }, [nickname]);
-  const stepIndex = STEP_ORDER.indexOf(step) + 1;
+
+  const currentLanguage = languages.find((item) => item.code === language);
+
+  const sequence: Step[] =
+    path === 'restore'
+      ? [
+          'choice',
+          restoreMethod === 'backup' ? 'restoreBackup' : 'phrase',
+          'nickname',
+          'security',
+          'done',
+        ]
+      : path === 'create'
+        ? ['nickname', 'phrase', 'phraseCheck', 'security', 'backup', 'done']
+        : [];
+  const stepIndex = sequence.indexOf(step) + 1;
+  const showProgress = sequence.length > 0 && stepIndex > 0;
+
+  const goBack = () => {
+    setError('');
+    switch (step) {
+      case 'language':
+      case 'choice':
+        setStep('welcome');
+        break;
+      case 'nickname':
+        setStep(
+          path === 'restore'
+            ? restoreMethod === 'backup'
+              ? 'restoreBackup'
+              : 'choice'
+            : 'welcome',
+        );
+        break;
+      case 'phrase':
+        setStep(path === 'restore' ? 'choice' : 'nickname');
+        break;
+      case 'phraseCheck':
+        setStep('phrase');
+        break;
+      case 'restoreBackup':
+        setStep('choice');
+        break;
+      case 'security':
+        setStep(path === 'restore' ? 'nickname' : 'phraseCheck');
+        break;
+      case 'backup':
+        setStep('security');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const startCreate = () => {
+    setPath('create');
+    setRestoreMethod('phrase');
+    setError('');
+    setStep('nickname');
+  };
+
+  const startRestore = () => {
+    setPath('restore');
+    setError('');
+    setStep('choice');
+  };
+
+  const askForNickname = (option: RestoreMethod) => {
+    const saved = (account.nickname ?? '').replace(/^@+/, '').trim();
+    setNickname(saved && saved.toLowerCase() !== 'nova' ? saved : '');
+    setAfterNickname('security');
+    setBackupCreated(option === 'backup');
+    setStep('nickname');
+  };
 
   const finish = async () => {
     setBusy(true);
@@ -58,20 +202,20 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     try {
       // A restored identity can reach this screen without a nickname, so send the
       // user back to pick one instead of failing on save.
-      const accountNickname = normalizedNickname;
-      if (!accountNickname) {
-        setStep('nickname');
+      if (!normalizedNickname) {
         setAfterNickname('done');
+        setStep('nickname');
         return;
       }
       updateAccount({
-        displayName: accountNickname.slice(1),
-        nickname: accountNickname,
+        displayName: normalizedNickname.slice(1),
+        nickname: normalizedNickname,
         phone: '',
       });
       if (pin) {
         try {
           await setPin(pin);
+          setPinLength(pin.length === 6 ? 6 : 4);
         } catch (e) {
           console.error('onboarding: setPin failed', e);
           setError(t('premium.errorGeneric'));
@@ -92,9 +236,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     setBusy(true);
     setError('');
     try {
-      await restoreIdentityFromMnemonic(phraseInput);
+      const phrase = phraseInput.trim().toLowerCase().replace(/\s+/g, ' ');
+      await restoreIdentityFromMnemonic(phrase);
       setPath('restore');
-      setStep('security');
+      askForNickname('phrase');
     } catch {
       setError(t('onboarding.restoreFailed'));
     } finally {
@@ -118,7 +263,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       setPath('restore');
       setBackupFile(null);
       setBackupPassphrase('');
-      setStep('security');
+      askForNickname('backup');
     } catch (e) {
       console.error('onboarding: backup restore failed', e);
       setError(e instanceof Error ? e.message : t('onboarding.restoreFailed'));
@@ -150,27 +295,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       URL.revokeObjectURL(url);
       setBackupPassphrase('');
       setBackupPassphraseConfirm('');
+      setBackupCreated(true);
       setStep('done');
     } catch (e) {
       console.error('onboarding: backup export failed', e);
       setError(e instanceof Error ? e.message : t('premium.errorGeneric'));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const goBack = () => {
-    setError('');
-    if (step === 'restoreBackup') {
-      setStep('choice');
-    } else if (step === 'security') {
-      setStep(path === 'restore' ? 'choice' : 'phrase');
-    } else if (step === 'backup') {
-      setStep('security');
-    } else if (step === 'phrase' && path === 'restore') {
-      setStep('choice');
-    } else {
-      setStep(STEP_ORDER[STEP_ORDER.indexOf(step) - 1] ?? 'welcome');
     }
   };
 
@@ -185,6 +316,50 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     }
   };
 
+  const downloadPhrase = () => {
+    if (!identity?.mnemonic) return;
+    const body = [
+      'Nova Dark Messenger — recovery phrase',
+      '',
+      identity.mnemonic,
+      '',
+      'Anyone with these words can restore this account. Keep this file offline.',
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'nova-recovery-phrase.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const answerPhraseQuestion = (answer: string) => {
+    const question = quiz[quizRound];
+    if (!question) return;
+    if (answer !== question.correct) {
+      setError(t('onboarding.phraseCheckWrong'));
+      return;
+    }
+    setError('');
+    if (quizRound + 1 < quiz.length) {
+      setQuizRound(quizRound + 1);
+      return;
+    }
+    setQuizRound(0);
+    setStep('security');
+  };
+
+  const nextAfterSecurity = (): Step => (path === 'restore' ? 'done' : 'backup');
+
+  const skipSecurity = () => {
+    setPinValue('');
+    setPinConfirm('');
+    setError('');
+    setStep(nextAfterSecurity());
+  };
+
   const primaryBtn =
     // `text-[#ffffff]`, not `text-white`: the light theme remaps white text to
     // dark ink, which would disappear on this accent fill.
@@ -193,6 +368,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     'w-full py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/75 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2';
   const inputCls =
     'w-full bg-[#171821] border border-white/10 focus:border-[var(--nova-accent-color,#ff4e18)] rounded-2xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition';
+  const optionCard =
+    'w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start';
 
   return (
     <div
@@ -205,8 +382,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     >
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col px-5 pt-6 pb-8">
         {/* Progress */}
-        <div className="flex items-center gap-2 mb-6">
-          {step !== 'welcome' && (
+        <div className="flex items-center gap-2 mb-6 min-h-8">
+          {step !== 'welcome' && step !== 'language' && (
             <button
               type="button"
               onClick={goBack}
@@ -216,22 +393,67 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <div className="flex-1 flex items-center gap-1.5" data-testid="onboarding-progress">
-            {STEP_ORDER.map((item, index) => (
-              <span
-                key={item}
-                className={`h-1 flex-1 rounded-full transition ${
-                  index < stepIndex ? 'bg-[var(--nova-accent-color,#ff4e18)]' : 'bg-white/10'
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-[10px] text-white/40 font-mono">
-            {t('onboarding.stepOf', { current: stepIndex, total: STEP_ORDER.length })}
-          </span>
+          {showProgress ? (
+            <>
+              <div className="flex-1 flex items-center gap-1.5" data-testid="onboarding-progress">
+                {sequence.map((item, index) => (
+                  <span
+                    key={item}
+                    className={`h-1 flex-1 rounded-full transition ${
+                      index < stepIndex ? 'bg-[var(--nova-accent-color,#ff4e18)]' : 'bg-white/10'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] text-white/40 font-mono">
+                {t('onboarding.stepOf', { current: stepIndex, total: sequence.length })}
+              </span>
+            </>
+          ) : (
+            <div className="flex-1" />
+          )}
+          {step === 'welcome' && (
+            <button
+              type="button"
+              onClick={() => setStep('language')}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/70 transition hover:bg-white/[0.08]"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {currentLanguage?.nativeName ?? language.toUpperCase()}
+            </button>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col justify-center gap-4">
+          {step === 'welcome' && (
+            <div className="text-center space-y-5" data-testid="onboarding-welcome">
+              <div className="mx-auto w-20 h-20 rounded-3xl bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
+                <Sparkles className="w-9 h-9" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">{t('onboarding.welcomeTitle')}</h1>
+                <p className="text-[13px] leading-relaxed text-white/65">{t('onboarding.welcomeBody')}</p>
+              </div>
+              <div className="space-y-2">
+                <button type="button" className={primaryBtn} onClick={startCreate}>
+                  <UserRound className="w-4 h-4" />
+                  {t('onboarding.createOption')}
+                </button>
+                <button
+                  type="button"
+                  className="w-full py-3 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] text-white/80 text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-2"
+                  onClick={startRestore}
+                >
+                  <KeyRound className="w-4 h-4" />
+                  {t('onboarding.restoreOption')}
+                </button>
+              </div>
+              <p className="text-[10.5px] leading-relaxed text-white/35">
+                {t('settings.lockLocalNote')}
+              </p>
+            </div>
+          )}
+
           {step === 'language' && (
             <div className="space-y-4" data-testid="onboarding-language">
               <div className="text-center space-y-2">
@@ -256,9 +478,58 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   </button>
                 ))}
               </div>
-              <button type="button" className={primaryBtn} onClick={() => setStep('nickname')}>
+              <button type="button" className={primaryBtn} onClick={() => setStep('welcome')}>
                 {t('onboarding.continue')}
                 <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {step === 'choice' && (
+            <div className="space-y-3" data-testid="onboarding-choice">
+              <h2 className="text-lg font-bold">{t('onboarding.restoreOption')}</h2>
+              <p className="text-[12px] leading-relaxed text-white/60">
+                {t('onboarding.restoreOptionDesc')}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRestoreMethod('phrase');
+                  setError('');
+                  setStep('phrase');
+                }}
+                className={optionCard}
+              >
+                <KeyRound className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    {t('onboarding.restoreTitle')}
+                  </span>
+                  <span className="block text-[11.5px] text-white/55 mt-0.5">
+                    {t('onboarding.restoreBody')}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRestoreMethod('backup');
+                  setBackupFile(null);
+                  setBackupPassphrase('');
+                  setError('');
+                  setStep('restoreBackup');
+                }}
+                className={optionCard}
+              >
+                <Upload className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    {t('settings.importBackup')}
+                  </span>
+                  <span className="block text-[11.5px] text-white/55 mt-0.5">
+                    {t('onboarding.restoreBackupBody')}
+                  </span>
+                </span>
               </button>
             </div>
           )}
@@ -281,80 +552,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 className={primaryBtn}
                 disabled={!normalizedNickname}
                 onClick={() => {
-                  const next = afterNickname ?? 'welcome';
+                  const next = afterNickname ?? 'phrase';
                   setAfterNickname(null);
+                  setError('');
                   setStep(next);
                 }}
               >
                 {t('onboarding.continue')}
                 <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {step === 'welcome' && (
-            <div className="text-center space-y-4" data-testid="onboarding-welcome">
-              <div className="mx-auto w-16 h-16 rounded-3xl bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
-                <Sparkles className="w-7 h-7" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">{t('onboarding.welcomeTitle')}</h1>
-              <p className="text-[13px] leading-relaxed text-white/65">{t('onboarding.welcomeBody')}</p>
-              <button type="button" className={primaryBtn} onClick={() => setStep('choice')}>
-                {t('onboarding.getStarted')}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {step === 'choice' && (
-            <div className="space-y-3" data-testid="onboarding-choice">
-              <h2 className="text-lg font-bold">{t('onboarding.welcomeTitle')}</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setPath('create');
-                  setError('');
-                  setStep('phrase');
-                }}
-                className="w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start"
-              >
-                <UserRound className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-                <span>
-                  <span className="block text-sm font-semibold text-white">{t('onboarding.createOption')}</span>
-                  <span className="block text-[11.5px] text-white/55 mt-0.5">{t('onboarding.createOptionDesc')}</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPath('restore');
-                  setError('');
-                  setStep('phrase');
-                }}
-                className="w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start"
-              >
-                <KeyRound className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-                <span>
-                  <span className="block text-sm font-semibold text-white">{t('onboarding.restoreOption')}</span>
-                  <span className="block text-[11.5px] text-white/55 mt-0.5">{t('onboarding.restoreOptionDesc')}</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPath('restore');
-                  setBackupFile(null);
-                  setBackupPassphrase('');
-                  setError('');
-                  setStep('restoreBackup');
-                }}
-                className="w-full text-left p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition cursor-pointer flex gap-3 items-start"
-              >
-                <Upload className="w-5 h-5 mt-0.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-                <span>
-                  <span className="block text-sm font-semibold text-white">{t('settings.importBackup')}</span>
-                  <span className="block text-[11.5px] text-white/55 mt-0.5">{t('onboarding.restoreBackupBody')}</span>
-                </span>
               </button>
             </div>
           )}
@@ -372,9 +577,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 placeholder={t('onboarding.phrasePlaceholder')}
                 aria-label={t('onboarding.phraseLabel')}
                 rows={4}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className={`${inputCls} font-mono text-[12.5px] resize-none`}
               />
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 className={primaryBtn}
@@ -390,7 +603,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   setPhraseInput('');
                   setError('');
                   setPath('create');
-                  setStep('phrase');
+                  setStep('nickname');
                 }}
               >
                 {t('onboarding.createOption')}
@@ -410,15 +623,74 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   </span>
                 ))}
               </div>
-              <button type="button" className={ghostBtn} onClick={copyPhrase}>
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? t('onboarding.copied') : t('onboarding.copyPhrase')}
-              </button>
+              <div className="flex gap-2">
+                <button type="button" className={ghostBtn} onClick={copyPhrase}>
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? t('onboarding.copied') : t('onboarding.copyPhrase')}
+                </button>
+                <button type="button" className={ghostBtn} onClick={downloadPhrase}>
+                  <Download className="w-3.5 h-3.5" />
+                  {t('onboarding.downloadPhrase')}
+                </button>
+              </div>
               <p className="text-[10.5px] text-amber-400/90 leading-relaxed">{t('onboarding.seedWarning')}</p>
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
-              <button type="button" className={primaryBtn} onClick={() => setStep('security')}>
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
+              <button
+                type="button"
+                className={primaryBtn}
+                onClick={() => {
+                  setQuizRound(0);
+                  setError('');
+                  setStep('phraseCheck');
+                }}
+              >
                 {t('onboarding.savedPhrase')}
               </button>
+            </div>
+          )}
+
+          {step === 'phraseCheck' && (
+            <div className="space-y-4" data-testid="onboarding-phrase-check" data-round={String(quizRound)}>
+              <div className="space-y-1.5">
+                <h2 className="text-lg font-bold">{t('onboarding.phraseCheckTitle')}</h2>
+                <p className="text-[12px] leading-relaxed text-white/60">
+                  {t('onboarding.phraseCheckPrompt', {
+                    position: (quiz[quizRound]?.index ?? 0) + 1,
+                  })}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {quiz.map((question, index) => (
+                  <span
+                    key={question.index}
+                    className={`h-1 flex-1 rounded-full transition ${
+                      index < quizRound ? 'bg-[var(--nova-accent-color,#ff4e18)]' : 'bg-white/10'
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(quiz[quizRound]?.options ?? []).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    data-testid="phrase-check-option"
+                    onClick={() => answerPhraseQuestion(option)}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[12.5px] font-mono text-white/85 transition hover:bg-white/[0.08] active:scale-95"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
             </div>
           )}
 
@@ -454,7 +726,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 }}
                 className={inputCls}
               />
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 className={primaryBtn}
@@ -477,6 +753,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   setError('');
                 }}
                 inputMode="numeric"
+                type="password"
                 placeholder={t('onboarding.pinLabel')}
                 aria-label={t('onboarding.pinLabel')}
                 className={`${inputCls} font-mono tracking-[0.4em] text-center`}
@@ -488,36 +765,33 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   setError('');
                 }}
                 inputMode="numeric"
+                type="password"
                 placeholder={t('onboarding.pinConfirmLabel')}
                 aria-label={t('onboarding.pinConfirmLabel')}
                 className={`${inputCls} font-mono tracking-[0.4em] text-center`}
               />
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 className={primaryBtn}
                 disabled={busy || (!!pin && pin !== pinConfirm)}
                 onClick={() => {
-                  if (pin !== pinConfirm) {
+                  if (pin && pin !== pinConfirm) {
                     setError(t('onboarding.pinMismatch'));
                     return;
                   }
-                  setStep('backup');
+                  setError('');
+                  setStep(nextAfterSecurity());
                 }}
               >
                 {t('onboarding.continue')}
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                className={ghostBtn}
-                onClick={() => {
-                  setPinValue('');
-                  setPinConfirm('');
-                  setError('');
-                  setStep('backup');
-                }}
-              >
+              <button type="button" className={ghostBtn} onClick={skipSecurity}>
                 {t('onboarding.skip')}
               </button>
             </div>
@@ -555,7 +829,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 }}
                 className={inputCls}
               />
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 className={primaryBtn}
@@ -571,6 +849,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 onClick={() => {
                   setBackupPassphrase('');
                   setBackupPassphraseConfirm('');
+                  setError('');
                   setStep('done');
                 }}
               >
@@ -589,7 +868,28 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               {identity?.fingerprint && (
                 <p className="text-[10.5px] font-mono text-white/40 break-all">{identity.fingerprint}</p>
               )}
-              {error && <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">{error}</p>}
+              {!backupCreated && (
+                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-3 text-left space-y-2">
+                  <p className="text-[11.5px] leading-relaxed text-amber-200/85">
+                    {t('onboarding.backupReminder')}
+                  </p>
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-amber-400/30 bg-amber-400/10 py-2 text-[11.5px] font-semibold text-amber-200 transition hover:bg-amber-400/15"
+                    onClick={() => {
+                      setError('');
+                      setStep('backup');
+                    }}
+                  >
+                    {t('onboarding.backupNow')}
+                  </button>
+                </div>
+              )}
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
               <button type="button" className={primaryBtn} disabled={busy} onClick={finish}>
                 {t('onboarding.startMessaging')}
               </button>

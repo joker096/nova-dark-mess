@@ -92,7 +92,7 @@ describe('App - desktop navigation rail', () => {
     localStorage.removeItem('nova_onboarding_v1');
     render(<App />);
     expect(await screen.findByTestId('onboarding-wizard')).toBeTruthy();
-    expect(await screen.findByRole('button', { name: 'onboarding.continue' })).toBeTruthy();
+    expect(await screen.findByText('onboarding.createOption')).toBeTruthy();
     expect(screen.queryByTestId('chats-screen')).toBeNull();
   });
 

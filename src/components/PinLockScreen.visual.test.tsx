@@ -13,6 +13,9 @@ const securityMock = vi.hoisted(() => ({
   verifyPin: vi.fn(async (_pin: string) => true),
   unlockWithBiometric: vi.fn(async () => true),
   unlock: vi.fn(),
+  recoverAccessWithMnemonic: vi.fn(async (_mnemonic: string) => undefined),
+  recoverAccessWithBackup: vi.fn(async (_content: string, _passphrase: string) => ({})),
+  resetLocalAccount: vi.fn(async () => undefined),
 }));
 
 vi.mock('../context/LanguageContext', () => ({
@@ -33,6 +36,9 @@ vi.mock('../hooks/useSecurity', () => ({
     biometricEnabled: securityMock.biometricEnabled,
     unlockWithBiometric: securityMock.unlockWithBiometric,
     unlock: securityMock.unlock,
+    recoverAccessWithMnemonic: securityMock.recoverAccessWithMnemonic,
+    recoverAccessWithBackup: securityMock.recoverAccessWithBackup,
+    resetLocalAccount: securityMock.resetLocalAccount,
   }),
 }));
 
@@ -128,14 +134,44 @@ describe('PinLockScreen visual snapshot', () => {
     expect(screen.queryByRole('button', { name: 'common.unlockWithBiometric' })).toBeNull();
   });
 
-  it('lets the user skip the passcode for this session', () => {
-    const onUnlock = vi.fn();
+  it('offers recovery instead of a passcode bypass', () => {
     securityMock.pinHash = 'stored-pin-hash';
-    render(<PinLockScreen onUnlock={onUnlock} />);
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'onboarding.skip' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /common.forgotPin/ }));
+    expect(screen.getByText('common.recoverTitle')).toBeTruthy();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
+  it('recovers access from the recovery phrase and reloads the app', async () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    const onRecovered = vi.fn();
+    render(<PinLockScreen onUnlock={vi.fn()} onRecovered={onRecovered} />);
 
-    expect(onUnlock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /common.forgotPin/ }));
+    fireEvent.change(screen.getByLabelText('onboarding.phraseLabel'), {
+      target: { value: '  Word One Two  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.restoreAction' }));
+
+    await waitFor(() => {
+      expect(securityMock.recoverAccessWithMnemonic).toHaveBeenCalledWith('word one two');
+      expect(onRecovered).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('can erase the local account from recovery after confirmation', async () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    const onRecovered = vi.fn();
+    render(<PinLockScreen onUnlock={vi.fn()} onRecovered={onRecovered} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /common.forgotPin/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'settings.clearAllData' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.recoverResetConfirm' }));
+
+    await waitFor(() => {
+      expect(securityMock.resetLocalAccount).toHaveBeenCalledTimes(1);
+      expect(onRecovered).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('renders numpad grid with 3 columns and digit buttons', () => {
@@ -164,10 +200,24 @@ describe('PinLockScreen visual snapshot', () => {
     for (const digit of ['1', '2', '3', '4']) {
       fireEvent.click(within(numpad).getByRole('button', { name: digit }));
     }
-    fireEvent.click(screen.getByRole('button', { name: 'common.unlock' }));
 
     await waitFor(() => expect(onUnlock).toHaveBeenCalledTimes(1));
     expect(securityMock.verifyPin).toHaveBeenCalledWith('1234');
+  });
+
+  it('shows an error for a wrong passcode', async () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    securityMock.verifyPin.mockResolvedValue(false);
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+
+    const numpad = screen.getByRole('button', { name: '1' }).parentElement!;
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(within(numpad).getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toBe('common.passcodeError');
+    });
   });
 
   it('disables passcode entry during a persisted lockout', () => {

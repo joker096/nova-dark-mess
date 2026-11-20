@@ -3,3 +3,9 @@ id = "site-gateway-test-data"
 description = "Allow high-entropy blobs in site-gateway test data fixtures"
 regex = '^server/site-gateway/data/'
 allowlist = true
+
+[[rules]]
+id = "gateway-tsconfig-false-positive"
+description = "Allow normal tsconfig values flagged as high-entropy by fallback scan"
+regex = '^packages/gateway/tsconfig\.json:'
+allowlist = true

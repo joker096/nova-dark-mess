@@ -206,6 +206,8 @@ export interface MessageSink {
   edit(edit: BotMessageEdit): Promise<boolean>;
   del(chatId: string, messageId: string): Promise<boolean>;
   answerCallback(queryId: string, options?: AnswerCallbackQueryOptions): Promise<void>;
+  /** Send a typing indicator for the bot in a chat. */
+  sendTyping(chatId: string, isTyping: boolean): Promise<void>;
 }
 
 export interface BotModule {
@@ -224,6 +226,8 @@ export interface BotContext {
   deleteMessage(chatId: string, messageId: string): Promise<boolean>;
   answerCallbackQuery(queryId: string, options?: AnswerCallbackQueryOptions): Promise<void>;
   setCommands(commands: BotCommand[]): Promise<void>;
+  /** Send a typing indicator for the bot in a chat. */
+  sendTyping(chatId: string, isTyping: boolean): Promise<void>;
 }
 
 export class PermissionDeniedError extends Error { }
@@ -331,6 +335,10 @@ export class BotRuntime {
       answerCallbackQuery: async (queryId, options) => {
         require('send_messages');
         await this.sink.answerCallback(queryId, options);
+      },
+      sendTyping: async (chatId, isTyping) => {
+        require('send_messages');
+        await this.sink.sendTyping(chatId, isTyping);
       },
       setCommands: async (commands) => {
         if (!Array.isArray(commands) || commands.length > 100) {

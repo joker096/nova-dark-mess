@@ -107,6 +107,17 @@ export class HttpMessageSink implements MessageSink {
       throw new Error(`Gateway answerCallback failed: ${res.status} ${body}`);
     }
   }
+
+  public async sendTyping(chatId: string, isTyping: boolean): Promise<void> {
+    const res = await this.request('/typing', {
+      method: 'POST',
+      body: JSON.stringify({ chatId, isTyping }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Gateway sendTyping failed: ${res.status} ${body}`);
+    }
+  }
 }
 
 /**
@@ -128,5 +139,6 @@ export function makeBotSink(bot: {
     edit: async () => false,
     del: async () => false,
     answerCallback: async () => void 0,
+    sendTyping: async () => void 0,
   };
 }

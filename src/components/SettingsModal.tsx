@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
@@ -52,6 +52,10 @@ interface SettingsModalProps {
   onOpenAnalytics?: () => void;
   /** Bot session for Settings → Bots management (Phase B3). */
   getBotSession?: () => BotSession;
+  /** Pending bot install from deep link (Phase B3). */
+  pendingBotInstall?: { id: string; startPayload?: string } | null;
+  /** Called when the bot install flow is handled (dismissed or completed). */
+  onBotInstallHandled?: () => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'nova_messenger_settings';
@@ -157,6 +161,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   onOpenAnalytics,
   getBotSession,
+  pendingBotInstall,
+  onBotInstallHandled,
 }) => {
   const { t } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
@@ -214,6 +220,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setAdPrefs(loadAdPreferences());
     setAdPrefsMsg(null);
   }, [isOpen]);
+
   const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
@@ -252,6 +259,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [installFromFile, setInstallFromFile] = useState(false);
   const [fileManifest, setFileManifest] = useState<BotManifest | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimer.current !== null) {
+      window.clearTimeout(toastTimer.current);
+    }
+    toastTimer.current = window.setTimeout(() => setToastMessage(null), 2200);
+  };
+
+  // Handle pending bot install from deep link
+  useEffect(() => {
+    if (!isOpen) return;
+    if (pendingBotInstall && getBotSession) {
+      const session = getBotSession();
+      const bot = session.listBots().find((b) => b.manifest.id === pendingBotInstall.id);
+      if (!bot) {
+        // Bot not installed - open bots modal to install it
+        setBotsOpen(true);
+        // Show a toast or notification that the bot needs to be installed first
+        showToast(`${t('bot.notInstalled', { defaultValue: 'Bot not installed. Please install it first.' })}: ${pendingBotInstall.id}`);
+      }
+    }
+    onBotInstallHandled?.();
+  }, [isOpen, pendingBotInstall, getBotSession, onBotInstallHandled]);
 
   const getBots = useCallback(() => {
     const session = getBotSession?.();
@@ -2172,8 +2205,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
+</div>
       )}
+    {toastMessage && (
+      <div
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-white/10 text-white text-xs px-3.5 py-2 rounded-full shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
+        role="status"
+        aria-live="polite"
+      >
+        {toastMessage}
+      </div>
+    )}
     </div>
   );
 };

@@ -42,10 +42,8 @@ pub fn run() {
         }
       }
 
-      // Android: the Keystore-backed keychain is a stub in this build
-      // (the `android_keystore` crate is not published on crates.io), so
-      // setup defers to the default and keychain operations degrade to
-      // frontend localStorage on Android.
+      // Android: Keystore-backed keychain via JNI (AndroidKeyStore).
+      // KeyStore.getInstance() is static — no Activity Context needed.
       #[cfg(target_os = "android")]
       {
         let _ = app;
