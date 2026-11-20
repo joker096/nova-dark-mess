@@ -84,7 +84,9 @@
     "badge": "Бот",
     "disable": "Вимкнути",
     "enable": "Увімкнути",
-    "notInstalled": "Бот не встановлено. Спочатку встановіть його."
+    "notInstalled": "Бот не встановлено. Спочатку встановіть його.",
+    "blocked": "Заблоковано",
+    "unblock": "Розблокувати"
   },
   "moderation": {
     "title": "Модерація та звернення",
@@ -311,7 +313,18 @@
     "importPack": "Імпортувати локальний пакет стікерів",
     "importError": "Не вдалося імпортувати цей пакет стікерів",
     "importedPack": "Імпортований пакет",
-    "removePack": "Видалити пакет"
+    "removePack": "Видалити пакет",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Опитування",
@@ -459,7 +472,30 @@
     "noComments": "Коментарів ще немає",
     "commentPlaceholder": "Написати коментар...",
     "sendComment": "Надіслати коментар",
-    "sharePost": "Поділитися постом"
+    "sharePost": "Поділитися постом",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "Час публікації",
@@ -603,7 +639,16 @@
     "play": "Вiдтворити",
     "pause": "Пауза",
     "delete": "Видалити",
-    "duration": "Тривалiсть"
+    "duration": "Тривалiсть",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Вiдеозв'язок",
@@ -770,7 +815,10 @@
     "termsOfService": "Умови використання",
     "privacyPolicy": "Полiтика конфiденцiйностi",
     "rerunSetup": "Запустити налаштування знову",
-    "moderation": "Модерація та звернення"
+    "moderation": "Модерація та звернення",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1022,6 +1070,10 @@
     "reportBotDesc": "Пожаловатися на цього бота за спам, злочинність або порушення правил. Ваша скарга буде розглянута.",
     "reportSubmitted": "Скарга надіслана: ",
     "blockBot": "Заблокувати бота",
+    "unblockBot": "Розблокувати бота",
+    "botBlockFailed": "Не вдалося заблокувати бота",
+    "botUnblocked": "Бота розблоковано",
+    "botUnblockFailed": "Не вдалося розблокувати бота",
     "blockBotConfirm": "Заблокувати цього бота? Ви перестанете отримувати від нього повідомлення.",
     "block": "Заблокувати",
     "botBlocked": "Бот заблоковано",
@@ -1037,7 +1089,9 @@
     "ipHidden": "IP приховано",
     "ipHiddenTitle": "Медіа через TURN — ваш IP прихований від співрозмовника",
     "ipVisible": "IP видиме",
-    "ipVisibleTitle": "Прямий P2P медіапотік: співрозмовник бачить ваш IP. Увімкніть 'Ховати IP у дзвінках' в Налаштуваннях → Приватність, щоб маршрутизувати медіа через TURN."
+    "ipVisibleTitle": "Прямий P2P медіапотік: співрозмовник бачить ваш IP. Увімкніть 'Ховати IP у дзвінках' в Налаштуваннях → Приватність, щоб маршрутизувати медіа через TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "chats": {
     "joinRequestNotice": "{{who}} просить долучитися",
@@ -1192,7 +1246,8 @@
     "recoverBody": "PIN відкриває локальні дані на цьому пристрої. Якщо ви його забули, відновіть доступ за фразою відновлення або з файлу резервної копії. Повідомлення, що зберігаються лише тут, буде стерто.",
     "recoverWithPhrase": "За фразою",
     "recoverWithBackup": "З файлу",
-    "recoverResetConfirm": "Так, стерти все"
+    "recoverResetConfirm": "Так, стерти все",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Меш-карта",

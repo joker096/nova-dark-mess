@@ -131,7 +131,8 @@
     "recoverBody": "The PIN unlocks local data on this device. If you forgot it, restore access with your recovery phrase or a backup file. Messages stored only on this device will be erased.",
     "recoverWithPhrase": "Recovery phrase",
     "recoverWithBackup": "Backup file",
-    "recoverResetConfirm": "Yes, erase everything"
+    "recoverResetConfirm": "Yes, erase everything",
+    "copyFailed": "Could not copy"
   },
   "channels": "Channels",
   "chats": {
@@ -261,7 +262,30 @@
     "noComments": "No comments yet",
     "commentPlaceholder": "Write a comment...",
     "sendComment": "Send comment",
-    "sharePost": "Share post"
+    "sharePost": "Share post",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "location": {
     "shareTitle": "Share Location",
@@ -334,7 +358,18 @@
     "importPack": "Import local sticker pack",
     "importError": "Could not import this sticker pack",
     "importedPack": "Imported pack",
-    "removePack": "Remove pack"
+    "removePack": "Remove pack",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "contact": {
     "shareTitle": "Share contact",
@@ -540,9 +575,15 @@
     "reportBotDesc": "Report this bot for spam, abuse, or violating terms. Your report will be reviewed.",
     "reportSubmitted": "Report submitted: ",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "block": "Block",
-    "botBlocked": "Bot blocked"
+    "botBlocked": "Bot blocked",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "stories": {
     "title": "Stories",
@@ -756,7 +797,10 @@
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "rerunSetup": "Run setup again",
-    "moderation": "Moderation & appeals"
+    "moderation": "Moderation & appeals",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "wallpaper": {
     "title": "Chat Wallpaper",
@@ -807,7 +851,16 @@
     "play": "Play",
     "pause": "Pause",
     "delete": "Delete",
-    "duration": "Duration"
+    "duration": "Duration",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "notifications": {
     "newMessage": "New Message",
@@ -1118,7 +1171,9 @@
     "badge": "Bot",
     "disable": "Disable",
     "enable": "Enable",
-    "notInstalled": "Bot not installed. Please install it first."
+    "notInstalled": "Bot not installed. Please install it first.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "sites": {
     "title": "Sites",

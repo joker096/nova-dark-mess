@@ -84,7 +84,9 @@
     "badge": "Бот",
     "disable": "Отключить",
     "enable": "Включить",
-    "notInstalled": "Бот не установлен. Пожалуйста, установите его сначала."
+    "notInstalled": "Бот не установлен. Пожалуйста, установите его сначала.",
+    "blocked": "Заблокирован",
+    "unblock": "Разблокировать"
   },
   "moderation": {
     "title": "Модерация и апелляции",
@@ -311,7 +313,18 @@
     "importPack": "Импортировать локальный пакет стикеров",
     "importError": "Не удалось импортировать этот пакет стикеров",
     "importedPack": "Импортированный пакет",
-    "removePack": "Удалить пакет"
+    "removePack": "Удалить пакет",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Опрос",
@@ -455,7 +468,30 @@
     "noComments": "Комментариев пока нет",
     "commentPlaceholder": "Написать комментарий...",
     "sendComment": "Отправить комментарий",
-    "sharePost": "Поделиться постом"
+    "sharePost": "Поделиться постом",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "Время публикации",
@@ -599,7 +635,16 @@
     "play": "Воспроизвести",
     "pause": "Пауза",
     "delete": "Удалить",
-    "duration": "Длительность"
+    "duration": "Длительность",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Видеозвонок",
@@ -766,7 +811,10 @@
     "termsOfService": "Условия использования",
     "privacyPolicy": "Политика конфиденциальности",
     "rerunSetup": "Запустить настройку снова",
-    "moderation": "Модерация и апелляции"
+    "moderation": "Модерация и апелляции",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1018,6 +1066,10 @@
     "reportBotDesc": "Пожаловаться на этого бота за спам, злоупотребление или нарушение правил. Ваша жалоба будет рассмотрена.",
     "reportSubmitted": "Жалоба отправлена: ",
     "blockBot": "Заблокировать бота",
+    "unblockBot": "Разблокировать бота",
+    "botBlockFailed": "Не удалось заблокировать бота",
+    "botUnblocked": "Бот разблокирован",
+    "botUnblockFailed": "Не удалось разблокировать бота",
     "blockBotConfirm": "Заблокировать этого бота? Вы перестанете получать от него сообщения.",
     "block": "Заблокировать",
     "botBlocked": "Бот заблокирован",
@@ -1033,7 +1085,9 @@
     "ipHidden": "IP скрыт",
     "ipHiddenTitle": "Медиа идет через TURN — ваш IP скрыт от собеседника",
     "ipVisible": "IP виден",
-    "ipVisibleTitle": "Прямой P2P медиапоток: собеседник видит ваш IP. Включите 'Скрыть IP в звонках' в Настройки → Приватность, чтобы маршрутизировать через TURN."
+    "ipVisibleTitle": "Прямой P2P медиапоток: собеседник видит ваш IP. Включите 'Скрыть IP в звонках' в Настройки → Приватность, чтобы маршрутизировать через TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "chats": {
     "joinRequestNotice": "{{who}} просит вступить",
@@ -1188,7 +1242,8 @@
     "recoverBody": "PIN открывает локальные данные на этом устройстве. Если вы его забыли, восстановите доступ по фразе восстановления или из файла резервной копии. Сообщения, хранящиеся только здесь, будут стёрты.",
     "recoverWithPhrase": "По фразе",
     "recoverWithBackup": "Из файла",
-    "recoverResetConfirm": "Да, стереть всё"
+    "recoverResetConfirm": "Да, стереть всё",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Меш-карта",

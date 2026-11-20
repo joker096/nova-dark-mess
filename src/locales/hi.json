@@ -84,7 +84,9 @@
     "badge": "बॉट",
     "disable": "अक्षम करें",
     "enable": "सक्षम",
-    "notInstalled": "बॉट इंस्टॉल नहीं है। कृपया पहले इसे इंस्टॉल करें।"
+    "notInstalled": "बॉट इंस्टॉल नहीं है। कृपया पहले इसे इंस्टॉल करें।",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "मॉडरेशन और अपील",
@@ -382,7 +384,16 @@
     "play": "खेलो",
     "pause": "विराम",
     "delete": "हटाएँ",
-    "duration": "अवधि"
+    "duration": "अवधि",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "वीडियो कॉल",
@@ -549,7 +560,10 @@
     "moderation": "मॉडरेशन और अपील",
     "biometricUnlockWithPin": "फिंगरप्रिंट/फेस अनलॉक (पिन फ़ॉलबैक के साथ)",
     "biometricHintWithPin": "अनलॉक करने के लिए फिंगरप्रिंट या चेहरे का उपयोग करें। पिन हमेशा फ़ॉलबैक के रूप में आवश्यक होता है।",
-    "changePin": "पिन बदलें"
+    "changePin": "पिन बदलें",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "शुरू करें",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "आईपी छिपा हुआ",
     "ipHiddenTitle": "मीडिया TURN के माध्यम से — आपका आईपी पीयर से छिपा हुआ है",
     "ipVisible": "आईपी दृश्यमान",
-    "ipVisibleTitle": "सीधा P2P मीडिया स्ट्रीम: पीयर आपका आईपी देख सकता है। सेटिंग्स → प्राइवेसी में 'कॉल में मेरा आईपी छिपाएं' सक्षम करके मीडिया को TURN के माध्यम से रूट करें।"
+    "ipVisibleTitle": "सीधा P2P मीडिया स्ट्रीम: पीयर आपका आईपी देख सकता है। सेटिंग्स → प्राइवेसी में 'कॉल में मेरा आईपी छिपाएं' सक्षम करके मीडिया को TURN के माध्यम से रूट करें।",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "एनालिटिक्स डैशबोर्ड",
@@ -882,7 +902,18 @@
     "importPack": "स्थानीय स्टिकर पैक आयात करें",
     "importError": "इस स्टिकर पैक को आयात नहीं किया जा सका",
     "importedPack": "आयातित पैक",
-    "removePack": "पैक हटाओ"
+    "removePack": "पैक हटाओ",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "मतदान",
@@ -1020,7 +1051,30 @@
     "noComments": "अभी तक कोई टिप्पणी नहीं",
     "commentPlaceholder": "एक टिप्पणी लिखें...",
     "sendComment": "टिप्पणी भेजें",
-    "sharePost": "पोस्ट शेयर करें"
+    "sharePost": "पोस्ट शेयर करें",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "प्रकाशित करने का समय",
@@ -1182,7 +1236,8 @@
     "recoverBody": "PIN इस डिवाइस का स्थानीय डेटा खोलता है। भूल गए हों तो रिकवरी वाक्यांश या बैकअप फ़ाइल से पहुँच बहाल करें। सिर्फ़ इस डिवाइस पर रखे संदेश मिट जाएँगे।",
     "recoverWithPhrase": "वाक्यांश से",
     "recoverWithBackup": "बैकअप फ़ाइल से",
-    "recoverResetConfirm": "हाँ, सब मिटा दें"
+    "recoverResetConfirm": "हाँ, सब मिटा दें",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "जाल मानचित्र",

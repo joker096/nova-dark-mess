@@ -84,7 +84,9 @@
     "badge": "بوت",
     "disable": "تعطيل",
     "enable": "تمكين",
-    "notInstalled": "البوت غير مثبت. يرجى تثبيته أولاً."
+    "notInstalled": "البوت غير مثبت. يرجى تثبيته أولاً.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "الإشراف والاستئناف",
@@ -278,7 +280,18 @@
     "importPack": "استيراد حزمة ملصقات محلية",
     "importError": "تعذر استيراد هذه الحزمة",
     "importedPack": "الحزمة المستوردة",
-    "removePack": "إزالة الحزمة"
+    "removePack": "إزالة الحزمة",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "استطلاع",
@@ -448,7 +461,16 @@
     "play": "تشغيل",
     "pause": "إيقاف مؤقت",
     "delete": "حذف",
-    "duration": "المدة"
+    "duration": "المدة",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "مكالمة فيديو",
@@ -615,7 +637,10 @@
     "termsOfService": "شروط الخدمة",
     "privacyPolicy": "سياسة الخصوصية",
     "rerunSetup": "إعادة تشغيل الإعداد",
-    "moderation": "الإشراف والاستئناف"
+    "moderation": "الإشراف والاستئناف",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -865,6 +890,10 @@
     "startBot": "بدء",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -882,7 +911,9 @@
     "ipHidden": "IP مخفي",
     "ipHiddenTitle": "الوسائط تمر عبر TURN — عنوان IP الخاص بك مخفي عن الطرف الآخر",
     "ipVisible": "IP مرئي",
-    "ipVisibleTitle": "تدفق وسائط P2P مباشر: الطرف الآخر يمكنه رؤية عنوان IP الخاص بك. فعّل 'إخفاء IP في المكالمات' في الإعدادات → الخصوصية لتوجيه الوسائط عبر TURN."
+    "ipVisibleTitle": "تدفق وسائط P2P مباشر: الطرف الآخر يمكنه رؤية عنوان IP الخاص بك. فعّل 'إخفاء IP في المكالمات' في الإعدادات → الخصوصية لتوجيه الوسائط عبر TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "لوحة التحليلات",
@@ -1040,7 +1071,30 @@
     "noComments": "لا توجد تعليقات بعد",
     "commentPlaceholder": "اكتب تعليقًا...",
     "sendComment": "إرسال التعليق",
-    "sharePost": "مشاركة المنشور"
+    "sharePost": "مشاركة المنشور",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "chats": {
     "joinRequestNotice": "{{who}} يريد الانضمام",
@@ -1194,7 +1248,8 @@
     "recoverBody": "يفتح رمز PIN البيانات المحلية على هذا الجهاز. إذا نسيته، فاستعد الوصول بعبارة الاسترداد أو بملف نسخة احتياطية. ستُمسح الرسائل المخزنة على هذا الجهاز فقط.",
     "recoverWithPhrase": "بعبارة الاسترداد",
     "recoverWithBackup": "من ملف نسخة احتياطية",
-    "recoverResetConfirm": "نعم، امسح كل شيء"
+    "recoverResetConfirm": "نعم، امسح كل شيء",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "خريطة مِش",

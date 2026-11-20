@@ -84,7 +84,9 @@
     "badge": "Bot",
     "disable": "Désactiver",
     "enable": "Activer",
-    "notInstalled": "Bot non installé. Veuillez d'abord l'installer."
+    "notInstalled": "Bot non installé. Veuillez d'abord l'installer.",
+    "blocked": "Blocked",
+    "unblock": "Unblock"
   },
   "moderation": {
     "title": "Modération et appels",
@@ -382,7 +384,16 @@
     "play": "Jouer",
     "pause": "Pause",
     "delete": "Supprimer",
-    "duration": "Durée"
+    "duration": "Durée",
+    "releaseToCancel": "Release to cancel",
+    "slideToCancelShort": "‹ cancel · lock ↑",
+    "oneHandHint": "Tap to record · hold and slide up to lock · slide left to cancel",
+    "slideUpToLock": "Slide up to lock",
+    "locked": "Locked",
+    "stopAndPreview": "Stop and preview",
+    "sendNow": "Send now",
+    "recordingFailed": "Voice recording failed",
+    "microphoneUnavailable": "Microphone unavailable"
   },
   "videoCall": {
     "title": "Appel vidéo",
@@ -549,7 +560,10 @@
     "moderation": "Modération et appels",
     "biometricUnlockWithPin": "Déverrouillage par empreinte digitale/visage (avec repli du code PIN)",
     "biometricHintWithPin": "Utilisez l'empreinte digitale ou le visage pour déverrouiller. Le code PIN est toujours requis comme solution de secours.",
-    "changePin": "Modifier le code PIN"
+    "changePin": "Modifier le code PIN",
+    "secureStorageUnavailable": "Secure key storage is unavailable",
+    "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -799,6 +813,10 @@
     "startBot": "Démarrer",
     "block": "Block",
     "blockBot": "Block bot",
+    "unblockBot": "Unblock bot",
+    "botBlockFailed": "Couldn't block bot",
+    "botUnblocked": "Bot unblocked",
+    "botUnblockFailed": "Couldn't unblock bot",
     "blockBotConfirm": "Block this bot? You will no longer receive messages from it.",
     "botBlocked": "Bot blocked",
     "reportBot": "Report bot",
@@ -816,7 +834,9 @@
     "ipHidden": "IP masqué",
     "ipHiddenTitle": "Les médias passent par TURN — votre IP est masquée du pair",
     "ipVisible": "IP visible",
-    "ipVisibleTitle": "Flux média P2P direct : le pair peut voir votre IP. Activez 'Masquer mon IP en appel' dans Paramètres → Confidentialité pour router les médias via TURN."
+    "ipVisibleTitle": "Flux média P2P direct : le pair peut voir votre IP. Activez 'Masquer mon IP en appel' dans Paramètres → Confidentialité pour router les médias via TURN.",
+    "demoPeer": "Demo",
+    "demoPeerTitle": "Demo contact: the safety number below belongs to a key this device generated, it is not a real peer key."
   },
   "analytics": {
     "title": "Tableau de bord d'analyse",
@@ -882,7 +902,18 @@
     "importPack": "Importer un pack d'autocollants locaux",
     "importError": "Impossible d'importer ce pack d'autocollants",
     "importedPack": "Pack importé",
-    "removePack": "Supprimer le paquet"
+    "removePack": "Supprimer le paquet",
+    "insert": "Insert sticker into message",
+    "insertHint": "Insert into the text field",
+    "size": "Sticker size",
+    "pickerDensity": "Picker density",
+    "density": {
+      "comfortable": "Large stickers, fewer per row",
+      "compact": "Small stickers, more per row"
+    },
+    "insertMode": "Insert, don't send",
+    "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
+    "packs": "Sticker packs"
   },
   "poll": {
     "title": "Sondage",
@@ -1020,7 +1051,30 @@
     "noComments": "Pas encore de commentaires",
     "commentPlaceholder": "Écrivez un commentaire...",
     "sendComment": "Envoyer le commentaire",
-    "sharePost": "Partager la publication"
+    "sharePost": "Partager la publication",
+    "postUpdated": "Post updated",
+    "subscribersHidden": "Subscribers hidden",
+    "showCalendar": "Show calendar",
+    "hideCalendar": "Hide calendar",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "searchDateFrom": "From date",
+    "searchDateTo": "To date",
+    "pinned": "Pinned",
+    "forwardedFrom": "Forwarded from",
+    "edited": "(edited)",
+    "copyLink": "Copy link",
+    "postSaved": "Saved",
+    "savePost": "Save",
+    "textCopied": "Text copied",
+    "copyText": "Copy text",
+    "translateUnavailable": "Translation unavailable",
+    "translate": "Translate",
+    "report": "Report",
+    "editPost": "Edit post",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "jumpToLatest": "Jump to latest"
   },
   "schedule": {
     "title": "Heure de publication",
@@ -1182,7 +1236,8 @@
     "recoverBody": "Le PIN déverrouille les données locales de cet appareil. Si vous l'avez oublié, récupérez l'accès avec votre phrase de récupération ou un fichier de sauvegarde. Les messages stockés uniquement sur cet appareil seront effacés.",
     "recoverWithPhrase": "Avec la phrase",
     "recoverWithBackup": "Depuis un fichier",
-    "recoverResetConfirm": "Oui, tout effacer"
+    "recoverResetConfirm": "Oui, tout effacer",
+    "copyFailed": "Could not copy"
   },
   "meshMap": {
     "title": "Carte de maillage",
