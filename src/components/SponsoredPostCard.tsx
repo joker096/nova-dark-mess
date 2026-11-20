@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { toSafeExternalUrl } from '../lib/security/safeUrl';
 import {
   AD_PREFS_CHANGED_EVENT,
   blockAdvertiser,
@@ -106,7 +107,9 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
 
   const openDestination = () => {
     recordAdEvent('click', campaign.id);
-    window.open(campaign.destinationUrl, '_blank', 'noopener,noreferrer');
+    const destination = toSafeExternalUrl(campaign.destinationUrl);
+    if (!destination) return;
+    window.open(destination, '_blank', 'noopener,noreferrer');
   };
 
   const handleReported = (report: ModerationReport) => {

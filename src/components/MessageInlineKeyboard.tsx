@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import type { InlineKeyboard as KeyboardModel, InlineKeyboardButton } from '../lib/bots/types';
 import { useLanguage } from '../context/LanguageContext';
+import { toSafeExternalUrl } from '../lib/security/safeUrl';
 
 interface MessageInlineKeyboardProps {
   /** Keyboard attached to one message by its bot. */
@@ -50,6 +51,9 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
           {row.map((button, colIdx) => {
             const action = button.callback_data ?? button.url ?? button.web_app?.url ?? '';
             const isCallback = button.callback_data !== undefined;
+            // Bot-supplied URL buttons are untrusted: never render a
+            // javascript:/data: target, even if a manifest skipped validation.
+            const safeUrl = button.url ? toSafeExternalUrl(button.url) : null;
             return (
               <div key={colIdx} className="flex-1 min-w-0 relative">
                 {isWebAppButton(button) ? (
@@ -72,9 +76,9 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
                   >
                     {button.text}
                   </button>
-                ) : (
+                ) : safeUrl ? (
                   <a
-                    href={button.url ?? button.web_app?.url ?? '#'}
+                    href={safeUrl}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     onContextMenu={(e) => handleContextMenu(e, button.url)}
@@ -83,6 +87,10 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
                     <span className="truncate">{button.text}</span>
                     <ExternalLink size={12} className="shrink-0 opacity-70" aria-hidden />
                   </a>
+                ) : (
+                  <span className="flex w-full items-center justify-center gap-1.5 truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/40">
+                    <span className="truncate">{button.text}</span>
+                  </span>
                 )}
                 {revealed !== null && revealed === action && action !== '' && (
                   <span

@@ -130,12 +130,20 @@ function relaySweepRateLimit() {
 }
 setInterval(relaySweepRateLimit, RELAY_RATE_LIMIT_WINDOW_MS);
 
+function timingSafeStringEqual(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
 function verifyRelayAuth(req) {
-  if (!RELAY_HMAC_SECRET) return true; // dev mode: no secret configured
+  // Fail closed in production: an unset secret must never open the relay to
+  // the whole internet. Local development keeps the secretless mode.
+  if (!RELAY_HMAC_SECRET) return !IS_PRODUCTION;
   const auth = req.headers['authorization'];
   if (!auth) return false;
   const token = auth.replace(/^Bearer\s+/i, '');
-  return token === RELAY_HMAC_SECRET;
+  return timingSafeStringEqual(token, RELAY_HMAC_SECRET);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -155,6 +163,19 @@ const PAYMENTO_RETURN_URL = (process.env.PAYMENTO_RETURN_URL || '').trim();
 const PAYMENTO_VERIFY_URL = (process.env.PAYMENTO_VERIFY_URL || `${PAYMENTO_API_URL}/v1/payment/verify`).trim();
 const PAYMENTO_GATEWAY_URL = (process.env.PAYMENTO_GATEWAY_URL || 'https://app.paymento.io/gateway').trim();
 const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
+
+/**
+ * Return URL for hosted checkout. Never trust `Origin` verbatim: an attacker
+ * could start a checkout with a forged Origin and have the payment provider
+ * bounce the victim to a phishing page after paying. Only allowlisted origins
+ * are used; everything else falls back to the public site.
+ */
+function resolveReturnUrl(req) {
+  if (PAYMENTO_RETURN_URL) return PAYMENTO_RETURN_URL;
+  const origin = String(req.headers.origin || '').replace(/\/+$/, '');
+  if (origin && CORS_ORIGINS.has(origin)) return `${origin}/premium.html`;
+  return 'https://mess.cvr.name/premium.html';
+}
 
 // The license key signs temporary premium grants. Derive a separate key from
 // the PaymentO secret when PREMIUM_LICENSE_SECRET is not set instead of reusing
@@ -642,7 +663,7 @@ app.post('/api/premium/checkout', async (req, res) => {
     const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
     const order = { orderId, plan, device, amount: p.price, currency: p.currency, status: 'pending', createdAt: new Date().toISOString() };
     saveOrder(order);
-    const returnUrl = PAYMENTO_RETURN_URL || (req.headers.origin ? `${req.headers.origin}/premium.html` : '');
+    const returnUrl = resolveReturnUrl(req);
     const { token, paymentUrl } = await paymentoCreate({ amount: p.price, currency: p.currency, orderId, returnUrl });
     order.token = token;
     saveOrder(order);
@@ -674,7 +695,7 @@ app.post('/api/premium/gift/checkout', async (req, res) => {
       createdAt: new Date().toISOString(),
     };
     saveOrder(order);
-    const returnUrl = PAYMENTO_RETURN_URL || (req.headers.origin ? `${req.headers.origin}/premium.html` : '');
+    const returnUrl = resolveReturnUrl(req);
     const { token, paymentUrl } = await paymentoCreate({
       amount: plan.price,
       currency: plan.currency,
@@ -935,8 +956,14 @@ app.get('/api/paymento/receipts', requireAdmin, (_req, res) => {
 // on disk with a TTL and returns them to the destination on fetch, deleting
 // them afterwards (store-and-forward). No identity or message content is kept.
 // ───────────────────────────────────────────────────────────────────────────
+function sanitizeRelayKey(value, maxLength = 128) {
+  const safe = String(value ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+  return safe.length > 0 && safe.length <= maxLength ? safe : null;
+}
+
 function relayDestDir(destination) {
-  const safe = String(destination).replace(/[^a-zA-Z0-9_-]/g, '');
+  const safe = sanitizeRelayKey(destination);
+  if (!safe) throw new Error('invalid relay destination');
   return path.join(RELAY_DIR, safe);
 }
 
@@ -989,18 +1016,22 @@ app.post('/api/relay', (req, res) => {
       return res.status(400).json({ ok: false, reason: 'unknown field' });
     }
   }
-  const raw = req.rawBody || '';
+  const raw = JSON.stringify(envelope);
   if (Buffer.byteLength(raw) > RELAY_MAX_ENVELOPE_BYTES) {
     return res.status(413).json({ ok: false, reason: 'envelope too large' });
   }
+  const safeDestination = sanitizeRelayKey(destination);
+  const safeId = sanitizeRelayKey(id);
+  if (!safeDestination || !safeId) {
+    return res.status(400).json({ ok: false, reason: 'invalid destination or id' });
+  }
   sweepRelayExpired();
-  const dir = relayDestDir(destination);
+  const dir = relayDestDir(safeDestination);
   fs.mkdirSync(dir, { recursive: true });
   const existing = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
   if (existing.length >= RELAY_MAX_PER_DEST) {
     return res.status(429).json({ ok: false, reason: 'destination queue full' });
   }
-  const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
   const file = path.join(dir, `${safeId}.json`);
   if (fs.existsSync(file)) {
     return res.status(409).json({ ok: false, reason: 'id already exists' });
@@ -1022,7 +1053,10 @@ app.get('/api/relay/:destination', (req, res) => {
   if (!verifyRelayAuth(req)) {
     return res.status(401).json({ ok: false, reason: 'unauthorized' });
   }
-  const destination = req.params.destination;
+  const destination = sanitizeRelayKey(req.params.destination);
+  if (!destination) {
+    return res.status(400).json({ ok: false, reason: 'invalid destination' });
+  }
   sweepRelayExpired();
   const dir = relayDestDir(destination);
   let envelopes = [];
@@ -1064,7 +1098,8 @@ const BACKUP_TTL_MS = parseInt(process.env.BACKUP_TTL_MS || String(30 * 24 * 60 
 const BACKUP_MAX_BYTES = parseInt(process.env.BACKUP_MAX_BYTES || '10485760', 10); // 10 MB
 
 function backupDestDir(destination) {
-  const safe = String(destination).replace(/[^a-zA-Z0-9_-]/g, '');
+  const safe = sanitizeRelayKey(destination);
+  if (!safe) throw new Error('invalid backup destination');
   return path.join(BACKUP_DIR, safe);
 }
 
@@ -1105,6 +1140,9 @@ app.post('/api/backup/upload', (req, res) => {
   if (!destination || typeof destination !== 'string') {
     return res.status(400).json({ ok: false, reason: 'missing destination' });
   }
+  if (!sanitizeRelayKey(destination)) {
+    return res.status(400).json({ ok: false, reason: 'invalid destination' });
+  }
   const blob = req.body && req.body.blob;
   if (!blob || typeof blob !== 'string') {
     return res.status(400).json({ ok: false, reason: 'missing blob' });
@@ -1134,8 +1172,8 @@ app.get('/api/backup/download', (req, res) => {
     return res.status(401).json({ ok: false, reason: 'unauthorized' });
   }
   const destination = req.query && req.query.destination;
-  if (!destination || typeof destination !== 'string') {
-    return res.status(400).json({ ok: false, reason: 'missing destination' });
+  if (!destination || typeof destination !== 'string' || !sanitizeRelayKey(destination)) {
+    return res.status(400).json({ ok: false, reason: 'invalid destination' });
   }
   const file = path.join(backupDestDir(destination), 'backup.json');
   let record;

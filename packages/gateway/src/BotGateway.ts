@@ -19,7 +19,8 @@ import {
   generateX25519KeyPair,
   generatePqKemKeyPair,
   encodePqSecret,
-} from '@nova/crypto';
+  fingerprintFromSigningKey,
+} from '../../lib/crypto/identity';
 
 export interface GatewayMessage {
   type: 'incoming' | 'outgoing' | 'callback' | 'typing';

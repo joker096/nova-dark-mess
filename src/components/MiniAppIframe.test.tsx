@@ -59,6 +59,14 @@ describe('MiniAppIframe', () => {
     expect(iframe.src).toContain('hash=');
   });
 
+  it('does not render an iframe for a non-HTTPS URL', () => {
+    const { container } = render(
+      <MiniAppIframe {...baseProps} webAppUrl="javascript:alert(1)" />,
+    );
+    expect(getIframe(container)).toBeNull();
+    expect(screen.getByText('Mini App URL must be HTTPS')).toBeInTheDocument();
+  });
+
   it('renders without onInlineQuery / onMainButtonClick handlers', () => {
     const { botId, webAppUrl, userId, secret, onClose } = baseProps;
     const { container } = render(
