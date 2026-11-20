@@ -7,11 +7,12 @@ This roadmap turns the bot-integration plan (derived from the audit of the old
 Like `docs/anonymity-roadmap.md`, it is incremental: every phase ships with
 tests and must not break the existing secure-messaging baseline.
 
-**Implementation status:** B0 and B1 are **implemented** (see §3); the echo
-bot example (`examples/bots/echo/`) runs through the runtime tests, and the
-inline-keyboard UI (`MessageInlineKeyboard.tsx` + `ChatScreen.onBotCallback`)
-is wired in `App.tsx` via `src/lib/bots/session.ts`. B2–B8 are the target,
-not a description of what is finished.
+**Implementation status:** B0–B3 are **implemented**; B4/B5/B6 have their main
+code paths implemented (headless gateway in `packages/bot-gateway/`, the
+gateway-side HTTP surface, and the NovaFather example) but still miss group
+support and the contract/fuzz tests called out below. B8 is in progress: local
+report/block and the threat-model addendum landed, the E2E install flow and
+the `NOVA_BOTS` flag exist. B7 remains deferred.
 
 ## 0. Scope and non-goals
 
@@ -115,9 +116,13 @@ the bot's private key):
 ### Phase B1 — Local bot runtime, L1 (1 week) — ✅ Done (2026-11-19)
 
 - [x] `src/lib/bots/runtime.ts`: `BotContext` with `onUpdate`, `sendMessage`,
-      `editMessage`, `deleteMessage`, `answerCallbackQuery`, `setCommands`.
-      Module loading (`import()` of a bot entry point) is deferred to B3 —
-      the runtime takes any installed-bot record.
+      `editMessage`, `deleteMessage`, `answerCallbackQuery`, `setCommands` and
+      bot-scoped `storage`. Module loading is implemented: entry points are
+      bundled via `import.meta.glob` (`echo`, `novafather`, `movie-catalog`)
+      and `BotSession` loads them for every enabled, unblocked bot on init and
+      whenever a runtime is rebuilt. `movie-catalog` was fixed to the current
+      `BotContext` (bot-scoped storage, no inline-query branch) and now has a
+      load/`/start` smoke test. The sandboxed-webview CSP check is still open.
 - [x] Permission gate: every context call is checked against the granted
       `BotPermissions` (deny by default, `PermissionDeniedError`); mention-only
       bots receive only commands, mentions and callback queries.
@@ -131,7 +136,7 @@ the bot's private key):
       handling, mention-only filtering.
 - [ ] Sandboxed webview CSP check — deferred to B3 (module loading).
 
-### Phase B2 — Chat UX for bots (1 week) — 🟡 Partial (2026-11-19)
+### Phase B2 — Chat UX for bots (1 week) — ✅ Done (2026-11-20)
 
 - [x] Inline keyboard rendered from the message itself (`msg.botKeyboard` in
       `ChatMessage`), one component `src/components/MessageInlineKeyboard.tsx`
@@ -141,27 +146,28 @@ the bot's private key):
 - [x] i18n: `chat.botBadge`, `chat.startBot`, `chat.botCommands`,
       `chat.callbackToast` added to all 20 locales (`npm run audit:i18n`
       green).
-- [ ] Bot badge in the chat list and chat header.
-- [ ] "Start" button and `nova://bot/<id>?start=…` deep link.
-- [ ] Command menu (`/` in the composer) listing `bot.commands`.
-- [ ] Bot message delivery into the chat transcript (currently the sink
-      records messages; rendering them in the conversation lands with the
-      encrypted MessageSink integration in B4).
-- [ ] Typing indicator for bots.
+- [x] Bot badge in the chat list and chat header (`isBotChat` in
+      `ChatsScreen.tsx`, bot profile/status in `ChatScreen.tsx`).
+- [x] "Start" button and `nova://bot/<id>?start=…` deep link (settings Bots
+      list opens the chat and sends `/start`; `App.tsx` handles `bot` targets).
+- [x] Command menu (`/` in the composer) listing `bot.commands`.
+- [x] Bot message delivery into the chat transcript: local sink renders bot
+      output, edits and deletions; L2/L3 manifests use `HttpMessageSink`.
+- [x] Typing indicator for bots (`botTyping` state driven by `sendTyping`).
 
-### Phase B3 — Bot management UI (3–4 days)
+### Phase B3 — Bot management UI (3–4 days) — ✅ Done (2026-11-20)
 
-- [ ] Settings → Bots: list installed/local bots, install from
+- [x] Settings → Bots: list installed/local bots, install from
       `nova://bot/...` link or local file, permission screen at install time
       (explicit consent per permission), revoke/reinstall, delete.
-- [ ] Local "Bot registry" screen for developers: create a local bot manifest,
+- [x] Local "Bot registry" screen for developers: create a local bot manifest,
       generate its keypair in the vault, rotate/revoke. Keys are generated
       on-device and never leave it — this is the L1 analogue of the old
       client-side `CreateBotModal`, but without any token-containing-a-key.
 
-### Phase B4 — Gateway transport, L2 (1–1.5 weeks)
+### Phase B4 — Gateway transport, L2 (1–1.5 weeks) — 🟡 Partial
 
-- [ ] The bot-as-participant joins via the existing transports: WebRTC
+- [x] The bot-as-participant joins via the existing transports: WebRTC
       DataChannel (`roomChannel.ts`) when on the same mesh, or the
       store-and-forward relay (`httpRelay.ts`) otherwise. The gateway is just
       another device running `P2PManager` headlessly
@@ -171,35 +177,53 @@ the bot's private key):
       journal (`src/lib/security/peerKeyJournal.ts`) covers bots for free.
 - [ ] Group support: privacy mode (default: commands and mentions only) is
       enforced client-side before an update is delivered; Sender Keys
-      rotation on bot removal reuses `groupManager.ts`.
+      rotation on bot removal reuses `groupManager.ts`. Gateway side is now
+      wired: `BotGateway.joinGroup/sendGroupMessage/addGroupMember/
+      removeGroupMember/rotateGroupKey` drive a `GroupChatManager`, group
+      frames travel in a versioned `__nova_group` envelope over the same 1:1
+      P2P session (so ordinary text is never mistaken for a group frame), and
+      SKDM/join-request callbacks reach `onGroupMessage`/
+      `onGroupJoinRequest`. Still missing: the client does not address group
+      frames to a bot peer yet (room broadcast reaches WebRTC peers only), so
+      privacy/mention filtering for gateway bots in a real group is unproven.
 - [ ] Tests: bot joins a 1:1 and a group chat over the in-memory transport,
       key-rotation journal fires on bot bundle change, removal triggers
-      sender-key rotation.
+      sender-key rotation. `packages/bot-gateway/src/index.test.ts` now covers
+      the 1:1 relay, group join/SKDM/message exchange and removal (no further
+      fan-out to the removed member); the peer-key-journal case is still
+      missing because the gateway does not share the client's journal store.
 
-### Phase B5 — Telegram-shaped HTTP surface, L3 (1 week, gateway-side only)
+### Phase B5 — Telegram-shaped HTTP surface, L3 (1 week, gateway-side only) — 🟡 Partial
 
-- [ ] `packages/bot-gateway` exposes `POST /bot<token>/sendMessage`,
+- [x] `packages/bot-gateway` exposes `POST /bot<token>/sendMessage`,
       `getUpdates` (long-poll + offset), `setWebhook`/`deleteWebhook`,
       `getMe`, `answerCallbackQuery`, `setMyCommands` — same JSON shapes as
       Telegram so grammY/telegraf/aiogram work after a base-URL change.
-- [ ] Webhook delivery reuses the patterns already proven in the old repo's
+- [x] Webhook delivery reuses the patterns already proven in the old repo's
       design and in this repo's server: HMAC signature, timestamp window,
       replay guard, retry with exponential backoff (cf. `server.js` IPN
       handler and the hardening in fix-roadmap F3).
-- [ ] SSRF guard for `webhook_url`: https only, private/loopback ranges
+- [x] SSRF guard for `webhook_url`: https only, private/loopback ranges
       denied, re-validated after DNS resolution and on redirects.
-- [ ] Rate limits: ~30 msg/s per bot, 1 msg/s per chat (Telegram-like).
-- [ ] Contract tests against a fake Telegram client (grammY in a test) +
+- [x] Rate limits: ~30 msg/s per bot, 1 msg/s per chat (Telegram-like).
+- [x] Contract tests against a fake Telegram client (grammY in a test) +
       fuzz the update parser (`vitest` + seeded fuzz like
-      `src/lib/anon/fuzz.test.ts`).
+      `src/lib/anon/fuzz.test.ts`). `packages/bot-gateway/src/http.test.ts`
+      now drives a Telegram-shaped client through sendMessage/getUpdates/
+      setWebhook/getMe/setMyCommands and fuzzes 30 deterministic malformed
+      bodies against every endpoint, then checks the server is still healthy.
 
-### Phase B6 — System bot "NovaFather" (3–4 days)
+### Phase B6 — System bot "NovaFather" (3–4 days) — 🟡 Partial
 
-- [ ] Implemented as an ordinary L1 bot on the same `BotContext` API:
+- [x] Implemented as an ordinary L1 bot on the same `BotContext` API:
       `/newbot` (local L1 manifest), `/setcommands`, `/setdescription`,
       `/token` (gateway tokens, hash-stored, shown once), `/revoke`,
       `/setwebhook`, `/setgateway` (attach an L2 gateway URL).
-- [ ] Doubles as the end-to-end test of the whole API.
+- [ ] Doubles as the end-to-end test of the whole API. The example lives in
+      `examples/bots/novafather/` and manages manifests/gateway URLs.
+      `src/lib/bots/novafather.test.ts` now covers `/start` and `/mybots`
+      through `BotRuntime` + `BotContext.storage`; transport-level E2E is still
+      missing.
 
 ### Phase B7 — Mini Apps (deferred; 1 week when scheduled)
 
@@ -210,17 +234,19 @@ the bot's private key):
       owner; `frame-src` allowlist in the CSP in `index.html`.
 - [ ] `web_app` button type becomes available; `inline_query` update type.
 
-### Phase B8 — Security review & release (1 week)
+### Phase B8 — Security review & release (1 week) — 🟡 In progress
 
-- [ ] Threat model addendum in `docs/threat-model.md`: malicious bot requesting
+- [x] Threat model addendum in `docs/threat-model.md`: malicious bot requesting
       broad permissions, phishing via inline buttons (button text vs action
-      shown in a long-press disclosure), token leak, SSRF, spam bots, spam
-      resistance interaction with `src/lib/anon/spam.ts`.
-- [ ] Report/block a bot; permission changes require re-consent; verified
-      badge reserved for a future manual process (do not fake it).
-- [ ] E2E test (Playwright): install echo bot → `/start` → keyboard renders →
-      callback round-trip → revoke.
-- [ ] Feature flag `NOVA_BOTS` (default on for L1, off for gateway pieces)
+      shown in a long-press disclosure), token leak, SSRF, spam bots and
+      local-only reports.
+- [x] Report/block a bot; permission changes require re-consent; verified
+      badge reserved for a future manual process (do not fake it). Blocking is
+      persisted in the encrypted registry and checked before every
+      update/callback; reports are local-only (`src/lib/bots/reports.ts`).
+- [x] E2E test (Playwright): install echo bot → `/start` → keyboard renders →
+      callback round-trip → revoke (`tests/bots.e2e.ts`).
+- [x] Feature flag `NOVA_BOTS` (default on for L1, off for gateway pieces)
       so the app ships unchanged if bots are compiled out — consistent with
       the monetization track's "must work fully with the feature off" rule.
 
