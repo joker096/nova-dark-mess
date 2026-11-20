@@ -11,6 +11,7 @@ import {
   BotInstallError,
   BotRuntime,
   InMemoryBotStorage,
+  type BotAdminApi,
   type BotRegistry,
   type BotStorage,
   type InstalledBot,
@@ -56,6 +57,12 @@ export class BotSession {
   private registry: BotRegistry = { bots: [] };
   private runtimes = new Map<string, BotRuntime>();
   private ready: Promise<void> | null = null;
+  private readonly admin: BotAdminApi = {
+    listBots: () => this.registry.bots,
+    installBot: (manifest, granted) => this.installBot(manifest, granted),
+    setBotEnabled: (botId, enabled) => this.setBotEnabled(botId, enabled),
+    uninstallBot: (botId) => this.uninstallBot(botId),
+  };
 
   constructor(
     /** Optional storage back-end. Defaults to in-memory; switch to encrypted via switchStorage() when the vault is ready. */
@@ -76,7 +83,7 @@ export class BotSession {
 
   private buildRuntimes(): Map<string, BotRuntime> {
     return new Map(
-      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage)]),
+      this.registry.bots.map((bot) => [bot.manifest.id, new BotRuntime(bot, this.sink, this.storage, this.admin)]),
     );
   }
 
@@ -161,7 +168,7 @@ export class BotSession {
       this.runtimes.delete(botId);
       return;
     }
-    const runtime = new BotRuntime(bot, this.sink, this.storage);
+    const runtime = new BotRuntime(bot, this.sink, this.storage, this.admin);
     this.runtimes.set(botId, runtime);
     if (bot.enabled && !bot.blocked) await runtime.loadModule();
   }

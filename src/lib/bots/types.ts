@@ -13,7 +13,8 @@ export type BotPermission =
   | 'send_messages'      // sendMessage / editMessage / deleteMessage
   | 'inline_keyboard'    // attach inline keyboards to its own messages
   | 'media'              // send media attachments
-  | 'mention_only';      // group privacy mode: only commands + mentions
+  | 'mention_only'       // group privacy mode: only commands + mentions
+  | 'manage_bots';       // list/enable/disable/remove installed bots (admin bots)
 
 export const ALL_BOT_PERMISSIONS: readonly BotPermission[] = [
   'read_messages',
@@ -21,6 +22,7 @@ export const ALL_BOT_PERMISSIONS: readonly BotPermission[] = [
   'inline_keyboard',
   'media',
   'mention_only',
+  'manage_bots',
 ];
 
 export interface BotCommand {

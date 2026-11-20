@@ -247,6 +247,17 @@ const LOCAL_BOT_MODULES = import.meta.glob<{
   '/examples/bots/movie-catalog/index.ts',
 ]);
 
+/**
+ * Administrative operations for system bots (NovaFather). Supplied by
+ * BotSession; every method additionally requires the `manage_bots` grant.
+ */
+export interface BotAdminApi {
+  listBots(): readonly InstalledBot[];
+  installBot(manifest: unknown, granted: readonly BotPermission[]): Promise<InstalledBot>;
+  setBotEnabled(botId: string, enabled: boolean): Promise<void>;
+  uninstallBot(botId: string): Promise<void>;
+}
+
 export interface BotContext {
   readonly manifest: BotManifest;
   readonly grantedPermissions: readonly BotPermission[];
@@ -270,6 +281,14 @@ export interface BotContext {
     set(key: string, value: string): Promise<void>;
     remove(key: string): Promise<void>;
   };
+  /** Installed bots (requires `manage_bots`). */
+  listBots(): Promise<InstalledBot[]>;
+  /** Install a bot manifest (requires `manage_bots`). */
+  installBot(manifest: unknown, granted: readonly BotPermission[]): Promise<InstalledBot>;
+  /** Enable/disable an installed bot (requires `manage_bots`). */
+  setBotEnabled(botId: string, enabled: boolean): Promise<void>;
+  /** Remove an installed bot (requires `manage_bots`). */
+  uninstallBot(botId: string): Promise<void>;
 }
 
 export class PermissionDeniedError extends Error { }
@@ -292,6 +311,7 @@ export class BotRuntime {
     private readonly bot: InstalledBot,
     private readonly sink: MessageSink,
     private readonly storage: BotStorage,
+    private readonly admin?: BotAdminApi,
   ) { }
 
   /** Build the sandboxed context for this bot (all calls permission-gated). */
@@ -306,6 +326,11 @@ export class BotRuntime {
 
     const self = this;
     const stateKey = (key: string) => `nova_bot_state_${manifest.id}_${key}`;
+    const requireAdmin = (): BotAdminApi => {
+      require('manage_bots');
+      if (!self.admin) throw new PermissionDeniedError('Bot management is unavailable in this session');
+      return self.admin;
+    };
     return {
       manifest,
       storage: {
@@ -337,6 +362,10 @@ export class BotRuntime {
       get language() {
         return self.currentLanguage;
       },
+      listBots: async () => [...requireAdmin().listBots()],
+      installBot: async (manifestInput, granted) => requireAdmin().installBot(manifestInput, granted),
+      setBotEnabled: async (botId, enabled) => requireAdmin().setBotEnabled(botId, enabled),
+      uninstallBot: async (botId) => requireAdmin().uninstallBot(botId),
       onUpdate: (handler) => {
         const arr = this.handlers.get(manifest.id) ?? [];
         arr.push(handler);

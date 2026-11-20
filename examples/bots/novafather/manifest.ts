@@ -23,6 +23,6 @@ export const novafatherManifest: BotManifest = {
     { command: 'setdescription', description: 'Set bot description' },
     { command: 'help', description: 'Show help and command reference' },
   ],
-  requestedPermissions: ['read_messages', 'send_messages', 'inline_keyboard'],
+  requestedPermissions: ['read_messages', 'send_messages', 'inline_keyboard', 'manage_bots'],
   entryPoint: '/examples/bots/novafather/index.ts',
 };

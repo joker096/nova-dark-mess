@@ -7,12 +7,11 @@ This roadmap turns the bot-integration plan (derived from the audit of the old
 Like `docs/anonymity-roadmap.md`, it is incremental: every phase ships with
 tests and must not break the existing secure-messaging baseline.
 
-**Implementation status:** B0–B3 are **implemented**; B4/B5/B6 have their main
-code paths implemented (headless gateway in `packages/bot-gateway/`, the
-gateway-side HTTP surface, and the NovaFather example) but still miss group
-support and the contract/fuzz tests called out below. B8 is in progress: local
-report/block and the threat-model addendum landed, the E2E install flow and
-the `NOVA_BOTS` flag exist. B7 remains deferred.
+**Implementation status:** B0–B5 are **implemented**; B6 has real bot
+management but still has demo-only token/webhook/gateway commands and no
+transport-level E2E. B8 is in progress: local report/block and the
+threat-model addendum landed, the E2E install flow and the `NOVA_BOTS` flag
+exist. B7 remains deferred.
 
 ## 0. Scope and non-goals
 
@@ -215,15 +214,22 @@ the bot's private key):
 
 ### Phase B6 — System bot "NovaFather" (3–4 days) — 🟡 Partial
 
-- [x] Implemented as an ordinary L1 bot on the same `BotContext` API:
-      `/newbot` (local L1 manifest), `/setcommands`, `/setdescription`,
-      `/token` (gateway tokens, hash-stored, shown once), `/revoke`,
-      `/setwebhook`, `/setgateway` (attach an L2 gateway URL).
-- [ ] Doubles as the end-to-end test of the whole API. The example lives in
-      `examples/bots/novafather/` and manages manifests/gateway URLs.
-      `src/lib/bots/novafather.test.ts` now covers `/start` and `/mybots`
-      through `BotRuntime` + `BotContext.storage`; transport-level E2E is still
-      missing.
+- [x] Implemented as an ordinary L1 bot on the same `BotContext` API.
+      Bot management is real: `manage_bots` is a normal requested permission,
+      `BotAdminApi` exposes `listBots`/`setBotEnabled`/`uninstallBot` from
+      `BotSession`, and NovaFather guards against disabling or deleting itself.
+- [x] `/mybots` reads the installed registry rather than a chat-local list;
+      enable/disable and delete therefore act on the bots the app actually has.
+- [ ] `/newbot` no longer pretends to create an L1 bot from chat: an L1 bot is
+      a bundled code module, so the command explains that a manifest must be
+      installed via Settings → Bots. Creating an L1 module from chat remains
+      out of scope until a template/storage design exists.
+- [ ] `/token`, `/revoke`, `/setwebhook`, `/setgateway`, `/setcommands`,
+      `/setdescription` still use chat-local demo state; wiring them to
+      `BotSession.setGatewayUrl` and the gateway token store is open.
+- [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots` and the
+      toggle callback through `BotRuntime` + `BotAdminApi`; transport-level E2E
+      is still missing.
 
 ### Phase B7 — Mini Apps (deferred; 1 week when scheduled)
 

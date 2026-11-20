@@ -16,7 +16,7 @@
  * /help - Help
  */
 
-import type { BotContext, BotModule, BotStorage, InstalledBot } from '../../../src/lib/bots/runtime';
+import type { BotContext, BotModule, InstalledBot } from '../../../src/lib/bots/runtime';
 import { novafatherManifest } from './manifest';
 
 export const manifest = novafatherManifest;
@@ -44,7 +44,6 @@ interface UserState {
   bots: InstalledBot[];
 }
 
-const DEFAULT_PERMISSIONS = ['send_messages', 'read_messages', 'inline_keyboard'] as const;
 const ALL_PERMISSIONS = ['send_messages', 'read_messages', 'inline_keyboard', 'media', 'mention_only'] as const;
 
 function getUserState(ctx: BotContext, userId: string): Promise<UserState> {
@@ -57,7 +56,7 @@ function saveUserState(ctx: BotContext, userId: string, state: UserState): Promi
 
 function createMainKeyboard(): any[][] {
   return [
-    [{ text: '➕ Create Bot', callback_data: 'newbot' }],
+    [{ text: '📋 My Bots', callback_data: 'mybots' }],
     [{ text: '📋 My Bots', callback_data: 'mybots' }],
     [{ text: '🔑 Manage Tokens', callback_data: 'tokens' }],
     [{ text: '🔗 Webhook', callback_data: 'webhook' }],
@@ -141,10 +140,13 @@ const novafatherBot: BotModule = {
       const chatId = update.payload.chat.id;
       const userId = update.payload.from;
       const state = await getUserState(ctx, userId);
+      // The registry is the source of truth; state.bots is only a local cache.
+      if (ctx.grantedPermissions.includes('manage_bots')) {
+        state.bots = await ctx.listBots();
+      }
 
       if (update.type === 'message' && update.payload.isCommand) {
         const cmd = update.payload.command;
-        const args = update.payload.text.split(' ').slice(1).join(' ').trim();
 
         if (cmd === 'start') {
           await ctx.sendMessage(chatId,
@@ -162,8 +164,8 @@ const novafatherBot: BotModule = {
         if (cmd === 'mybots') {
           if (state.bots.length === 0) {
             await ctx.sendMessage(chatId,
-              '📋 <b>My Bots</b>\n\nYou have no bots yet.\n\nTap "Create Bot" to make your first one!',
-              { keyboard: [[{ text: '➕ Create Bot', callback_data: 'newbot' }], [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]] }
+              '📋 <b>My Bots</b>\n\nNo bots are installed. Add one from <b>Settings → Bots</b>.',
+              { keyboard: [[{ text: '🏠 Main Menu', callback_data: 'main_menu' }]] }
             );
             return;
           }
@@ -175,11 +177,8 @@ const novafatherBot: BotModule = {
         }
 
         if (cmd === 'newbot') {
-          state.pendingAction = { type: 'newbot_name', data: { permissions: [...DEFAULT_PERMISSIONS] } };
-          await saveUserState(ctx, userId, state);
           await ctx.sendMessage(chatId,
-            '➕ <b>Create New Bot</b>\n\nStep 1/4: Enter the bot\'s <b>display name</b> (e.g., "Movie Catalog"):',
-            { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
+            '➕ <b>Creating a bot</b>\n\nAn L1 bot is a code module, so it cannot be created from chat. Install its manifest via <b>Settings → Bots</b>; after that I can list, enable, disable and remove installed bots with /mybots.'
           );
           return;
         }
@@ -299,11 +298,9 @@ const novafatherBot: BotModule = {
         }
 
         if (data === 'newbot') {
-          state.pendingAction = { type: 'newbot_name', data: { permissions: [...DEFAULT_PERMISSIONS] } };
-          await saveUserState(ctx, userId, state);
           await ctx.editMessage(chat.id, messageId,
-            '➕ <b>Create New Bot</b>\n\nStep 1/4: Enter the bot\'s <b>display name</b>:',
-            { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
+            '➕ <b>Creating a bot</b>\n\nAn L1 bot is a code module, so it cannot be created from chat. Install its manifest via <b>Settings → Bots</b>.',
+            { keyboard: createMainKeyboard() }
           );
           await ctx.answerCallbackQuery(queryId);
           return;
@@ -339,44 +336,19 @@ const novafatherBot: BotModule = {
         }
 
         if (data === 'perm_done') {
-          if (state.pendingAction?.type === 'newbot_perms') {
-            const botConfig = state.pendingAction.data;
-            // Install the bot
-            const session = ctx.storage as any;
-            if (session?.installBot) {
-              try {
-                const installed = await session.installBot({
-                  id: botConfig.username.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-                  name: botConfig.name,
-                  username: botConfig.username.toLowerCase(),
-                  description: botConfig.description || '',
-                  version: '1.0.0',
-                  commands: [],
-                  requestedPermissions: botConfig.permissions,
-                  entryPoint: '',
-                }, botConfig.permissions);
-                
-                state.bots.push(installed);
-                state.pendingAction = undefined;
-                await saveUserState(ctx, userId, state);
-                
-                await ctx.editMessage(chat.id, messageId,
-                  `✅ <b>Bot Created!</b>\n\n${formatBotInfo(installed)}`,
-                  { keyboard: createMainKeyboard() }
-                );
-              } catch (error: any) {
-                await ctx.answerCallbackQuery(queryId, { text: `Error: ${error.message}`, showAlert: true });
-              }
-            }
-          }
-          await ctx.answerCallbackQuery(queryId);
+          state.pendingAction = undefined;
+          await saveUserState(ctx, userId, state);
+          await ctx.answerCallbackQuery(queryId, {
+            text: 'Install a bot manifest from Settings → Bots',
+            showAlert: true,
+          });
           return;
         }
 
         // Bot management actions
         const [action, botId] = data.split(':');
         const bot = state.bots.find(b => b.manifest.id === botId);
-        
+
         if (!bot) {
           await ctx.answerCallbackQuery(queryId, { text: 'Bot not found', showAlert: true });
           return;
@@ -401,26 +373,27 @@ const novafatherBot: BotModule = {
         }
 
         if (action === 'toggle') {
-          const session = ctx.storage as any;
-          if (session?.setBotEnabled) {
-            await session.setBotEnabled(botId, !bot.enabled);
-            bot.enabled = !bot.enabled;
-            await saveUserState(ctx, userId, state);
-            await ctx.editMessage(chat.id, messageId,
-              `${formatBotInfo(bot)}\n\n<b>Actions:</b>`,
-              { keyboard: [
-                [{ text: bot.enabled ? '❌ Disable' : '✅ Enable', callback_data: `toggle:${botId}` }],
-                [{ text: '🔑 Token', callback_data: `token:${botId}` }],
-                [{ text: '🔗 Webhook', callback_data: `webhook:${botId}` }],
-                [{ text: '🌐 Gateway', callback_data: `gateway:${botId}` }],
-                [{ text: '📝 Commands', callback_data: `commands:${botId}` }],
-                [{ text: '📄 Description', callback_data: `description:${botId}` }],
-                [{ text: '🗑 Delete', callback_data: `delete:${botId}` }],
-                [{ text: '⬅️ Back', callback_data: 'mybots' }],
-              ]}
-            );
+          if (botId === ctx.manifest.id) {
+            await ctx.answerCallbackQuery(queryId, { text: 'NovaFather cannot disable itself', showAlert: true });
+            return;
           }
-          await ctx.answerCallbackQuery(queryId, { text: bot.enabled ? 'Bot enabled' : 'Bot disabled' });
+          await ctx.setBotEnabled(botId, !bot.enabled);
+          const newEnabled = !bot.enabled;
+          state.bots = await ctx.listBots();
+          await ctx.editMessage(chat.id, messageId,
+            `${formatBotInfo(bot)}\n\n<b>Actions:</b>`,
+            { keyboard: [
+              [{ text: newEnabled ? '❌ Disable' : '✅ Enable', callback_data: `toggle:${botId}` }],
+              [{ text: '🔑 Token', callback_data: `token:${botId}` }],
+              [{ text: '🔗 Webhook', callback_data: `webhook:${botId}` }],
+              [{ text: '🌐 Gateway', callback_data: `gateway:${botId}` }],
+              [{ text: '📝 Commands', callback_data: `commands:${botId}` }],
+              [{ text: '📄 Description', callback_data: `description:${botId}` }],
+              [{ text: '🗑 Delete', callback_data: `delete:${botId}` }],
+              [{ text: '⬅️ Back', callback_data: 'mybots' }],
+            ]}
+          );
+          await ctx.answerCallbackQuery(queryId, { text: newEnabled ? 'Bot enabled' : 'Bot disabled' });
           return;
         }
 
@@ -507,16 +480,16 @@ const novafatherBot: BotModule = {
         }
 
         if (action === 'delete_confirm') {
-          const session = ctx.storage as any;
-          if (session?.uninstallBot) {
-            await session.uninstallBot(botId);
-            state.bots = state.bots.filter(b => b.manifest.id !== botId);
-            await saveUserState(ctx, userId, state);
-            await ctx.editMessage(chat.id, messageId,
-              '🗑 <b>Bot deleted</b>',
-              { keyboard: createMainKeyboard() }
-            );
+          if (botId === ctx.manifest.id) {
+            await ctx.answerCallbackQuery(queryId, { text: 'NovaFather cannot delete itself', showAlert: true });
+            return;
           }
+          await ctx.uninstallBot(botId);
+          state.bots = await ctx.listBots();
+          await ctx.editMessage(chat.id, messageId,
+            '🗑 <b>Bot deleted</b>',
+            { keyboard: createMainKeyboard() }
+          );
           await ctx.answerCallbackQuery(queryId);
           return;
         }
@@ -544,7 +517,7 @@ async function handlePendingAction(
     action.type = 'newbot_username';
     await saveUserState(ctx, userId, state);
     await ctx.sendMessage(chatId,
-      `➕ <b>Create New Bot</b>\n\nStep 2/4: Enter the bot\'s <b>username</b> (letters, numbers, underscores, 5-32 chars):\n\n<i>Example: movie_catalog_bot</i>`,
+      `➕ <b>Create New Bot</b>\n\nStep 2/4: Enter the bot's <b>username</b> (letters, numbers, underscores, 5-32 chars):\n\n<i>Example: movie_catalog_bot</i>`,
       { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
     );
     return;
