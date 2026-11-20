@@ -209,10 +209,15 @@ Severity: **P0** blocks a truthful release, **P1** is a security/privacy defect,
   `cargo check` passes on Windows. `src/lib/storage/keychain.test.ts` covers the
   OS path, the migration, and the fallback-to-localStorage rule.
   Still open: **Android Keystore JNI context wiring** — the Android `imp`
-  module needs the Tauri Android activity `Context` passed through JNI before
-  `keyring`-style get/set/remove will work on-device. Until then Android falls
-  back to `localStorage`. `android:allowBackup` is not disabled yet; and the PIN
-  does not wrap the vault key (F2.2 covers wrapping on desktop).
+  module in `src-tauri/src/keychain.rs` is implemented (`jni` crate +
+  AndroidKeyStore: `getInstance("AndroidKeyStore")` → `getEntry`/`setEntry`/
+  `deleteEntry` with `SecretKeyEntry`). `keychain_available()` returns `true`
+  for Android. `pub(crate) fn init_android(JavaVM)` is provided for Tauri
+  `setup` to pass the JVM via `run_on_android_context`; until wired, Android
+  degrades to `localStorage` (graceful). `cargo check` passes on both Windows
+  host and `aarch64-linux-android` target. `android:allowBackup` is not
+  disabled yet; and the PIN does not wrap the vault key (F2.2 covers wrapping
+  on desktop).
 
 - [x] **F2.2 Make the PIN meaningfully protect the vault.** _(done 2026-11-18, partial on mobile)_
   Evidence: `SecurityContext.tsx:524–527` hashes the PIN with the **fixed salt**
