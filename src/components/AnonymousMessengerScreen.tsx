@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Copy, Gift, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { toDataURL } from 'qrcode';
 import { useLanguage } from '../context/LanguageContext';
+import { sanitizeDownloadMime } from '../lib/security/safeUrl';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { dbInstance } from '../lib/storage/db';
@@ -1804,7 +1805,7 @@ export const AnonymousMessengerScreen: React.FC<{
                   >
                     {message.file ? (
                       <a
-                        href={`data:${message.file.mime};base64,${message.file.data}`}
+                        href={`data:${sanitizeDownloadMime(message.file.mime)};base64,${message.file.data}`}
                         download={message.file.name}
                         className="flex items-center gap-2 break-all underline decoration-white/40"
                       >

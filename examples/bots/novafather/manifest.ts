@@ -1,35 +1,28 @@
 /**
- * NovaFather system bot manifest (docs/bots-roadmap.md §B6).
- *
- * Implemented as an ordinary L1 bot on the same BotContext API:
- *   /newbot    - register a new local L1 bot manifest (stored encrypted)
- *   /setcommands - set commands for a managed bot
- *   /setdescription - set bot description
- *   /token - issue/gateway tokens (hash-stored, shown once)
- *   /revoke - revoke a bot token
- *   /setwebhook - set the gateway webhook URL
- *   /setgateway - attach an L2 gateway URL to a bot
- *
- * Doubles as the end-to-end test of the whole BotContext API.
+ * NovaFather Bot manifest — system bot for creating and managing bots.
+ * L1 local bot module.
  */
-
 import type { BotManifest } from '../../../src/lib/bots/types';
 
 export const novafatherManifest: BotManifest = {
   id: 'novafather',
-  name: 'NovaFather',
+  name: 'NovaFather 🤖',
   username: 'novafather_bot',
-  description: 'System bot: create and manage other bots.',
+  description: 'Official bot for creating and managing Nova bots. Use /newbot to create a bot, /token to manage API tokens, /setwebhook to configure webhooks, /setgateway to attach an L2/L3 gateway.',
   version: '1.0.0',
   commands: [
-    { command: 'newbot', description: 'Create a new local bot' },
-    { command: 'setcommands', description: 'Set commands for a managed bot' },
-    { command: 'setdescription', description: 'Set a bot description' },
-    { command: 'token', description: 'Issue a gateway token for a bot' },
-    { command: 'revoke', description: 'Revoke a bot token' },
-    { command: 'setwebhook', description: 'Set the gateway webhook URL' },
-    { command: 'setgateway', description: 'Attach an L2 gateway URL to a bot' },
+    { command: 'start', description: 'Show main menu and commands' },
+    { command: 'newbot', description: 'Create a new bot (L1 local)' },
+    { command: 'mybots', description: 'List your bots' },
+    { command: 'token', description: 'Manage bot tokens (L3)' },
+    { command: 'revoke', description: 'Revoke a token' },
+    { command: 'setwebhook', description: 'Set webhook URL for a bot (L3)' },
+    { command: 'deletewebhook', description: 'Delete webhook for a bot' },
+    { command: 'setgateway', description: 'Attach L2/L3 gateway URL to a bot' },
+    { command: 'setcommands', description: 'Set bot commands list' },
+    { command: 'setdescription', description: 'Set bot description' },
+    { command: 'help', description: 'Show help and command reference' },
   ],
-  requestedPermissions: ['send_messages', 'inline_keyboard'],
-  entryPoint: '/examples/bots/novafather/index.js',
+  requestedPermissions: ['read_messages', 'send_messages', 'inline_keyboard'],
+  entryPoint: '/examples/bots/novafather/index.ts',
 };

@@ -35,6 +35,7 @@ import {
   createUserNotification, getUserNotifications, markUserNotificationRead,
   isNotifyRateLimited, incrementNotifyRateLimit,
   isSiteMuted, muteSite, unmuteSite, listMutedSites, getNotifyRateLimit,
+  registerPushToken, getPushQueueId, listPushRegistrations,
 } from './store.js';
 import {
   generateX25519KeyPair, sharedSecret, deriveAesKey,
@@ -977,6 +978,41 @@ app.get('/v1/user/muted-sites', (req, res) => {
   if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
   const sites = listMutedSites(userId);
   return json(res, 200, { ok: true, sites });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Anonymous push (phase F) — notification server endpoints
+//
+// POST /api/anon/push/register   — store pushToken -> queueId
+// GET  /api/anon/push/hint       — return empty hint + queueId for a token
+//
+// The server stores ONLY pushToken -> queueId. No sender, no content.
+// ───────────────────────────────────────────────────────────────────────────
+
+app.post('/api/anon/push/register', (req, res) => {
+  if (!apiLimiter('push:register')) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
+  const { pushToken, queueId } = req.body || {};
+  if (!pushToken || typeof pushToken !== 'string' || pushToken.length > 4096) {
+    return json(res, 400, { ok: false, reason: 'PUSH_TOKEN_REQUIRED' });
+  }
+  if (!queueId || typeof queueId !== 'string' || !/^q_[0-9a-f]{32}$/.test(queueId)) {
+    return json(res, 400, { ok: false, reason: 'QUEUE_ID_REQUIRED' });
+  }
+  registerPushToken(pushToken, queueId);
+  return json(res, 200, { ok: true });
+});
+
+app.get('/api/anon/push/hint', (req, res) => {
+  const { pushToken } = req.query;
+  if (!pushToken || typeof pushToken !== 'string') {
+    return json(res, 400, { ok: false, reason: 'PUSH_TOKEN_REQUIRED' });
+  }
+  const queueId = getPushQueueId(pushToken);
+  if (!queueId) {
+    return json(res, 404, { ok: false, reason: 'NOT_REGISTERED' });
+  }
+  // Empty hint by design: body is always "", client must poll the relay.
+  return json(res, 200, { ok: true, queueId, hint: '' });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
