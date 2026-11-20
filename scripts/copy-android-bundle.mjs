@@ -44,8 +44,9 @@ const destName = versionCode
 const dest = path.join(root, destName);
 
 fs.copyFileSync(newest, dest);
-// Also keep a stable "latest" alias for convenience.
+// Also keep stable aliases for convenience.
 fs.copyFileSync(newest, path.join(root, "mess-latest.aab"));
+fs.copyFileSync(newest, path.join(root, "Nova-Dark-Messenger.aab"));
 
 const stat = fs.statSync(dest);
 console.log(`Copied ${newest}`);
