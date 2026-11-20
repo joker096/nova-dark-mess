@@ -20,7 +20,7 @@ if ( ! class_exists( 'Mess_Chat_Frontend' ) ) {
 			$position = get_option( Mess_Chat_Settings::OPTION_POSITION, 'bottom-right' );
 
 			$loader_url = (bool) get_option( Mess_Chat_Settings::OPTION_FIRST_PARTY, false )
-				? esc_url( home_url( '/' ) ) . 'wvc-loader.js'
+				? ( $proxy_url = get_option( Mess_Chat_Settings::OPTION_PROXY_URL, '' ) ) ? esc_url( $proxy_url . '/wvc-loader.js' ) : esc_url( home_url( '/' ) ) . 'wvc-loader.js'
 				: esc_url( 'https://mess.cvr.name/widget/loader.js' );
 
 			?>
