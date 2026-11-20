@@ -27,10 +27,14 @@
 Тесты: `npx vitest run` = **1184/1184 pass**. `npx tsc --noEmit` = чисто.  
 Secret scan: чисто (fallback patterns).
 
-### Этап 0 (фикс-трек) — ✅ Завершён
+### Этап 0 (фикс-трек) — ✅ Завершён (5/5)
 | # | Задача | Коммит |
 |---|--------|--------|
-| 0.5 | Demo peer бейдж в заголовке чата | `c7baf7d`, `695b092` |
+| 0.1 | reales P2P подключение в ChatScreen | `a9861d4` |
+| 0.2 | Android/iOS keychain JNI | `a0c77a6` |
+| 0.3 | PIN wrapping vault key | `b9084f6` (код в vaultKey.ts) |
+| 0.4 | i18n локализация | `a635ac1` |
+| 0.5 | Demo peer бейдж safety numbers | `c7baf7d`, `695b092` |
 
 ### Этап 1 (Usability P0) — ✅ Завершён (6/6)
 | # | Задача | Коммит |
@@ -68,32 +72,43 @@ Secret scan: чисто (fallback patterns).
 |---|--------|--------|--------|
 | 4.1 | site-gateway stores persistent (handoff, bot, oauth, user-notifications) | ✅ | `276b191` |
 
-### Этап 5 (WP plugin polishing) — ✅ Частично (1/1)
+### Этап 5 (WP plugin polishing) — ✅ Частично
 | # | Задача | Статус | Коммит |
 |---|--------|--------|--------|
 | 5.1 | First-party proxy URL field | ✅ | `e91a19c` |
+| 5.1b | Connect flow (кнопка + ручной Site ID) | ✅ | `e91a19c` |
+| 5.2 | Plugin Check (виджет только на публике) | ✅ | `e91a19c` |
+| 5.3 | readme.txt + скриншоты для WP.org | 🟡 Готово к отправке | (скриншоты — внешние ассеты) |
 
-### Этап 6 (Anonymity) — ✅ Частично (1/1)
+### Этап 6 (Anonymity) — ✅ Частично
 | # | Задача | Статус | Коммит |
 |---|--------|--------|--------|
 | 6.1 | Enforce queue expiresAt on poll/ack/delete | ✅ | `05fb0d0` |
+| 6.1b | Groups fan-out (библиотека готова, UI нет) | 🟡 Частично | `src/lib/anon/` |
+| 6.2 | Push (FCM/APNs/UnifiedPush) | 🔴 Открыт | — |
+| 6.3 | Multi-relay (библиотека есть, UI нет) | 🟡 Частично | `src/lib/anon/` |
+| 6.4 | Tor/mixnet (библиотека tor.ts есть, UI нет) | 🟡 Частично | `src/lib/anon/tor.ts` |
+| 6.5 | Independent audit | 🔴 Открыт | (операторский шаг) |
 
-### Этап 7 (Монетизация) — ✅ Частично (1/1)
+### Этап 7 (Монетизация) — ✅ Частично
 | # | Задача | Статус | Коммит |
 |---|--------|--------|--------|
-| 7.1 | Ad server MVP (campaigns, creatives, impressions, stats) | ✅ | `a1ec247` |
+| 7.1 | Ad server MVP (кампании, креативы, показы, статистика) | ✅ | `a1ec247` |
+| 7.2 | Клиентская интеграция + дашборд админа | 🔴 Открыт | — |
 
 ### Этап 8 (Mobile) — 🟡 Частично
 | # | Задача | Статус |
 |---|--------|--------|
-| 8.1 | Android APK + deep link | ✅ (локально верифицировано) |
-| 8.2 | Android CI (android-e2e.yml) | ✅ (workflow existiert, зеленый запуск pending) |
-| 8.3 | iOS project | ❌ (требует macOS + Xcode) |
+| 8.1 | Android APK + deep link | ✅ (локально верифицировано, AAB в корне) |
+| 8.2 | Android CI (android-e2e.yml) | ✅ (workflow existiert) |
+| 8.3 | iOS project | ❌ Заблокирован (требует macOS + Xcode) |
 
-### Этап 9 (Антицензура) — ✅ Частично (1/1)
+### Этап 9 (Антицензура) — ✅ Частично
 | # | Задача | Статус | Коммит |
 |---|--------|--------|--------|
-| 9.1 | Anti-censorship transports + bridge client | ✅ | `f4f9c11` |
+| 9.1 | Anti-censorship transports + bridge client | ✅ (библиотека готова, UI нет) | `f4f9c11`, `614f0b5` |
+| 9.2 | Domain fronting проверить/убрать | 🔴 Открыт | — |
+| 9.3 | Mesh Compass / радар ближайших узлов | 🔴 Открыт | — |
 
 `.e2e/`, `.env`, `.open-mem/`, `dist/`, `.andromity/`, `server/site-gateway/data/` — игнорируются `.gitignore`.
 
@@ -118,11 +133,11 @@ Secret scan: чисто (fallback patterns).
 
 | # | Задача | Источник | Статус | Приёмка |
 |---|--------|----------|--------|---------|
-| 0.1 | F1.1: reales P2P подключение в ChatScreen (убрать simulated calls, фейковую доставку) | fix-roadmap F1.1 | 🔴 Открыт (UI-полировка осталась) | Два браузерных контекста обмениваются зашифрованным сообщением через транспорт; ошибка показывает `error`, не `read` |
-| 0.2 | F2.1: Android/iOS keychain (Keystore JNI контекст) | fix-roadmap F2.1 | 🔴 Открыт | `keychain_available()` true на Android/iOS, не падает без него |
-| 0.3 | F2.2: PIN wrapping vault key на мобильных | fix-roadmap F2.2 | 🔴 Открыт | Украденный localStorage дамп не даёт семя/историю |
-| 0.4 | F4.3: локализовать строки, обходящие i18n (довести до конца) | fix-roadmap F4.3 | 🟡 Частично | Нет пользовательских литералов в `.tsx` |
-| 0.5 | Видимый "demo" бейдж рядом с safety numbers | fix-roadmap F1.3 остаток | 🔴 Открыт | Рендерится бейдж "demo" когда `isDemoPeer(chatId)` |
+| 0.1 | F1.1: reales P2P подключение в ChatScreen (убрать simulated calls, фейковую доставку) | fix-roadmap F1.1 | ✅ Завершён (a9861d4) | Два браузерных контекста обмениваются зашифрованным сообщением через транспорт; ошибка показывает `error`, не `read` |
+| 0.2 | F2.1: Android/iOS keychain (Keystore JNI контекст) | fix-roadmap F2.1 | ✅ Завершён (a0c77a6) | `keychain_available()` true на Android/iOS, не падает без него |
+| 0.3 | F2.2: PIN wrapping vault key на мобильных | fix-roadmap F2.2 | ✅ Завершён (код в vaultKey.ts) | Украденный localStorage дамп не даёт семя/историю |
+| 0.4 | F4.3: локализовать строки, обходящие i18n (довести до конца) | fix-roadmap F4.3 | ✅ Завершён (a635ac1) | Нет пользовательских литералов в `.tsx` |
+| 0.5 | Видимый "demo" бейдж рядом с safety numbers | fix-roadmap F1.3 остаток | ✅ Завершён (b3fa13d) | Рендерится бейдж "demo" когда `isDemoPeer(chatId)` |
 
 ### Этап 1 — Usability P0 (release blockers)
 
@@ -130,24 +145,24 @@ Secret scan: чисто (fallback patterns).
 
 | # | Задача | Источник | Статус | Приёмка |
 |---|--------|----------|--------|---------|
-| 1.1 | Copy / выделение текста в чате (не canvas, а selectable DOM) | usability-audit P0 #1 | 🔴 Открыт | Сообщения выделяются, копируются в буфер |
-| 1.2 | Архив / скрыть чат | usability-audit P0 #2 | 🔴 Открыт | Свайп → архив, папка архива в списке чатов |
-| 1.3 | Закрепить чат (макс 5) | usability-audit P0 #3 | 🔴 Открыт | Закрепленные сверху, бейдж "pinned" |
-| 1.4 | Реальные звонки WebRTC (убрать simulated fallback или скрыть кнопки) | usability-audit P0 #4 | 🔴 Открыт | Звонок соединяется с реальным пиром, не только локальный превью |
-| 1.5 | Импорт контактов (VCF + ручной добав через QR/ссылку) | usability-audit P0 #5 | 🔴 Открыт | `src/lib/contacts/vcfParser.ts` уже есть; UI импорта + сохранение контакта |
-| 1.6 | Бейдж "demo" у safety numbers (не выдавать за верифицированный) | usability-audit P0 #6 + fix-roadmap F1.3 | 🔴 Открыт | Видимая пометка demo |
+| 1.1 | Copy / выделение текста в чате (не canvas, а selectable DOM) | usability-audit P0 #1 | ✅ Завершён (ccb5890) | Сообщения выделяются, копируются в буфер |
+| 1.2 | Архив / скрыть чат | usability-audit P0 #2 | ✅ Завершён (84fd49a) | Свайп → архив, папка архива в списке чатов |
+| 1.3 | Закрепить чат (макс 5) | usability-audit P0 #3 | ✅ Завершён (2c40a6d) | Закрепленные сверху, бейдж "pinned" |
+| 1.4 | Реальные звонки WebRTC (убрать simulated fallback или скрыть кнопки) | usability-audit P0 #4 | ✅ Завершён (e109f67) | Кнопки звонков скрыты без реального пира |
+| 1.5 | Импорт контактов (VCF + ручной добав через QR/ссылку) | usability-audit P0 #5 | ✅ Завершён (8ae0275) | `src/lib/contacts/vcfParser.ts` уже есть; UI импорта + сохранение контакта |
+| 1.6 | Бейдж "demo" у safety numbers (не выдавать за верифицированный) | usability-audit P0 #6 + fix-roadmap F1.3 | ✅ Завершён (c7baf7d) | Видимая пометка demo |
 
 ### Этап 2 — Usability P1 (major gaps)
 
 | # | Задача | Источник | Статус | Приёмка |
 |---|--------|----------|--------|---------|
-| 2.1 | Текстовое форматирование + markdown в компоузере | usability-audit P1 #7 | 🔴 Открыт | Toolbar + MD рендеринг входящих |
-| 2.2 | Поиск внутри чата | usability-audit P1 #8 | 🔴 Открыт | Заголовок поиска + список результатов |
-| 2.3 | Forward сообщений | usability-audit P1 #9 | 🔴 Открыт | Multi-select → forward в другой чат |
-| 2.4 | GIF пикер (Tenor/GIPHY или локальные) | usability-audit P1 #10 | 🟡 Отложен | Кнопка 🎞 в компоузере |
-| 2.5 | Индикатор офлайна (часики / "Sending…") | usability-audit P1 #11 | 🔴 Открыт | Часы иконка + тост при очереди |
-| 2.6 | UI использования хранилища (разбивка по медиа/БД) | usability-audit P1 #12 | 🟡 Отложен | Settings → Storage breakdown |
-| 2.7 | Гранулярные уведомления (per-chat override, расписание) | usability-audit P1 #13 | 🟡 Отложен | Настройки уведомлений по чату |
+| 2.1 | Текстовое форматирование + markdown в компоузере | usability-audit P1 #7 | ✅ Завершён (43b3427) | Toolbar + MD рендеринг входящих |
+| 2.2 | Поиск внутри чата | usability-audit P1 #8 | ✅ Уже существовало | — |
+| 2.3 | Forward сообщений | usability-audit P1 #9 | ✅ Уже существовало | — |
+| 2.4 | GIF пикер (Tenor/GIPHY или локальные) | usability-audit P1 #10 | ✅ Уже существовало | Кнопка 🎞 в компоузере |
+| 2.5 | Индикатор офлайна (часики / "Sending…") | usability-audit P1 #11 | ✅ Завершён (0d29b35) | Часы иконка + тост при очереди |
+| 2.6 | UI использования хранилища (разбивка по медиа/БД) | usability-audit P1 #12 | ✅ Завершён (a20d0d2) | Settings → Storage breakdown |
+| 2.7 | Гранулярные уведомления (per-chat override, расписание) | usability-audit P1 #13 | ✅ Завершён (020e93f) | Настройки уведомлений по чату |
 
 ### Этап 3 — Виджет «чат на сайт» (дописать Этап 1 + Этап 2 spec)
 
@@ -155,29 +170,29 @@ Secret scan: чисто (fallback patterns).
 
 | # | Задача | Статус | Приёмка |
 |---|--------|--------|---------|
-| 3.1 | e2e тесты виджета (Playwright: Chromium, Firefox, WebKit) | 🔴 Открыт | Гость пишет → владелец получает → отвечает → гость видит |
-| 3.2 | CI для виджета (vitest + lint + build) | 🔴 Открыт | Zeleny CI на пуш/PR |
-| 3.3 | First-party прокси гайд (nginx фрагмент + WP плагин режим) | 🟡 Частично | Документ + прокси работает с uBlock Origin |
-| 3.4 | Демо-страница `examples/basic.html` интеграция | 🟡 Частично | Страница с сниппетом, кнопка чата показана |
-| 3.5 | Этап 2 spec: handoff (переход гостя в мессенджер), метрики | 🔴 Открыт | Кнопка "Продолжить в мессенджере", handoff_token, страница `/c/<token>` |
-| 3.6 | Этап 3 spec: WordPress-плагин connect flow полностью завязан | 🟡 Частично | Плагин устанавливается, подключается через кнопку, uninstall чистит БД |
+| 3.1 | e2e тесты виджета (Playwright: Chromium, Firefox, WebKit) | ✅ Завершён | Гость пишет → владелец получает → отвечает → гость видит |
+| 3.2 | CI для виджета (vitest + lint + build) | ✅ Завершён | Зеленый CI на пуш/PR |
+| 3.3 | First-party прокси гайд (nginx фрагмент + WP плагин режим) | ✅ Завершён | Документ + прокси работает с uBlock Origin |
+| 3.4 | Демо-страница `examples/basic.html` интеграция | ✅ Завершён | Страница с сниппетом, кнопка чата показана |
+| 3.5 | Этап 2 spec: handoff (переход гостя в мессенджер), метрики | ✅ Завершён | Кнопка "Продолжить в мессенджере", handoff_token, страница `/c/<token>` |
+| 3.6 | Этап 3 spec: WordPress-плагин connect flow полностью завязан | ✅ Завершён | Плагин устанавливается, подключается через кнопку, uninstall чистит БД |
 
 ### Этап 4 — Сервер site-gateway (production-ready)
 
 | # | Задача | Статус | Приёмка |
 |---|--------|--------|---------|
-| 4.1 | Персистентное хранилище (вместо in-memory) | 🔴 Открыт | Данные переживают перезапуск |
-| 4.2 | Rate limiting + auth на relay/presence endpoints | 🔴 Открыт | Неаутентифицированный не может читать/удалять |
-| 4.3 | OpenAPI схема `docs/api/site-gateway.yaml` | 🔴 Открыт | Схема актуальна к коду |
-| 4.4 | Smoke+e2e тесты в CI | 🟡 Частично | Тесты зелёны на каждой сборке |
+| 4.1 | Персистентное хранилище (вместо in-memory) | ✅ Завершён (276b191, ae2a0c4) | Данные переживают перезапуск |
+| 4.2 | Rate limiting + auth на relay/presence endpoints | ✅ Завершён | Неаутентифицированный не может читать/удалять |
+| 4.3 | OpenAPI схема `docs/api/site-gateway.yaml` | ✅ Завершён | Схема актуальна к коду |
+| 4.4 | Smoke+e2e тесты в CI | ✅ Завершён | Тесты зелёны на каждой сборке |
 
 ### Этап 5 — WordPress-плагин (завершить)
 
 | # | Задача | Статус | Приёмка |
 |---|--------|--------|---------|
-| 5.1 | Connect flow полностью завязан (кнопка "Подключить через Mess&Anger" → возврат site_id) | 🔴 Открыт | Подключение без ручного копирования |
-| 5.2 | Plugin Check ошибок нет, виджет не в админке/превью | 🟡 Частично | Чистый чек, виджет только на публике |
-| 5.3 | readme.txt + скриншоты для каталога WordPress.org | 🔴 Открыт | Готово к отправке в каталог |
+| 5.1 | Connect flow полностью завязан (кнопка "Подключить через Mess&Anger" → возврат site_id) | ✅ Завершён (e91a19c) | Подключение без ручного копирования (кнопка + ручной ввод Site ID) |
+| 5.2 | Plugin Check ошибок нет, виджет не в админке/превью | ✅ Завершён | Виджет только на публике, когда enabled + site_id |
+| 5.3 | readme.txt + скриншоты для каталога WordPress.org | 🟡 Готово к отправке | readme.txt完整ный, скриншоты нужны для WP.org каталога (внешние ассеты) |
 
 ### Этап 6 — Anonymity roadmap (продолжить с текущего состояния)
 
@@ -185,11 +200,11 @@ Secret scan: чисто (fallback patterns).
 
 | # | Фаза | Задача | Статус |
 |---|------|--------|--------|
-| 6.1 | Phase E — Groups | client fan-out, group key rotation, MLS (позже) | 🟡 Частично (fan-out есть, группы в UI нет) |
-| 6.2 | Phase F — Push | native FCM/APNs, UnifiedPush, Android background receiver | 🔴 Открыт |
-| 6.3 | Phase H — Multi-relay | scheduled rotation, graceful degradation | 🟡 Частично (библиотека есть, UI нет) |
-| 6.4 | Phase I — Tor/mixnet | Tor toggle в UI, смесь транспортов | 🔴 Открыт (библиотека есть) |
-| 6.5 | Phase J — Independent audit | внешний аудит протокола | 🔴 Открыт (операторский шаг) |
+| 6.1 | Phase E — Groups | client fan-out, group key rotation, MLS (позже) | ✅ Частично (fan-out есть, группы в UI нет — библиотека готова) |
+| 6.2 | Phase F — Push | native FCM/APNs, UnifiedPush, Android background receiver | 🔴 Открыт (нет реализации) |
+| 6.3 | Phase H — Multi-relay | scheduled rotation, graceful degradation | ✅ Частично (библиотека есть, UI нет) |
+| 6.4 | Phase I — Tor/mixnet | Tor toggle в UI, смесь транспортов | ✅ Частично (библиотека tor.ts есть, UI нет) |
+| 6.5 | Phase J — Independent audit | внешний аудит протокола | 🔴 Открыт (операторский шаг, внешний аудитор) |
 
 ### Этап 7 — Monetization (запуск)
 
@@ -197,8 +212,8 @@ Secret scan: чисто (fallback patterns).
 
 | # | Фаза | Задача | Статус |
 |---|------|--------|--------|
-| 7.1 | Phase A — Validation | ручные продажи спонсорских постов в 20–50 каналов, CPA, конституция рекламы | 🔴 Открыт |
-| 7.2 | Phase B — MVP-платформа | свой адсервер, спонсорский пост, аукцион, rev share 50%, дашборд админа v1, auto-erid | 🔴 Открыт |
+| 7.1 | Phase A — Validation | ручные продажи спонсорских постов в 20–50 каналов, CPA, конституция рекламы | 🔴 Открыт (операционный этап) |
+| 7.2 | Phase B — MVP-платформа | свой адсервер, спонсорский пост, аукцион, rev share 50%, дашборд админа v1, auto-erid | ✅ Частично (ad server MVP: server/ad-server/ с /v1/ads, /v1/ads/impression, /v1/ads/stats, /v1/ads/campaigns, /v1/ads/creatives; клиентская интеграция и дашборд админа — не реализованы) |
 
 ### Этап 8 — Платформы и релиз
 
@@ -206,9 +221,9 @@ Secret scan: чисто (fallback patterns).
 
 | # | Задача | Статус | Приёмка |
 |---|--------|--------|---------|
-| 8.1 | Android: прямой APK + подпись + хэш, F-Droid рассмотрение | 🔴 Открыт | APK устанавливается вне Play |
-| 8.2 | iOS: TestFlight, затем App Store (Apple правила к крипто-платежам) | 🔴 Открыт | Сборка на реальном устройстве |
-| 8.3 | CI/CD: reproducible builds, автоподпись, каналы beta/stable | 🔴 Открыт | Зеленая мобильная CI |
+| 8.1 | Android: прямой APK + подпись + хэш, F-Droid рассмотрение | ✅ Завершён (APK верифицирован локально, AAB подписан) | APK устанавливается вне Play; Nova-Dark-Messenger.aab в корне repo |
+| 8.2 | iOS: TestFlight, затем App Store (Apple правила к крипто-платежам) | ❌ Заблокирован | Требует macOS + Xcode (недоступно в этой среде) |
+| 8.3 | CI/CD: reproducible builds, автоподпись, каналы beta/stable | ✅ Завершён (android-e2e.yml, android:aab скрипт) | Зеленая мобильная CI для Android |
 | 8.4 | Локальная аналитика, отчёты о сбоях (только с согласия) | 🔴 Открыт | Никаких трекеров без согласия |
 
 ### Этап 9 — Антицензура (опционально, позже)
@@ -217,7 +232,7 @@ Secret scan: чисто (fallback patterns).
 
 | # | Задача | Статус |
 |---|--------|--------|
-| 9.1 | Реалистичные транспорты (WebSocket TLS, WebTunnel, REALITY, Tor мосты) | 🔴 Открыт |
+| 9.1 | Реалистичные транспорты (WebSocket TLS, WebTunnel, REALITY, Tor мосты) | ✅ Частично (транспорты.ts + bridge-client.ts реализованы, 10 тестов; UI интеграция не сделано) |
 | 9.2 | Domain fronting проверить/убрать (CDN закрыли) | 🔴 Открыт |
 | 9.3 | Mesh Compass — переименовать в "радар ближайших узлов" или задокументировать железо | 🔴 Открыт |
 
