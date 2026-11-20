@@ -43,12 +43,35 @@ pub fn run() {
       }
 
       // Android: Keystore-backed keychain via JNI (AndroidKeyStore).
-      // Initialize the JVM for AndroidKeyStore operations.
+      // Grab the JavaVM and app Context from the WebView's JNI handle. This is
+      // the supported way to reach the Android JVM in Tauri 2; there is no
+      // public `android::activity()`.
       #[cfg(target_os = "android")]
       {
-        use tauri::android::activity;
-        if let Some(vm) = activity().map(|act| act.vm()) {
-          keychain::init_android(vm);
+        use tauri::Manager;
+        match app.get_webview_window("main") {
+          Some(window) => {
+            if let Err(err) = window.with_webview(|webview| {
+              webview.jni_handle().exec(|env, context, _webview| {
+                match env.get_java_vm() {
+                  Ok(vm) => {
+                    // Keep a global ref to the app Context so the keychain can
+                    // reach getFilesDir() for its encrypted blob storage.
+                    match env.new_global_ref(&context) {
+                      Ok(ctx_ref) => crate::keychain::init_android(vm, ctx_ref),
+                      Err(ref_err) => {
+                        log::warn!("android keystore: context ref failed: {ref_err}")
+                      }
+                    }
+                  }
+                  Err(err) => log::warn!("android keystore: JavaVM unavailable: {err}"),
+                }
+              });
+            }) {
+              log::warn!("android keystore: with_webview failed: {err}");
+            }
+          }
+          None => log::warn!("android keystore: main window not found"),
         }
       }
 

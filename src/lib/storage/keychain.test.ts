@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createKeychain, isTauriShell, loadMasterKey, storeMasterKey } from './keychain';
+import {
+  KeychainUnavailableError,
+  createKeychain,
+  isSecureStorageAvailable,
+  isTauriShell,
+  loadMasterKey,
+  storeMasterKey,
+} from './keychain';
 
 const invokeMock = vi.hoisted(() => vi.fn());
 vi.mock('@tauri-apps/api/core', () => ({ invoke: invokeMock }));
@@ -67,16 +74,20 @@ describe('OS keychain (Tauri shell)', () => {
     expect(localStorage.getItem(`nova_keychain_${SERVICE}_master_key`)).toBeNull();
   });
 
-  it('keeps the local backend on a shell without a native store', async () => {
+  it('fails closed on a shell without a native store (F2.1)', async () => {
     enterTauriShell(true);
     invokeMock.mockImplementation(async (command: string) =>
       command === 'keychain_available' ? false : undefined,
     );
 
     const kc = createKeychain();
-    await kc.set(SERVICE, 'master_key', 'mobile-secret');
-    expect(await kc.get(SERVICE, 'master_key')).toBe('mobile-secret');
-    expect(invokeMock).not.toHaveBeenCalledWith('keychain_get', expect.anything());
+    await expect(kc.set(SERVICE, 'master_key', 'mobile-secret')).rejects.toThrow(
+      KeychainUnavailableError,
+    );
+    // Nothing may be written to the weaker store next to the ciphertext.
+    expect(localStorage.getItem(`nova_keychain_${SERVICE}_master_key`)).toBeNull();
+    expect(invokeMock).not.toHaveBeenCalledWith('keychain_set', expect.anything());
+    expect(await isSecureStorageAvailable()).toBe(false);
   });
 
   it('migrates a value written by the pre-keychain build', async () => {
@@ -98,19 +109,36 @@ describe('OS keychain (Tauri shell)', () => {
     expect(localStorage.getItem(`nova_keychain_${SERVICE}_nova_pin_hash`)).toBeNull();
   });
 
-  it('falls back to localStorage when the OS store fails', async () => {
+  it('propagates an OS store failure instead of writing to localStorage (F2.1)', async () => {
     enterTauriShell(true);
     const legacyKey = `nova_keychain_${SERVICE}_master_key`;
-    localStorage.setItem(legacyKey, 'weak-copy');
     invokeMock.mockImplementation(async (command: string) => {
       if (command === 'keychain_available') return true;
       throw new Error('credential manager unavailable');
     });
 
     const kc = createKeychain();
-    // Falls back to the legacy localStorage copy instead of propagating the error.
-    expect(await kc.get(SERVICE, 'master_key')).toBe('weak-copy');
-    // The legacy copy stays in localStorage since the OS store write failed.
+    await expect(kc.set(SERVICE, 'master_key', 'new-secret')).rejects.toThrow(
+      'credential manager unavailable',
+    );
+    await expect(kc.get(SERVICE, 'master_key')).rejects.toThrow(KeychainUnavailableError);
+    expect(localStorage.getItem(legacyKey)).toBeNull();
+  });
+
+  it('still reads a pre-keychain legacy copy once the OS store recovers', async () => {
+    enterTauriShell(true);
+    const legacyKey = `nova_keychain_${SERVICE}_master_key`;
+    localStorage.setItem(legacyKey, 'weak-copy');
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === 'keychain_available') return true;
+      if (command === 'keychain_get') return null;
+      if (command === 'keychain_set') throw new Error('store busy');
+      return undefined;
+    });
+
+    // Recording the user out because the store is briefly busy is worse than
+    // reading the old copy: the value is returned but never re-written there.
+    expect(await createKeychain().get(SERVICE, 'master_key')).toBe('weak-copy');
     expect(localStorage.getItem(legacyKey)).toBe('weak-copy');
   });
 });

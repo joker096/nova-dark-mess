@@ -193,6 +193,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     biometricEnabled,
     enableBiometric,
     disableBiometric,
+    secureStorage,
+    dbAvailable,
   } = useSecurity();
   const [appTheme, setAppTheme] = useState<'light' | 'dark' | 'system'>(readAppTheme);
   const [chatColorTheme, setChatColorTheme] = useState<'default' | 'sapphire' | 'amethyst' | 'emerald'>(() => {
@@ -297,6 +299,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onBotInstallHandled?.();
   }, [isOpen, pendingBotInstall, getBotSession, onBotInstallHandled]);
 
+  // The registry is mutable; this counter forces a re-render after
+  // enable/block/install actions so the list reflects the new state.
+  const [, setBotsVersion] = useState(0);
   const getBots = useCallback(() => {
     const session = getBotSession?.();
     return session ? session.listBots() : [];
@@ -306,9 +311,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     (botId: string, enabled: boolean) => {
       const session = getBotSession?.();
       if (!session) return;
-      void session.setBotEnabled(botId, enabled).catch((err) => {
-        console.error('Failed to toggle bot:', err);
-      });
+      void session
+        .setBotEnabled(botId, enabled)
+        .then(() => setBotsVersion((version) => version + 1))
+        .catch((err) => {
+          console.error('Failed to toggle bot:', err);
+        });
+    },
+    [getBotSession],
+  );
+
+  const setBotBlocked = useCallback(
+    (botId: string, blocked: boolean) => {
+      const session = getBotSession?.();
+      if (!session) return;
+      void session
+        .setBlocked(botId, blocked)
+        .then(() => setBotsVersion((version) => version + 1))
+        .catch((err) => {
+          console.error('Failed to update bot block:', err);
+        });
     },
     [getBotSession],
   );
@@ -568,7 +590,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const url = newTurnServerUrl.trim();
     const username = newTurnServerUsername.trim() || undefined;
     const password = newTurnServerPassword.trim() || undefined;
-    const realm = newTurnServerRealm.trim() || undefined;
     if (!url) return;
     if (!/^turn(s)?:\/\//i.test(url)) {
       showToast(t('settings.turnServerInvalid'));
@@ -1657,6 +1678,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           <SectionHeader icon={<Lock className="w-3.5 h-3.5" />} title={t('settings.security')} />
+          {!secureStorage && (
+            <div
+              role="alert"
+              className="mx-1 mb-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200"
+            >
+              <div className="font-semibold">{t('settings.secureStorageUnavailable')}</div>
+              <div className="mt-0.5 text-amber-200/80">{t('settings.secureStorageUnavailableHint')}</div>
+            </div>
+          )}
+          {!dbAvailable && (
+            <div
+              role="alert"
+              className="mx-1 mb-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200"
+            >
+              {t('settings.encryptedStorageUnavailable')}
+            </div>
+          )}
           <ToggleRow
             label={t('settings.passcodeLock')}
             enabled={pinEnabled}
@@ -2295,7 +2333,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold text-white truncate">{bot.manifest.name}</p>
                             <p className="text-[10px] text-[#8c9198] truncate">
-                              @{bot.manifest.username} · {bot.enabled ? t('bot.granted') : t('bot.disabled')}
+                              @{bot.manifest.username} · {bot.blocked
+                                ? t('bot.blocked', { defaultValue: 'Blocked' })
+                                : bot.enabled
+                                  ? t('bot.granted')
+                                  : t('bot.disabled')}
                             </p>
                           </div>
                         </div>
@@ -2310,6 +2352,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </button>
                           ) : (
                             <>
+                              {bot.blocked && (
+                                <button
+                                  type="button"
+                                  onClick={() => setBotBlocked(bot.manifest.id, false)}
+                                  className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-medium text-emerald-300 transition hover:bg-emerald-500/20 active:scale-95"
+                                  title={t('bot.unblock', { defaultValue: 'Unblock' })}
+                                >
+                                  {t('bot.unblock', { defaultValue: 'Unblock' })}
+                                </button>
+                              )}
                               {onOpenBotChat && (
                                 <button
                                   type="button"

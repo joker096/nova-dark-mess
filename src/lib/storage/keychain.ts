@@ -1,14 +1,15 @@
 /**
  * Key material storage.
  *
- * Inside the Tauri shell (desktop) every secret goes to the OS credential store
- * through the commands in `src-tauri/src/keychain.rs`: Windows Credential
- * Manager, macOS Keychain, or Secret Service on Linux. There is deliberately no
- * silent fallback there — if the OS store rejects a call the error propagates,
- * so a secret is never quietly written somewhere weaker.
+ * Inside the Tauri shell every secret goes to the OS credential store through
+ * the commands in `src-tauri/src/keychain.rs`: Windows Credential Manager,
+ * macOS Keychain, iOS Keychain, Secret Service on Linux, or AndroidKeyStore via
+ * JNI. There is deliberately no fallback there — if the native store is
+ * unavailable or rejects a call, `createKeychain()` throws instead of quietly
+ * writing the secret somewhere weaker (F2.1: fail closed).
  *
- * The browser build has no OS credential store, so it keeps the value in
- * `localStorage`; the web build is a development target only. Values written by
+ * The plain web build has no OS credential store, so it keeps the value in
+ * `localStorage`; that build is a development target only. Values written by
  * older builds live under `nova_keychain_*` and are migrated into the OS store
  * the first time they are read.
  */
@@ -21,6 +22,20 @@ export interface Keychain {
 
 const SERVICE = 'nova-dark-messenger';
 const LEGACY_PREFIX = 'nova_keychain_';
+
+/**
+ * Thrown when the native credential store cannot be used.
+ *
+ * Callers must treat this as "no secure storage": keep nothing secret on disk
+ * rather than degrade to `localStorage`. Historically this path silently wrote
+ * the vault passphrase and the seed-phrase key next to the ciphertext.
+ */
+export class KeychainUnavailableError extends Error {
+  constructor(reason: string) {
+    super(`Secure key storage is unavailable: ${reason}`);
+    this.name = 'KeychainUnavailableError';
+  }
+}
 
 export { SERVICE as KEYCHAIN_SERVICE };
 
@@ -65,76 +80,84 @@ function dropLegacy(service: string, account: string): void {
 }
 
 /**
- * Native credential store, used whenever the app runs inside Tauri on a platform
- * that has one. Desktop (Windows/macOS/Linux) uses the `keyring` crate; iOS uses
- * the `security-framework` crate (iOS Keychain). Android declares the
- * `android_keystore` + `jni` dependencies but the `imp` module is a stub waiting
- * for JNI context wiring — native-store errors are caught and the backend falls
- * back to `localStorage` instead of crashing.
+ * Native credential store, used whenever the app runs inside Tauri.
+ *
+ * Every failure is surfaced as `KeychainUnavailableError`: writing the vault
+ * passphrase or the seed phrase to `localStorage` next to the ciphertext is
+ * exactly the defect this class exists to remove (F2.1).
  */
 class OsKeychain implements Keychain {
-  private readonly local = new BrowserKeychain(SERVICE);
   private availability: Promise<boolean> | null = null;
 
   private async osAvailable(): Promise<boolean> {
     if (!this.availability) {
-      const invoke = await requireInvoke();
-      this.availability = invoke<boolean>('keychain_available');
+      this.availability = requireInvoke()
+        .then((invoke) => invoke<boolean>('keychain_available'))
+        .catch((error: unknown) => {
+          this.availability = null;
+          throw new KeychainUnavailableError(describeError(error));
+        });
     }
     return this.availability;
   }
 
+  private async requireStore(): Promise<Invoke> {
+    const invoke = await requireInvoke().catch((error: unknown) => {
+      throw new KeychainUnavailableError(describeError(error));
+    });
+    if (!(await this.osAvailable())) {
+      throw new KeychainUnavailableError('no native credential store on this platform');
+    }
+    return invoke;
+  }
+
   async get(service: string, account: string): Promise<string | null> {
-    if (!(await this.osAvailable())) return this.local.get(service, account);
+    const invoke = await this.requireStore();
     try {
-      const invoke = await requireInvoke();
       const stored = await invoke<string | null>('keychain_get', { service, account });
       if (typeof stored === 'string') return stored;
-    } catch {
-      // OS keychain not fully wired on this platform; fall back to localStorage.
+    } catch (error) {
+      throw new KeychainUnavailableError(describeError(error));
     }
 
     // Migration: a value written before the OS store existed lives in
-    // localStorage. Move it once and drop the weaker copy.
+    // localStorage. Move it once and drop the weaker copy. If the move fails we
+    // keep reading the legacy copy so an existing install is not locked out,
+    // but nothing new is ever written there.
     const legacy = readLegacy(service, account);
     if (legacy === null) return null;
     try {
       await this.set(service, account, legacy);
     } catch {
-      /* store may be unavailable */
+      return legacy;
     }
     return legacy;
   }
 
   async set(service: string, account: string, value: string): Promise<void> {
-    if (!(await this.osAvailable())) {
-      await this.local.set(service, account, value);
-      return;
-    }
+    const invoke = await this.requireStore();
     try {
-      const invoke = await requireInvoke();
       await invoke('keychain_set', { service, account, value });
-      dropLegacy(service, account);
-    } catch {
-      // Fall back to localStorage if OS store is unavailable. Do not drop the
-      // legacy copy: it is now the primary copy.
-      await this.local.set(service, account, value);
+    } catch (error) {
+      throw new KeychainUnavailableError(describeError(error));
     }
+    dropLegacy(service, account);
   }
 
   async remove(service: string, account: string): Promise<void> {
-    if (!(await this.osAvailable())) {
-      await this.local.remove(service, account);
-      return;
-    }
+    const invoke = await this.requireStore();
     try {
-      const invoke = await requireInvoke();
       await invoke('keychain_remove', { service, account });
-      dropLegacy(service, account);
-    } catch {
-      await this.local.remove(service, account);
+    } catch (error) {
+      throw new KeychainUnavailableError(describeError(error));
     }
+    dropLegacy(service, account);
   }
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
 
 /** Browser-only storage; the web build is a development target. */
@@ -176,6 +199,20 @@ class BrowserKeychain implements Keychain {
 
 export function createKeychain(): Keychain {
   return isTauriShell() ? new OsKeychain() : new BrowserKeychain(SERVICE);
+}
+
+/**
+ * True when secrets can be stored securely on this build. Used by the UI to
+ * explain why encrypted storage is disabled instead of silently degrading.
+ */
+export async function isSecureStorageAvailable(): Promise<boolean> {
+  if (!isTauriShell()) return true; // browser dev build: localStorage backend
+  try {
+    const invoke = await requireInvoke();
+    return (await invoke<boolean>('keychain_available')) === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function storeMasterKey(masterKey: string): Promise<void> {

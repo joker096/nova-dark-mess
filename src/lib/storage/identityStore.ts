@@ -100,4 +100,18 @@ export async function saveStoredIdentity(identity: UserIdentity): Promise<void> 
 export function clearStoredIdentity(): void {
   localStorage.removeItem(IDENTITY_KEY);
   localStorage.removeItem(LEGACY_IDENTITY_KEY);
+  cachedDeviceKey = null;
+}
+
+/**
+ * True when an encrypted identity record exists on disk. Distinguishes "no
+ * identity yet" (safe to create one) from "identity exists but cannot be
+ * decrypted" (creating a new one would destroy the user's key).
+ */
+export async function hasStoredIdentityRecord(): Promise<boolean> {
+  try {
+    return localStorage.getItem(IDENTITY_KEY) !== null;
+  } catch {
+    return false;
+  }
 }
