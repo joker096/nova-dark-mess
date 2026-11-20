@@ -16,6 +16,7 @@ import {
   readBatteryStatus,
   savePrivacyPrefs,
   shouldEmitCoverTraffic,
+  probeTor,
   type BatteryStatus,
   type PrivacyPrefs,
 } from '../lib/network/privacyMode';
@@ -208,6 +209,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [cloudUrl, setCloudUrl] = useState('');
   const [cloudToken, setCloudToken] = useState('');
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
+  const [torStatus, setTorStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
+  const [newRelayUrl, setNewRelayUrl] = useState('');
+  const [newRelayOperator, setNewRelayOperator] = useState('');
   const [joinOutboxCount, setJoinOutboxCount] = useState<number>(() => loadJoinOutbox().length);
   const [adPrefs, setAdPrefs] = useState<LocalAdPreferences>(() => loadAdPreferences());
   const [adPrefsMsg, setAdPrefsMsg] = useState<string | null>(null);
@@ -523,6 +527,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const next = { ...privacyPrefs, ...patch };
     setPrivacyPrefs(next);
     savePrivacyPrefs(next);
+  };
+
+  const addRelay = () => {
+    const url = newRelayUrl.trim();
+    const operator = newRelayOperator.trim() || undefined;
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      showToast('Relay URL must start with http:// or https://');
+      return;
+    }
+    const id = 'relay_' + Math.random().toString(36).slice(2, 10);
+    const next = [...privacyPrefs.relayEndpoints, { id, url, operator }];
+    setPrivacyPrefs((prev) => ({ ...prev, relayEndpoints: next }));
+    savePrivacyPrefs({ ...privacyPrefs, relayEndpoints: next });
+    setNewRelayUrl('');
+    setNewRelayOperator('');
+  };
+
+  const removeRelay = (id: string) => {
+    const next = privacyPrefs.relayEndpoints.filter((r) => r.id !== id);
+    setPrivacyPrefs((prev) => ({ ...prev, relayEndpoints: next }));
+    savePrivacyPrefs({ ...privacyPrefs, relayEndpoints: next });
+  };
+
+  const toggleTor = () => {
+    setPrivacyPrefs((prev) => {
+      const next = { ...prev, torEnabled: !prev.torEnabled };
+      savePrivacyPrefs(next);
+      return next;
+    });
+  };
+
+  const checkTor = async () => {
+    if (!privacyPrefs.torEnabled) return;
+    setTorStatus('checking');
+    try {
+      const result = await probeTor(privacyPrefs.torSocksPort);
+      setTorStatus(result.ok ? 'connected' : 'error');
+      showStatus(result.ok ? t('settings.torConnected') : t('settings.torNotConnected'));
+    } catch {
+      setTorStatus('error');
+      showStatus(t('settings.torNotConnected'));
+    }
+  };
+
+  const showStatus = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
   };
 
   const coverTrafficActive = shouldEmitCoverTraffic(privacyPrefs, battery);
@@ -1114,6 +1166,164 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
               {t('settings.webrtcRelayOnlyHint')}
             </p>
+          )}
+
+          <SectionHeader
+            icon={<ShieldAlert className="w-3.5 h-3.5" />}
+            title={t('settings.anonymity')}
+          />
+
+          {/* Multi-relay (Этап 6.3) */}
+          <ToggleRow
+            label={t('settings.multiRelay')}
+            enabled={privacyPrefs.relayEndpoints.length > 0}
+            onToggle={() => {
+              if (privacyPrefs.relayEndpoints.length === 0) {
+                // seed with example
+                setPrivacyPrefs((prev) => {
+                  const next = {
+                    ...prev,
+                    relayEndpoints: [
+                      {
+                        id: 'relay_example',
+                        url: 'https://relay.example.com',
+                        operator: 'Example',
+                      },
+                    ],
+                  };
+                  savePrivacyPrefs(next);
+                  return next;
+                });
+              } else {
+                setPrivacyPrefs((prev) => {
+                  const next = { ...prev, relayEndpoints: [] };
+                  savePrivacyPrefs(next);
+                  return next;
+                });
+              }
+            }}
+          />
+          {privacyPrefs.relayEndpoints.length > 0 && (
+            <div className="px-1 pb-2 space-y-2">
+              <p className="text-[11px] leading-relaxed text-[#8c919d]">
+                {t('settings.multiRelayHint')}
+              </p>
+              <div className="space-y-1.5">
+                {privacyPrefs.relayEndpoints.map((relay) => (
+                  <div
+                    key={relay.id}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.02]"
+                  >
+                    <span className="flex-1 text-[11px] text-white/80 truncate">
+                      {relay.url}
+                    </span>
+                    {relay.operator && (
+                      <span className="text-[10px] text-[#8c919d] truncate max-w-[120px]">
+                        {relay.operator}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeRelay(relay.id)}
+                      className="w-6 h-6 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition"
+                      aria-label={t('settings.removeRelay')}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-1 pt-1">
+                <input
+                  type="url"
+                  placeholder={t('settings.relayUrl')}
+                  value={newRelayUrl}
+                  onChange={(e) => setNewRelayUrl(e.target.value)}
+                  className="flex-1 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                />
+                <input
+                  type="text"
+                  placeholder={t('settings.relayOperator')}
+                  value={newRelayOperator}
+                  onChange={(e) => setNewRelayOperator(e.target.value)}
+                  className="flex-1 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                />
+                <button
+                  type="button"
+                  onClick={addRelay}
+                  disabled={!newRelayUrl.trim()}
+                  className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] font-medium text-white transition hover:bg-white/[0.06] disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {t('settings.addRelay')}
+                </button>
+              </div>
+              <p className="text-[10px] text-[#8c919d]">
+                Queues rotate between relays weekly so no single operator sees a contact's full history.
+              </p>
+            </div>
+          )}
+
+          {/* Tor (Этап 6.4) */}
+          <ToggleRow
+            label={t('settings.torMode')}
+            enabled={privacyPrefs.torEnabled}
+            onToggle={toggleTor}
+          />
+          {privacyPrefs.torEnabled && (
+            <div className="px-1 pb-2 space-y-2">
+              <p className="text-[11px] leading-relaxed text-[#8c919d]">
+                {t('settings.torModeHint')}
+              </p>
+              <div className="flex items-center gap-1.5 px-1 py-1">
+                <span className="text-[11px] text-white/60">{t('settings.torSocksPort')}</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value={privacyPrefs.torSocksPort}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (v > 0 && v <= 65535) {
+                      setPrivacyPrefs((prev) => {
+                        const next = { ...prev, torSocksPort: v };
+                        savePrivacyPrefs(next);
+                        return next;
+                      });
+                    }
+                  }}
+                  className="w-20 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                />
+                <button
+                  type="button"
+                  onClick={checkTor}
+                  disabled={torStatus === 'checking'}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition ${
+                    torStatus === 'checking'
+                      ? 'border-[#8c919d]/40 text-[#8c919d] cursor-wait'
+                      : 'border-white/10 bg-white/[0.03] text-white/90 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {torStatus === 'checking'
+                    ? t('settings.torCheck') + '…'
+                    : t('settings.torCheck')}
+                </button>
+                <span
+                  className={`text-[10px] font-medium ${
+                    torStatus === 'connected'
+                      ? 'text-emerald-400'
+                      : torStatus === 'error'
+                        ? 'text-red-400'
+                        : 'text-[#8c919d]'
+                  }`}
+                >
+                  {torStatus === 'connected'
+                    ? t('settings.torConnected')
+                    : torStatus === 'error'
+                      ? t('settings.torNotConnected')
+                    : '—'}
+                </span>
+              </div>
+            </div>
           )}
           {privacyPrefs.metadataMinimization && (
             <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
