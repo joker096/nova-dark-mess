@@ -144,7 +144,10 @@ export class GroupChatManager {
 
   public async sendText(text: string): Promise<boolean> {
     if (!this.ownState) {
-      await this.initialize(false);
+      // First send also publishes our sender key: without it every other
+      // member (including a bot added before the first message) would answer
+      // "No sender key" and drop the frame.
+      await this.initialize(true);
     }
     if (!this.ownState) return false;
 
