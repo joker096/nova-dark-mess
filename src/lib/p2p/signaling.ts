@@ -122,6 +122,10 @@ export class P2PSignalingClient {
         this.socket = socket;
 
         socket.onopen = () => {
+          if (this.closedByUser) {
+            try { socket.close(); } catch { void 0; }
+            return;
+          }
           this.reconnectAttempts = 0;
           this.setStatus('connected');
           this.flushOutbox();
@@ -248,7 +252,16 @@ export class P2PSignalingClient {
       this.reconnectTimer = null;
     }
     if (this.socket) {
-      this.socket.close();
+      const socket = this.socket;
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      } else if (socket.readyState === WebSocket.CONNECTING) {
+        // Avoid "closed before the connection is established" warnings by
+        // waiting for the handshake to finish before closing.
+        socket.addEventListener('open', () => {
+          try { socket.close(); } catch { void 0; }
+        }, { once: true });
+      }
       this.socket = null;
     }
     if (this.localChannel) {
