@@ -147,10 +147,11 @@ export default function App() {
     let signaling: P2PSignalingClient | null = null;
     let relay: MeshRelay | null = null;
     let transportManager: TransportManager | null = null;
+    let unsubscribeCallInvite: (() => void) | null = null;
     const start = async () => {
       signaling = new P2PSignalingClient({ url: resolveSignalingUrl(), registerFingerprint: identity.fingerprint });
       setCallSignaling(signaling);
-      const unsubscribeCallInvite = signaling.onMessage((message) => {
+      unsubscribeCallInvite = signaling.onMessage((message) => {
         if (message.targetFingerprint !== identity.fingerprint) return;
         if (message.type !== 'call_invite') return;
         const payload = (message.payload ?? {}) as { callId?: unknown; mode?: unknown };

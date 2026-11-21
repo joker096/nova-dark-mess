@@ -179,6 +179,16 @@ interface ChatScreenProps {
    * messages to the bot runtime (docs/bots-roadmap.md §B1/B4).
    */
   getBotSession?: () => BotSession;
+  /** Optional app-wide signaling client reused for call control. */
+  sharedCallSignaling?: P2PSignalingClient | null;
+  /** Incoming call that arrived while this chat was not mounted. */
+  pendingIncomingCall?: {
+    chatId: string;
+    callId: string;
+    mode: 'voice' | 'video';
+    from: string;
+  } | null;
+  onPendingIncomingCallConsumed?: () => void;
 }
 
 interface ScheduledMessageItem {
@@ -229,6 +239,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onBotStartSent,
   onBotCallback,
   getBotSession,
+  sharedCallSignaling,
+  pendingIncomingCall,
+  onPendingIncomingCallConsumed,
 }) => {
   const { t } = useLanguage();
   const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer, p2pManager, setPeerFingerprint } = useSecurity();
@@ -1910,9 +1923,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!localFingerprint || isGroupChat) return;
 
     const signalingUrl = resolveSignalingUrl();
-    if (!signalingUrl) return;
+    if (!signalingUrl && !sharedCallSignaling) return;
 
-    const client = new P2PSignalingClient({ url: signalingUrl, registerFingerprint: localFingerprint });
+    const client = sharedCallSignaling ?? new P2PSignalingClient({ url: signalingUrl, registerFingerprint: localFingerprint });
     callSignalingRef.current = client;
 
     const unsubscribe = client.onMessage((message) => {
@@ -1989,10 +2002,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
     });
 
-    void client.connect();
+    if (!sharedCallSignaling) void client.connect();
     return () => {
       unsubscribe();
-      client.close();
+      if (!sharedCallSignaling) client.close();
       if (callSignalingRef.current === client) callSignalingRef.current = null;
     };
   }, [
@@ -2008,6 +2021,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     incomingCallRef.current = incomingCall;
   }, [incomingCall]);
+
+  useEffect(() => {
+    if (!pendingIncomingCall || pendingIncomingCall.chatId !== chatId) return;
+    if (mediaCallRef.current || incomingCallRef.current || outgoingCallRef.current) {
+      onPendingIncomingCallConsumed?.();
+      return;
+    }
+    incomingCallRef.current = {
+      callId: pendingIncomingCall.callId,
+      mode: pendingIncomingCall.mode,
+      from: pendingIncomingCall.from,
+    };
+    setIncomingCall({
+      callId: pendingIncomingCall.callId,
+      mode: pendingIncomingCall.mode,
+      from: pendingIncomingCall.from,
+    });
+    onPendingIncomingCallConsumed?.();
+  }, [pendingIncomingCall, chatId]);
   useEffect(() => {
     outgoingCallRef.current = outgoingCall;
   }, [outgoingCall]);
