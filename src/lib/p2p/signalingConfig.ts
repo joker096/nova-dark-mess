@@ -17,6 +17,23 @@ export function resolveSignalingUrl(): string | undefined {
 
   try {
     const url = new URL(relay);
+    // Skip local/private IPs that are clearly not signaling servers (e.g. AI
+    // Studio internal addresses like 127.24.1.1). Only allow localhost/127.0.0.1
+    // for explicit local development, or public hosts.
+    const hostname = url.hostname;
+    if (
+      hostname !== 'localhost' &&
+      hostname !== '127.0.0.1' &&
+      hostname !== '::1' &&
+      (hostname.startsWith('127.') || // 127.0.0.0/8
+        hostname.startsWith('10.') || // 10.0.0.0/8
+        hostname.startsWith('172.1') || // 172.16.0.0/12 (172.16-172.31)
+        hostname.startsWith('172.2') ||
+        hostname.startsWith('172.3') ||
+        hostname.startsWith('192.168.')) // 192.168.0.0/16
+    ) {
+      return undefined;
+    }
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.pathname = '/api/signaling';
     url.search = '';

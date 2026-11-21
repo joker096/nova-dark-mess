@@ -4249,10 +4249,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           renderItem={(item, _idx) => {
           if (item.type === 'date') {
             return (
-              <div
-                key={`date-${item.label}`}
-                className="flex justify-center my-3"
-              >
+              <div className="flex justify-center my-3">
                 <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-[#8c919d]">
                   {item.label}
                 </span>
@@ -4262,11 +4259,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
           if (item.type === 'unread') {
             return (
-              <div
-                key="unread-divider"
-                data-testid="unread-divider"
-                className="flex items-center gap-3 my-2"
-              >
+              <div data-testid="unread-divider" className="flex items-center gap-3 my-2">
                 <div className="flex-1 h-px bg-[var(--nova-accent-color,#ff4e18)]/50" />
                 <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-wide uppercase">
                   {item.label}
@@ -4297,7 +4290,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           if (msg.system) {
             return (
               <div
-                key={msg.id}
                 id={`msg-${msg.id}`}
                 data-testid="system-message"
                 className={`flex justify-center my-1 ${isDeleting ? 'msg-deleting' : ''}`}
@@ -4312,7 +4304,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           if (msg.deleted) {
             return (
               <div
-                key={msg.id}
                 id={`msg-${msg.id}`}
                 className={`flex flex-col relative transition-all duration-300 ${
                   isMine ? 'items-end' : 'items-start'
@@ -4328,7 +4319,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
           return (
             <div
-              key={msg.id}
               id={`msg-${msg.id}`}
               className={`flex flex-col relative transition-all duration-300 ${item.groupStart ? 'mt-2' : 'mt-0'} ${
                 isMine ? 'items-end' : 'items-start'
@@ -4897,18 +4887,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <>
-                            <p>
-                              {isSearchOpen && searchQuery.trim().length > 0
-                                ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
-                                : renderMarkdown({ text: msg.text })}
-                              {msg.editedAt && (
-                                <span className="ml-1.5 text-[9px] italic text-white/60">
-                                  {t('chat.edited')}
-                                </span>
-                              )}
-                            </p>
-                          </>
+                          <div className="min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                            {isSearchOpen && searchQuery.trim().length > 0
+                              ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
+                              : renderMarkdown({ text: msg.text })}
+                            {msg.editedAt && (
+                              <span className="ml-1.5 text-[9px] italic text-white/60">
+                                {t('chat.edited')}
+                              </span>
+                            )}
+                          </div>
                         )}
                         <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
                           <div className="flex items-center gap-1">
@@ -5073,14 +5061,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       )}
 
                       {msg.text && (
-                        <p>
+                        <div className="min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                           {isSearchOpen && searchQuery.trim().length > 0
                             ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
                             : renderMarkdown({ text: msg.text })}
                           {msg.editedAt && (
                             <span className="ml-1.5 text-[9px] italic text-[#717682]">{t('chat.edited')}</span>
                           )}
-                        </p>
+                        </div>
                       )}
 
                       <div className="flex items-center justify-between gap-1 text-[10px] text-[#717682] mt-1.5 font-medium select-none">
