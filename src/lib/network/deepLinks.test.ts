@@ -92,7 +92,56 @@ describe('parseDeepLink', () => {
     expect(parseDeepLinkFromHash('')).toBeNull();
     expect(parseDeepLinkFromHash('#')).toBeNull();
   });
+});
 
+describe('site handoff deep links', () => {
+  it('parses the nova:// scheme with the key in the fragment', () => {
+    expect(parseDeepLink('nova://site-handoff/abcd1234efgh5678#keymat1234mat5678')).toEqual({
+      type: 'site-handoff',
+      token: 'abcd1234efgh5678',
+      key: 'keymat1234mat5678',
+    });
+  });
+
+  it('parses the universal /c/<token> link on the app hosts', () => {
+    expect(parseDeepLink('https://nova.app/c/abcd1234efgh5678#keymat1234mat5678')).toEqual({
+      type: 'site-handoff',
+      token: 'abcd1234efgh5678',
+      key: 'keymat1234mat5678',
+    });
+    expect(parseDeepLink('https://mess.cvr.name/c/abcd1234efgh5678#keymat1234mat5678')).toEqual({
+      type: 'site-handoff',
+      token: 'abcd1234efgh5678',
+      key: 'keymat1234mat5678',
+    });
+  });
+
+  it('parses the landing-page alias nova://widget-handoff?token=#key', () => {
+    expect(
+      parseDeepLink('nova://widget-handoff?token=abcd1234efgh5678#keymat1234mat5678')
+    ).toEqual({ type: 'site-handoff', token: 'abcd1234efgh5678', key: 'keymat1234mat5678' });
+    expect(parseDeepLink('nova://widget-handoff')).toBeNull();
+    expect(parseDeepLink('nova://widget-handoff?token=short')).toBeNull();
+  });
+
+  it('keeps the key out of the path and rejects bad tokens/hosts', () => {
+    expect(parseDeepLink('https://nova.app/c/abcd1234efgh5678?key=keymat1234mat5678')).toEqual({
+      type: 'site-handoff',
+      token: 'abcd1234efgh5678',
+    });
+    expect(parseDeepLink('https://nova.app/c/short')).toBeNull();
+    expect(parseDeepLink('https://nova.app/c/abcd1234efgh5678#bad key')).toBeNull();
+    expect(parseDeepLink('https://evil.example/c/abcd1234efgh5678#keymat1234mat5678')).toBeNull();
+  });
+
+  it('builds scheme links that round-trip', () => {
+    const built = buildDeepLink({ type: 'site-handoff', token: 'abcd1234efgh5678', key: 'keymat1234mat5678' });
+    expect(built).toBe('nova://site-handoff/abcd1234efgh5678');
+    expect(parseDeepLink(built)).toEqual({ type: 'site-handoff', token: 'abcd1234efgh5678' });
+  });
+});
+
+  describe('buildDeepLink', () => {
   it('round-trips built links', () => {
     for (const target of [
       { type: 'chat' as const, id: 'katie' },

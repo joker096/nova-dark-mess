@@ -87,7 +87,8 @@ import {
   readAppTheme,
   readFontSize,
 } from './lib/ui/appearance';
-import { parseDeepLinkFromHash, type DeepLinkTarget } from './lib/network/deepLinks';
+import { parseDeepLinkFromHash, parseDeepLink, type DeepLinkTarget } from './lib/network/deepLinks';
+import { type SiteHandoff } from './features/sites/HandoffPrompt';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
 import { buildLiveMeshSnapshot, clearLastGpsFix, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
@@ -334,6 +335,7 @@ export default function App() {
     null,
   );
   const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
+  const [pendingSiteHandoff, setPendingSiteHandoff] = useState<SiteHandoff | null>(null);
   const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
   const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
 
@@ -578,6 +580,12 @@ export default function App() {
     (target: DeepLinkTarget, link: string) => {
       if (!target || target.type === 'device-link') return;
 
+      if (target.type === 'site-handoff') {
+        setPendingSiteHandoff({ token: target.token, key: target.key });
+        navigate('sites');
+        return;
+      }
+
       if (target.type === 'contact-invite') {
         setPendingContactInvite(target.code);
         navigate('anonymous');
@@ -635,11 +643,17 @@ export default function App() {
   useEffect(() => {
     const applyDeepLink = () => {
       const hash = window.location.hash;
-      if (!hash || hash === handledDeepLinkRef.current) return;
-      handledDeepLinkRef.current = hash;
-      const target = parseDeepLinkFromHash(hash);
-      if (!target) return;
-      handleTarget(target, hash);
+      const locationKey = window.location.pathname + hash;
+      // `/c/<token>#<key>` handoff links carry the key in the fragment only.
+      const pathMatch = /^\/c\/([A-Za-z0-9_-]{16,256})/.exec(window.location.pathname);
+      const target =
+        parseDeepLinkFromHash(hash) ??
+        (pathMatch
+          ? parseDeepLink(`nova://site-handoff/${pathMatch[1]}#${hash.replace(/^#/, '')}`)
+          : null);
+      if (!target || locationKey === handledDeepLinkRef.current) return;
+      handledDeepLinkRef.current = locationKey;
+      handleTarget(target, locationKey);
     };
 
     applyDeepLink();
@@ -751,7 +765,11 @@ export default function App() {
           />
         );
       case 'sites':
-        return <SitesScreen onBack={goBack} />;
+        return <SitesScreen
+            onBack={goBack}
+            siteHandoff={pendingSiteHandoff}
+            onHandoffDone={() => setPendingSiteHandoff(null)}
+          />;
       case 'chat-katie':
       case 'chats':
       default: {
@@ -877,7 +895,11 @@ export default function App() {
           />
         );
       case 'sites':
-        return <SitesScreen onBack={goBack} />;
+        return <SitesScreen
+            onBack={goBack}
+            siteHandoff={pendingSiteHandoff}
+            onHandoffDone={() => setPendingSiteHandoff(null)}
+          />;
       default:
         return null;
     }
