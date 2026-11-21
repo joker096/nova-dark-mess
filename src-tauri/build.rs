@@ -14,9 +14,10 @@
 //       Where-Object { $_ -match '^https?://[^/@?#]+$' }) -join ' '
 //   npx tauri build
 //
-// Unset or an invalid list leaves the placeholder empty: `frame-src` keeps
-// only `'self'` and `blob:`, so every remote Mini App is refused (which is
-// also what `MiniAppIframe`/`miniAppOrigins.ts` enforce at runtime).
+// The config already pins the deployment default `https://mess.cvr.name`
+// beside the placeholder. The env list adds more origins; an invalid list
+// leaves only the default, `'self'` and `blob:`. `miniAppOrigins.ts` enforces
+// the same allowlist at runtime.
 
 fn main() {
   println!("cargo:rerun-if-env-changed=MINI_APP_ORIGINS");

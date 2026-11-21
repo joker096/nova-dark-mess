@@ -64,7 +64,7 @@ function cspPlugin(prodCsp: string, devCsp: string): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const frameOrigins = miniAppFrameOrigins(env.VITE_MINI_APP_ORIGINS)
+  const frameOrigins = miniAppFrameOrigins(env.VITE_MINI_APP_ORIGINS ?? 'https://mess.cvr.name')
     .map((origin) => ` ${origin}`)
     .join('');
   const sharedCsp = buildCsp(frameOrigins);
