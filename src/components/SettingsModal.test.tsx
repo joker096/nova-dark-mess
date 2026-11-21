@@ -109,6 +109,17 @@ describe('SettingsModal', () => {
     expect(screen.getByText('settings.title')).toBeTruthy();
   });
 
+  it('hides the Bots section when no bot session is supplied', () => {
+    const { unmount } = renderSettings();
+    expect(screen.queryByText('bot.title')).toBeNull();
+    unmount();
+
+    render(
+      <SettingsModal isOpen onClose={vi.fn()} getBotSession={() => ({}) as never} />,
+    );
+    expect(screen.getAllByText('bot.title').length).toBeGreaterThan(0);
+  });
+
   it('toggles notification preferences and persists them', () => {
     renderSettings();
     const toggle = screen.getByRole('switch', { name: 'settings.notificationSound' });

@@ -235,7 +235,7 @@ the bot's private key):
       setWebhook/getMe/setMyCommands and fuzzes 30 deterministic malformed
       bodies against every endpoint, then checks the server is still healthy.
 
-### Phase B6 — System bot "NovaFather" (3–4 days) — 🟡 Partial
+### Phase B6 — System bot "NovaFather" (3–4 days) — ✅ Done (2026-11-21)
 
 - [x] Implemented as an ordinary L1 bot on the same `BotContext` API.
       Bot management is real: `manage_bots` is a normal requested permission,
@@ -297,9 +297,12 @@ the bot's private key):
       caught two real bugs that are now fixed: bot replies never carried their
       inline keyboard, and the single global sink delivered replies to the
       hidden mobile ChatScreen instead of the visible one.
-- [x] Feature flag `NOVA_BOTS` (default on for L1, off for gateway pieces)
-      so the app ships unchanged if bots are compiled out — consistent with
-      the monetization track's "must work fully with the feature off" rule.
+- [x] Feature flag `NOVA_BOTS` (default on; `VITE_NOVA_BOTS=false` disables
+      it). With the flag off the app creates no bot session work, passes no
+      session to Settings/ChatScreen (so the Bots UI is absent), ignores
+      `nova://bot/...` deep links and routes no P2P traffic into bot runtimes.
+      The flag is a runtime switch, not a compile-time removal — the docs no
+      longer claim the code is tree-shaken out.
 
 ## 4. Ordering and dependencies
 

@@ -20,7 +20,7 @@ import { LazyMedia } from './components/LazyMedia';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SanctionGate } from './components/SanctionGate';
-import { EncryptedBotStorage } from './lib/bots/runtime';
+import { EncryptedBotStorage, NOVA_BOTS } from './lib/bots/runtime';
 import { dbInstance } from './lib/storage/db';
 import { botSession } from './lib/bots/session';
 
@@ -119,6 +119,9 @@ export default function App() {
   const premium = isPremium();
 
   // Bots track (docs/bots-roadmap.md §B2): one session per app lifetime.
+  // With VITE_NOVA_BOTS=false the UI never receives a session, so the feature
+  // is absent rather than merely inert.
+  const botsEnabled = NOVA_BOTS;
   const botSessionRef = useRef<typeof botSession | null>(null);
   const getBotSession = useCallback(() => {
     if (!botSessionRef.current) botSessionRef.current = botSession;
@@ -228,6 +231,7 @@ export default function App() {
             return;
           }
 
+          if (!botsEnabled) return;
           const session = getBotSession();
           if (session.isBot(chatId)) {
             void session.deliverMessage(chatId, {
@@ -334,14 +338,16 @@ export default function App() {
   const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
 
   useEffect(() => {
+    if (!botsEnabled) return;
     void getBotSession().ensureReady();
-  }, [getBotSession]);
+  }, [botsEnabled, getBotSession]);
 
   // Switch bot registry to the encrypted vault once it is ready (SecurityContext
   // initializes dbInstance with the user's master key). Until then the registry
   // lives in memory and is lost on reload — acceptable for dev fixtures; real
   // bots installed via Phase B3 UI will persist once the vault is up.
   useEffect(() => {
+    if (!botsEnabled) return;
     let cancelled = false;
     const waitForVault = async () => {
       while (!dbInstance.isReady() && !cancelled) {
@@ -353,11 +359,13 @@ export default function App() {
     };
     void waitForVault();
     return () => { cancelled = true; };
-  }, [getBotSession]);
+  }, [botsEnabled, getBotSession]);
   const handleBotCallback = useCallback(
-    (botId: string, chatId: string, messageId: string, callbackData: string) =>
-      getBotSession().dispatchCallback(botId, chatId, messageId, callbackData),
-    [getBotSession],
+    (botId: string, chatId: string, messageId: string, callbackData: string) => {
+      if (!botsEnabled) return false;
+      return getBotSession().dispatchCallback(botId, chatId, messageId, callbackData);
+    },
+    [botsEnabled, getBotSession],
   );
   const pendingInviteRef = useFocusTrap<HTMLDivElement>(
     Boolean(pendingInvite),
@@ -592,6 +600,7 @@ export default function App() {
         return;
       }
       if (target.type === 'bot') {
+        if (!botsEnabled) return;
         // Check if bot is installed
         const session = getBotSession();
         const bot = session.listBots().find((b) => b.manifest.id === target.id);
@@ -618,7 +627,7 @@ export default function App() {
         navigate('channel-kyiv', { channelId: target.id });
       }
     },
-    [channels, navigate],
+    [botsEnabled, channels, getBotSession, navigate],
   );
 
   // Deep links (`#nova://chat/<id>`, `#nova://channel/<id>`, universal links)
@@ -746,7 +755,7 @@ export default function App() {
       case 'chat-katie':
       case 'chats':
       default: {
-        const botId = getBotSession().isBot(activeChatId) ? activeChatId : undefined;
+        const botId = botsEnabled && getBotSession().isBot(activeChatId) ? activeChatId : undefined;
         const botCommands = botId
           ? getBotSession().listBots().find((b) => b.manifest.id === botId)?.manifest.commands ?? []
           : [];
@@ -757,7 +766,7 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
-            getBotSession={getBotSession}
+            getBotSession={botsEnabled ? getBotSession : undefined}
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
@@ -787,7 +796,7 @@ export default function App() {
             stories={stories}
             channels={channels}
             localFingerprint={identity?.fingerprint}
-            getBotSession={getBotSession}
+            getBotSession={botsEnabled ? getBotSession : undefined}
             now={now}
             onCreateStory={createStory}
             onDeleteStory={deleteStory}
@@ -796,7 +805,7 @@ export default function App() {
           />
         );
       case 'chat-katie': {
-        const botId = getBotSession().isBot(activeChatId) ? activeChatId : undefined;
+        const botId = botsEnabled && getBotSession().isBot(activeChatId) ? activeChatId : undefined;
         const botCommands = botId
           ? getBotSession().listBots().find((b) => b.manifest.id === botId)?.manifest.commands ?? []
           : [];
@@ -807,7 +816,7 @@ export default function App() {
             onOpenProfile={() => openProfile(activeChatId)}
             botId={botId}
             botCommands={botCommands}
-            getBotSession={getBotSession}
+            getBotSession={botsEnabled ? getBotSession : undefined}
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
@@ -1080,7 +1089,7 @@ export default function App() {
           stories={stories}
           channels={channels}
           localFingerprint={identity?.fingerprint}
-          getBotSession={getBotSession}
+          getBotSession={botsEnabled ? getBotSession : undefined}
           now={now}
           onCreateStory={createStory}
           onDeleteStory={deleteStory}
@@ -1183,7 +1192,7 @@ export default function App() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           onOpenAnalytics={openAnalytics}
-          getBotSession={getBotSession}
+          getBotSession={botsEnabled ? getBotSession : undefined}
           pendingBotInstall={pendingBotInstall}
           onBotInstallHandled={() => setPendingBotInstall(null)}
           onOpenBotChat={(botId) => {
