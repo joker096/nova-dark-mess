@@ -327,4 +327,22 @@ describe('BotHTTPGateway', () => {
       (globalThis as any).fetch = origFetch;
     }
   });
+
+  it('retries a 5xx webhook delivery and stops after success', async () => {
+    let calls = 0;
+    const origFetch = (globalThis as any).fetch;
+    (globalThis as any).fetch = vi.fn(async () => {
+      calls += 1;
+      return { ok: calls >= 3, status: calls >= 3 ? 200 : 500 } as Response;
+    });
+
+    try {
+      await post('/setWebhook', { url: 'https://example.com/webhook' });
+      server.enqueueIncoming('chat1', 'retry me');
+      await new Promise((r) => setTimeout(r, 500));
+      expect(calls).toBe(3);
+    } finally {
+      (globalThis as any).fetch = origFetch;
+    }
+  });
 });

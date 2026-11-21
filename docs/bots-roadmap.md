@@ -214,10 +214,12 @@ the bot's private key):
       `getUpdates` (long-poll + offset), `setWebhook`/`deleteWebhook`,
       `getMe`, `answerCallbackQuery`, `setMyCommands` — same JSON shapes as
       Telegram so grammY/telegraf/aiogram work after a base-URL change.
-- [x] Webhook delivery reuses the patterns already proven in the old repo's
-      design and in this repo's server: HMAC signature, timestamp window,
-      replay guard, retry with exponential backoff (cf. `server.js` IPN
-      handler and the hardening in fix-roadmap F3).
+- [x] Webhook delivery: HMAC-SHA256 signature plus the optional
+      `X-Telegram-Bot-Api-Secret-Token`. Network errors and 5xx replies are
+      retried up to 3 attempts with exponential backoff; 3xx is never followed
+      and 4xx is not retried. Replay/timestamp windows belong to the receiver
+      (the gateway sends no timestamp header), so the earlier claim of a
+      built-in replay guard was wrong and is corrected here.
 - [x] SSRF guard for `webhook_url`: https only; every DNS answer is checked
       against loopback/private/link-local/CGNAT/reserved IPv4 and IPv6 ranges at
       registration and again immediately before each delivery. Webhook fetches
