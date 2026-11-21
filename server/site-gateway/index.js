@@ -700,6 +700,12 @@ app.post('/v1/stats/track', (req, res) => {
   if (!site || !event) return json(res, 400, { ok: false, reason: 'SITE_AND_EVENT_REQUIRED' });
   const siteRec = getSite(site);
   if (!siteRec) return json(res, 404, { ok: false, reason: 'SITE_NOT_FOUND' });
+  // Whitelist: only known counter names may be incremented (prevents arbitrary-field growth).
+  const STAT_EVENTS = new Set([
+    'loaded', 'opened', 'first_message', 'owner_replied',
+    'handoff_shown', 'handoff_clicked', 'handoff_completed',
+  ]);
+  if (!STAT_EVENTS.has(event)) return json(res, 400, { ok: false, reason: 'STAT_EVENT_UNKNOWN' });
   trackStat(site, event);
   return json(res, 200, { ok: true });
 });

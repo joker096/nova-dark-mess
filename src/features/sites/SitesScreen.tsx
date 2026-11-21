@@ -18,6 +18,7 @@ import {
   type Site, type Thread, type Message,
 } from './sitesApi';
 import { x25519 } from '@noble/curves/ed25519.js';
+import { HandoffPrompt, type SiteHandoff } from './HandoffPrompt';
 
 function b64u(bytes: Uint8Array): string {
   return btoa(String.fromCharCode.apply(null, bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -114,7 +115,13 @@ const wizardModal = (
 
 export default function SitesScreen({
   onBack,
-}: { onBack: () => void }) {
+  siteHandoff = null,
+  onHandoffDone,
+}: {
+  onBack: () => void;
+  siteHandoff?: SiteHandoff | null;
+  onHandoffDone?: () => void;
+}) {
   const { t } = useLanguage();
   const { account } = useAccount();
 
@@ -129,6 +136,7 @@ export default function SitesScreen({
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [online, setOnline] = useState(false);
+  const [handoffNotice, setHandoffNotice] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [wizardForm, setWizardForm] = useState({
@@ -429,6 +437,16 @@ export default function SitesScreen({
   if (view === 'sites') {
     return (
       <>
+        <HandoffPrompt
+          handoff={siteHandoff}
+          onDone={() => onHandoffDone?.()}
+          onOpened={() => setHandoffNotice(true)}
+        />
+        {handoffNotice && (
+          <div className="px-4 py-2 text-xs text-white/60" role="status">
+            Переписка с сайта перенесена в мессенджер
+          </div>
+        )}
         <div className="h-full flex flex-col bg-[#0c0d11] text-white">
           <header className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
             <button onClick={onBack} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('common.back')}>

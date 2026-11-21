@@ -199,6 +199,32 @@
       </div>
 
       <div class="sec">
+        <h2>Website chat widget</h2>
+        <p>
+          Website owners can install the free Mess&Anger chat widget (see
+          <a href="./docs/widget.html">Widget documentation</a>). This section describes what the widget
+          means for you as a visitor of such a site:
+        </p>
+        <ul>
+          <li><b>No cookies, no third-party trackers.</b> The widget sets no cookies on the site's domain and
+            loads no fonts, scripts, pixels or analytics from any third party. All code is first-party.</li>
+          <li><b>Encryption keys stay in your browser.</b> The conversation key is created in the visitor's
+            browser and transported only in the URL fragment (<code>#</code>), which is never sent to the
+            server, never stored in page content and never written to our logs.</li>
+          <li><b>The relay sees ciphertext only.</b> Messages are end-to-end encrypted before they leave the
+            visitor's device; the relay cannot read them, and undelivered messages are deleted with the queue.</li>
+          <li><b>Handoff to the app.</b> If the site owner uses handoff, you can continue the conversation in
+            the Mess&Anger app via a one-time link; the conversation is shown only in your app, and the site
+            does not gain access to it. You may cancel at any time.</li>
+          <li><b>Aggregate site statistics.</b> The site owner sees only anonymous, aggregate counters
+            (widget shown, opened, first message sent, owner answered) — never your identity, IP address or
+            conversation content.</li>
+          <li><b>Abuse protection.</b> Guest sessions are rate-limited and proof-of-work protected; the site
+            owner can block a guest session from abusive use.</li>
+        </ul>
+      </div>
+
+      <div class="sec">
         <h2>Children</h2>
         <p>
           The service is not directed to children under 13. We do not knowingly collect personal information

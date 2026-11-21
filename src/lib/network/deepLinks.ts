@@ -8,8 +8,11 @@
  *   nova://channel/<id>?post=<postId>&comments=1   open a post's comments
  *   nova://profile/<id>     open a profile
  *   nova://contact/<invite> add a contact from a one-time invitation
+ *   nova://site-handoff/<token>  continue a guest site thread in the messenger
  *   nova://device-link?…    device linking offer (see lib/p2p/deviceLinking)
  *   https://nova.app/…      the same targets as universal links
+ *   https://nova.app/c/<token>#<key>  site handoff (key travels in the
+ *     fragment only, never in the path or query, and is never logged)
  */
 
 import { parseDeviceLinkOffer } from '../p2p/deviceLinking';
@@ -27,6 +30,7 @@ export type DeepLinkTarget =
   | { type: 'profile'; id: string }
   | { type: 'bot'; id: string; /** Start payload carried with /start, if any. */ startPayload?: string }
   | { type: 'contact-invite'; code: string }
+  | { type: 'site-handoff'; token: string; key?: string }
   | { type: 'device-link'; url: string };
 
 export const DEEP_LINK_SCHEME = 'nova';
@@ -34,7 +38,20 @@ export const DEEP_LINK_WEB_HOST = 'nova.app';
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const CONTACT_INVITE_PATTERN = /^[A-Za-z0-9_-]{1,4096}$/;
+/** Handoff tokens are opaque gateway ids (base64url, ≥128 bits). */
+const HANDOFF_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
+/** Handoff thread keys are HKDF-derived material, base64url. */
+const HANDOFF_KEY_PATTERN = /^[A-Za-z0-9_-]{16,512}$/;
 const NESTED_TYPES = new Set(['chat', 'channel', 'profile', 'bot']);
+
+function parseSiteHandoff(token: string | undefined, key: string | undefined): DeepLinkTarget | null {
+  if (!token || !HANDOFF_TOKEN_PATTERN.test(token)) return null;
+  const trimmedKey = key?.trim();
+  if (trimmedKey && !HANDOFF_KEY_PATTERN.test(trimmedKey)) return null;
+  return trimmedKey
+    ? { type: 'site-handoff', token, key: trimmedKey }
+    : { type: 'site-handoff', token };
+}
 
 function isValidId(id: string): boolean {
   return ID_PATTERN.test(id);
@@ -70,6 +87,15 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
         ? { type: 'contact-invite', code }
         : null;
     }
+    // nova://site-handoff/<token>#<key> and the landing-page alias
+    // nova://widget-handoff?token=<token>#<key> (used by landing/c.html)
+    if (parsed.hostname === 'site-handoff' || parsed.hostname === 'widget-handoff') {
+      const token =
+        parsed.hostname === 'widget-handoff'
+          ? (parsed.searchParams.get('token')?.trim() ?? '')
+          : parsed.pathname.replace(/^\/+|\/+$/g, '');
+      return parseSiteHandoff(token, parsed.hash.replace(/^#/, '') || undefined);
+    }
     if (!NESTED_TYPES.has(parsed.hostname)) return null;
     // nova://chat/<id>   nova://bot/<id>?start=<payload>
     const id = parsed.pathname.replace(/^\/+|\/+$/g, '');
@@ -84,8 +110,18 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     return { type: parsed.hostname as 'chat' | 'profile', id };
   }
 
-  if (parsed.protocol === 'https:' && parsed.hostname === DEEP_LINK_WEB_HOST) {
+  if (
+    parsed.protocol === 'https:' &&
+    (parsed.hostname === DEEP_LINK_WEB_HOST ||
+      parsed.hostname === 'mess.cvr.name' ||
+      parsed.hostname === 'www.mess.cvr.name')
+  ) {
     const [type, id] = parsed.pathname.split('/').filter(Boolean);
+    // https://<app>/c/<token>#<key> — guest handoff; the key stays in the
+    // fragment so it is never sent to the server or logged.
+    if (type === 'c' && id) {
+      return parseSiteHandoff(id, parsed.hash.replace(/^#/, '') || undefined);
+    }
     if (!type || !NESTED_TYPES.has(type) || !id) return null;
     if (!isValidId(id)) return null;
     if (type === 'channel') {
@@ -110,6 +146,9 @@ export function buildDeepLink(target: DeepLinkTarget): string {
     const base = `${DEEP_LINK_SCHEME}://bot/${encodeURIComponent(target.id)}`;
     if (!target.startPayload) return base;
     return `${base}?start=${encodeURIComponent(target.startPayload)}`;
+  }
+  if (target.type === 'site-handoff') {
+    return `${DEEP_LINK_SCHEME}://site-handoff/${encodeURIComponent(target.token)}`;
   }
   const base = `${DEEP_LINK_SCHEME}://${target.type}/${encodeURIComponent(target.id)}`;
   if (target.type !== 'channel' || !target.postId) return base;
