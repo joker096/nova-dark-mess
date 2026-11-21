@@ -6,6 +6,15 @@ import { NovaToastProvider } from './lib/ui';
 import './index.css';
 import i18n, { loadLanguage } from './i18n';
 
+// Register service worker for offline caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW registration failed (e.g., offline), ignore
+    });
+  });
+}
+
 const bootstrap = async () => {
   // The Android Tauri shell applies window insets as native padding, so stop
   // CSS env() from adding the same status/navigation bar space a second time.

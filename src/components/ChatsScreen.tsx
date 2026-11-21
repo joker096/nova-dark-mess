@@ -68,8 +68,7 @@ interface ChatsScreenProps {
   onOpenAnonymous?: () => void;
   onOpenFolders?: () => void;
   activeChatId?: string;
-  activeNavTab?: 'chats' | 'channel' | 'folders' | 'profile' | 'settings' | 'mesh-map';
-  onOpenMeshMap?: () => void;
+  activeNavTab?: 'chats' | 'channel' | 'folders' | 'settings';
   stories?: Story[];
   channels?: ChannelInfo[];
   localFingerprint?: string;
@@ -140,7 +139,6 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     onOpenPremium,
     onOpenAnonymous,
     onOpenFolders,
-    onOpenMeshMap,
     activeChatId,
     activeNavTab,
     stories = MOCK_STORIES,
@@ -491,13 +489,6 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             setEditingFolder(null);
             setIsFolderModalOpen(true);
           },
-    },
-    {
-      key: 'mesh-map',
-      label: t('meshMap.title'),
-      icon: MapPin,
-      active: activeNavTab === 'mesh-map',
-      onClick: onOpenMeshMap,
     },
     {
       key: 'settings',
@@ -1411,7 +1402,7 @@ onClick={() => {
           `safe-bottom-nav` offset keeps the thumb zone off the gesture bar
           while still tracking the screen's own layout. */}
       <div className="absolute bottom-0 safe-bottom-nav inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
-        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-5 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
+        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-4 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
           {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
             <button
               key={key}
@@ -1421,15 +1412,12 @@ onClick={() => {
               aria-current={active ? 'page' : undefined}
               className={`relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 ${
                 active
-                  ? 'bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
-                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]'
               }`}
             >
-              <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'stroke-[2.4]' : ''}`} />
-              <span className="max-w-full truncate px-0.5 text-[9.5px] font-semibold leading-none">{label}</span>
-              {active && (
-                <span className="absolute top-1 h-1 w-1 rounded-full bg-[var(--nova-accent-color)]" />
-              )}
+              <Icon className={`w-[20px] h-[20px] shrink-0 ${active ? 'fill-current stroke-none' : 'stroke-[2]'}`} />
+              <span className="max-w-full truncate px-1 text-[10px] font-semibold leading-none">{label}</span>
             </button>
           ))}
         </nav>

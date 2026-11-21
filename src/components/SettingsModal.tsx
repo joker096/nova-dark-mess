@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -49,6 +49,15 @@ import {
 } from '../lib/ui/appearance';
 
 import type { BotSession } from '../lib/bots/session';
+import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest';
+import { novafatherManifest } from '../../examples/bots/novafather/manifest';
+import { echoBotManifest } from '../../examples/bots/echo/manifest';
+
+const AVAILABLE_BUILTIN_BOTS: BotManifest[] = [
+  movieCatalogBotManifest,
+  novafatherManifest,
+  echoBotManifest,
+];
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -62,6 +71,8 @@ interface SettingsModalProps {
   onBotInstallHandled?: () => void;
   /** Opens (or starts) a conversation with an installed bot. */
   onOpenBotChat?: (botId: string) => void;
+  /** Opens the Mesh Map screen. */
+  onOpenMeshMap?: () => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'nova_messenger_settings';
@@ -170,6 +181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   pendingBotInstall,
   onBotInstallHandled,
   onOpenBotChat,
+  onOpenMeshMap,
 }) => {
   const { t } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
@@ -1289,6 +1301,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             icon={<ShieldAlert className="w-3.5 h-3.5" />}
             title={t('settings.anonymity')}
           />
+
+          {onOpenMeshMap && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenMeshMap?.();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+            >
+              <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-white/90">{t('meshMap.title')}</p>
+                <p className="text-[10.5px] text-[#8c919d] truncate">{t('meshMap.subtitle', { defaultValue: 'Visual radar of nearby relay nodes' })}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+            </button>
+          )}
 
           {/* Multi-relay (Этап 6.3) */}
           <ToggleRow
@@ -2447,6 +2479,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {installError && (
                 <div className="text-[10px] text-red-400 px-1">{installError}</div>
               )}
+
+              {/* Available built-in bots */}
+              <div className="pt-2 border-t border-white/5">
+                <h4 className="text-[10px] font-semibold text-white/60 mb-2 uppercase tracking-wide">{t('bot.availableTitle', { defaultValue: 'Available bots' })}</h4>
+                <div className="space-y-1.5">
+                  {AVAILABLE_BUILTIN_BOTS
+                    .filter((manifest) => !getBots().some((b) => b.manifest.id === manifest.id))
+                    .map((manifest) => (
+                      <div
+                        key={manifest.id}
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                            {manifest.id === 'movie_catalog' && <Film className="w-4 h-4" />}
+                            {manifest.id === 'novafather' && <Bot className="w-4 h-4" />}
+                            {manifest.id === 'echo' && <Settings className="w-4 h-4" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-semibold text-white truncate">{manifest.name}</p>
+                            <p className="text-[10px] text-[#8c9198] truncate">
+                              @{manifest.username} · {t('bot.builtin', { defaultValue: 'Built-in' })}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => requestInstall(manifest)}
+                          className="px-3 py-1.5 rounded-lg bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[10px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" />
+                          {t('bot.install', { defaultValue: 'Install' })}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
               <p className="px-1 pt-1 text-[10px] leading-relaxed text-[#8c919d]">
                 {t('bot.openChatHint', {
                   defaultValue:

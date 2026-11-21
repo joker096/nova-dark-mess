@@ -151,11 +151,10 @@ export default function App() {
     let transportManager: TransportManager | null = null;
     let unsubscribeCallInvite: (() => void) | null = null;
     const start = async () => {
-      const identityKeys = identityPrivateKeys(identity);
       signaling = new P2PSignalingClient({
         url: resolveSignalingUrl(),
         registerFingerprint: identity.fingerprint,
-        signingPrivateKey: bufferToBase64(identityKeys.ed25519Secret),
+        signingPrivateKey: identity.privateKeyRaw ? bufferToBase64(identityPrivateKeys(identity).ed25519Secret) : undefined,
         signingPublicKey: identity.signingPublicKey,
       });
       setCallSignaling(signaling);

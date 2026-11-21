@@ -1930,7 +1930,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const client = sharedCallSignaling ?? new P2PSignalingClient({
       url: signalingUrl,
       registerFingerprint: localFingerprint,
-      signingPrivateKey: identity ? bufferToBase64(identityPrivateKeys(identity).ed25519Secret) : undefined,
+      signingPrivateKey: identity?.privateKeyRaw ? bufferToBase64(identityPrivateKeys(identity).ed25519Secret) : undefined,
       signingPublicKey: identity?.signingPublicKey,
     });
     callSignalingRef.current = client;
