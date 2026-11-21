@@ -118,6 +118,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
+import { P2PSignalingClient } from '../lib/p2p/signaling';
+import { resolveSignalingUrl, resolveTurnServers } from '../lib/p2p/signalingConfig';
 import { loadPrivacyPrefs } from '../lib/network/privacyMode';
 import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
 import { wrapGroupPayload } from '../lib/p2p/groupWire';
@@ -151,19 +153,6 @@ import { editMessage } from '../lib/messaging/messageLifecycle';
 import { markChatRead } from '../lib/messaging/unread';
 import { playSound, vibrate } from '../lib/notifications/sounds';
 import type { PeerKeyChange } from '../lib/security/peerKeyJournal';
-
-const DEMO_PEER_BUNDLE_PREFIX = 'nova_demo_peer_bundle_';
-
-function getDemoPeerFingerprint(chatId: string): string | null {
-  try {
-    const raw = localStorage.getItem(`${DEMO_PEER_BUNDLE_PREFIX}${chatId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { fingerprint?: string };
-    return parsed.fingerprint ?? null;
-  } catch {
-    return null;
-  }
-}
 
 interface ChatScreenProps {
   chatId: string;
@@ -1318,6 +1307,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     'connecting' | 'connected' | 'failed' | undefined
   >(undefined);
   const mediaCallRef = useRef<P2PMediaCall | null>(null);
+  const callSignalingRef = useRef<P2PSignalingClient | null>(null);
+  const callInviteTimerRef = useRef<number | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{
+    callId: string;
+    mode: MediaCallMode;
+    from: string;
+  } | null>(null);
+  const [outgoingCall, setOutgoingCall] = useState<{
+    callId: string;
+    mode: MediaCallMode;
+    target: string;
+  } | null>(null);
+  const incomingCallRef = useRef(incomingCall);
+  const outgoingCallRef = useRef(outgoingCall);
 
   // Pinned Messages Carousel State
   const [isPinnedCarouselOpen, setIsPinnedCarouselOpen] = useState(false);
@@ -1831,62 +1834,295 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     handleSelectWallpaper(nextId);
   };
 
-  // Media Call Handlers (WebRTC audio/video, simulated fallback when no peer)
-  const stopActiveMediaCall = () => {
+  // Media Call Handlers (WebRTC audio/video over the signaling server).
+  const clearCallInviteTimer = useCallback(() => {
+    if (callInviteTimerRef.current !== null) {
+      window.clearTimeout(callInviteTimerRef.current);
+      callInviteTimerRef.current = null;
+    }
+  }, []);
+
+  const stopActiveMediaCall = useCallback(() => {
     mediaCallRef.current?.end();
     mediaCallRef.current = null;
     setLocalCallStream(null);
     setRemoteCallStream(null);
     setCallConnectionStatus(undefined);
-  };
+  }, []);
+
+  const beginMediaCall = useCallback(
+    (mode: MediaCallMode, target: string, callId: string): boolean => {
+      const localFingerprint = identity?.fingerprint;
+      const signaling = callSignalingRef.current;
+      if (!localFingerprint || !signaling) {
+        setCallConnectionStatus('failed');
+        triggerPinnedToast('Signaling server is not configured');
+        return false;
+      }
+
+      const privacyPrefs = loadPrivacyPrefs();
+      const turnServers =
+        privacyPrefs.turnServers.length > 0 ? privacyPrefs.turnServers : resolveTurnServers();
+      if (privacyPrefs.webrtcRelayOnly && turnServers.length === 0) {
+        setCallConnectionStatus('failed');
+        triggerPinnedToast('TURN is required for relay-only calls; configure it in Settings → Privacy');
+        return false;
+      }
+
+      const call = new P2PMediaCall({
+        localFingerprint,
+        peerFingerprint: target,
+        mode,
+        signaling,
+        // Relay-only ICE hides the local IP from the peer; the user opts in via
+        // Settings → Privacy (WebRTC IP privacy) and needs a TURN server.
+        icePolicy: privacyPrefs.webrtcRelayOnly ? 'relay-only' : 'direct',
+        iceServers: turnServers.length > 0 ? turnServers : undefined,
+      });
+      mediaCallRef.current = call;
+      outgoingCallRef.current = { callId, mode, target };
+      setOutgoingCall({ callId, mode, target });
+      setCallConnectionStatus('connecting');
+
+      call.onLocalStream((stream) => setLocalCallStream(stream));
+      call.onRemoteStream((stream) => setRemoteCallStream(stream));
+      call.onStatus((status: MediaCallStatus) => {
+        if (status === 'connecting' || status === 'connected' || status === 'failed') {
+          setCallConnectionStatus(status);
+        }
+        if (status === 'connected') {
+          triggerPinnedToast(`${mode === 'voice' ? 'Voice' : 'Video'} call connected`);
+        }
+      });
+      call.onError(() => setCallConnectionStatus('failed'));
+
+      void call.start();
+      return true;
+    },
+    [identity?.fingerprint, triggerPinnedToast],
+  );
+
+  // Always-on call-control socket for the active conversation. It carries
+  // invite/accept/decline/end only; SDP and ICE reuse the same connection once
+  // P2PMediaCall starts.
+  useEffect(() => {
+    const localFingerprint = identity?.fingerprint;
+    if (!localFingerprint || isGroupChat) return;
+
+    const signalingUrl = resolveSignalingUrl();
+    if (!signalingUrl) return;
+
+    const client = new P2PSignalingClient({ url: signalingUrl });
+    callSignalingRef.current = client;
+
+    const unsubscribe = client.onMessage((message) => {
+      if (message.targetFingerprint !== localFingerprint) return;
+      if (!peerFingerprint || message.senderFingerprint !== peerFingerprint) return;
+
+      const payload = (message.payload ?? {}) as {
+        callId?: unknown;
+        mode?: unknown;
+      };
+      const callId = typeof payload.callId === 'string' ? payload.callId : null;
+      if (!callId) return;
+
+      if (message.type === 'call_invite') {
+        const mode = payload.mode === 'voice' || payload.mode === 'video' ? payload.mode : null;
+        if (!mode) return;
+        if (mediaCallRef.current || incomingCallRef.current || outgoingCallRef.current) {
+          void client.sendSignal({
+            type: 'call_decline',
+            senderFingerprint: localFingerprint,
+            targetFingerprint: message.senderFingerprint,
+            payload: { callId },
+          });
+          return;
+        }
+        incomingCallRef.current = { callId, mode, from: message.senderFingerprint };
+        setIncomingCall({ callId, mode, from: message.senderFingerprint });
+        return;
+      }
+
+      if (message.type === 'call_accept') {
+        if (outgoingCallRef.current?.callId !== callId) return;
+        clearCallInviteTimer();
+        const pending = outgoingCallRef.current;
+        if (!beginMediaCall(pending.mode, pending.target, callId)) {
+          void client.sendSignal({
+            type: 'call_end',
+            senderFingerprint: localFingerprint,
+            targetFingerprint: pending.target,
+            payload: { callId },
+          });
+          outgoingCallRef.current = null;
+          setOutgoingCall(null);
+          setIsVideoCallOpen(false);
+        }
+        return;
+      }
+
+      if (message.type === 'call_decline') {
+        if (outgoingCallRef.current?.callId !== callId) return;
+        clearCallInviteTimer();
+        outgoingCallRef.current = null;
+        setOutgoingCall(null);
+        setIsVideoCallOpen(false);
+        triggerPinnedToast('Call declined');
+        return;
+      }
+
+      if (message.type === 'call_end') {
+        if (incomingCallRef.current?.callId === callId) {
+          incomingCallRef.current = null;
+          setIncomingCall(null);
+          triggerPinnedToast('Call ended');
+          return;
+        }
+        if (outgoingCallRef.current?.callId !== callId) return;
+        clearCallInviteTimer();
+        stopActiveMediaCall();
+        outgoingCallRef.current = null;
+        setOutgoingCall(null);
+        setIsVideoCallOpen(false);
+        setIsVideoCallMinimized(false);
+        triggerPinnedToast('Call ended');
+      }
+    });
+
+    void client.connect();
+    return () => {
+      unsubscribe();
+      client.close();
+      if (callSignalingRef.current === client) callSignalingRef.current = null;
+    };
+  }, [
+    beginMediaCall,
+    clearCallInviteTimer,
+    identity?.fingerprint,
+    isGroupChat,
+    peerFingerprint,
+    stopActiveMediaCall,
+    triggerPinnedToast,
+  ]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+  useEffect(() => {
+    outgoingCallRef.current = outgoingCall;
+  }, [outgoingCall]);
 
   const handleStartCall = (mode: MediaCallMode) => {
     stopActiveMediaCall();
+    clearCallInviteTimer();
     setCallMode(mode);
-    setIsVideoCallOpen(true);
+    setIsVideoCallOpen(false);
     setIsVideoCallMinimized(false);
     setIsCallMicOn(true);
     setIsCallCameraOn(mode === 'video');
     setCallConnectionStatus(undefined);
-    triggerPinnedToast(`Starting ${mode} call with ${profile.name}...`);
 
-    const peerFingerprint = getDemoPeerFingerprint(chatId);
+    const targetFingerprint = peerFingerprint;
     const localFingerprint = identity?.fingerprint;
+    const signaling = callSignalingRef.current;
     const canUseRealMedia =
-      Boolean(peerFingerprint && localFingerprint) &&
+      Boolean(targetFingerprint && localFingerprint && signaling) &&
+      isDemo === false &&
       typeof navigator !== 'undefined' &&
       Boolean(navigator.mediaDevices?.getUserMedia);
 
-    if (!canUseRealMedia || !peerFingerprint || !localFingerprint) {
+    if (!canUseRealMedia || !targetFingerprint || !localFingerprint || !signaling) {
+      triggerPinnedToast(
+        isDemo === false && !signaling
+          ? 'Signaling server is not configured'
+          : 'A real peer with a verified key is required for calls',
+      );
+      setCallConnectionStatus('failed');
+      setIsVideoCallOpen(true);
       return;
     }
 
-    const privacyPrefs = loadPrivacyPrefs();
-    const call = new P2PMediaCall({
-      localFingerprint,
-      peerFingerprint,
-      mode,
-      // Relay-only ICE hides the local IP from the peer; the user opts in via
-      // Settings → Privacy (WebRTC IP privacy) and needs a TURN server.
-      icePolicy: privacyPrefs.webrtcRelayOnly ? 'relay-only' : 'direct',
-      iceServers: privacyPrefs.turnServers.length > 0 ? privacyPrefs.turnServers : undefined,
-    });
-    mediaCallRef.current = call;
+    const callId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `call_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    outgoingCallRef.current = { callId, mode, target: targetFingerprint };
+    setOutgoingCall({ callId, mode, target: targetFingerprint });
+    setCallMode(mode);
+    setIsVideoCallOpen(true);
     setCallConnectionStatus('connecting');
+    triggerPinnedToast(`Calling ${profile.name}...`);
 
-    call.onLocalStream((stream) => setLocalCallStream(stream));
-    call.onRemoteStream((stream) => setRemoteCallStream(stream));
-    call.onStatus((status: MediaCallStatus) => {
-      if (status === 'connecting' || status === 'connected' || status === 'failed') {
-        setCallConnectionStatus(status);
-      }
-      if (status === 'connected') {
-        triggerPinnedToast(`${mode === 'voice' ? 'Voice' : 'Video'} call connected`);
-      }
+    void signaling.sendSignal({
+      type: 'call_invite',
+      senderFingerprint: localFingerprint,
+      targetFingerprint,
+      payload: { callId, mode },
     });
-    call.onError(() => setCallConnectionStatus('failed'));
 
-    void call.start();
+    callInviteTimerRef.current = window.setTimeout(() => {
+      callInviteTimerRef.current = null;
+      if (outgoingCallRef.current?.callId !== callId) return;
+      void signaling.sendSignal({
+        type: 'call_end',
+        senderFingerprint: localFingerprint,
+        targetFingerprint,
+        payload: { callId },
+      });
+      outgoingCallRef.current = null;
+      setOutgoingCall(null);
+      setIsVideoCallOpen(false);
+      setCallConnectionStatus('failed');
+      triggerPinnedToast(`${profile.name} is unavailable`);
+    }, 30_000);
+  };
+
+  const handleAcceptIncomingCall = () => {
+    const incoming = incomingCall;
+    const localFingerprint = identity?.fingerprint;
+    const signaling = callSignalingRef.current;
+    if (!incoming || !localFingerprint || !signaling) return;
+
+    incomingCallRef.current = null;
+    setIncomingCall(null);
+    setCallMode(incoming.mode);
+    setIsVideoCallOpen(true);
+    setIsVideoCallMinimized(false);
+    setIsCallMicOn(true);
+    setIsCallCameraOn(incoming.mode === 'video');
+
+    void signaling.sendSignal({
+      type: 'call_accept',
+      senderFingerprint: localFingerprint,
+      targetFingerprint: incoming.from,
+      payload: { callId: incoming.callId },
+    });
+    if (!beginMediaCall(incoming.mode, incoming.from, incoming.callId)) {
+      void signaling.sendSignal({
+        type: 'call_end',
+        senderFingerprint: localFingerprint,
+        targetFingerprint: incoming.from,
+        payload: { callId: incoming.callId },
+      });
+      setIsVideoCallOpen(false);
+    }
+  };
+
+  const handleDeclineIncomingCall = () => {
+    const incoming = incomingCall;
+    const localFingerprint = identity?.fingerprint;
+    const signaling = callSignalingRef.current;
+    if (incoming && localFingerprint && signaling) {
+      void signaling.sendSignal({
+        type: 'call_decline',
+        senderFingerprint: localFingerprint,
+        targetFingerprint: incoming.from,
+        payload: { callId: incoming.callId },
+      });
+    }
+    incomingCallRef.current = null;
+    setIncomingCall(null);
   };
 
   const handleStartVideoCall = () => handleStartCall('video');
@@ -1894,6 +2130,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleEndVideoCall = (durationFormatted: string) => {
     const mode = callMode;
+    const pendingCall = outgoingCallRef.current ?? outgoingCall;
+    const callId = pendingCall?.callId;
+    const target = pendingCall?.target;
+    const localFingerprint = identity?.fingerprint;
+    if (callId && target && localFingerprint) {
+      void callSignalingRef.current?.sendSignal({
+        type: 'call_end',
+        senderFingerprint: localFingerprint,
+        targetFingerprint: target,
+        payload: { callId },
+      });
+    }
+    clearCallInviteTimer();
+    outgoingCallRef.current = null;
+    setOutgoingCall(null);
     stopActiveMediaCall();
     setIsVideoCallOpen(false);
     setIsVideoCallMinimized(false);
@@ -1914,6 +2165,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     return () => {
       mediaCallRef.current?.end();
       mediaCallRef.current = null;
+      if (callInviteTimerRef.current !== null) {
+        window.clearTimeout(callInviteTimerRef.current);
+        callInviteTimerRef.current = null;
+      }
+      incomingCallRef.current = null;
+      outgoingCallRef.current = null;
+      setIncomingCall(null);
+      setOutgoingCall(null);
+      setIsVideoCallOpen(false);
     };
   }, [chatId]);
 
@@ -6023,6 +6283,39 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   {t('common.cancel')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {incomingCall && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6">
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#111318] p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 text-[var(--nova-accent-color,#ff4e18)]">
+              {incomingCall.mode === 'video' ? <Video className="h-7 w-7" /> : <Phone className="h-7 w-7" />}
+            </div>
+            <p className="text-xs uppercase tracking-widest text-white/50">
+              {t('videoCall.incomingCall')}
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-white">{profile.name}</h3>
+            <p className="mt-1 text-xs text-white/50">
+              {incomingCall.mode === 'video' ? 'Video call' : 'Voice call'}
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={handleDeclineIncomingCall}
+                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08]"
+              >
+                {t('videoCall.decline')}
+              </button>
+              <button
+                type="button"
+                onClick={handleAcceptIncomingCall}
+                className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
+              >
+                {t('videoCall.accept')}
+              </button>
             </div>
           </div>
         </div>

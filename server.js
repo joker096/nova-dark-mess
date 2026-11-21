@@ -9,8 +9,9 @@
  * Design constraints (see ROADMAP.md "Guiding constraints"):
  *   - No PII collection: the IPN handler stores only a signed, hash-chained
  *     receipt (payment id + timestamp + plan + amount). No email, no name.
- *   - No extra servers for core functionality: this endpoint is the only
- *     server the promo site needs; messaging/calls/etc. stay P2P.
+ *   - No extra servers for core functionality: this process also exposes the
+ *     small WebRTC signaling bus (`/api/signaling`); messages and media stay
+ *     P2P (media may be relayed by an external TURN server).
  *   - Stateful by design for receipts: a small `receipts/` directory on disk
  *     (one JSON file per payment id) is the only persistent state.
  *
@@ -24,6 +25,7 @@
  *   node server.js
  */
 import express from 'express';
+import { WebSocketServer } from 'ws';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -42,6 +44,17 @@ import {
   isPowSolution,
   verifyPow,
 } from './src/lib/anon/spam.js';
+
+// Node 22 ships a synchronous SQLite driver. It is experimental, so the relay
+// must still boot on a runtime without it (memory-only fallback). Use
+// getBuiltinModule rather than a static import so Vite-based server tests do
+// not try to bundle the builtin.
+let DatabaseSync = null;
+try {
+  ({ DatabaseSync } = process.getBuiltinModule('node:sqlite') ?? {});
+} catch {
+  DatabaseSync = null;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1221,6 +1234,9 @@ const ANON_SPAM_BLOCK_QUEUES = 3;
 // expiry, so a late report is still accepted (and still deduped by queue).
 const ANON_REPORT_VERIFY_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const ANON_PACKET_PROFILES = new Set([4096, 16384, 65536]);
+// Free, local persistence for queues. On a VDS the file survives restarts; on
+// a container host mount a persistent volume at this path. Empty disables it.
+const ANON_STATE_DB_PATH = (process.env.ANON_STATE_DB_PATH ?? path.join(__dirname, 'anon-state.sqlite')).trim();
 // Push split (phase F): the notification server stores only pushToken -> queueId.
 // Push bodies are empty ("check the relay"); no sender, no content ever leaves
 // the device through this path.
@@ -1254,6 +1270,211 @@ const anonSpamQueuesByKey = new Map();
 const anonQueueOwners = new Map();
 const anonRoutingNonces = new Map();
 const anonCommandNonces = new Map();
+
+// ── Queue persistence ──────────────────────────────────────────────────────
+// Store one row per queue instead of a process-wide snapshot: a single large
+// message must not rewrite every other queue, and a corrupt row can be dropped
+// without losing the rest. Packets are already encrypted; the database only
+// stores the same opaque payloads and hashed tokens the process held in RAM.
+let anonStateStore = null;
+let anonStateWriteWarned = false;
+
+function anonOpenStateDb() {
+  if (!DatabaseSync || !ANON_STATE_DB_PATH) return null;
+  try {
+    if (ANON_STATE_DB_PATH !== ':memory:') {
+      fs.mkdirSync(path.dirname(ANON_STATE_DB_PATH), { recursive: true });
+    }
+    const db = new DatabaseSync(ANON_STATE_DB_PATH);
+    db.exec(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA synchronous = FULL;
+      CREATE TABLE IF NOT EXISTS anon_queue_state (
+        queue_id TEXT PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS anon_owner_state (
+        queue_id_hash TEXT PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    return {
+      db,
+      upsertQueue: db.prepare(
+        `INSERT INTO anon_queue_state (queue_id, state, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(queue_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
+      ),
+      deleteQueue: db.prepare('DELETE FROM anon_queue_state WHERE queue_id = ?'),
+      selectQueues: db.prepare('SELECT queue_id, state FROM anon_queue_state'),
+      upsertOwner: db.prepare(
+        `INSERT INTO anon_owner_state (queue_id_hash, state, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(queue_id_hash) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
+      ),
+      deleteOwner: db.prepare('DELETE FROM anon_owner_state WHERE queue_id_hash = ?'),
+      selectOwners: db.prepare('SELECT queue_id_hash, state FROM anon_owner_state'),
+    };
+  } catch (err) {
+    console.warn('[anon] queue persistence disabled', {
+      error: String(err && err.message ? err.message : err),
+    });
+    return null;
+  }
+}
+
+function anonQueueState(queue) {
+  return JSON.stringify({
+    queueId: queue.queueId,
+    queueIdHash: queue.queueIdHash,
+    senderTokenHash: queue.senderTokenHash,
+    recipientTokenHash: queue.recipientTokenHash,
+    signingPublicKey: queue.signingPublicKey ?? null,
+    pow: queue.pow ?? null,
+    powUsed: Boolean(queue.powUsed),
+    inviteTokenHash: queue.inviteTokenHash ?? null,
+    createdAt: queue.createdAt,
+    expiresAt: queue.expiresAt,
+    packets: [...queue.packets.values()],
+  });
+}
+
+function anonPersistQueue(queue) {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.upsertQueue.run(queue.queueId, anonQueueState(queue), Date.now());
+  } catch (err) {
+    if (!anonStateWriteWarned) {
+      anonStateWriteWarned = true;
+      console.warn('[anon] could not persist queue state', {
+        error: String(err && err.message ? err.message : err),
+      });
+    }
+  }
+}
+
+function anonPersistOwner(queueIdHash, owner) {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.upsertOwner.run(queueIdHash, JSON.stringify(owner), Date.now());
+  } catch (err) {
+    if (!anonStateWriteWarned) {
+      anonStateWriteWarned = true;
+      console.warn('[anon] could not persist queue owner', {
+        error: String(err && err.message ? err.message : err),
+      });
+    }
+  }
+}
+
+function anonForgetOwner(queueIdHash) {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.deleteOwner.run(queueIdHash);
+  } catch {
+    // Best effort; cleanup retries on the next pass.
+  }
+}
+
+function anonForgetQueueState(queueId, queueIdHash) {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.deleteQueue.run(queueId);
+    if (queueIdHash) anonStateStore.deleteOwner.run(queueIdHash);
+  } catch (err) {
+    if (!anonStateWriteWarned) {
+      anonStateWriteWarned = true;
+      console.warn('[anon] could not delete queue state', {
+        error: String(err && err.message ? err.message : err),
+      });
+    }
+  }
+}
+
+function anonIsStoredQueue(state) {
+  return Boolean(
+    state &&
+      typeof state === 'object' &&
+      typeof state.queueId === 'string' &&
+      /^q_[0-9a-f]{32}$/.test(state.queueId) &&
+      typeof state.queueIdHash === 'string' &&
+      typeof state.senderTokenHash === 'string' &&
+      typeof state.recipientTokenHash === 'string' &&
+      (state.signingPublicKey === null || typeof state.signingPublicKey === 'string') &&
+      (state.inviteTokenHash === null || typeof state.inviteTokenHash === 'string') &&
+      Number.isFinite(state.createdAt) &&
+      Number.isFinite(state.expiresAt) &&
+      Array.isArray(state.packets),
+  );
+}
+
+function anonLoadState() {
+  if (!anonStateStore) return { queues: 0, owners: 0 };
+  const now = Date.now();
+  let queues = 0;
+  let owners = 0;
+  for (const row of anonStateStore.selectQueues.all()) {
+    let state = null;
+    try {
+      state = JSON.parse(row.state);
+    } catch {
+      state = null;
+    }
+    if (!anonIsStoredQueue(state) || now > state.expiresAt) {
+      try { anonStateStore.deleteQueue.run(row.queue_id); } catch { /* best effort */ }
+      continue;
+    }
+    const packets = new Map();
+    for (const packet of state.packets) {
+      if (
+        packet &&
+        typeof packet.packetId === 'string' &&
+        typeof packet.payload === 'string' &&
+        Number.isFinite(packet.createdAt) &&
+        Number.isFinite(packet.expiresAt) &&
+        now <= packet.expiresAt
+      ) {
+        packets.set(packet.packetId, packet);
+      }
+    }
+    state.packets = packets;
+    anonQueues.set(state.queueId, state);
+    queues += 1;
+  }
+  for (const row of anonStateStore.selectOwners.all()) {
+    let owner = null;
+    try {
+      owner = JSON.parse(row.state);
+    } catch {
+      owner = null;
+    }
+    if (!owner || !Number.isFinite(owner.expiresAt) || now > owner.expiresAt) {
+      try { anonStateStore.deleteOwner.run(row.queue_id_hash); } catch { /* best effort */ }
+      continue;
+    }
+    anonQueueOwners.set(row.queue_id_hash, owner);
+    owners += 1;
+  }
+  return { queues, owners };
+}
+
+export function closeAnonStateDb() {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.db.close();
+  } catch {
+    // Closing is best effort during shutdown and tests.
+  }
+  anonStateStore = null;
+}
+
+anonStateStore = anonOpenStateDb();
+const anonStateLoaded = anonLoadState();
+if (anonStateStore) {
+  console.log(
+    `[anon] queue persistence: ${ANON_STATE_DB_PATH} (${anonStateLoaded.queues} queues, ${anonStateLoaded.owners} owners loaded)`,
+  );
+}
 
 // Routing key: clients seal proxy-hop commands to this X25519 key, so the
 // proxy only forwards opaque envelopes. Pin the public key on clients.
@@ -1459,16 +1680,28 @@ function anonDecodeBase64(value) {
   }
 }
 
+function anonDropQueue(queueId) {
+  const queue = anonQueues.get(queueId);
+  if (!queue) return;
+  anonQueues.delete(queueId);
+  anonForgetQueueState(queueId, queue.queueIdHash);
+}
+
 function anonCleanup() {
   const now = Date.now();
   for (const [queueId, queue] of anonQueues) {
     if (now > queue.expiresAt) {
-      anonQueues.delete(queueId);
+      anonDropQueue(queueId);
       continue;
     }
+    let packetsChanged = false;
     for (const [packetId, packet] of queue.packets) {
-      if (now > packet.expiresAt) queue.packets.delete(packetId);
+      if (now > packet.expiresAt) {
+        queue.packets.delete(packetId);
+        packetsChanged = true;
+      }
     }
+    if (packetsChanged) anonPersistQueue(queue);
   }
   for (const [nonce, expiresAt] of anonRoutingNonces) {
     if (now > expiresAt) anonRoutingNonces.delete(nonce);
@@ -1486,7 +1719,10 @@ function anonCleanup() {
     }
   }
   for (const [queueIdHash, owner] of anonQueueOwners) {
-    if (now > owner.expiresAt) anonQueueOwners.delete(queueIdHash);
+    if (now > owner.expiresAt) {
+      anonQueueOwners.delete(queueIdHash);
+      anonForgetOwner(queueIdHash);
+    }
   }
 }
 
@@ -1564,7 +1800,7 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
   const recipientToken = anonRandomToken();
   const inviteToken = anonRandomToken();
   const now = Date.now();
-  anonQueues.set(queueId, {
+  const queue = {
     queueId,
     queueIdHash,
     senderTokenHash: anonHash(senderToken),
@@ -1576,11 +1812,15 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
     createdAt: now,
     expiresAt: now + ttl,
     packets: new Map(),
-  });
-  anonQueueOwners.set(queueIdHash, {
+  };
+  const owner = {
     signingKeyHash: effectiveSigningPublicKey ? anonHash(effectiveSigningPublicKey) : null,
     expiresAt: now + ttl + ANON_REPORT_VERIFY_GRACE_MS,
-  });
+  };
+  anonQueues.set(queueId, queue);
+  anonQueueOwners.set(queueIdHash, owner);
+  anonPersistQueue(queue);
+  anonPersistOwner(queueIdHash, owner);
   return {
     status: 201,
     body: { ok: true, queueId, senderToken, recipientToken, inviteToken, expiresAt: now + ttl },
@@ -1595,7 +1835,7 @@ function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
   if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
   const now = Date.now();
   if (now > queue.expiresAt) {
-    anonQueues.delete(queueId);
+    anonDropQueue(queueId);
     return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
   }
   if (!anonTokenMatches(senderToken, queue.senderTokenHash)) {
@@ -1646,6 +1886,7 @@ function anonEnqueue(queueId, senderToken, packet, auth, pow, inviteToken) {
     createdAt: now,
     expiresAt,
   });
+  anonPersistQueue(queue);
   anonPushNotify(queueId);
   return { status: 202, body: { ok: true, packetId, expiresAt } };
 }
@@ -1658,7 +1899,7 @@ function anonPoll(queueId, recipientToken, limit, auth) {
   if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
   const now = Date.now();
   if (now > queue.expiresAt) {
-    anonQueues.delete(queueId);
+    anonDropQueue(queueId);
     return { status: 410, body: { ok: false, reason: 'QUEUE_EXPIRED' } };
   }
   if (!anonTokenMatches(recipientToken, queue.recipientTokenHash)) {
@@ -1695,6 +1936,7 @@ function anonAck(queueId, recipientToken, packetIds, auth) {
   for (const id of packetIds) {
     if (typeof id === 'string') queue.packets.delete(id);
   }
+  anonPersistQueue(queue);
   return { status: 200, body: { ok: true } };
 }
 
@@ -1709,7 +1951,7 @@ function anonDeleteQueue(queueId, recipientToken, auth) {
   }
   const authError = anonVerifyCommand(queue, 'delete_queue', { queueId, token: recipientToken }, auth);
   if (authError) return authError;
-  anonQueues.delete(queueId);
+  anonDropQueue(queueId);
   return { status: 200, body: { ok: true } };
 }
 
@@ -2112,6 +2354,113 @@ app.post('/api/anon/hop', async (req, res) => {
 
 
 // ───────────────────────────────────────────────────────────────────────────
+// WebRTC signaling
+// ───────────────────────────────────────────────────────────────────────────
+// A deliberately dumb message bus: each browser binds a connection to its
+// identity fingerprint on the first message, and messages are forwarded only
+// to the sockets registered for `targetFingerprint`. SDP and ICE payloads are
+// opaque here; DTLS-SRTP encrypts the media itself. An offline peer is not
+// queued — calls are live, and signaling clients reconnect and retry.
+function attachSignaling(httpServer) {
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/api/signaling',
+    maxPayload: 64 * 1024,
+  });
+  /** @type {Map<string, Set<import('ws').WebSocket>>} */
+  const peers = new Map();
+
+  const unregister = (ws) => {
+    const fingerprint = ws.novaFingerprint;
+    if (!fingerprint) return;
+    const sockets = peers.get(fingerprint);
+    if (!sockets) return;
+    sockets.delete(ws);
+    if (sockets.size === 0) peers.delete(fingerprint);
+  };
+
+  wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.novaFingerprint = null;
+    ws.novaWindowStart = Date.now();
+    ws.novaWindowCount = 0;
+
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
+
+    ws.on('message', (raw) => {
+      const now = Date.now();
+      if (now - ws.novaWindowStart > 60_000) {
+        ws.novaWindowStart = now;
+        ws.novaWindowCount = 0;
+      }
+      ws.novaWindowCount += 1;
+      if (ws.novaWindowCount > 240) {
+        ws.close(1008, 'RATE_LIMITED');
+        return;
+      }
+
+      let message;
+      try {
+        message = JSON.parse(String(raw));
+      } catch {
+        return;
+      }
+      if (!message || typeof message !== 'object') return;
+
+      const sender = message.senderFingerprint;
+      const target = message.targetFingerprint;
+      if (typeof sender !== 'string' || sender.length < 8 || sender.length > 200) return;
+
+      if (!ws.novaFingerprint) {
+        ws.novaFingerprint = sender;
+        let sockets = peers.get(sender);
+        if (!sockets) {
+          sockets = new Set();
+          peers.set(sender, sockets);
+        }
+        sockets.add(ws);
+      } else if (ws.novaFingerprint !== sender) {
+        // A connection may not switch identities mid-stream.
+        ws.close(1008, 'FINGERPRINT_MISMATCH');
+        return;
+      }
+
+      if (message.type === 'ping') return;
+      if (typeof target !== 'string' || target.length < 8 || target.length > 200) return;
+      if (target === sender) return;
+
+      const sockets = peers.get(target);
+      if (!sockets || sockets.size === 0) return;
+      const encoded = JSON.stringify(message);
+      for (const socket of sockets) {
+        if (socket.readyState === 1) socket.send(encoded);
+      }
+    });
+
+    ws.on('close', () => unregister(ws));
+    ws.on('error', () => unregister(ws));
+  });
+
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) {
+        unregister(ws);
+        ws.terminate();
+        continue;
+      }
+      ws.isAlive = false;
+      ws.ping();
+    }
+  }, 30_000);
+  heartbeat.unref?.();
+
+  wss.on('close', () => clearInterval(heartbeat));
+  return wss;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Boot
 // ───────────────────────────────────────────────────────────────────────────
 // Bind a port only when this file is the entry point. `path.resolve` handles
@@ -2121,14 +2470,16 @@ const isMainModule =
   typeof process.argv[1] === 'string' && path.resolve(process.argv[1]) === __filename;
 
 if (isMainModule) {
-  app.listen(PORT, () => {
+  const httpServer = app.listen(PORT, () => {
     console.log(`Mess&Anger server on :${PORT}`);
+    console.log(`  signaling → ws://localhost:${PORT}/api/signaling`);
     console.log(`  landing  →  http://localhost:${PORT}/`);
     console.log(`  IPN      →  http://localhost:${PORT}/api/paymento/ipn  (HTTP POST)`);
     console.log(`  receipts →  ${RECEIPTS_DIR}`);
     console.log(`  reports  →  ${ANON_REPORTS_DIR} (${anonReportsLoaded} loaded)`);
   });
+  attachSignaling(httpServer);
 }
 
-export { app };
+export { app, attachSignaling };
 export default app;

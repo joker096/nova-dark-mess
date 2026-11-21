@@ -8,7 +8,11 @@ export type SignalingMessageType =
   | 'pow_challenge'
   | 'presence'
   | 'prekey_request'
-  | 'prekey_bundle';
+  | 'prekey_bundle'
+  | 'call_invite'
+  | 'call_accept'
+  | 'call_decline'
+  | 'call_end';
 
 export interface SignalingMessage {
   type: SignalingMessageType;

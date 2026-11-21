@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { WebSocket, type WebSocketServer } from 'ws';
 import { generateQueueSigningKeyPair, signQueueCommand } from './lib/anon/signing';
 
 const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'nova-server-test-'));
@@ -21,10 +22,13 @@ process.env.ORDERS_DIR = path.join(TMP_ROOT, 'orders');
 process.env.LICENSES_DIR = path.join(TMP_ROOT, 'licenses');
 process.env.GIFTS_DIR = path.join(TMP_ROOT, 'gifts');
 process.env.ANON_REPORTS_DIR = path.join(TMP_ROOT, 'anon-reports');
+process.env.ANON_STATE_DB_PATH = path.join(TMP_ROOT, 'anon-state.sqlite');
 process.env.PAYMENTO_SECRET = '';
 process.env.ADMIN_TOKEN = '';
 
 let server: http.Server;
+let signalingServer: WebSocketServer | null = null;
+const openSockets: WebSocket[] = [];
 let baseUrl = '';
 
 async function call(
@@ -46,16 +50,72 @@ async function call(
   };
 }
 
+let closeAnonStateDb: (() => void) | null = null;
+
 beforeAll(async () => {
-  const { default: app } = await import('../server.js');
+  const { default: app, closeAnonStateDb: closeDb, attachSignaling } = await import('../server.js');
+  closeAnonStateDb = closeDb;
   server = http.createServer(app);
+  signalingServer = attachSignaling(server);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
+  for (const socket of openSockets) socket.close();
+  await new Promise<void>((resolve) => {
+    if (!signalingServer) return resolve();
+    signalingServer.close(() => resolve());
+  });
   await new Promise<void>((resolve) => server.close(() => resolve()));
+  closeAnonStateDb?.();
   fs.rmSync(TMP_ROOT, { recursive: true, force: true });
+});
+
+describe('server: WebRTC signaling', () => {
+  const connect = (fingerprint: string) =>
+    new Promise<WebSocket>((resolve, reject) => {
+      const socket = new WebSocket(`${baseUrl.replace('http', 'ws')}/api/signaling`);
+      openSockets.push(socket);
+      socket.once('open', () => {
+        socket.send(JSON.stringify({ type: 'ping', senderFingerprint: fingerprint }));
+        resolve(socket);
+      });
+      socket.once('error', reject);
+    });
+
+  it('routes a call invite only to the target fingerprint and refuses identity switching', async () => {
+    const alice = await connect('nova_pk_alice_signaling');
+    const bob = await connect('nova_pk_bob_signaling');
+
+    const received = new Promise<any>((resolve, reject) => {
+      bob.on('message', (raw) => resolve(JSON.parse(String(raw))));
+      setTimeout(() => reject(new Error('message not routed')), 2000);
+    });
+
+    alice.send(
+      JSON.stringify({
+        type: 'call_invite',
+        senderFingerprint: 'nova_pk_alice_signaling',
+        targetFingerprint: 'nova_pk_bob_signaling',
+        payload: { callId: 'call-1', mode: 'voice' },
+      }),
+    );
+
+    const message = await received;
+    expect(message.type).toBe('call_invite');
+    expect(message.payload).toEqual({ callId: 'call-1', mode: 'voice' });
+
+    const closed = new Promise<number>((resolve) => alice.once('close', (code) => resolve(code)));
+    alice.send(
+      JSON.stringify({
+        type: 'ping',
+        senderFingerprint: 'nova_pk_mallory_signaling',
+        targetFingerprint: 'nova_pk_bob_signaling',
+      }),
+    );
+    expect(await closed).toBe(1008);
+  });
 });
 
 describe('server: baseline routes', () => {

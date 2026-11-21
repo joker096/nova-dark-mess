@@ -163,6 +163,27 @@ describe('P2PMediaCall', () => {
     expect(statuses).toContain('ended');
   });
 
+  it('reuses an injected signaling client and leaves it open on end', async () => {
+    const shared = {
+      connect: vi.fn().mockResolvedValue(true),
+      sendSignal: vi.fn().mockResolvedValue(undefined),
+      onMessage: vi.fn(() => vi.fn()),
+      close: vi.fn(),
+    } as unknown as import('./signaling').P2PSignalingClient;
+
+    const call = new P2PMediaCall({
+      localFingerprint: 'nova_pk_aaa',
+      peerFingerprint: 'nova_pk_bbb',
+      mode: 'voice',
+      signaling: shared,
+    });
+
+    await call.start();
+    expect(signalingInstances).toHaveLength(0);
+    call.end();
+    expect(shared.close).not.toHaveBeenCalled();
+  });
+
   it('toggles microphone and camera tracks', async () => {
     const call = new P2PMediaCall({
       localFingerprint: 'nova_pk_aaa',

@@ -4,6 +4,8 @@ server/site-gateway/data/
 # Site-gateway environment secrets
 server/site-gateway/.env
 .env
+anon-state.sqlite
+anon-state.sqlite-*
 
 # Agent / session artifacts (do not commit)
 .e2e/
