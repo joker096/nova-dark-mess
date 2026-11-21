@@ -300,11 +300,14 @@ mod imp {
             "setBlockModes",
             &["GCM"],
         )?;
+        // Must be the value of KeyProperties.ENCRYPTION_PADDING_NONE, which is
+        // "NoPadding". Passing "NONE" makes Android reject the spec with
+        // "Unsupported encryption padding scheme: NONE".
         let builder = builder_string_array(
             env,
             &builder,
             "setEncryptionPaddings",
-            &["NONE"],
+            &["NoPadding"],
         )?;
         let builder = env
             .call_method(

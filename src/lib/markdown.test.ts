@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderMarkdown } from './markdown';
 import { renderToString } from 'react-dom/server';
 
@@ -80,5 +80,37 @@ describe('renderMarkdown', () => {
   it('handles empty string', () => {
     const html = renderToHtml('');
     expect(html).toBeDefined();
+  });
+
+  it('never nests a paragraph inside another paragraph', () => {
+    // Inline formatting is applied per line inside <p>, so strikethrough (and
+    // every other inline marker) must stay phrasing content.
+    for (const text of [
+      '~~strike~~',
+      '**bold** and *italic*',
+      '`code` ~~strike **bold**~~',
+      'line one\nline two',
+      '[link](https://example.com) ~~gone~~',
+    ]) {
+      expect(renderToHtml(text)).not.toMatch(/<p[^>]*>(?:(?!<\/p>).)*<p[^>]*>/s);
+    }
+  });
+
+  it('renders strikethrough with mixed inline formatting in one line', () => {
+    const html = renderToHtml('~~old **bold**~~');
+    expect(html).toContain('<del');
+    expect(html).toContain('<strong');
+    expect(html).toContain('bold');
+    expect(html.match(/<p/g) ?? []).toHaveLength(1);
+  });
+
+  it('keys every multiline paragraph uniquely', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      renderToHtml('first\nsecond\nthird');
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

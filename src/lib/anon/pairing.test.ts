@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { InMemoryAnonRelay } from './relay';
 import { blockSender } from './blocks';
 import { queueSigningPublicKey } from './signing';
@@ -55,6 +55,53 @@ describe('anonymous contact pairing', () => {
     await sendContactMessage(relay, bob!.contact, 'hello alice');
     const forAlice = await receiveContactMessages(relay, aliceContact!);
     expect(forAlice.map((message) => message.body)).toEqual(['hello alice']);
+  });
+
+  it('creates a standby queue and sends through it when the primary relay fails', async () => {
+    const primary = new InMemoryAnonRelay();
+    const backup = new InMemoryAnonRelay();
+    const backupTarget = { transport: backup, relayUrl: 'http://127.0.0.1:9002' };
+
+    const alice = await createInvitation(
+      primary,
+      'http://localhost',
+      undefined,
+      undefined,
+      undefined,
+      backupTarget,
+    );
+    expect(alice).not.toBeNull();
+    expect(alice!.inbox.standby).toBeTruthy();
+    expect(alice!.inbox.standby!.queueId).not.toBe(alice!.inbox.queueId);
+    expect(alice!.invite.standby?.relayUrl).toBe('http://127.0.0.1:9002');
+
+    const invite = decodeInvite(encodeInvite(alice!.invite));
+    expect(invite?.standby?.queueId).toBe(alice!.inbox.standby!.queueId);
+
+    const bob = await acceptInvitation(
+      primary,
+      invite!,
+      undefined,
+      backupTarget,
+      backup,
+    );
+    expect(bob).not.toBeNull();
+    expect(bob!.contact.inbox.standby?.relayUrl).toBe('http://127.0.0.1:9002');
+
+    const offers = await receiveContactOffers(primary, alice!.inbox);
+    const aliceContact = contactFromOffer(alice!.inbox, offers[0]!);
+    expect(aliceContact).not.toBeNull();
+
+    // Simulate the primary relay being unreachable while the standby is fine.
+    vi.spyOn(primary, 'enqueue').mockResolvedValue(null);
+    const sent = await sendContactMessage(primary, aliceContact!, 'fallback hello', {
+      standbyTransport: backup,
+    });
+    expect(sent).toBeTruthy();
+
+    expect(await receiveInboxMessages(primary, bob!.contact.inbox)).toHaveLength(0);
+    const fallback = await receiveInboxMessages(backup, bob!.contact.inbox.standby!);
+    expect(fallback.map((message) => message.body)).toEqual(['fallback hello']);
   });
 
   it('lets the app persist inbox packets before acknowledging them', async () => {

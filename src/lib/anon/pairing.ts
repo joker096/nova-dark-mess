@@ -9,6 +9,7 @@ import {
   sendAnonMessage,
   type AnonInvite,
 } from './session';
+import type { PacketProfile } from './types';
 import {
   isQueuePrivateKey,
   isQueuePublicKey,
@@ -64,6 +65,12 @@ export interface LocalInbox {
   createdAt: number;
   expiresAt: number;
   relays?: RelayEndpoint[];
+  /**
+   * Optional second queue on another relay, used when the primary host is
+   * unreachable. It shares the recipient key and identity with the primary
+   * inbox but has its own queue credentials and invite token.
+   */
+  standby?: Omit<LocalInbox, 'standby'>;
 }
 
 export interface Invitation {
@@ -135,6 +142,7 @@ export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
     identityKey && inbox.identitySigningKey && isQueuePrivateKey(inbox.identitySigningKey)
       ? signIdentityBinding(inbox.identitySigningKey, identityKey, inbox.signingPublicKey)
       : undefined;
+  const standby = inbox.standby ? inviteFromInbox(inbox.standby) : undefined;
   return {
     v: 1,
     relayUrl: inbox.relayUrl,
@@ -148,6 +156,81 @@ export function inviteFromInbox(inbox: LocalInbox): AnonInvite {
     ...(inbox.displayName ? { displayName: inbox.displayName } : {}),
     expiresAt: inbox.expiresAt,
     ...(inbox.pow ? { pow: inbox.pow } : {}),
+    ...(standby ? { standby } : {}),
+  };
+}
+
+/** Queue address that a sender should try when the primary relay is down. */
+export function standbyInvite(invite: AnonInvite): AnonInvite | null {
+  return invite.standby ? { ...invite.standby, v: 1 } : null;
+}
+
+/** True when an inbox can fall back to a second, different relay. */
+export function hasStandby(inbox: LocalInbox): inbox is LocalInbox & { standby: LocalInbox } {
+  return Boolean(inbox.standby && inbox.standby.relayUrl !== inbox.relayUrl);
+}
+
+/** Builds the queue used to receive on the standby relay, if configured. */
+export function standbyInbox(inbox: LocalInbox): LocalInbox | null {
+  return hasStandby(inbox) ? inbox.standby : null;
+}
+
+export interface StandbyTarget {
+  transport: InboxTransport;
+  relayUrl: string;
+}
+
+function isValidCreatedQueue(created: CreatedQueue | null): created is CreatedQueue {
+  return Boolean(
+    created &&
+      isQueueId(created.queueId) &&
+      isQueueToken(created.senderToken) &&
+      isQueueToken(created.recipientToken) &&
+      isQueuePrivateKey(created.signingKey) &&
+      isQueuePublicKey(created.signingPublicKey) &&
+      Number.isFinite(created.expiresAt) &&
+      created.expiresAt > Date.now(),
+  );
+}
+
+async function createStandbyInbox(
+  target: StandbyTarget,
+  ttlMs: number | undefined,
+  powDifficulty: number | undefined,
+  primary: LocalInbox,
+): Promise<LocalInbox | null> {
+  if (target.relayUrl === primary.relayUrl || !isAllowedRelayUrl(target.relayUrl)) {
+    return null;
+  }
+  const pow = powDifficulty !== undefined ? createPowChallenge(powDifficulty) : undefined;
+  let created: CreatedQueue | null;
+  try {
+    created = await target.transport.createQueue(ttlMs, pow);
+  } catch {
+    // A standby queue is best effort: the primary queue must still work when
+    // the second relay is temporarily down while the user creates an invite.
+    return null;
+  }
+  if (!isValidCreatedQueue(created)) return null;
+  return {
+    relayUrl: target.relayUrl,
+    queueId: created.queueId,
+    senderToken: created.senderToken,
+    recipientToken: created.recipientToken,
+    signingKey: created.signingKey,
+    signingPublicKey: created.signingPublicKey,
+    recipientPublicKey: primary.recipientPublicKey,
+    recipientPrivateKey: primary.recipientPrivateKey,
+    inviteToken: created.inviteToken,
+    // The standby queue continues the same contact identity. The primary
+    // signing key binds its new queue key, so peers do not see a new contact.
+    identityKey: primary.identityKey ?? primary.signingPublicKey,
+    identitySigningKey: primary.identitySigningKey ?? primary.signingKey,
+    ...(primary.displayName ? { displayName: primary.displayName } : {}),
+    ...(pow ? { pow } : {}),
+    createdAt: Date.now(),
+    expiresAt: created.expiresAt,
+    ...(primary.relays ? { relays: primary.relays } : {}),
   };
 }
 
@@ -157,6 +240,7 @@ export async function createInvitation(
   ttlMs?: number,
   powDifficulty?: number,
   displayName?: string,
+  standby?: StandbyTarget,
 ): Promise<Invitation | null> {
   if (!isAllowedRelayUrl(relayUrl)) return null;
   let pow: PowChallenge | undefined;
@@ -171,18 +255,7 @@ export async function createInvitation(
     pow = createPowChallenge(powDifficulty);
   }
   const created = await transport.createQueue(ttlMs, pow);
-  if (
-    !created ||
-    !isQueueId(created.queueId) ||
-    !isQueueToken(created.senderToken) ||
-    !isQueueToken(created.recipientToken) ||
-    !isQueuePrivateKey(created.signingKey) ||
-    !isQueuePublicKey(created.signingPublicKey) ||
-    !Number.isFinite(created.expiresAt) ||
-    created.expiresAt <= Date.now()
-  ) {
-    return null;
-  }
+  if (!isValidCreatedQueue(created)) return null;
 
   const secret = x25519.utils.randomSecretKey();
   const inbox: LocalInbox = {
@@ -202,6 +275,10 @@ export async function createInvitation(
     createdAt: Date.now(),
     expiresAt: created.expiresAt,
   };
+  if (standby) {
+    const backup = await createStandbyInbox(standby, ttlMs, powDifficulty, inbox);
+    if (backup) inbox.standby = backup;
+  }
   const invite = inviteFromInbox(inbox);
   if (!isAnonInvite(invite)) return null;
   return { inbox, invite };
@@ -240,7 +317,7 @@ export async function rotateInbox(
   // apply its own default: a failed-over queue is often already past it.
   const remaining = inbox.expiresAt - now;
   const created = await transport.createQueue(remaining > 60_000 ? remaining : undefined, pow);
-  if (!created) return null;
+  if (!isValidCreatedQueue(created)) return null;
   const secret = x25519.utils.randomSecretKey();
   const publicKey = x25519.getPublicKey(secret);
   const rotated: LocalInbox = {
@@ -259,6 +336,28 @@ export async function rotateInbox(
     createdAt: now,
     expiresAt: created.expiresAt,
   };
+  delete rotated.standby;
+  // Keep a backup on another relay. The old relay is the natural choice for a
+  // normal rotation; on failover it may be the dead host, in which case queue
+  // creation fails and the rotated inbox simply has no standby.
+  for (const standbyRelay of relays) {
+    if (standbyRelay.url === next.url) continue;
+    try {
+      const standbyTransport = await transportFor(standbyRelay.url);
+      const backup = await createStandbyInbox(
+        { transport: standbyTransport, relayUrl: standbyRelay.url },
+        remaining > 60_000 ? remaining : undefined,
+        inbox.pow?.difficulty ?? POW_MIN_DIFFICULTY,
+        rotated,
+      );
+      if (backup) {
+        rotated.standby = backup;
+        break;
+      }
+    } catch {
+      // A dead candidate must not abort a rotation that already succeeded.
+    }
+  }
   return rotated;
 }
 
@@ -268,14 +367,20 @@ export async function rotateInbox(
  * sealed message reveals the move.
  */
 export async function sendInboxMigration(
-  transport: AnonTransport,
+  transport: AnonTransport | null,
   contact: Contact,
   inbox: LocalInbox,
+  standbyTransport?: AnonTransport | null,
 ): Promise<boolean> {
   if (!isAnonInvite(contact.peerInvite)) return false;
   const ownInvite = inviteFromInbox(inbox);
   if (!isAnonInvite(ownInvite)) return false;
-  const result = await sendAnonMessage(transport, contact.peerInvite, encodeContactOffer(ownInvite));
+  const result = await sendToPeer(
+    transport,
+    contact.peerInvite,
+    encodeContactOffer(ownInvite),
+    standbyTransport,
+  );
   return Boolean(result);
 }
 
@@ -303,17 +408,28 @@ export async function migrateInbox(
 ): Promise<InboxMigration | null> {
   const rotated = await rotateInbox(transportFor, inbox, now, options);
   if (!rotated) return null;
-  const transports = new Map<string, InboxTransport>();
+  const transports = new Map<string, InboxTransport | null>();
+  const transportForPeer = async (relayUrl: string): Promise<InboxTransport | null> => {
+    if (transports.has(relayUrl)) return transports.get(relayUrl) ?? null;
+    let transport: InboxTransport | null = null;
+    try {
+      transport = await transportFor(relayUrl);
+    } catch {
+      // The peer's primary relay may be the one that just died; its standby
+      // still gives us a way to deliver the new invite.
+    }
+    transports.set(relayUrl, transport);
+    return transport;
+  };
   let notified = 0;
   for (const contact of contacts) {
     const peerRelay = contact.peerInvite?.relayUrl;
     if (!peerRelay) continue;
-    let transport = transports.get(peerRelay);
-    if (!transport) {
-      transport = await transportFor(peerRelay);
-      transports.set(peerRelay, transport);
-    }
-    if (await sendInboxMigration(transport, contact, rotated)) notified += 1;
+    const transport = await transportForPeer(peerRelay);
+    const backupRelay = contact.peerInvite.standby?.relayUrl;
+    const standbyTransport = backupRelay ? await transportForPeer(backupRelay) : null;
+    if (!transport && !standbyTransport) continue;
+    if (await sendInboxMigration(transport, contact, rotated, standbyTransport)) notified += 1;
   }
   return { inbox: rotated, notified, failed: contacts.length - notified };
 }
@@ -349,14 +465,50 @@ export function decodeContactOffer(body: string): AnonInvite | null {
   }
 }
 
+/**
+ * Sends a packet to the peer's primary queue and, if that fails, to its
+ * standby queue. Throws only when both attempts fail, so callers can show the
+ * real network error instead of a generic "not sent".
+ */
+async function sendToPeer(
+  primaryTransport: AnonTransport | null,
+  invite: AnonInvite,
+  body: string,
+  standbyTransport?: AnonTransport | null,
+  profile: PacketProfile = 'standard',
+): ReturnType<typeof sendAnonMessage> {
+  let primaryError: unknown;
+  try {
+    if (primaryTransport) {
+      const result = await sendAnonMessage(primaryTransport, invite, body, profile);
+      if (result) return result;
+    }
+  } catch (error) {
+    primaryError = error;
+  }
+  const backup = standbyInvite(invite);
+  if (standbyTransport && backup) {
+    const fallbackResult = await sendAnonMessage(standbyTransport, backup, body, profile);
+    if (fallbackResult) return fallbackResult;
+  }
+  if (primaryError) throw primaryError;
+  return null;
+}
+
 export async function sendContactOffer(
-  transport: AnonTransport,
+  transport: AnonTransport | null,
   peerInvite: AnonInvite,
   inbox: LocalInbox,
+  standbyTransport?: AnonTransport | null,
 ): Promise<boolean> {
   const ownInvite = inviteFromInbox(inbox);
   if (!isAnonInvite(peerInvite) || !isAnonInvite(ownInvite)) return false;
-  const result = await sendAnonMessage(transport, peerInvite, encodeContactOffer(ownInvite));
+  const result = await sendToPeer(
+    transport,
+    peerInvite,
+    encodeContactOffer(ownInvite),
+    standbyTransport,
+  );
   return Boolean(result);
 }
 
@@ -364,10 +516,17 @@ export async function acceptInvitation(
   transport: InboxTransport,
   invite: AnonInvite,
   displayName?: string,
+  standby?: StandbyTarget,
+  standbyPeerTransport?: AnonTransport | null,
 ): Promise<{ contact: Contact; offerSent: boolean } | null> {
-  const contact = await prepareInvitationAcceptance(transport, invite, displayName);
+  const contact = await prepareInvitationAcceptance(transport, invite, displayName, standby);
   if (!contact) return null;
-  const offerSent = await sendContactOffer(transport, invite, contact.inbox);
+  const offerSent = await sendContactOffer(
+    transport,
+    invite,
+    contact.inbox,
+    standbyPeerTransport,
+  );
   return { contact, offerSent };
 }
 
@@ -375,6 +534,7 @@ export async function prepareInvitationAcceptance(
   transport: InboxTransport,
   invite: AnonInvite,
   displayName?: string,
+  standby?: StandbyTarget,
 ): Promise<Contact | null> {
   if (!isAnonInvite(invite)) return null;
   // Locally blocked senders cannot re-open contact through their old queue.
@@ -385,6 +545,7 @@ export async function prepareInvitationAcceptance(
     undefined,
     invite.pow?.difficulty,
     displayName,
+    standby,
   );
   if (!own) return null;
   return {
@@ -491,13 +652,25 @@ export async function receiveContactOffers(
   });
 }
 
+export interface ContactSendOptions {
+  standbyTransport?: AnonTransport | null;
+  profile?: PacketProfile;
+}
+
 export function sendContactMessage(
   transport: AnonTransport,
   contact: Contact,
   plaintext: string,
+  options: ContactSendOptions = {},
 ) {
   if (!isAnonInvite(contact.peerInvite)) return Promise.resolve(null);
-  return sendAnonMessage(transport, contact.peerInvite, plaintext);
+  return sendToPeer(
+    transport,
+    contact.peerInvite,
+    plaintext,
+    options.standbyTransport,
+    options.profile,
+  );
 }
 
 export function receiveContactMessages(

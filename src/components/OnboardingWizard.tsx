@@ -18,7 +18,7 @@ import { useAccount } from '../hooks/useAccount';
 import { normalizeNickname } from '../lib/account/account';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
-import { downloadTextFile } from '../lib/ui/download';
+import { copyTextToClipboard, saveTextFile, type TextSaveOutcome } from '../lib/ui/download';
 
 interface OnboardingWizardProps {
   onDone: () => void;
@@ -108,7 +108,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   const [afterNickname, setAfterNickname] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [phraseDownloadNotice, setPhraseDownloadNotice] = useState(false);
+  const [phraseSaveNotice, setPhraseSaveNotice] = useState<{
+    outcome: TextSaveOutcome;
+    copied: boolean;
+  } | null>(null);
   const [quizRound, setQuizRound] = useState(0);
 
   const words = useMemo(
@@ -311,16 +314,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
 
   const copyPhrase = async () => {
     if (!identity?.mnemonic) return;
-    try {
-      await navigator.clipboard.writeText(identity.mnemonic);
+    if (await copyTextToClipboard(identity.mnemonic)) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setError(t('premium.errorGeneric'));
     }
   };
 
-  const downloadPhrase = () => {
+  const downloadPhrase = async () => {
     if (!identity?.mnemonic) return;
     const body = [
       'Nova Dark Messenger — recovery phrase',
@@ -329,13 +331,54 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       '',
       'Anyone with these words can restore this account. Keep this file offline.',
     ].join('\n');
-    downloadTextFile('nova-recovery-phrase.txt', body);
-    // Some Android WebViews block file downloads. Keep the words on the
-    // clipboard as a safety net so the button never leaves the user empty-handed.
-    void navigator.clipboard?.writeText(identity.mnemonic).catch(() => undefined);
-    setPhraseDownloadNotice(true);
-    window.setTimeout(() => setPhraseDownloadNotice(false), 8000);
+    // Copy first, while the click's user activation is still fresh; the picker
+    // then consumes the same activation to open its save dialog. Only claim the
+    // copy when it actually succeeded: some WebViews reject clipboard writes.
+    const copied = await copyTextToClipboard(identity.mnemonic);
+    if (copied) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    }
+    const outcome = await saveTextFile('nova-recovery-phrase.txt', body);
+    setPhraseSaveNotice({ outcome, copied });
+    window.setTimeout(() => setPhraseSaveNotice(null), 12_000);
   };
+
+  const phraseSaveMessage = (() => {
+    if (!phraseSaveNotice) return '';
+    const { outcome, copied } = phraseSaveNotice;
+    const clipboardNote = copied
+      ? language === 'ru'
+        ? ' Фраза также скопирована в буфер обмена.'
+        : ' The phrase is also copied to your clipboard.'
+      : '';
+    if (language === 'ru') {
+      switch (outcome) {
+        case 'saved':
+          return `Файл сохранён.${clipboardNote}`;
+        case 'shared':
+          return `Открыто системное меню «Поделиться». Выберите «Файлы» или облако, чтобы сохранить фразу.${clipboardNote}`;
+        case 'downloaded':
+          return `Скачивание запрошено. Если файл не появился, нажмите «Скопировать фразу» выше — слова также показаны на экране.${clipboardNote}`;
+        case 'cancelled':
+          return `Сохранение отменено. Фраза осталась на экране — скопируйте её кнопкой выше.${clipboardNote}`;
+        default:
+          return `Не удалось сохранить файл. Скопируйте фразу кнопкой выше — она также показана на экране.${clipboardNote}`;
+      }
+    }
+    switch (outcome) {
+      case 'saved':
+        return `File saved.${clipboardNote}`;
+      case 'shared':
+        return `The system share sheet is open. Choose Files or cloud storage to keep the phrase.${clipboardNote}`;
+      case 'downloaded':
+        return `Download requested. If no file appeared, use "Copy phrase" above — the words are also shown on screen.${clipboardNote}`;
+      case 'cancelled':
+        return `Save cancelled. The phrase is still on screen — copy it with the button above.${clipboardNote}`;
+      default:
+        return `Could not save the file. Copy the phrase with the button above — the words are also shown on screen.${clipboardNote}`;
+    }
+  })();
 
   const answerPhraseQuestion = (answer: string) => {
     const question = quiz[quizRound];
@@ -635,12 +678,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   {t('onboarding.downloadPhrase')}
                 </button>
               </div>
-              {phraseDownloadNotice && (
+              {phraseSaveMessage && (
                 <p role="status" className="text-[10.5px] text-emerald-300/90 leading-relaxed">
-                  {t('onboarding.phraseDownloadNotice', {
-                    defaultValue:
-                      'Download started. The phrase is also copied to your clipboard as a backup.',
-                  })}
+                  {phraseSaveMessage}
                 </p>
               )}
               <p className="text-[10.5px] text-amber-400/90 leading-relaxed">{t('onboarding.seedWarning')}</p>

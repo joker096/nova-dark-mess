@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AnonymousMessengerScreen } from './AnonymousMessengerScreen';
 import { generateQueueSigningKeyPair, queueSigningPublicKey } from '../lib/anon/signing';
 import { FAILOVER_AFTER_FAILURES } from '../lib/anon/relayHealth';
@@ -97,6 +97,7 @@ function stateWithContact(id: string) {
       recipientPublicKey: 'peer-recipient',
       inviteToken: 'peer-invite-secret',
       expiresAt: Date.now() + 60_000,
+      displayName: undefined as string | undefined,
     },
     createdAt: Date.now(),
   };
@@ -152,27 +153,253 @@ describe('AnonymousMessengerScreen', () => {
     });
   });
 
-  it('starts with a link and QR flow without requiring network setup', async () => {
+  it('shows local mode instead of invite controls without a relay', async () => {
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
     expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
     expect(screen.getByText('Create an invite and send the link or show the QR code. The other person opens it and confirms; they will then appear in your contacts automatically.')).toBeTruthy();
-    expect(screen.getByText('Advanced network settings').closest('details')).not.toHaveProperty(
-      'open',
-      true,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Create link and QR code' }));
+    expect(screen.getByText('Local mode')).toBeTruthy();
+    expect(screen.getByText('Local only')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'No relay configured, so invites, QR codes and sharing are unavailable. Messaging works only on this device. Add a relay under advanced settings to add contacts.',
+      ),
+    ).toBeTruthy();
+    const advanced = screen.getByText('Advanced network settings').closest('details');
+    expect(advanced).not.toHaveProperty('open', true);
 
-    const inviteLink = await screen.findByLabelText('Your invitation link');
-    await waitFor(() => expect(mocks.toDataURL).toHaveBeenCalled());
-    expect((inviteLink as HTMLTextAreaElement).value).toContain('#nova://contact/');
-    expect(screen.getByRole('img', { name: 'Scan this QR code to add me' })).toBeTruthy();
-    expect(mocks.createInvitation).toHaveBeenCalledWith(
-      expect.anything(),
-      'http://localhost:3000',
-      undefined,
-      undefined,
-      '@nova',
+    fireEvent.click(screen.getByRole('button', { name: 'Configure relay' }));
+    expect(advanced).toHaveProperty('open', true);
+    expect(screen.queryByRole('button', { name: 'Configure relay' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('Relay URL')),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+    expect(advanced).toHaveProperty('open', false);
+    expect(screen.getByRole('button', { name: 'Configure relay' })).toBeTruthy();
+    const localPanel = screen.getByText('Local mode').closest('[role="status"]');
+    await waitFor(() => expect(document.activeElement).toBe(localPanel));
+
+    expect(screen.queryByRole('button', { name: 'Create link and QR code' })).toBeNull();
+    expect(screen.queryByLabelText('Your invitation link')).toBeNull();
+    expect(screen.queryByRole('img', { name: 'Scan this QR code to add me' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Share link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
+    // Accepting a relay-backed invite still works from local mode.
+    expect(screen.getByLabelText('Paste an invitation link or code')).toBeTruthy();
+    expect(mocks.createInvitation).not.toHaveBeenCalled();
+    expect(mocks.toDataURL).not.toHaveBeenCalled();
+  });
+
+  it('counts only local-only contacts in the local-mode badge', async () => {
+    const localContact = stateWithContact('local-a').state.contacts[0];
+    localContact.contact.peerInvite.relayUrl = 'https://local.invalid';
+    localContact.contact.peerInvite.displayName = 'Local Alice';
+    const remoteContact = stateWithContact('remote-b').state.contacts[0];
+    remoteContact.contact.peerInvite.displayName = 'Remote Bob';
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [localContact, remoteContact],
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+
+    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1' }));
+
+    const panel = screen.getByTestId('local-contacts-panel');
+    expect(within(panel).getByText('Local Alice')).toBeTruthy();
+    expect(within(panel).queryByText('Remote Bob')).toBeNull();
+  });
+
+  it('deletes a local contact only after confirmation', async () => {
+    const localContact = stateWithContact('local-a').state.contacts[0];
+    localContact.contact.peerInvite.relayUrl = 'https://local.invalid';
+    localContact.contact.peerInvite.displayName = 'Local Alice';
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [localContact],
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1' }));
+    const panel = screen.getByTestId('local-contacts-panel');
+
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Delete contact: Local Alice' }),
+    );
+    expect(screen.getByText('Delete this contact?')).toBeTruthy();
+    expect(
+      screen.getByText('The contact and its messages will be deleted from this device.'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }));
+    expect(screen.queryByText('Delete this contact?')).toBeNull();
+    expect(screen.getAllByText('Local Alice').length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Delete contact: Local Alice' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
+
+    await waitFor(() =>
+      expect(mocks.db.saveSetting).toHaveBeenCalledWith(
+        'anon_messenger_state_v1',
+        expect.objectContaining({ contacts: [] }),
+      ),
+    );
+    expect(await screen.findByText('Contact deleted.')).toBeTruthy();
+    expect(screen.queryByText('Local Alice')).toBeNull();
+  });
+
+  it('deletes a contact from the main list after confirming its history', async () => {
+    const entry = stateWithContact('history-a').state.contacts[0];
+    entry.contact.peerInvite.displayName = 'History Harry';
+    entry.messages = [
+      { id: 'm1', body: 'hello', fromMe: false, createdAt: Date.now() },
+      { id: 'm2', body: 'hi', fromMe: true, createdAt: Date.now() },
+    ];
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [entry],
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'The contact and its 2 messages will be deleted from this device.',
+      ),
+    ).toBeTruthy();
+
+    // Clicks inside the card keep the dialog open; the backdrop closes it.
+    fireEvent.click(screen.getByRole('heading', { name: 'Delete this contact?' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('dialog'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
+    await waitFor(() =>
+      expect(mocks.db.saveSetting).toHaveBeenCalledWith(
+        'anon_messenger_state_v1',
+        expect.objectContaining({ contacts: [] }),
+      ),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('History Harry')).toBeNull();
+  });
+
+  it('deletes the relay queue when removing a relay contact', async () => {
+    const base = stateWithContact('relay-a');
+    const entry = base.state.contacts[0];
+    entry.contact.peerInvite.displayName = 'Relay Rita';
+    const deleteQueue = vi.fn(async () => true);
+    mocks.createAnonTransport.mockReturnValue({ deleteQueue });
+    mocks.db.loadSetting.mockResolvedValue(base.state);
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: Relay Rita' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
+
+    await waitFor(() =>
+      expect(deleteQueue).toHaveBeenCalledWith(
+        entry.contact.inbox.queueId,
+        entry.contact.inbox.recipientToken,
+        entry.contact.inbox.signingKey,
+      ),
+    );
+  });
+
+  it('lists pending local invitations in the badge', async () => {
+    const localContact = stateWithContact('local-a').state.contacts[0];
+    localContact.contact.peerInvite.relayUrl = 'https://local.invalid';
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [localContact],
+      pendingInbox: {
+        ...localContact.contact.inbox,
+        relayUrl: 'https://local.invalid',
+      },
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+
+    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1 + 1 pending' }));
+    expect(screen.getByText('1 invitation pending confirmation.')).toBeTruthy();
+  });
+
+  it('drops the pending invitation count when it expires', async () => {
+    const localContact = stateWithContact('local-a').state.contacts[0];
+    localContact.contact.peerInvite.relayUrl = 'https://local.invalid';
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [localContact],
+      pendingInbox: {
+        ...localContact.contact.inbox,
+        relayUrl: 'https://local.invalid',
+        expiresAt: Date.now() + 100,
+      },
+    });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+
+    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Local only · 1 + 1 pending' })).toBeTruthy();
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: 'Local only · 1' })).toBeTruthy(),
+      { timeout: 2000 },
     );
   });
 
@@ -208,6 +435,7 @@ describe('AnonymousMessengerScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
 
     await waitFor(() => expect(mocks.db.saveSetting).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Local only')).toBeNull();
     expect(mocks.createAnonTransport).toHaveBeenCalledWith({
       relayUrl: 'https://relay.example',
       proxy: {
@@ -219,6 +447,9 @@ describe('AnonymousMessengerScreen', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Create link and QR code' }));
     await screen.findByLabelText('Your invitation link');
+    expect(screen.getByRole('button', { name: 'Share link' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy();
+    await screen.findByRole('img', { name: 'Scan this QR code to add me' });
     expect(mocks.db.saveSetting).toHaveBeenCalledTimes(2);
     expect(mocks.createInvitation).toHaveBeenCalledTimes(1);
     expect(mocks.createInvitation).toHaveBeenCalledWith(
@@ -227,7 +458,43 @@ describe('AnonymousMessengerScreen', () => {
       undefined,
       undefined,
       '@nova',
+      undefined,
     );
+  });
+
+  it('checks relay connectivity without saving settings', async () => {
+    const createQueue = vi.fn(async () => ({
+      queueId: 'q_00000000000000000000000000000000',
+      senderToken: 'sender',
+      recipientToken: 'recipient',
+      signingKey: 'signing-secret',
+      signingPublicKey: 'signing-public',
+      expiresAt: Date.now() + 60_000,
+    }));
+    mocks.createAnonTransport.mockReturnValue({ createQueue });
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByText('Advanced network settings'));
+
+    fireEvent.change(screen.getByLabelText('Relay URL'), {
+      target: { value: 'https://relay.example' },
+    });
+    fireEvent.change(screen.getByLabelText('Proxy URL'), {
+      target: { value: 'https://proxy.example' },
+    });
+    fireEvent.change(screen.getByLabelText('Relay ID at proxy'), {
+      target: { value: 'relay-main' },
+    });
+    fireEvent.change(screen.getByLabelText('Pinned relay X25519 public key'), {
+      target: { value: 'A'.repeat(43) },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check relay' }));
+
+    await waitFor(() => expect(createQueue).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/Relay answered in \d+ ms\./)).toBeTruthy();
+    expect(mocks.db.saveSetting).not.toHaveBeenCalled();
   });
 
   it('saves Tor settings only when the local SOCKS listener answers', async () => {
@@ -336,6 +603,53 @@ describe('AnonymousMessengerScreen', () => {
     expect(mocks.receiveInboxPackets).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ relayUrl: 'https://other-relay.example' }),
+    );
+  });
+
+  it('polls the standby queue when the primary inbox is empty', async () => {
+    const { contact, state } = stateWithContact('peer');
+    const standby = {
+      ...contact.inbox,
+      relayUrl: 'https://backup.example',
+      queueId: 'q_00000000000000000000000000000013',
+      inviteToken: 'standby-invite',
+    };
+    mocks.db.loadSetting.mockResolvedValue({
+      ...state,
+      settings: {
+        ...state.settings,
+        extraRelays: 'https://backup.example',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+      },
+      contacts: [
+        {
+          id: 'peer',
+          contact: { ...contact, inbox: { ...contact.inbox, standby } },
+          messages: [],
+        },
+      ],
+    });
+    mocks.receiveInboxPackets.mockImplementation(async (_transport, inbox) =>
+      inbox.relayUrl === 'https://backup.example'
+        ? [{ packetId: 'standby-packet', body: 'standby delivery', offer: null }]
+        : [],
+    );
+
+    render(<AnonymousMessengerScreen onBack={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Contacts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+
+    await screen.findByText('standby delivery');
+    expect(mocks.receiveInboxPackets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ relayUrl: 'https://backup.example' }),
+    );
+    expect(mocks.ackInboxPackets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ relayUrl: 'https://backup.example' }),
+      ['standby-packet'],
     );
   });
 
@@ -551,6 +865,7 @@ describe('AnonymousMessengerScreen', () => {
         expect.anything(),
         contact.peerInvite,
         contact.inbox,
+        null,
       ),
     );
     await waitFor(() => {
@@ -575,6 +890,7 @@ describe('AnonymousMessengerScreen', () => {
       expect.anything(),
       contact,
       expect.stringContaining(`NOVA-GIFT-${'A'.repeat(32)}`),
+      { standbyTransport: null },
     );
     expect(mocks.clearPendingPremiumGiftOrder).toHaveBeenCalledTimes(1);
     const finalState = mocks.db.saveSetting.mock.calls.at(-1)?.[1] as typeof state & {

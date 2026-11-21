@@ -75,7 +75,7 @@ does not meet full Phase B/C acceptance.
 | IDs and tokens | `src/lib/anon/ids.ts` generates 16-byte queue IDs and 32-byte tokens; `pairing.ts` creates independent inbox queues; every queue carries a one-time invite token burned by the relay on first enqueue. | Invite token is transmitted inside the invite blob (secret, not hashed at rest on the client). |
 | Relay core | `src/lib/anon/relay.ts` has in-memory queues, TTL, ACK, delete and signed-command checks. | RAM only; no HTTP integration tests. |
 | Command signing | `src/lib/anon/signing.js` + `signing.d.ts` implement Ed25519 queue keys, canonical command signing, signature verification, timestamp and nonce replay checks; tests pass. | Legacy queues remain unsigned; invite holders can still sign. |
-| HTTP relay | `server.js` implements direct `/api/anon/*`, sealed `/api/anon/route` (including create and hash-only report submission), and `/api/anon/hop`. | RAM only; bearer tokens plus Ed25519 command signatures; ACK/delete not rate-limited. |
+| HTTP relay | `server.js` implements direct `/api/anon/*`, sealed `/api/anon/route` (including create and hash-only report submission), and `/api/anon/hop`; queues and the owner index persist to SQLite (`ANON_STATE_DB_PATH`). | Container needs a persistent volume for the SQLite file; bearer tokens plus Ed25519 command signatures; ACK/delete not rate-limited. |
 | Sealed payload | `src/lib/anon/session.ts` puts sealed-sender JSON into fixed packets. | Invite `expiresAt` not enforced; no sender authentication. |
 | Proxy hop | `src/lib/anon/proxy.ts` seals commands and queue creation to a pinned relay X25519 key; the proxy forwards opaque envelopes. Failover across a proxy list (`fallbackProxies`) with per-proxy failure cooldowns is implemented client-side. | Routing-key pinning is still client config; timing correlation remains. |
 | Spam controls | `src/lib/anon/spam.js` + `spam.d.ts` provide PoW and one-time invite tokens (`createInviteToken`, `isInviteToken`); `server.js` verifies first-contact challenges, burns invite tokens on first enqueue, and accepts hash-only reports through sealed routing. `src/lib/anon/blocks.ts` keeps reports locally and makes uploads retryable; `pairing.ts` rejects invitations and filters offers from blocked senders. | Reports persist on the relay (one hash-only file per report id, TTL cleanup, reloaded at boot); creation is limited per signing key (10/hour) and blocked at 3 live spam reports for that key, while enqueueing on existing queues is unaffected. Report counts are unauthenticated hash-only, so blocking is a speed bump, not a ban. |
@@ -343,10 +343,10 @@ reloaded at boot into the same store and spam index, deleted on expiry, and
 memory-only with a warning when the disk is unwritable. Operator tooling is
 `scripts/anon-reports.mjs` (`list`, `list --json`, `purge-expired`,
 `remove <id>`); it works on the durable files, so a manually removed report
-needs a relay restart to leave the in-memory store. The queue table is RAM-only,
-so a report about a queue this
-process no longer remembers is rejected — the block it already earned survives,
-but new reports only count for queues created since the last restart.
+needs a relay restart to leave the in-memory store. The queue owner table and
+queues are persisted to SQLite and reloaded at boot, so a report about a queue
+created before a restart can still be verified (as long as the queue's report
+window has not expired).
 
 ## 10. Phase H — Multi-relay and rotation
 

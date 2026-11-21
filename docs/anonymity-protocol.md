@@ -258,13 +258,19 @@ legacy.
 
 ## 5. Storage rules
 
-- The reference server is in-memory (`anonQueues` in `server.js`); queues are
-  lost on restart.
+- Queues are held in `anonQueues` (`server.js`) and persisted to a local
+  SQLite file at `ANON_STATE_DB_PATH` (default `./anon-state.sqlite`). A process
+  restart reloads non-expired queues and packets; a container needs a
+  persistent volume for that path. If SQLite is unavailable or the path is
+  empty, the relay falls back to memory-only operation.
 - Per queue it stores `queueId`, `senderTokenHash`, `recipientTokenHash`,
   `signingPublicKey`, optional `pow` challenge, `powUsed`, `createdAt`,
   `expiresAt`, and packets (`packetId`, base64 payload, `createdAt`,
   `expiresAt`). Each queue is one inbox; the relay does not store a
   sender/recipient queue pair.
+- The `queueIdHash -> signing key hash` owner index is persisted next to the
+  queues, so reports about existing queues still work after a restart. Rate
+  limit buckets and replay nonces remain in memory.
 - Queue TTL: 14 days default, 21 days maximum. Packet TTL: 24 hours.
 - Per-queue cap: 200 packets.
 - Routing nonces are cached in memory for 5 minutes to reject envelope replay.
