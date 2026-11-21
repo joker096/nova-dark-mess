@@ -73,6 +73,7 @@ interface PeerRecord {
   pendingPayloads: RatchetMessagePayload[];
   pendingX3dhHeader: RatchetMessagePayload['x3dh'] | null;
   preKeyRequestSent: boolean;
+  preKeyRequestSentAt: number;
 }
 
 const PREKEY_STORAGE_OWNER = 'self';
@@ -228,6 +229,7 @@ export class P2PManager {
         pendingPayloads: [],
         pendingX3dhHeader: null,
         preKeyRequestSent: false,
+        preKeyRequestSentAt: 0,
       };
       this.peers.set(fingerprint, peer);
     }
@@ -324,8 +326,18 @@ export class P2PManager {
 
   private async requestPreKeyBundle(peerFingerprint: string, force = false): Promise<void> {
     const peer = this.getPeer(peerFingerprint);
-    if (peer.preKeyRequestSent && !force) return;
+    // Retry a dropped request after a short delay instead of sticking with a
+    // single attempt forever: the first signaling message can be lost if the
+    // peer's socket is not registered yet.
+    if (
+      peer.preKeyRequestSent &&
+      !force &&
+      Date.now() - peer.preKeyRequestSentAt < 3000
+    ) {
+      return;
+    }
     peer.preKeyRequestSent = true;
+    peer.preKeyRequestSentAt = Date.now();
     await this.signaling.sendSignal({
       type: 'prekey_request',
       senderFingerprint: this.identity.fingerprint,
