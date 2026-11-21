@@ -129,6 +129,9 @@ export class P2PManager {
   public async initialize(): Promise<void> {
     if (this.initialized) return;
     await this.ensurePreKeys();
+    // Prekey requests are signaling messages: without a connected client they
+    // sit in the outbox forever and the first send can never build a session.
+    await this.signaling.connect();
     this.initialized = true;
   }
 

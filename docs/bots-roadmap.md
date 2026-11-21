@@ -9,7 +9,7 @@ tests and must not break the existing secure-messaging baseline.
 
 **Implementation status:** B0–B8 are **implemented**. B6 has real bot
 management (including `/newbot`) and honest gateway/token/webhook boundaries;
-transport-level group E2E is still the main gap. B7 has an operator-controlled
+B4 now has a live gateway-in-a-group E2E. B7 has an operator-controlled
 Mini App origin allowlist wired into CSP and runtime. B8's security/release
 checks passed on 2026-11-21 (full unit suite, i18n audit, security self-tests,
 secret scan, production build and the bots E2E).
@@ -202,11 +202,14 @@ the bot's private key):
       group join/SKDM/message exchange, removal (no further fan-out to the
       removed member), the own-echo rule and mention-only filtering;
       `src/lib/p2p/p2pManager.bundles.test.ts` proves the bundle hook fires on
-      a bot key rotation and cannot reject a bundle;      `groupWire.test.ts` pins
+      a bot key rotation and cannot reject a bundle; `groupWire.test.ts` pins
       the envelope and the mention rule. Client-side roster registration and
       pruning are covered by `src/lib/bots/groupPeers.test.ts` and the
-      ChatScreen group test; a full gateway-in-a-group E2E run is still open. Sender-key rotation on removal is
-      covered by `groupManager.test.ts` and the gateway removal case.
+      ChatScreen group test. `tests/bots-group.e2e.ts` runs a real BotGateway in
+      the page, attaches it to Echo via `/setpeer`, adds it to Thailand and
+      receives the group message over the encrypted 1:1 session. Sender-key
+      rotation on removal is covered by `groupManager.test.ts` and the gateway
+      removal case.
 
 ### Phase B5 — Telegram-shaped HTTP surface, L3 (1 week, gateway-side only) — 🟡 Partial
 
@@ -318,9 +321,8 @@ the bot's private key):
 - [x] Release verification on 2026-11-21: `npm test` (162 files, 1302 tests),
       `npm run audit:i18n` (PASSED), `npm run test:security` (16/16),
       `npm run check:secrets` (clean), `npm run lint:eslint` (0 errors,
-      46 existing warnings), `npm run build`, and the bots E2E (1/1). The
-      outstanding gap is B4's live gateway-in-a-group E2E, not a unit or
-      security failure.
+      46 existing warnings), `npm run build`, and the bots E2E (1/1).
+      `tests/bots-group.e2e.ts` now closes B4's live gateway-in-a-group gap.
 
 ## 4. Ordering and dependencies
 

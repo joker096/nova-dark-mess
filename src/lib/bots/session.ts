@@ -95,8 +95,21 @@ export class BotSession {
   /** Switch the registry storage (e.g. from in-memory to the encrypted vault) once it becomes available. */
   public switchStorage(storage: BotStorage): void {
     this.storage = storage;
-    this.runtimes = this.buildRuntimes();
-    void this.loadRuntimes();
+    // The session is initialized before the vault exists, so the seeded/dev
+    // registry currently lives only in memory. Carry it into a still-empty
+    // vault; otherwise later reads (install state, /setpeer, settings) see an
+    // empty registry even though the UI listed the bots.
+    void (async () => {
+      const stored = await storage.load();
+      if (this.storage !== storage) return;
+      if (stored.bots.length === 0 && this.registry.bots.length > 0) {
+        await storage.save(this.registry);
+      } else {
+        this.registry = stored;
+      }
+      this.runtimes = this.buildRuntimes();
+      await this.loadRuntimes();
+    })();
   }
 
   private buildRuntimes(): Map<string, BotRuntime> {

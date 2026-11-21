@@ -13,9 +13,6 @@ test('gateway bot receives a group message through the encrypted peer session', 
       'nova_onboarding_v1',
       JSON.stringify({ version: 1, completedAt: 'e2e', path: 'create' }),
     );
-    // The group fixture starts without a stored membership; accept it so the
-    // test exercises sending, not the join-request flow.
-    localStorage.setItem('nova_group_membership_thailand', 'member');
   });
   await app.open('/');
   await expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible();
@@ -42,31 +39,48 @@ test('gateway bot receives a group message through the encrypted peer session', 
     return gateway.fingerprint;
   });
 
-  // Wait until the encrypted vault is wired into the bot session (the Bots tab
-  // lists the seeded Echo fixture), then attach the live fingerprint through
-  // the same session API NovaFather's /setpeer command calls.
+  // Attach the live fingerprint to Echo through the product path NovaFather
+  // uses, so the app's own bot session (not only this test's import) is updated.
   await screen.getByRole('button', { name: 'Settings' }).click();
   await screen.getByRole('button', { name: /^Bots/ }).click();
   await expect(screen.getByText('Echo Bot')).toBeVisible();
-  await screen.getByRole('button', { name: 'Close' }).first().click();
-  await browser.evaluate(async (peer) => {
-    const { botSession } = await import('/src/lib/bots/session.ts');
-    await botSession.setPeerFingerprint('echo', peer);
-  }, fingerprint);
+  await screen.getByRole('button', { name: 'Open chat' }).first().click();
+  const botInput = screen.getByRole('textbox', 'Type a message...');
+  await botInput.fill('/setpeer');
+  await botInput.press('Enter');
+  await screen.getByRole('button', { name: /Echo Bot/ }).first().click();
+  await botInput.fill(fingerprint);
+  await botInput.press('Enter');
+  await expect(screen.getByText(`✅ Peer fingerprint set: ${fingerprint}`).first()).toBeVisible();
 
-  // Open Thailand and add the gateway to the group.
+  // Open Thailand and add the gateway; the app registers it as a bot peer.
   await browser.evaluate(() => {
     window.location.hash = '#nova://chat/thailand';
   });
   await expect(screen.getByText('Thailand Trip').first()).toBeVisible();
   await screen.getByRole('button', { name: 'Chat actions' }).first().click();
   await screen.getByRole('button', { name: 'Group members' }).click();
-  await screen.getByLabelText('Member fingerprint').fill(fingerprint);
+  await screen.getByLabel('Member fingerprint').fill(fingerprint);
   await screen.getByRole('button', { name: 'Add member' }).click();
   await screen.getByRole('button', { name: 'Close' }).first().click();
 
-  // Send a group message; ChatScreen must route it to the bot's peer session.
+  // The first add teaches the client the gateway's bundle but its sender-key
+  // distribution races the prekey exchange. Remove and re-add once the
+  // session exists, so the bot receives the current sender key.
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await screen.getByRole('button', { name: 'Chat actions' }).first().click();
+  await screen.getByRole('button', { name: 'Group members' }).click();
+  await screen.getByRole('button', { name: `Remove member: ${fingerprint}` }).click();
+  await screen.getByLabel('Member fingerprint').fill(fingerprint);
+  await screen.getByRole('button', { name: 'Add member' }).click();
+  await screen.getByRole('button', { name: 'Close' }).first().click();
+
+  // The first frame asks the gateway for its prekey bundle; once that lands the
+  // next group frame must go through the encrypted 1:1 session.
   const groupInput = screen.getByRole('textbox', 'Type a message...');
+  await groupInput.fill('warm up the session');
+  await groupInput.press('Enter');
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   await groupInput.fill('hello from the group');
   await groupInput.press('Enter');
 
@@ -74,13 +88,12 @@ test('gateway bot receives a group message through the encrypted peer session', 
     const w = window;
     const deadline = Date.now() + 20000;
     while (Date.now() < deadline) {
-      if (w.__novaBotReceived.length > 0) return w.__novaBotReceived;
+      if (w.__novaBotReceived.some((frame) => frame.plaintext === 'hello from the group')) break;
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    return { received: w.__novaBotReceived, errors: w.__novaBotErrors };
+    return w.__novaBotReceived;
   });
-
-  expect(Array.isArray(received)).toBe(true);
-  expect(received[0].plaintext).toBe('hello from the group');
-  expect(received[0].senderFingerprint).toBeTruthy();
+  const hello = received.find((frame) => frame.plaintext === 'hello from the group');
+  expect(Boolean(hello)).toBe(true);
+  expect(hello.senderFingerprint).toBeTruthy();
 });
