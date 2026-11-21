@@ -1746,7 +1746,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onToggle={handleTogglePin}
           />
           {(pinEnabled || isCreatingPin || isRemovingPin) && (
-            <div className="space-y-2 px-1 py-2">
+            <form onSubmit={(e) => { e.preventDefault(); handleConfirmPin(); }} className="space-y-2 px-1 py-2">
               <p className="text-[11px] text-[#8c919d]">
                 {isRemovingPin ? t('settings.passcodeConfirmRemove') : t('common.passcodeEnter')}
               </p>
@@ -1764,8 +1764,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
               </div>
               <button
-                type="button"
-                onClick={handleConfirmPin}
+                type="submit"
                 disabled={pinInput.length < pinLength}
                 className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
               >
@@ -1787,7 +1786,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {pinMsg}
                 </div>
               )}
-            </div>
+            </form>
           )}
 
           <div className="space-y-1.5 px-1 pb-1">
