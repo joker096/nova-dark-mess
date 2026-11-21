@@ -72,6 +72,7 @@ import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
 import { P2PManager } from './lib/p2p/p2pManager';
 import { P2PSignalingClient } from './lib/p2p/signaling';
+import { observePeerKey } from './lib/security/peerKeyJournal';
 import { MeshRelay } from './lib/p2p/relay';
 import { TransportManager } from './lib/network/TransportManager';
 import type { TransportBackend } from './lib/network/TransportManager';
@@ -182,6 +183,18 @@ export default function App() {
         signaling, 
         relay,
         transportManager,
+        // B4: every bundle the transport accepts (including a bot's) goes
+        // through the key-change journal, so a rotated bot key is recorded the
+        // same way a contact's is.
+        onPeerBundle: (fingerprint, bundle) => {
+          const chatId = Object.entries(peerFingerprintsRef.current)
+            .find(([, fp]) => fp === fingerprint)?.[0] ?? fingerprint;
+          void observePeerKey(chatId, {
+            fingerprint: bundle.fingerprint,
+            signingKey: bundle.signingKey,
+            identityKey: bundle.identityKey,
+          }).catch(() => undefined);
+        },
         // B4 (L2 gateway transport): route incoming P2P/relay messages.
         // Encrypted ratchet payloads arrive here already decrypted as plain
         // text. They are either: (a) receipt signals (type: delivered/read/typing/…),
@@ -1174,7 +1187,7 @@ export default function App() {
           pendingBotInstall={pendingBotInstall}
           onBotInstallHandled={() => setPendingBotInstall(null)}
           onOpenBotChat={(botId) => {
-            setPendingBotStart({ chatId: botId, payload: '/start' });
+            setPendingBotStart({ chatId: botId, payload: '' });
             navigate('chat-katie', { chatId: botId });
           }}
         />

@@ -55,6 +55,13 @@ export interface P2PManagerOptions {
   /** Optional multi-backend transport used as fallback when WebRTC/DataChannel
    *  is unavailable or blocked. */
   transportManager?: TransportManager;
+  /**
+   * Called every time a peer's prekey bundle is registered (first sight or
+   * replacement, including a refresh requested by either side). The client
+   * wires this to the peer key journal so bot and peer key rotations are
+   * recorded the same way (docs/bots-roadmap.md B4).
+   */
+  onPeerBundle?: (fingerprint: string, bundle: PreKeyBundle) => void;
 }
 
 interface PeerRecord {
@@ -83,6 +90,7 @@ export class P2PManager {
   private readonly onMessage?: (from: string, plaintext: string) => void;
   private readonly onPeerStateChange?: (state: P2PConnectionState) => void;
   private readonly onError?: (error: Error, peer?: string) => void;
+  private readonly onPeerBundle?: (fingerprint: string, bundle: PreKeyBundle) => void;
   private readonly peers = new Map<string, PeerRecord>();
   private readonly bundleWaiters = new Map<string, Array<(bundle: PreKeyBundle) => void>>();
   private readonly bundleMaxAgeMs: number;
@@ -99,6 +107,7 @@ export class P2PManager {
     this.onMessage = options.onMessage;
     this.onPeerStateChange = options.onPeerStateChange;
     this.onError = options.onError;
+    this.onPeerBundle = options.onPeerBundle;
     this.bundleMaxAgeMs = options.bundleMaxAgeMs ?? DEFAULT_BUNDLE_MAX_AGE_MS;
 
     this.unsubscribeSignaling = this.signaling.onMessage((message) => {
@@ -232,6 +241,14 @@ export class P2PManager {
     peer.bundleUpdatedAt = Date.now();
     // A bundle arrived: allow a later refresh request again.
     peer.preKeyRequestSent = false;
+
+    // Journaling must never break transport. A failing observer is reported
+    // through onError and the bundle stays usable for this session.
+    try {
+      this.onPeerBundle?.(fingerprint, bundle);
+    } catch (error) {
+      this.onError?.(error instanceof Error ? error : new Error(String(error)), fingerprint);
+    }
 
     const waiters = this.bundleWaiters.get(fingerprint);
     if (waiters && waiters.length > 0) {

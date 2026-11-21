@@ -3,7 +3,7 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { createAnonymousIdentity } from '../../../src/lib/crypto/identity';
 import { P2PManager } from '../../../src/lib/p2p/p2pManager';
-import { BotGateway } from './index';
+import { BotGateway, type BotGatewayOptions } from './index';
 import {
   createSignalingBus,
   createRelayPair,
@@ -155,5 +155,92 @@ describe('BotGateway', () => {
     const gateway = new BotGateway({ identity });
     await gateway.initialize();
     expect(() => gateway.close()).not.toThrow();
+  });
+});
+
+describe('BotGateway group privacy and wire framing (B4)', () => {
+  const gateways: BotGateway[] = [];
+  const managers: P2PManager[] = [];
+
+  afterEach(() => {
+    gateways.splice(0).forEach((g) => g.close());
+    managers.splice(0).forEach((m) => m.close());
+  });
+
+  async function connectedPair(gatewayOptions: Partial<BotGatewayOptions> = {}) {
+    const bot = await createAnonymousIdentity();
+    const peer = await createAnonymousIdentity();
+    const bus = createSignalingBus();
+    const { aliceRelay, bobRelay, asMeshRelay } = createRelayPair(bot.fingerprint, peer.fingerprint);
+
+    const groupMessages: Array<{ sender: string; text: string }> = [];
+    const gateway = new BotGateway({
+      identity: bot,
+      signaling: bus.clientFor(bot.fingerprint),
+      relay: asMeshRelay(aliceRelay),
+      onGroupMessage: (_groupId, sender, text) => groupMessages.push({ sender, text }),
+      ...gatewayOptions,
+    });
+    const peerGateway = new BotGateway({
+      identity: peer,
+      signaling: bus.clientFor(peer.fingerprint),
+      relay: asMeshRelay(bobRelay),
+    });
+    gateways.push(gateway, peerGateway);
+
+    await gateway.initialize();
+    await peerGateway.initialize();
+    gateway['p2p'].registerPeerBundle(peer.fingerprint, await peerGateway.getPreKeyBundle());
+    peerGateway['p2p'].registerPeerBundle(bot.fingerprint, await gateway.getPreKeyBundle());
+
+    return { bot, peer, gateway, peerGateway, groupMessages };
+  }
+
+  it('answers its own group echo locally instead of looping it back as an update', async () => {
+    const { bot, peer, gateway, peerGateway, groupMessages } = await connectedPair({ botId: 'echo' });
+    expect(gateway.groupPrivacy).toBe('all');
+
+    const members = [bot.fingerprint, peer.fingerprint];
+    await gateway.joinGroup('g', members, { distribute: false });
+    await peerGateway.joinGroup('g', members);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await gateway.distributeGroupKey('g');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(gateway.getGroupMembers('g')).toEqual(members);
+
+    expect(await gateway.sendGroupMessage('g', 'from the bot')).toBe(true);
+    await waitFor(() => groupMessages.length === 1);
+    expect(groupMessages[0]).toEqual({ sender: bot.fingerprint, text: 'from the bot' });
+    // Only the local echo: sending once must never produce a second update.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(groupMessages).toHaveLength(1);
+  });
+
+  it('mention-only mode drops unmentioned group text but keeps commands and mentions', async () => {
+    const { bot, peer, gateway, peerGateway, groupMessages } = await connectedPair({
+      botId: 'helper',
+      mentionOnly: true,
+    });
+    expect(gateway.groupPrivacy).toBe('mention_only');
+
+    const members = [bot.fingerprint, peer.fingerprint];
+    await gateway.joinGroup('g', members, { distribute: false });
+    await peerGateway.joinGroup('g', members);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await gateway.distributeGroupKey('g');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await peerGateway.sendGroupMessage('g', 'just chatting');
+    // Let any wrongly-delivered frame arrive before asserting nothing came.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(groupMessages).toHaveLength(0);
+
+    await peerGateway.sendGroupMessage('g', '/status');
+    await waitFor(() => groupMessages.length === 1);
+    expect(groupMessages[0].text).toBe('/status');
+
+    await peerGateway.sendGroupMessage('g', 'hey @helper, are you there?');
+    await waitFor(() => groupMessages.length === 2);
+    expect(groupMessages[1].text).toBe('hey @helper, are you there?');
   });
 });

@@ -119,4 +119,51 @@ describe('P2PManager prekey bundle freshness', () => {
       cachedBundle.signedPreKey.keyId,
     );
   });
+
+  it('reports every accepted bundle so the key journal sees a bot key rotation', async () => {
+    const alice = await createAnonymousIdentity();
+    const bot = await createAnonymousIdentity();
+    const observed: Array<{ fingerprint: string; signedPreKeyId: number }> = [];
+
+    const aliceManager = new P2PManager({
+      identity: alice,
+      signaling: createSilentSignaling(),
+      onPeerBundle: (fingerprint, bundle) =>
+        observed.push({ fingerprint, signedPreKeyId: bundle.signedPreKey.keyId }),
+    });
+    const botManager = new P2PManager({
+      identity: bot,
+      signaling: createSilentSignaling(),
+    });
+    managers.push(aliceManager, botManager);
+
+    const initial = await botManager.getPreKeyBundle();
+    expect(aliceManager.registerPeerBundle(bot.fingerprint, initial)).toBe(true);
+    expect(observed).toEqual([{ fingerprint: bot.fingerprint, signedPreKeyId: initial.signedPreKey.keyId }]);
+
+    const rotated = await botManager.rotateSignedPreKey();
+    expect(aliceManager.registerPeerBundle(bot.fingerprint, rotated)).toBe(true);
+    expect(observed).toHaveLength(2);
+    expect(observed[1].signedPreKeyId).toBe(rotated.signedPreKey.keyId);
+    expect(observed[1].signedPreKeyId).not.toBe(observed[0].signedPreKeyId);
+  });
+
+  it('never rejects a bundle because the observer threw', async () => {
+    const alice = await createAnonymousIdentity();
+    const bot = await createAnonymousIdentity();
+    const errors: Error[] = [];
+    const aliceManager = new P2PManager({
+      identity: alice,
+      signaling: createSilentSignaling(),
+      onPeerBundle: () => {
+        throw new Error('journal unavailable');
+      },
+      onError: (error) => errors.push(error),
+    });
+    const botManager = new P2PManager({ identity: bot, signaling: createSilentSignaling() });
+    managers.push(aliceManager, botManager);
+
+    expect(aliceManager.registerPeerBundle(bot.fingerprint, await botManager.getPreKeyBundle())).toBe(true);
+    expect(errors.map((error) => error.message)).toEqual(['journal unavailable']);
+  });
 });
