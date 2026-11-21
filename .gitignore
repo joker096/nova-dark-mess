@@ -7,6 +7,9 @@ server/site-gateway/.env
 anon-state.sqlite
 anon-state.sqlite-*
 
+# Local deployment notes (secrets; do not commit)
+DEPLOYMENT.local.md
+
 # Agent / session artifacts (do not commit)
 .e2e/
 .open-mem/
