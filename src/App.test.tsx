@@ -45,7 +45,11 @@ function MockChatsScreen(
   return <div data-testid="chats-screen" />;
 }
 vi.mock('./components/ChatsScreen', () => ({ ChatsScreen: forwardRef(MockChatsScreen) }));
-vi.mock('./components/ChatScreen', () => ({ ChatScreen: vi.fn(() => <div data-testid="chat-screen" />) }));
+vi.mock('./components/ChatScreen', () => ({
+  ChatScreen: vi.fn(({ getBotSession }: { getBotSession?: unknown }) => (
+    <div data-testid="chat-screen" data-has-bot-session={String(Boolean(getBotSession))} />
+  )),
+}));
 vi.mock('./components/ChannelScreen', () => ({
   ChannelScreen: vi.fn(() => <div data-testid="channel-screen" />),
 }));
@@ -65,8 +69,12 @@ vi.mock('./components/MeshMap', () => ({
   )),
 }));
 vi.mock('./components/SettingsModal', () => ({
-  SettingsModal: vi.fn(({ isOpen }: { isOpen: boolean }) => (
-    <div data-testid="settings-modal" data-isopen={String(isOpen)} />
+  SettingsModal: vi.fn(({ isOpen, getBotSession }: { isOpen: boolean; getBotSession?: unknown }) => (
+    <div
+      data-testid="settings-modal"
+      data-isopen={String(isOpen)}
+      data-has-bot-session={String(Boolean(getBotSession))}
+    />
   )),
 }));
 vi.mock('./components/AppIcon', () => ({ AppIcon: vi.fn(() => <div data-testid="app-icon" />) }));
@@ -189,5 +197,25 @@ describe('App - desktop navigation rail', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'folders' })[0]);
     expect(capturedRef.current?.openFolderModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the Bots UI and ignores bot deep links when VITE_NOVA_BOTS=false', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_NOVA_BOTS', 'false');
+    window.location.hash = '#nova://bot/echo_bot';
+
+    try {
+      const { default: DisabledApp } = await import('./App');
+      render(<DisabledApp />);
+
+      const settings = await screen.findByTestId('settings-modal');
+      // A bot deep link would normally open Settings → Bots; it must be inert.
+      expect(settings.getAttribute('data-isopen')).toBe('false');
+      expect(settings.getAttribute('data-has-bot-session')).toBe('false');
+    } finally {
+      window.location.hash = '';
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });

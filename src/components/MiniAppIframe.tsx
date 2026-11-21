@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Maximize, Send } from 'lucide-react';
 import type { FromMiniAppMessage, ToMiniAppMessage } from '../lib/bots/miniApp';
 import { createInitData, DEFAULT_THEME_PARAMS, iframeOrigin, serializeInitData } from '../lib/bots/miniApp';
+import { isAllowedMiniAppUrl } from '../lib/bots/miniAppOrigins';
 
 interface MiniAppIframeProps {
   /** Bot id (used in initData). */
@@ -52,6 +53,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
   const readyRef = useRef<boolean>(false);
 
   const origin = iframeOrigin(webAppUrl);
+  const allowed = origin !== null && isAllowedMiniAppUrl(webAppUrl);
 
   // Send a postMessage to the iframe once it is ready.
   const post = useCallback(
@@ -119,6 +121,11 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
       setState({ loaded: false, error: 'Mini App URL must be HTTPS' });
       return;
     }
+    if (!isAllowedMiniAppUrl(webAppUrl)) {
+      targetOriginRef.current = null;
+      setState({ loaded: false, error: 'Mini App origin is not allowed' });
+      return;
+    }
     targetOriginRef.current = origin;
     readyRef.current = false;
     setState({ loaded: false, error: null });
@@ -155,7 +162,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
 
       {/* Sandboxed iframe — no allow-same-origin. */}
       <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0b0c10]">
-        {origin ? (
+        {origin && allowed ? (
           <iframe
             ref={iframeRef}
             className="w-full h-full block"
