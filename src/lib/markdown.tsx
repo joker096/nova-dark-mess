@@ -18,6 +18,14 @@
 import React, { ReactNode } from 'react';
 import { toSafeExternalUrl } from './security/safeUrl';
 
+/**
+ * Inline renderers only ever return phrasing content (span/strong/em/code/del),
+ * and `renderBlocks` puts its output inside <p>. The type says so explicitly:
+ * inline layers must never reach for block tags, or the chat bubble ends up
+ * with a <p> inside a <p>.
+ */
+type InlineNode = Exclude<ReactNode, undefined>;
+
 /** Splits text into segments separated by a delimiter pair (open/close). */
 function splitByPair(
   text: string,
@@ -67,7 +75,9 @@ export function renderMarkdown({ text, onLinkPress }: RenderMarkdownProps): Reac
     <>
       {parts.map((part, i) => {
         if (typeof part === 'string') {
-          return renderBlocks(part, { onLinkPress }, `p-${i}`);
+          // Wrap in a keyed fragment: renderBlocks returns a keyed fragment
+          // whose key belongs to that fragment, not to this array slot.
+          return <React.Fragment key={`p-${i}`}>{renderBlocks(part, { onLinkPress }, `p-${i}`)}</React.Fragment>;
         }
         // Message text is attacker-controlled: only http(s)/mailto links may
         // become anchors. A `javascript:` or `data:` URL would otherwise run
@@ -103,13 +113,17 @@ function renderInline(
   text: string,
   opts: { onLinkPress?: (url: string) => void },
   keyBase: string,
-): ReactNode {
+): InlineNode {
   const codeParts = splitByPair(text, '`', '`');
   return (
     <>
       {codeParts.map((seg, i) => {
         if (!seg.isMarked) {
-          return renderEmphasis(seg.text, opts, `${keyBase}-c-${i}`);
+          return (
+            <React.Fragment key={`${keyBase}-c-${i}`}>
+              {renderEmphasis(seg.text, opts, `${keyBase}-c-${i}`)}
+            </React.Fragment>
+          );
         }
         return (
           <code
@@ -128,13 +142,17 @@ function renderEmphasis(
   text: string,
   opts: { onLinkPress?: (url: string) => void },
   keyBase: string,
-): ReactNode {
+): InlineNode {
   const boldParts = splitByPair(text, '**', '**');
   return (
     <>
       {boldParts.map((seg, i) => {
         if (!seg.isMarked) {
-          return renderItalic(seg.text, opts, `${keyBase}-b-${i}`);
+          return (
+            <React.Fragment key={`${keyBase}-b-${i}`}>
+              {renderItalic(seg.text, opts, `${keyBase}-b-${i}`)}
+            </React.Fragment>
+          );
         }
         return (
           <strong
@@ -153,13 +171,17 @@ function renderItalic(
   text: string,
   opts: { onLinkPress?: (url: string) => void },
   keyBase: string,
-): ReactNode {
+): InlineNode {
   const italicParts = splitByPair(text, '*', '*');
   return (
     <>
       {italicParts.map((seg, i) => {
         if (!seg.isMarked) {
-          return renderStrike(seg.text, opts, `${keyBase}-i-${i}`);
+          return (
+            <React.Fragment key={`${keyBase}-i-${i}`}>
+              {renderStrike(seg.text, opts, `${keyBase}-i-${i}`)}
+            </React.Fragment>
+          );
         }
         return (
           <em key={`${keyBase}-em-${i}`} className="italic">
@@ -175,7 +197,7 @@ function renderStrike(
   text: string,
   opts: { onLinkPress?: (url: string) => void },
   keyBase: string,
-): ReactNode {
+): InlineNode {
   const strikeParts = splitByPair(text, '~~', '~~');
   return (
     <>
@@ -184,9 +206,10 @@ function renderStrike(
           // Leaf: render plain text (React auto-escapes)
           return <span key={`${keyBase}-plain-${i}`}>{seg.text}</span>;
         }
+        // Inline context: strikethrough wraps inline formatting, never blocks.
         return (
           <del key={`${keyBase}-del-${i}`} className="line-through">
-            {renderBlocks(seg.text, opts, `${keyBase}-s-inner-${i}`)}
+            {renderInline(seg.text, opts, `${keyBase}-s-inner-${i}`)}
           </del>
         );
       })}
@@ -204,71 +227,103 @@ function renderBlocks(
   keyBase: string,
 ): ReactNode {
   const lines = text.split('\n');
-  return (
-    <>
-      {lines.map((line, i) => {
-        const trimmed = line.trimStart();
-        const indent = line.length - trimmed.length;
+  const blocks: ReactNode[] = [];
+  let listItems: ReactNode[] = [];
+  let listKeyBase = '';
 
-        if (trimmed.startsWith('> ')) {
-          return (
-            <blockquote
-              key={`${keyBase}-bq-${i}`}
-              className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-white/70"
-            >
-              {renderInline(trimmed.slice(2), opts, `${keyBase}-bq-inner-${i}`)}
-            </blockquote>
-          );
-        }
+  const flushList = () => {
+    if (listItems.length > 0) {
+      blocks.push(
+        <ul key={listKeyBase} className="my-2 pl-6 space-y-1 list-disc">
+          {listItems}
+        </ul>
+      );
+      listItems = [];
+      listKeyBase = '';
+    }
+  };
 
-        if (trimmed.startsWith('### ')) {
-          return (
-            <h3
-              key={`${keyBase}-h3-${i}`}
-              className="text-lg font-bold text-white my-2"
-            >
-              {renderInline(trimmed.slice(4), opts, `${keyBase}-h3-inner-${i}`)}
-            </h3>
-          );
-        }
-        if (trimmed.startsWith('## ')) {
-          return (
-            <h2
-              key={`${keyBase}-h2-${i}`}
-              className="text-xl font-bold text-white my-2"
-            >
-              {renderInline(trimmed.slice(3), opts, `${keyBase}-h2-inner-${i}`)}
-            </h2>
-          );
-        }
-        if (trimmed.startsWith('# ')) {
-          return (
-            <h1
-              key={`${keyBase}-h1-${i}`}
-              className="text-2xl font-bold text-white my-2"
-            >
-              {renderInline(trimmed.slice(2), opts, `${keyBase}-h1-inner-${i}`)}
-            </h1>
-          );
-        }
+  lines.forEach((line, i) => {
+    const trimmed = line.trimStart();
+    const indent = line.length - trimmed.length;
 
-        if (trimmed.startsWith('- ')) {
-          return (
-            <li
-              key={`${keyBase}-li-${i}`}
-              className="my-1 pl-4 text-white"
-            >
-              {renderInline(trimmed.slice(2), opts, `${keyBase}-li-inner-${i}`)}
-            </li>
-          );
-        }
+    if (!trimmed) {
+      flushList();
+      return;
+    }
 
-        return (
-          <p key={`${keyBase}-p-${i}`} className={`my-2 ${indent > 0 ? 'pl-4' : ''}`}>
-            {renderInline(line, opts, `${keyBase}-p-inner-${i}`)}
-          </p>
-        );
-      })}
-    </>
-  );
+    if (trimmed.startsWith('> ')) {
+      flushList();
+      blocks.push(
+        <blockquote
+          key={`${keyBase}-bq-${i}`}
+          className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-white/70"
+        >
+          {renderInline(trimmed.slice(2), opts, `${keyBase}-bq-inner-${i}`)}
+        </blockquote>
+      );
+      return;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      flushList();
+      blocks.push(
+        <h3
+          key={`${keyBase}-h3-${i}`}
+          className="text-lg font-bold text-white my-2"
+        >
+          {renderInline(trimmed.slice(4), opts, `${keyBase}-h3-inner-${i}`)}
+        </h3>
+      );
+      return;
+    }
+    if (trimmed.startsWith('## ')) {
+      flushList();
+      blocks.push(
+        <h2
+          key={`${keyBase}-h2-${i}`}
+          className="text-xl font-bold text-white my-2"
+        >
+          {renderInline(trimmed.slice(3), opts, `${keyBase}-h2-inner-${i}`)}
+        </h2>
+      );
+      return;
+    }
+    if (trimmed.startsWith('# ')) {
+      flushList();
+      blocks.push(
+        <h1
+          key={`${keyBase}-h1-${i}`}
+          className="text-2xl font-bold text-white my-2"
+        >
+          {renderInline(trimmed.slice(2), opts, `${keyBase}-h1-inner-${i}`)}
+        </h1>
+      );
+      return;
+    }
+
+    if (trimmed.startsWith('- ')) {
+      if (!listKeyBase) listKeyBase = `${keyBase}-ul-${i}`;
+      listItems.push(
+        <li
+          key={`${keyBase}-li-${i}`}
+          className="my-1 pl-4 text-white"
+        >
+          {renderInline(trimmed.slice(2), opts, `${keyBase}-li-inner-${i}`)}
+        </li>
+      );
+      return;
+    }
+
+    flushList();
+    blocks.push(
+      <p key={`${keyBase}-p-${i}`} className={`my-2 ${indent > 0 ? 'pl-4' : ''}`}>
+        {renderInline(line, opts, `${keyBase}-p-inner-${i}`)}
+      </p>
+    );
+  });
+
+  flushList();
+
+  return <>{blocks}</>;
 }
