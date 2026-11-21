@@ -29,6 +29,10 @@ export interface SignalingOptions {
   url?: string;
   reconnect?: boolean;
   maxReconnectDelayMs?: number;
+  // Fingerprint to announce to a remote signaling server as soon as the socket
+  // opens (and again after every reconnect). Without this the peer is never
+  // registered as a delivery target and incoming calls/signaling are dropped.
+  registerFingerprint?: string;
 }
 
 type MessageListener = (msg: SignalingMessage) => void;
@@ -49,11 +53,13 @@ export class P2PSignalingClient {
   private readonly url?: string;
   private readonly reconnect: boolean;
   private readonly maxReconnectDelayMs: number;
+  private readonly registerFingerprint?: string;
 
   constructor(options: SignalingOptions = {}) {
     this.url = options.url;
     this.reconnect = options.reconnect ?? true;
     this.maxReconnectDelayMs = options.maxReconnectDelayMs ?? 30000;
+    this.registerFingerprint = options.registerFingerprint;
   }
 
   public onMessage(callback: MessageListener): () => void {
@@ -119,6 +125,13 @@ export class P2PSignalingClient {
           this.reconnectAttempts = 0;
           this.setStatus('connected');
           this.flushOutbox();
+          if (this.registerFingerprint) {
+            this.sendRaw({
+              type: 'ping',
+              senderFingerprint: this.registerFingerprint,
+              targetFingerprint: this.registerFingerprint,
+            });
+          }
           if (!settled) {
             settled = true;
             resolve(true);
