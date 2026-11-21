@@ -168,7 +168,10 @@
       "markAsRead": "Mark as read",
       "markAsUnread": "Mark as unread"
     },
-    "greeting": "Hello, {{name}}"
+    "greeting": "Hello, {{name}}",
+    "fabOtherSide": "Move button to the other side",
+    "fabMoveLeft": "Move button left (left hand)",
+    "fabMoveRight": "Move button right (right hand)"
   },
   "schedule": {
     "title": "Publish time",
@@ -800,7 +803,11 @@
     "moderation": "Moderation & appeals",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "One-handed button",
+    "fabSideDesc": "Side of the New Action button",
+    "fabHandLeft": "Left hand",
+    "fabHandRight": "Right hand"
   },
   "wallpaper": {
     "title": "Chat Wallpaper",

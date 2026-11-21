@@ -637,7 +637,11 @@
     "moderation": "Moderación y apelaciones",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "Botón para una mano",
+    "fabSideDesc": "Lado del botón Nueva acción",
+    "fabHandLeft": "Mano izquierda",
+    "fabHandRight": "Mano derecha"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1120,7 +1124,10 @@
       "markAsRead": "Marcar como leído",
       "markAsUnread": "Marcar como no leído"
     },
-    "greeting": "Hola, {{name}}"
+    "greeting": "Hola, {{name}}",
+    "fabOtherSide": "Mover el botón al otro lado",
+    "fabMoveLeft": "Mover el botón a la izquierda (mano izquierda)",
+    "fabMoveRight": "Mover el botón a la derecha (mano derecha)"
   },
   "common": {
     "unlockWithBiometric": "Desbloquear con huella",

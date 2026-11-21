@@ -563,7 +563,11 @@
     "changePin": "Ändra PIN-kod",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "Enhandsknapp",
+    "fabSideDesc": "Sida för knappen Ny åtgärd",
+    "fabHandLeft": "Vänster hand",
+    "fabHandRight": "Höger hand"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1116,7 +1120,10 @@
       "markAsRead": "Markera som läst",
       "markAsUnread": "Markera som oläst"
     },
-    "greeting": "Hej, {{name}}"
+    "greeting": "Hej, {{name}}",
+    "fabOtherSide": "Flytta knappen till andra sidan",
+    "fabMoveLeft": "Flytta knappen till vänster (vänster hand)",
+    "fabMoveRight": "Flytta knappen till höger (höger hand)"
   },
   "channels": "Kanaler",
   "common": {

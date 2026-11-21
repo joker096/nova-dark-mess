@@ -563,7 +563,11 @@
     "changePin": "PIN 변경",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "한 손 사용 버튼",
+    "fabSideDesc": "새 작업 버튼 위치",
+    "fabHandLeft": "왼손",
+    "fabHandRight": "오른손"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1116,7 +1120,10 @@
       "markAsRead": "읽음으로 표시",
       "markAsUnread": "읽지 않은 상태로 표시"
     },
-    "greeting": "안녕하세요, {{name}}"
+    "greeting": "안녕하세요, {{name}}",
+    "fabOtherSide": "버튼을 반대편으로 이동",
+    "fabMoveLeft": "버튼을 왼쪽으로 이동(왼손)",
+    "fabMoveRight": "버튼을 오른쪽으로 이동(오른손)"
   },
   "channels": "채널",
   "common": {

@@ -563,7 +563,11 @@
     "changePin": "更改密码",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "单手操作按钮",
+    "fabSideDesc": "“新操作”按钮位置",
+    "fabHandLeft": "左手",
+    "fabHandRight": "右手"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1116,7 +1120,10 @@
       "markAsRead": "标记为已读",
       "markAsUnread": "标记为未读"
     },
-    "greeting": "你好，{{name}}"
+    "greeting": "你好，{{name}}",
+    "fabOtherSide": "将按钮移到另一侧",
+    "fabMoveLeft": "将按钮移到左侧（左手）",
+    "fabMoveRight": "将按钮移到右侧（右手）"
   },
   "channels": "渠道",
   "common": {

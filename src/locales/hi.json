@@ -563,7 +563,11 @@
     "changePin": "पिन बदलें",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "एक हाथ से उपयोग बटन",
+    "fabSideDesc": "नई क्रिया बटन का किनारा",
+    "fabHandLeft": "बायाँ हाथ",
+    "fabHandRight": "दायाँ हाथ"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1116,7 +1120,10 @@
       "markAsRead": "पढ़ा गया के रूप में चिह्नित करें",
       "markAsUnread": "अपठित के रूप में चिह्नित करें"
     },
-    "greeting": "नमस्ते, {{name}}"
+    "greeting": "नमस्ते, {{name}}",
+    "fabOtherSide": "बटन को दूसरी ओर ले जाएँ",
+    "fabMoveLeft": "बटन बाईं ओर ले जाएँ (बायाँ हाथ)",
+    "fabMoveRight": "बटन दाईं ओर ले जाएँ (दायाँ हाथ)"
   },
   "channels": "चैनल",
   "common": {

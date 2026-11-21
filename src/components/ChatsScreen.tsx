@@ -21,8 +21,10 @@ import {
   Cloud,
   UserPlus,
   Upload,
+  Hand,
 } from 'lucide-react';
 import { getAllDrafts, subscribeDraftChanges } from '../lib/messaging/drafts';
+import { readFabSide, saveFabSide, FAB_SIDE_EVENT, isFabSide, type FabSide } from '../lib/ui/appearance';
 import {
   MOCK_STORIES,
   MOCK_CHATS,
@@ -163,6 +165,27 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   // Message drafts auto-synced across views for one-handed convenience
   const [drafts, setDrafts] = useState<Record<string, string>>(() => getAllDrafts());
   const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+  // One-handed use: left-handed users reach the thumb zone on the left edge.
+  const [fabSide, setFabSide] = useState<FabSide>(() => readFabSide());
+  const toggleFabSide = () => {
+    const next: FabSide = fabSide === 'right' ? 'left' : 'right';
+    setFabSide(next);
+    saveFabSide(next);
+  };
+  // Settings → Appearance can change the side too; mirror it live.
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setFabSide(isFabSide(detail) ? detail : readFabSide());
+    };
+    const syncStorage = () => setFabSide(readFabSide());
+    window.addEventListener(FAB_SIDE_EVENT, sync);
+    window.addEventListener('storage', syncStorage);
+    return () => {
+      window.removeEventListener(FAB_SIDE_EVENT, sync);
+      window.removeEventListener('storage', syncStorage);
+    };
+  }, []);
 
   useEffect(() => {
     return subscribeDraftChanges(() => {
@@ -1285,8 +1308,14 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       </>
     )}
 
-      {/* Floating Action Button (FAB) in the thumb zone for One-Handed Operation */}
-      <div className="fixed safe-bottom-fab right-4 z-40 md:hidden flex flex-col items-end pointer-events-auto">
+      {/* Floating Action Button (FAB) in the thumb zone for One-Handed Operation.
+          The side follows the user's choice so a left-handed thumb reaches it. */}
+      <div
+        className={`fixed safe-bottom-fab z-40 md:hidden flex flex-col pointer-events-auto ${
+          fabSide === 'right' ? 'right-4 items-end' : 'left-4 items-start'
+        }`}
+        data-fab-side={fabSide}
+      >
         {/* FAB Quick Action Bottom Sheet / Menu */}
         {isFabMenuOpen && (
           <>
@@ -1339,6 +1368,25 @@ onClick={() => {
                   <Upload className="w-4 h-4" />
                 </div>
                 <span>{t('contacts.import', { defaultValue: 'Import VCF' })}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  toggleFabSide();
+                  setIsFabMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+                aria-label={t('chats.fabOtherSide', { defaultValue: 'Move button to the other side' })}
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Hand className="w-4 h-4" />
+                </div>
+                <span>
+                  {fabSide === 'right'
+                    ? t('chats.fabMoveLeft', { defaultValue: 'Move button left (left hand)' })
+                    : t('chats.fabMoveRight', { defaultValue: 'Move button right (right hand)' })}
+                </span>
               </button>
             </div>
           </>
