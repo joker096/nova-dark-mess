@@ -4,8 +4,10 @@
  * `frame-src` cannot be derived per bot at runtime: a CSP policy is fixed for
  * the document and several policies only intersect. The product decision is
  * therefore an operator-controlled list of Mini App hosts, configured at build
- * time with `VITE_MINI_APP_ORIGINS=https://apps.example.com,...`. Each bot gets
- * a path under one of those origins (for example `/echo/`), not its own host.
+ * time with `VITE_MINI_APP_ORIGINS=https://mini-apps.your-domain.com`. Each bot
+ * gets a path under one of those origins (for example `/echo/`), not its own
+ * host. There is no built-in domain: the operator must supply a host they
+ * control, otherwise every remote Mini App is denied.
  *
  * With no configured origins the app refuses every remote Mini App and the
  * generated CSP keeps `frame-src 'self' blob:`.

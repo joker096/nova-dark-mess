@@ -7,12 +7,12 @@ This roadmap turns the bot-integration plan (derived from the audit of the old
 Like `docs/anonymity-roadmap.md`, it is incremental: every phase ships with
 tests and must not break the existing secure-messaging baseline.
 
-**Implementation status:** B0–B5 are **implemented**; B6 has real bot
-management but still has demo-only token/webhook/gateway commands and no
-transport-level E2E. B8 is in progress: local report/block and the
-threat-model addendum landed, the E2E install flow and the `NOVA_BOTS` flag
-exist. B7 is partially implemented (bridge, sandboxed iframe, signed initData);
-a static CSP `frame-src` allowlist is still open.
+**Implementation status:** B0–B8 are **implemented**. B6 has real bot
+management (including `/newbot`) and honest gateway/token/webhook boundaries;
+transport-level group E2E is still the main gap. B7 has an operator-controlled
+Mini App origin allowlist wired into CSP and runtime. B8's security/release
+checks passed on 2026-11-21 (full unit suite, i18n audit, security self-tests,
+secret scan, production build and the bots E2E).
 
 ## 0. Scope and non-goals
 
@@ -265,7 +265,7 @@ the bot's private key):
       flow (including an invalid username) through `BotRuntime` + `BotAdminApi`;
       transport-level E2E is still missing.
 
-### Phase B7 — Mini Apps — 🟡 Partial
+### Phase B7 — Mini Apps — ✅ Done (2026-11-21)
 
 - [x] `postMessage` bridge in `src/components/MiniAppIframe.tsx`: app→host
       `ready`/`close_requested`/`main_button_clicked`/`inline_query`; host→app
@@ -275,12 +275,24 @@ the bot's private key):
       installs are backfilled. The app receives the signature, never the secret.
 - [x] iframe uses `sandbox="allow-scripts allow-forms"` — **no
       `allow-same-origin`** — and only HTTPS URLs are accepted.
-- [ ] `frame-src` allowlist in the CSP: Mini App URLs are per-bot, so a static
-      allowlist needs a product decision (separate origin per owner). Not added.
+- [x] `frame-src` is restricted to an operator allowlist, not arbitrary
+      `https:`.      Decision: Mini Apps live under an operator-controlled host, configured
+      with `VITE_MINI_APP_ORIGINS=https://mini-apps.your-domain.com`, one path
+      per bot, because CSP is document-wide and per-bot hosts cannot be
+      expressed dynamically. `example.com` is a reserved placeholder, not a
+      working host: there is no default domain and every remote Mini App is
+      denied until the operator supplies their own. The allowlist feeds every CSP surface: `vite.config.ts`
+      (browser build) and `src-tauri/tauri.conf.json`, whose `csp`/`devCsp`
+      `frame-src` use the `{{MINI_APP_ORIGINS}}` placeholder that Tauri
+      substitutes at build time. `MiniAppIframe` also refuses any URL whose
+      exact origin is not listed
+      (`src/lib/bots/miniAppOrigins.ts`). With no env value, every remote Mini
+      App is denied and only `'self'`/`blob:` remain. Tests cover parsing,
+      exact-origin matching and the refused iframe.
 - [x] `web_app` button type opens the Mini App; `inline_query` updates are
       accepted by the runtime and routed from the bridge.
 
-### Phase B8 — Security review & release (1 week) — 🟡 In progress
+### Phase B8 — Security review & release (1 week) — ✅ Done (2026-11-21)
 
 - [x] Threat model addendum in `docs/threat-model.md`: malicious bot requesting
       broad permissions, phishing via inline buttons (button text vs action
@@ -303,6 +315,12 @@ the bot's private key):
       `nova://bot/...` deep links and routes no P2P traffic into bot runtimes.
       The flag is a runtime switch, not a compile-time removal — the docs no
       longer claim the code is tree-shaken out.
+- [x] Release verification on 2026-11-21: `npm test` (162 files, 1302 tests),
+      `npm run audit:i18n` (PASSED), `npm run test:security` (16/16),
+      `npm run check:secrets` (clean), `npm run lint:eslint` (0 errors,
+      46 existing warnings), `npm run build`, and the bots E2E (1/1). The
+      outstanding gap is B4's live gateway-in-a-group E2E, not a unit or
+      security failure.
 
 ## 4. Ordering and dependencies
 

@@ -1,6 +1,10 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
+// Mini Apps in tests use https://example.com; production requires an explicit
+// VITE_MINI_APP_ORIGINS allowlist (see src/lib/bots/miniAppOrigins.ts).
+(import.meta.env as Record<string, string>).VITE_MINI_APP_ORIGINS = 'https://example.com';
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
