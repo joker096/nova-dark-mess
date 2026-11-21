@@ -42,8 +42,13 @@ test('gateway bot receives a group message through the encrypted peer session', 
     return gateway.fingerprint;
   });
 
-  // Attach the live gateway's fingerprint to the Echo bot through the same
-  // session API NovaFather's /setpeer command calls.
+  // Wait until the encrypted vault is wired into the bot session (the Bots tab
+  // lists the seeded Echo fixture), then attach the live fingerprint through
+  // the same session API NovaFather's /setpeer command calls.
+  await screen.getByRole('button', { name: 'Settings' }).click();
+  await screen.getByRole('button', { name: /^Bots/ }).click();
+  await expect(screen.getByText('Echo Bot')).toBeVisible();
+  await screen.getByRole('button', { name: 'Close' }).first().click();
   await browser.evaluate(async (peer) => {
     const { botSession } = await import('/src/lib/bots/session.ts');
     await botSession.setPeerFingerprint('echo', peer);
