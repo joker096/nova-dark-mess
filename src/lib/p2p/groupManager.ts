@@ -59,6 +59,8 @@ export class GroupChatManager {
 
   private ownState: SenderKeyState | null = null;
   private readonly remoteStates = new Map<string, SenderKeyState>();
+  /** Members that already accepted our current sender key. */
+  private readonly keyDelivered = new Set<string>();
 
   constructor(options: GroupChatManagerOptions) {
     this.groupId = options.groupId;
@@ -78,10 +80,15 @@ export class GroupChatManager {
 
   public setMembers(members: string[]): void {
     this.members = [...members];
+    const current = new Set(this.members);
+    for (const member of this.keyDelivered) {
+      if (!current.has(member)) this.keyDelivered.delete(member);
+    }
   }
 
   public async initialize(distribute = true): Promise<void> {
     this.ownState = createSenderKey();
+    this.keyDelivered.clear();
     if (distribute) {
       await this.distributeSenderKey();
     }
@@ -113,31 +120,44 @@ export class GroupChatManager {
   /** Rotates our own sender key and distributes it to all remaining members. */
   public async rotateSenderKey(): Promise<void> {
     this.ownState = createSenderKey();
+    this.keyDelivered.clear();
     await this.distributeSenderKey();
   }
 
-  private async sendDistributionTo(member: string, state: SenderKeyState): Promise<void> {
+  private async sendDistributionTo(member: string, state: SenderKeyState): Promise<boolean> {
     const payload: GroupPayload = {
       type: 'skdm',
       groupId: this.groupId,
       distribution: createDistributionMessage(state),
     };
+    if (!this.sendToPeer) return false;
     try {
-      await this.sendToPeer?.(member, payload);
+      await this.sendToPeer(member, payload);
+      this.keyDelivered.add(member);
+      return true;
     } catch (err) {
+      this.keyDelivered.delete(member);
       this.onError?.(
         err instanceof Error ? err : new Error(String(err)),
         member,
       );
+      return false;
     }
   }
 
-  public async distributeSenderKey(): Promise<void> {
+  /**
+   * Sends our sender key to members that have not accepted it yet. Retrying
+   * missing members on every send covers a member added before the first P2P
+   * session exists: their first SKDM fails with the prekey exchange, and the
+   * next send delivers it before the next group frame.
+   */
+  public async distributeSenderKey(onlyMissing = false): Promise<void> {
     if (!this.ownState) {
       this.ownState = createSenderKey();
     }
     for (const member of this.members) {
       if (member === this.localFingerprint) continue;
+      if (onlyMissing && this.keyDelivered.has(member)) continue;
       await this.sendDistributionTo(member, this.ownState);
     }
   }
@@ -147,8 +167,9 @@ export class GroupChatManager {
       // First send also publishes our sender key: without it every other
       // member (including a bot added before the first message) would answer
       // "No sender key" and drop the frame.
-      await this.initialize(true);
+      await this.initialize(false);
     }
+    await this.distributeSenderKey(true);
     if (!this.ownState) return false;
 
     const { message, state } = await senderKeyEncrypt(this.ownState, text);

@@ -64,17 +64,6 @@ test('gateway bot receives a group message through the encrypted peer session', 
   await screen.getByRole('button', { name: 'Add member' }).click();
   await screen.getByRole('button', { name: 'Close' }).first().click();
 
-  // The first add teaches the client the gateway's bundle but its sender-key
-  // distribution races the prekey exchange. Remove and re-add once the
-  // session exists, so the bot receives the current sender key.
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  await screen.getByRole('button', { name: 'Chat actions' }).first().click();
-  await screen.getByRole('button', { name: 'Group members' }).click();
-  await screen.getByRole('button', { name: `Remove member: ${fingerprint}` }).click();
-  await screen.getByLabel('Member fingerprint').fill(fingerprint);
-  await screen.getByRole('button', { name: 'Add member' }).click();
-  await screen.getByRole('button', { name: 'Close' }).first().click();
-
   // The first frame asks the gateway for its prekey bundle; once that lands the
   // next group frame must go through the encrypted 1:1 session.
   const groupInput = screen.getByRole('textbox', 'Type a message...');
