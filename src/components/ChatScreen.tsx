@@ -60,7 +60,7 @@ import {
   saveCreatedGroups,
 } from '../data/mockMessengerData';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
-import type { BotCommand } from '../lib/bots/types';
+import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
 import type { MessageSink } from '../lib/bots/runtime';
 import { HttpMessageSink } from '../lib/bots/httpSink';
@@ -114,6 +114,7 @@ import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
 import { loadPrivacyPrefs } from '../lib/network/privacyMode';
 import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
+import { wrapGroupPayload } from '../lib/p2p/groupWire';
 import { RoomDataChannel, isRoomChannelSupported } from '../lib/p2p/roomChannel';
 import type { FileTransferMessage } from '../lib/p2p/fileTransfer';
 import { getOrCreateGroupInvite, regenerateGroupInviteToken, buildGroupInviteLink } from '../lib/social/groupInvites';
@@ -212,6 +213,30 @@ type RoomEnvelope =
   | { v: 1; kind: 'group'; payload: GroupPayload }
   | { v: 1; kind: 'file'; message: FileTransferMessage };
 
+/** Group frames addressed to a bot peer, which is a normal P2P participant. */
+const BOT_GROUP_PEERS_KEY = 'nova_bot_group_peers';
+
+/**
+ * Bot output is broadcast to every mounted ChatScreen (desktop and mobile are
+ * both in the tree); each instance keeps only events for its own chatId.
+ */
+const BOT_UI_EVENTS = {
+  message: 'nova:bot:message',
+  edit: 'nova:bot:edit',
+  delete: 'nova:bot:delete',
+  typing: 'nova:bot:typing',
+} as const;
+
+function loadBotGroupPeers(chatId: string): string[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(BOT_GROUP_PEERS_KEY) ?? '{}') as Record<string, unknown>;
+    const peers = stored[chatId];
+    return Array.isArray(peers) ? peers.filter((peer): peer is string => typeof peer === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export const ChatScreen: React.FC<ChatScreenProps> = ({
   chatId,
   onBack,
@@ -229,6 +254,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const { account } = useAccount();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
+  const groupMembersKey = (isGroupChat ? chatItem?.members ?? [] : []).join('|');
   const localFingerprint = identity?.fingerprint ?? 'nova_pk_local_group';
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -262,61 +288,92 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       ? new HttpMessageSink({ gatewayUrl })
       : {
           send: async (msg) => {
-            if (msg.chat.id !== chatId) return;
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: msg.messageId,
-                senderId: 'other',
-                text: msg.text,
-                time: new Date(msg.timestamp).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-                createdAt: msg.timestamp,
-                isRead: true,
-                botId,
-                system: false,
-              } as ChatMessage,
-            ]);
-            playSound('incoming');
-            vibrate();
-            // Bot has responded: stop the typing indicator after a brief
-            // pause so the "typing" bubble is visible to the user.
-            setTimeout(() => setBotTyping(false), 800);
+            window.dispatchEvent(new CustomEvent(BOT_UI_EVENTS.message, { detail: msg }));
           },
-          sendTyping: async (_chatId, isTyping) => {
-            setBotTyping(isTyping);
+          sendTyping: async (targetChatId, isTyping) => {
+            window.dispatchEvent(
+              new CustomEvent(BOT_UI_EVENTS.typing, { detail: { chatId: targetChatId, isTyping } }),
+            );
           },
           edit: async (edit) => {
-            let applied = false;
-            setMessages((prev) => {
-              applied = prev.some((m) => m.id === edit.messageId && m.botId === botId);
-              return prev.map((m) =>
-                m.id === edit.messageId && m.botId === botId
-                  ? { ...m, text: edit.text, editedAt: Date.now() }
-                  : m
-              );
-            });
-            return applied;
+            window.dispatchEvent(new CustomEvent(BOT_UI_EVENTS.edit, { detail: edit }));
+            return true;
           },
-          del: async (_chatId, messageId) => {
-            let applied = false;
-            setMessages((prev) => {
-              applied = prev.some((m) => m.id === messageId && m.botId === botId);
-              return prev.map((m) =>
-                m.id === messageId && m.botId === botId
-                  ? { ...m, deleted: true, deletedForEveryone: true }
-                  : m
-              );
-            });
-            return applied;
+          del: async (targetChatId, messageId) => {
+            window.dispatchEvent(
+              new CustomEvent(BOT_UI_EVENTS.delete, { detail: { chatId: targetChatId, messageId } }),
+            );
+            return true;
           },
           answerCallback: async () => {},
         };
     session.setMessageSink(sink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getBotSession, chatId, botId]);
+
+  // Local bot output is broadcast; only the instance owning this chat applies it.
+  useEffect(() => {
+    const onMessage = (event: Event) => {
+      const msg = (event as CustomEvent<BotOutgoingMessage>).detail;
+      if (msg.chat.id !== chatId) return;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msg.messageId,
+          senderId: 'other',
+          text: msg.text,
+          time: new Date(msg.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          createdAt: msg.timestamp,
+          isRead: true,
+          botId,
+          botKeyboard: msg.keyboard,
+          system: false,
+        } as ChatMessage,
+      ]);
+      playSound('incoming');
+      vibrate();
+      setTimeout(() => setBotTyping(false), 800);
+    };
+    const onEdit = (event: Event) => {
+      const edit = (event as CustomEvent<BotMessageEdit>).detail;
+      if (edit.chat.id !== chatId) return;
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === edit.messageId && message.botId === botId
+            ? { ...message, text: edit.text, editedAt: Date.now() }
+            : message,
+        ),
+      );
+    };
+    const onDelete = (event: Event) => {
+      const detail = (event as CustomEvent<{ chatId: string; messageId: string }>).detail;
+      if (detail.chatId !== chatId) return;
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === detail.messageId && message.botId === botId
+            ? { ...message, deleted: true, deletedForEveryone: true }
+            : message,
+        ),
+      );
+    };
+    const onTyping = (event: Event) => {
+      const detail = (event as CustomEvent<{ chatId: string; isTyping: boolean }>).detail;
+      if (detail.chatId === chatId) setBotTyping(detail.isTyping);
+    };
+    window.addEventListener(BOT_UI_EVENTS.message, onMessage);
+    window.addEventListener(BOT_UI_EVENTS.edit, onEdit);
+    window.addEventListener(BOT_UI_EVENTS.delete, onDelete);
+    window.addEventListener(BOT_UI_EVENTS.typing, onTyping);
+    return () => {
+      window.removeEventListener(BOT_UI_EVENTS.message, onMessage);
+      window.removeEventListener(BOT_UI_EVENTS.edit, onEdit);
+      window.removeEventListener(BOT_UI_EVENTS.delete, onDelete);
+      window.removeEventListener(BOT_UI_EVENTS.typing, onTyping);
+    };
+  }, [chatId, botId]);
   const [fileTransfer, setFileTransfer] = useState<{
     id: string;
     fileName: string;
@@ -354,6 +411,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const roomChannelRef = useRef<RoomDataChannel | null>(null);
   const groupManagerRef = useRef<GroupChatManager | null>(null);
   const fileManagerRef = useRef<FileTransferManager | null>(null);
+  // Bots added to this group as P2P participants: group frames must be
+  // addressed to them directly because the room broadcast only reaches
+  // WebRTC room peers (docs/bots-roadmap.md B4).
+  const botGroupPeersRef = useRef<string[]>(loadBotGroupPeers(chatId));
   const fingerprintSetRef = useRef<Set<string>>(new Set());
   const [roomPeerCount, setRoomPeerCount] = useState(0);
   const messagesRef = useRef(messages);
@@ -403,9 +464,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       new GroupChatManager({
         groupId: chatId,
         localFingerprint,
-        members: chatItem?.type === 'group' ? chatItem.members ?? [] : [],
-        sendToPeer: async (_peer, payload) => {
-          if (sendEnvelope({ v: 1, kind: 'group', payload })) return;
+        members: isGroupChat ? groupMembersKey.split('|').filter(Boolean) : [],
+        sendToPeer: async (peer, payload) => {
+          const toBot = Boolean(peer) && botGroupPeersRef.current.includes(peer);
+          if (toBot) {
+            // A bot receives the same versioned group envelope over the 1:1
+            // P2P session, encrypted as any other message.
+            try {
+              const wire = wrapGroupPayload(payload);
+              const delivered = p2pManager ? await p2pManager.sendMessage(peer, wire) : false;
+              if (delivered) return;
+            } catch {
+              /* fall through to the room/outbox paths */
+            }
+          } else if (sendEnvelope({ v: 1, kind: 'group', payload })) {
+            return;
+          }
           // Join traffic must survive a closed group: park it in the on-device
           // outbox so the session relay delivers it once a peer is around.
           if (enqueueJoinPayload(payload)) return;
@@ -473,9 +547,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           triggerPinnedToast(`${t('chat.groupMessageFailed')}: ${error.message}`);
         },
       }),
-    [chatId, chatItem, localFingerprint, sendEnvelope, t],
+    [chatId, groupMembersKey, isGroupChat, localFingerprint, sendEnvelope, p2pManager, t],
   );
   groupManagerRef.current = groupManager;
+
+
 
   // The demo shell has no remote transport, so files travel through a local
   // loopback that still runs the real chunking, acknowledgement and SHA-256

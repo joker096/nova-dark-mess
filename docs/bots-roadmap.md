@@ -172,26 +172,34 @@ the bot's private key):
       store-and-forward relay (`httpRelay.ts`) otherwise. The gateway is just
       another device running `P2PManager` headlessly
       (`packages/bot-gateway/`, a small Node package reusing `src/lib/p2p`).
-- [ ] Bot prekey bundles are exchanged the same way peer bundles are
-      (`refreshPeerBundle` path in `p2pManager.ts`), so the bot's key-change
-      journal (`src/lib/security/peerKeyJournal.ts`) covers bots for free.
-- [ ] Group support: privacy mode (default: commands and mentions only) is
-      enforced client-side before an update is delivered; Sender Keys
-      rotation on bot removal reuses `groupManager.ts`. Gateway side is now
-      wired: `BotGateway.joinGroup/sendGroupMessage/addGroupMember/
-      removeGroupMember/rotateGroupKey` drive a `GroupChatManager`, group
-      frames travel in a versioned `__nova_group` envelope over the same 1:1
-      P2P session (so ordinary text is never mistaken for a group frame), and
+- [x] Bot prekey bundles go through the same path as peer bundles:
+      `P2PManager` gained an `onPeerBundle` hook that fires for every bundle
+      the transport accepts (first sight and every replacement, including a
+      refresh), whether the peer is a bot or a contact. `App.tsx` wires it to
+      `observePeerKey`, so the key-change journal
+      (`src/lib/security/peerKeyJournal.ts`) records bot key rotations for
+      free. A throwing observer is reported via `onError` and never rejects
+      the bundle.
+- [x] Group support: frames travel in a versioned `__nova_group` envelope
+      (`src/lib/p2p/groupWire.ts`, shared by client and gateway) over the same
+      1:1 P2P session, so ordinary text is never mistaken for a group frame.
+      `BotGateway.joinGroup/sendGroupMessage/addGroupMember/
+      removeGroupMember/rotateGroupKey` drive a `GroupChatManager`, and
       SKDM/join-request callbacks reach `onGroupMessage`/
-      `onGroupJoinRequest`. Still missing: the client does not address group
-      frames to a bot peer yet (room broadcast reaches WebRTC peers only), so
-      privacy/mention filtering for gateway bots in a real group is unproven.
-- [ ] Tests: bot joins a 1:1 and a group chat over the in-memory transport,
-      key-rotation journal fires on bot bundle change, removal triggers
-      sender-key rotation. `packages/bot-gateway/src/index.test.ts` now covers
-      the 1:1 relay, group join/SKDM/message exchange and removal (no further
-      fan-out to the removed member); the peer-key-journal case is still
-      missing because the gateway does not share the client's journal store.
+      `onGroupJoinRequest`. The client now addresses group frames to bot peers
+      directly: a bot member is delivered over the encrypted 1:1 session instead
+      of the room broadcast (`ChatScreen` keeps a per-group bot-peer roster,
+      `nova_bot_group_peers`). Gateway privacy mode (`mentionOnly`, `botId`)
+      filters small talk **after** decryption, so a bot in a group receives only
+      commands and mentions while SKDM/role/join frames still get through —
+      dropping an SKDM would leave the bot unable to read anything later.
+- [x] Tests: `packages/bot-gateway/src/index.test.ts` covers the 1:1 relay,
+      group join/SKDM/message exchange, removal (no further fan-out to the
+      removed member), the own-echo rule and mention-only filtering;
+      `src/lib/p2p/p2pManager.bundles.test.ts` proves the bundle hook fires on
+      a bot key rotation and cannot reject a bundle; `groupWire.test.ts` pins
+      the envelope and the mention rule. Sender-key rotation on removal is
+      covered by `groupManager.test.ts` and the gateway removal case.
 
 ### Phase B5 — Telegram-shaped HTTP surface, L3 (1 week, gateway-side only) — 🟡 Partial
 
@@ -264,7 +272,12 @@ the bot's private key):
       persisted in the encrypted registry and checked before every
       update/callback; reports are local-only (`src/lib/bots/reports.ts`).
 - [x] E2E test (Playwright): install echo bot → `/start` → keyboard renders →
-      callback round-trip → revoke (`tests/bots.e2e.ts`).
+      callback round-trip → revoke (`tests/bots.e2e.ts`). Verified on
+      2026-11-21 against the local Vite app
+      (`APP_URL=http://localhost:3000 npx e2e run tests/bots.e2e.ts`). The run
+      caught two real bugs that are now fixed: bot replies never carried their
+      inline keyboard, and the single global sink delivered replies to the
+      hidden mobile ChatScreen instead of the visible one.
 - [x] Feature flag `NOVA_BOTS` (default on for L1, off for gateway pieces)
       so the app ships unchanged if bots are compiled out — consistent with
       the monetization track's "must work fully with the feature off" rule.
