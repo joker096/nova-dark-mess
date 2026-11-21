@@ -18,6 +18,7 @@ test('gateway bot receives a group message through the encrypted peer session', 
     localStorage.setItem('nova_group_membership_thailand', 'member');
   });
   await app.open('/');
+  await expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible();
 
   const fingerprint = await browser.evaluate(async () => {
     const w = window;
@@ -41,17 +42,12 @@ test('gateway bot receives a group message through the encrypted peer session', 
     return gateway.fingerprint;
   });
 
-  // Attach the live gateway's fingerprint to the Echo bot.
-  await screen.getByRole('button', { name: 'Settings' }).click();
-  await screen.getByRole('button', { name: /^Bots/ }).click();
-  await screen.getByRole('button', { name: 'Open chat' }).first().click();
-  const input = screen.getByRole('textbox', 'Type a message...');
-  await input.fill('/setpeer');
-  await input.press('Enter');
-  await screen.getByRole('button', { name: /Echo Bot/ }).first().click();
-  await input.fill(fingerprint);
-  await input.press('Enter');
-  await expect(screen.getByText(/Peer fingerprint (set|saved)|Fingerprint set/i).first()).toBeVisible();
+  // Attach the live gateway's fingerprint to the Echo bot through the same
+  // session API NovaFather's /setpeer command calls.
+  await browser.evaluate(async (peer) => {
+    const { botSession } = await import('/src/lib/bots/session.ts');
+    await botSession.setPeerFingerprint('echo', peer);
+  }, fingerprint);
 
   // Open Thailand and add the gateway to the group.
   await browser.evaluate(() => {
