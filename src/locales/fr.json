@@ -563,7 +563,11 @@
     "changePin": "Modifier le code PIN",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "Bouton à une main",
+    "fabSideDesc": "Côté du bouton Nouvelle action",
+    "fabHandLeft": "Main gauche",
+    "fabHandRight": "Main droite"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1116,7 +1120,10 @@
       "markAsRead": "Marquer comme lu",
       "markAsUnread": "Marquer comme non lu"
     },
-    "greeting": "Bonjour, {{name}}"
+    "greeting": "Bonjour, {{name}}",
+    "fabOtherSide": "Déplacer le bouton de l’autre côté",
+    "fabMoveLeft": "Déplacer le bouton à gauche (main gauche)",
+    "fabMoveRight": "Déplacer le bouton à droite (main droite)"
   },
   "channels": "Canaux",
   "common": {

@@ -4,6 +4,38 @@ export type FontSize = 'small' | 'medium' | 'large';
 export const APP_THEME_KEY = 'nova_app_theme';
 export const ACCENT_COLOR_KEY = 'nova_accent_color';
 export const FONT_SIZE_KEY = 'nova_font_size';
+/** Which side the floating action button sits on (one-handed/left-handed use). */
+export const FAB_SIDE_KEY = 'nova_fab_side';
+
+export type FabSide = 'left' | 'right';
+
+export function isFabSide(value: unknown): value is FabSide {
+  return value === 'left' || value === 'right';
+}
+
+/** Persisted FAB side; defaults to the right edge. */
+export function readFabSide(): FabSide {
+  try {
+    const saved = localStorage.getItem(FAB_SIDE_KEY);
+    return isFabSide(saved) ? saved : 'right';
+  } catch {
+    return 'right';
+  }
+}
+
+/** Same-tab notification: `storage` events do not fire in the tab that wrote. */
+export const FAB_SIDE_EVENT = 'nova:fab-side';
+
+export function saveFabSide(side: FabSide): void {
+  try {
+    localStorage.setItem(FAB_SIDE_KEY, side);
+  } catch {
+    void 0;
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent<FabSide>(FAB_SIDE_EVENT, { detail: side }));
+  }
+}
 
 export const ACCENT_COLORS: Record<'default' | 'sapphire' | 'amethyst' | 'emerald', string> = {
   default: '#ff4e18',

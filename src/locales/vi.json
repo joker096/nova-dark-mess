@@ -636,7 +636,11 @@
     "moderation": "Kiểm duyệt và khiếu nại",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "Nút dùng một tay",
+    "fabSideDesc": "Vị trí nút Hành động mới",
+    "fabHandLeft": "Tay trái",
+    "fabHandRight": "Tay phải"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1117,7 +1121,10 @@
       "markAsRead": "Đánh dấu đã đọc",
       "markAsUnread": "Đánh dấu chưa đọc"
     },
-    "greeting": "Xin chào, {{name}}"
+    "greeting": "Xin chào, {{name}}",
+    "fabOtherSide": "Di chuyển nút sang phía bên kia",
+    "fabMoveLeft": "Di chuyển nút sang trái (tay trái)",
+    "fabMoveRight": "Di chuyển nút sang phải (tay phải)"
   },
   "common": {
     "unlockWithBiometric": "Mở khóa bằng vân tay",

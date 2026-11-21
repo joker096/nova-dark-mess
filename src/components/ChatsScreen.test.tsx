@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ChatsScreen } from './ChatsScreen';
 import { loadAccount } from '../lib/account/account';
 
@@ -263,5 +263,52 @@ describe('ChatsScreen - horizontal lists hide scrollbar', () => {
     const list = screen.getByTestId('folder-tabs');
     expect(list.className).toContain('no-scrollbar');
     expect(list.className).not.toContain('scrollbar-x');
+  });
+});
+
+describe('ChatsScreen - one-handed FAB side', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  const fab = () => {
+    const button = screen.getByRole('button', { name: 'chats.newAction' });
+    // The button's container carries the anchoring classes and the side marker.
+    return button.parentElement as HTMLElement;
+  };
+
+  it('anchors the FAB to the right thumb zone by default', () => {
+    renderChats();
+    const container = fab();
+    expect(container.getAttribute('data-fab-side')).toBe('right');
+    expect(container.className).toContain('right-4');
+    expect(container.className).toContain('safe-bottom-fab');
+  });
+
+  it('honours a stored left-handed preference', () => {
+    localStorage.setItem('nova_fab_side', 'left');
+    renderChats();
+    const container = fab();
+    expect(container.getAttribute('data-fab-side')).toBe('left');
+    expect(container.className).toContain('left-4');
+    expect(container.className).not.toContain('right-4');
+  });
+
+  it('moves the FAB and persists the choice from the quick-actions menu', () => {
+    renderChats();
+    fireEvent.click(screen.getByRole('button', { name: 'chats.newAction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'chats.fabOtherSide' }));
+
+    expect(localStorage.getItem('nova_fab_side')).toBe('left');
+    expect(fab().className).toContain('left-4');
+  });
+
+  it('follows a change made elsewhere in the same tab', () => {
+    renderChats();
+    act(() => {
+      window.dispatchEvent(new CustomEvent('nova:fab-side', { detail: 'left' }));
+    });
+    expect(fab().getAttribute('data-fab-side')).toBe('left');
   });
 });

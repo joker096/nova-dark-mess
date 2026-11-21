@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -43,6 +43,9 @@ import {
   applyAccentColor,
   applyFontSize,
   readAppTheme,
+  readFabSide,
+  saveFabSide,
+  type FabSide,
 } from '../lib/ui/appearance';
 
 import type { BotSession } from '../lib/bots/session';
@@ -973,6 +976,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { value: 'large', label: 'Large' },
   ];
 
+  const fabSideOptions: { value: FabSide; label: string }[] = [
+    { value: 'right', label: t('settings.fabHandRight', { defaultValue: 'Right hand' }) },
+    { value: 'left', label: t('settings.fabHandLeft', { defaultValue: 'Left hand' }) },
+  ];
+  const [fabSide, setFabSideState] = useState<FabSide>(() => readFabSide());
+  const updateFabSide = (side: FabSide) => {
+    setFabSideState(side);
+    saveFabSide(side);
+  };
+
   const analyticsCounts = localAnalytics.getEventCountsByType();
   const analyticsMessageCount =
     (analyticsCounts.message_send ?? 0) +
@@ -1075,6 +1088,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     A
                   </span>
                   <span className="text-[9px] uppercase tracking-wider mt-0.5">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="py-1">
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <div className="text-[13px] text-white/90">
+                {t('settings.fabSide', { defaultValue: 'One-handed button' })}
+              </div>
+              <span className="text-[10px] text-[#8c919d]">
+                {t('settings.fabSideDesc', { defaultValue: 'Side of the New Action button' })}
+              </span>
+            </div>
+            <div className="flex gap-1.5" role="radiogroup" aria-label={t('settings.fabSide', { defaultValue: 'One-handed button' })}>
+              {fabSideOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={fabSide === opt.value}
+                  onClick={() => updateFabSide(opt.value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border transition cursor-pointer text-[12px] ${
+                    fabSide === opt.value
+                      ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/60 text-[var(--nova-accent-color)] font-semibold shadow-sm'
+                      : 'bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <Hand className={`w-3.5 h-3.5 ${opt.value === 'left' ? '-scale-x-100' : ''}`} />
+                  <span>{opt.label}</span>
                 </button>
               ))}
             </div>

@@ -640,7 +640,11 @@
     "moderation": "الإشراف والاستئناف",
     "secureStorageUnavailable": "Secure key storage is unavailable",
     "secureStorageUnavailableHint": "This build cannot reach the system credential store, so your key material stays in memory for this session only. Nothing is written to disk; keep your recovery phrase safe.",
-    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device."
+    "encryptedStorageUnavailable": "Encrypted history storage could not be opened — messages are not saved on this device.",
+    "fabSide": "زر الاستخدام بيد واحدة",
+    "fabSideDesc": "جانب زر إجراء جديد",
+    "fabHandLeft": "اليد اليسرى",
+    "fabHandRight": "اليد اليمنى"
   },
   "turnServers": "TURN Servers",
   "turnServersDesc": "Configure self-hosted TURN servers for IP-privacy calls. Media will flow through these relays so peers cannot see your IP address.",
@@ -1129,7 +1133,10 @@
       "markAsRead": "تحديد كمقروءة",
       "markAsUnread": "تحديد كغير مقروءة"
     },
-    "greeting": "مرحباً، {{name}}"
+    "greeting": "مرحباً، {{name}}",
+    "fabOtherSide": "نقل الزر إلى الجانب الآخر",
+    "fabMoveLeft": "نقل الزر إلى اليسار (اليد اليسرى)",
+    "fabMoveRight": "نقل الزر إلى اليمين (اليد اليمنى)"
   },
   "common": {
     "unlockWithBiometric": "فتح ببصمة الإصبع",
