@@ -5107,8 +5107,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         </div>
       )}
 
-      {/* BOTTOM INPUT AREA */}
-      <div className="p-3 pt-1 relative z-20 shrink-0 space-y-2">
+      {/* BOTTOM INPUT AREA — pinned to the bottom of the column, carries the
+          bottom safe area so it never sits under the gesture bar. */}
+      <div className="chat-composer p-3 pt-1 space-y-2">
         {/* ATTACHMENT MENU DRAWER */}
         {isAttachmentMenuOpen && (
           <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">

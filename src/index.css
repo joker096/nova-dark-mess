@@ -300,15 +300,38 @@ html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   padding-bottom: var(--nova-safe-bottom);
 }
 
+/* Pinned composer (one-handed use). The chat is a `flex flex-col h-full`
+   column whose only scroller is the message list, so the composer stays at the
+   bottom edge and rides above the on-screen keyboard instead of being pushed
+   out of view. It must carry the bottom safe area itself: the Tauri shell may
+   run edge-to-edge, and on Android (`html.native-safe-insets`) the native
+   WindowInsets padding already covers the navigation bar. */
+.chat-composer {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  padding-bottom: calc(0.75rem + var(--nova-safe-bottom));
+}
+
 /* One-handed operation: keep floating controls above the gesture bar.
    `fixed` children don't pick up padding, so add the system safe area to the
-   offset. `--nova-safe-bottom` is the variable the rest of the app uses
-   (`env()` directly would be 0 on platforms that report it differently). */
+   offset. Outside the padded app shell they must also clear the home
+   indicator, and on Android the webview is edge-to-edge underneath the native
+   insets — `native-safe-insets` zeroes `--nova-safe-*` for the shell, but these
+   elements float in the window itself. */
 .safe-bottom-fab {
-  bottom: calc(20px + var(--nova-safe-bottom));
+  bottom: calc(20px + max(var(--nova-safe-bottom), env(safe-area-inset-bottom, 0px)));
 }
 .safe-bottom-nav {
-  bottom: calc(3px + var(--nova-safe-bottom));
+  bottom: calc(3px + max(var(--nova-safe-bottom), env(safe-area-inset-bottom, 0px)));
+}
+
+html.native-safe-insets .safe-bottom-fab {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+html.native-safe-insets .safe-bottom-nav {
+  bottom: calc(3px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Custom sleek dark scrollbar */

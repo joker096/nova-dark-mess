@@ -1359,8 +1359,10 @@ onClick={() => {
         </button>
       </div>
 
-      {/* Floating Bottom Navigation Bar */}
-      <div className="absolute bottom-3 inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
+      {/* Floating Bottom Navigation Bar. `absolute bottom-0` + the
+          `safe-bottom-nav` offset keeps the thumb zone off the gesture bar
+          while still tracking the screen's own layout. */}
+      <div className="absolute bottom-0 safe-bottom-nav inset-x-0 flex justify-center z-30 pointer-events-none md:hidden px-3">
         <nav className="pointer-events-auto grid w-full max-w-md grid-cols-5 gap-0.5 rounded-3xl border border-white/10 bg-[#181921]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
           {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
             <button
