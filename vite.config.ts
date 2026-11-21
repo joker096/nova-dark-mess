@@ -1,5 +1,8 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import compression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
@@ -62,7 +65,7 @@ function cspPlugin(prodCsp: string, devCsp: string): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const frameOrigins = miniAppFrameOrigins(env.VITE_MINI_APP_ORIGINS ?? 'https://mess.cvr.name')
     .map((origin) => ` ${origin}`)
@@ -71,31 +74,149 @@ export default defineConfig(({ mode }) => {
   const prodCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss:`;
   const devCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss:`;
 
+  const isBuild = command === 'build';
+  const isAnalyze = process.env.ANALYZE === 'true';
+
   return {
-    plugins: [react(), tailwindcss(), cspPlugin(prodCsp, devCsp)],
+    plugins: [
+      react(),
+      tailwindcss(),
+      cspPlugin(prodCsp, devCsp),
+      // Service Worker for offline caching and faster loads
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'robots.txt'],
+        manifest: {
+          name: 'Nova Dark Messenger',
+          short_name: 'Nova',
+          description: 'Secure decentralized messenger',
+          theme_color: '#090a0e',
+          background_color: '#090a0e',
+          display: 'standalone',
+          scope: '/',
+          start_url: '/',
+          icons: [
+            { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'gstatic-fonts-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'images-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+              },
+            },
+          ],
+        },
+      }),
+      // Gzip + Brotli compression for production
+      isBuild && compression({ algorithm: 'gzip', ext: '.gz', threshold: 1024 }),
+      isBuild && compression({ algorithm: 'brotliCompress', ext: '.br', threshold: 1024 }),
+      // Bundle analyzer (run with ANALYZE=true npm run build)
+      isAnalyze && visualizer({ open: true, filename: 'dist/stats.html', gzipSize: true, brotliSize: true }),
+    ].filter(Boolean),
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
+      cssCodeSplit: true,
+      modulePreload: {
+        polyfill: true,
+        resolveDependencies: (url, deps, context) => {
+          // Preload critical chunks
+          const criticalChunks = ['react', 'i18n', 'ChatScreen', 'ChatsScreen'];
+          return criticalChunks
+            .filter((chunk) => deps.some((dep) => dep.includes(chunk)))
+            .map((chunk) => chunk);
+        },
+      },
       rollupOptions: {
         output: {
-          // Keep the framework and i18n runtime in stable chunks so app releases
-          // don't invalidate them in the browser cache.
+          // Stable chunk names for long-term caching
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]',
           manualChunks(id: string) {
+            // Core framework
             if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
+            // I18n runtime
             if (/node_modules[\\/](i18next|react-i18next)[\\/]/.test(id)) return 'i18n';
+            // Lucide icons (tree-shaken but group for caching)
+            if (/node_modules[\\/]lucide-react[\\/]/.test(id)) return 'lucide';
+            // Crypto libraries
+            if (/node_modules[\\/]@noble[\\/]/.test(id)) return 'crypto';
+            if (/node_modules[\\/]@scure[\\/]/.test(id)) return 'crypto';
+            // Leaflet maps (heavy, lazy loaded)
+            if (/node_modules[\\/]leaflet[\\/]/.test(id)) return 'leaflet';
+            if (/node_modules[\\/]react-leaflet[\\/]/.test(id)) return 'leaflet';
+            // Motion animations
+            if (/node_modules[\\/]motion[\\/]/.test(id)) return 'motion';
+            // AI SDK
+            if (/node_modules[\\/]ai[\\/]/.test(id)) return 'ai';
+            // QR code
+            if (/node_modules[\\/]qrcode[\\/]/.test(id)) return 'qrcode';
+            // Large internal modules
+            if (/\/components\/ChatScreen\.tsx/.test(id)) return 'ChatScreen';
+            if (/\/components\/ChatsScreen\.tsx/.test(id)) return 'ChatsScreen';
+            if (/\/components\/MeshMap\.tsx/.test(id)) return 'MeshMap';
+            if (/\/components\/SettingsModal\.tsx/.test(id)) return 'SettingsModal';
+            if (/\/components\/AnonymousMessengerScreen\.tsx/.test(id)) return 'AnonymousMessenger';
+            if (/\/features\/sites\/SitesScreen\.tsx/.test(id)) return 'SitesScreen';
+            if (/\/lib\/bots\/runtime\.ts/.test(id)) return 'bots-runtime';
+            if (/\/examples\/bots\/movie-catalog\//.test(id)) return 'movie-catalog';
+            if (/\/examples\/bots\/novafather\//.test(id)) return 'novafather';
+            // Locales (loaded on demand)
+            if (/\/locales\//.test(id)) return 'locales';
             return undefined;
           },
         },
       },
+      // Enable minification
+      minify: 'esbuild',
+      esbuild: {
+        drop: ['console', 'debugger'],
+        pure: ['console.log'],
+      },
+      // Reduce chunk size warnings
+      chunkSizeWarningLimit: 300,
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      // In dev, proxy API calls to the local relay/premium backend so the app
-      // talks to a same-origin URL and is not blocked by the production CSP.
       proxy: {
         '/api': { target: 'http://localhost:8080', changeOrigin: true },
       },

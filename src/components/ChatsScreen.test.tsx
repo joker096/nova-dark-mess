@@ -21,7 +21,6 @@ vi.mock('./FolderModal', () => ({
 
 const onOpenFolders = vi.fn();
 const onOpenProfile = vi.fn();
-const onOpenMeshMap = vi.fn();
 
 const renderChats = (extra: Record<string, unknown> = {}) =>
   render(
@@ -30,7 +29,6 @@ const renderChats = (extra: Record<string, unknown> = {}) =>
       onOpenChannel={vi.fn()}
       onOpenProfile={onOpenProfile}
       onOpenFolders={onOpenFolders}
-      onOpenMeshMap={onOpenMeshMap}
       activeChatId={'katie'}
       activeNavTab={'chats'}
       {...extra}
@@ -43,14 +41,14 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     localStorage.removeItem('nova_read_chats_v1');
   });
 
-  it('renders five bottom-nav tabs with localized keys and moves analytics to settings', () => {
+  it('renders four bottom-nav tabs with localized keys and moves analytics to settings', () => {
     renderChats();
     expect(screen.getByRole('button', { name: 'chats.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'channels' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'folders' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'meshMap.title' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'settings.title' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'meshMap.title' })).toBeNull();
   });
 
   it('shows only the nickname beside the avatar, without greeting or unread text', () => {
@@ -77,12 +75,6 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     renderChats();
     fireEvent.click(screen.getByRole('button', { name: 'folders' }));
     expect(onOpenFolders).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onOpenMeshMap when Mesh Map tab clicked', () => {
-    renderChats();
-    fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
-    expect(onOpenMeshMap).toHaveBeenCalledTimes(1);
   });
 
   it('opens the isolated anonymous messenger when the header action is clicked', () => {
