@@ -38,6 +38,13 @@ export interface AnonInvite {
    * burned afterwards, so a leaked invite cannot establish a second contact.
    */
   inviteToken: string;
+  /**
+   * Optional second queue on another relay. Senders try the primary first and
+   * fall back to this one when the primary relay is unreachable, so an outage
+   * of one host does not silently stop the conversation. The nested invite has
+   * no `standby` of its own; `isAnonInvite` enforces that.
+   */
+  standby?: Omit<AnonInvite, 'standby'>;
 }
 
 const solvedPow = new Map<string, PowSolution>();
@@ -111,6 +118,17 @@ export function isAnonInvite(value: unknown): value is AnonInvite {
         invite.identityKey === undefined))
   ) {
     return false;
+  }
+  if (invite.standby !== undefined) {
+    if (!isAnonInvite(invite.standby)) return false;
+    if (invite.standby.standby !== undefined) return false;
+    if (invite.standby.queueId === invite.queueId) return false;
+    if (invite.standby.relayUrl === invite.relayUrl) return false;
+    // The backup queue must belong to the same contact and encrypt to the same
+    // recipient key; otherwise a malicious primary invite could redirect
+    // fallback traffic to a third party.
+    if (invite.standby.identityKey !== invite.identityKey) return false;
+    if (invite.standby.recipientPublicKey !== invite.recipientPublicKey) return false;
   }
   try {
     return atob(invite.recipientPublicKey).length === 32;

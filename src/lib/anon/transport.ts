@@ -10,6 +10,12 @@ import type { AbuseReportSubmission } from './blocks';
 export interface AnonInboxTransport extends AnonTransport {
   createQueue(ttlMs?: number, pow?: PowChallenge): Promise<CreatedQueue | null> | CreatedQueue | null;
   submitAbuseReport?(report: AbuseReportSubmission): Promise<boolean>;
+  /** Present when the transport can remove a queue without a proxy hop. */
+  deleteQueue?(
+    queueId: string,
+    recipientToken: string,
+    signingKey?: string,
+  ): Promise<boolean> | boolean;
 }
 
 export interface TransportConfig {
@@ -82,6 +88,13 @@ export function createAnonTransport(config: TransportConfig): AnonInboxTransport
     return result as any;
   };
 
+  const baseWithDelete = base as typeof base & {
+    deleteQueue?: (
+      queueId: string,
+      recipientToken: string,
+      signingKey?: string,
+    ) => Promise<boolean> | boolean;
+  };
   return {
   createQueue: (ttlMs, pow) => measure(() => base.createQueue(ttlMs, pow)),
   enqueue: (...args) => measure(() => transport.enqueue(...args)),
@@ -89,6 +102,12 @@ export function createAnonTransport(config: TransportConfig): AnonInboxTransport
   ack: (...args) => measure(() => transport.ack(...args)),
   ...(base instanceof ProxyAnonTransport
     ? { submitAbuseReport: (report: AbuseReportSubmission) => base.submitAbuseReport(report) }
+    : {}),
+  ...(typeof baseWithDelete.deleteQueue === 'function'
+    ? {
+        deleteQueue: (queueId: string, recipientToken: string, signingKey?: string) =>
+          measure(() => baseWithDelete.deleteQueue!(queueId, recipientToken, signingKey)),
+      }
     : {}),
   };
 }

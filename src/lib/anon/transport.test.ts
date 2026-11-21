@@ -70,4 +70,16 @@ describe('transport latency measurement', () => {
 
     expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
   });
+
+  it('exposes relay queue deletion through the mounted transport', async () => {
+    const fetchImpl = mockJson({ ok: true });
+    const transport = createAnonTransport({ relayUrl: RELAY, fetchImpl, jitter: false });
+    const signing = generateQueueSigningKeyPair();
+
+    await expect(
+      transport.deleteQueue?.('q_00000000000000000000000000000001', 'recipient-token', signing.privateKey),
+    ).resolves.toBe(true);
+    expect(getRelayLatency(RELAY)).toBeGreaterThanOrEqual(0);
+    expect((fetchImpl as any).mock.calls.at(-1)[0]).toBe(`${RELAY}/api/anon/queues/delete`);
+  });
 });

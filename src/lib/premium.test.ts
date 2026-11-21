@@ -367,8 +367,25 @@ describe('pricing constants', () => {
 
   it('never gates safety features behind the subscription', () => {
     const sold = PREMIUM_FEATURES as readonly string[];
-    for (const safety of ['calls', 'live_location', 'disappearing_messages']) {
+    for (const safety of [
+      'calls',
+      'messaging',
+      'live_location',
+      'disappearing_messages',
+    ]) {
       expect(sold).not.toContain(safety);
+    }
+  });
+
+  it('keeps calls and messaging working after the free plan ends', () => {
+    localStorage.setItem('nova_premium_free_until', String(Date.now() - 1));
+    expect(isPremium()).toBe(false);
+    // Nothing a free user needs to reach people is sold as a feature.
+    expect(canUseFeature('messaging' as PremiumFeature)).toBe(false);
+    expect(canUseFeature('calls' as PremiumFeature)).toBe(false);
+    // ...and the premium-only extras stay locked, so the plan does not leak.
+    for (const feature of PREMIUM_FEATURES) {
+      expect(canUseFeature(feature)).toBe(false);
     }
   });
 });

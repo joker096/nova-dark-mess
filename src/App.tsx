@@ -149,6 +149,22 @@ export default function App() {
     let transportManager: TransportManager | null = null;
     const start = async () => {
       signaling = new P2PSignalingClient({ url: resolveSignalingUrl(), registerFingerprint: identity.fingerprint });
+      setCallSignaling(signaling);
+      const unsubscribeCallInvite = signaling.onMessage((message) => {
+        if (message.targetFingerprint !== identity.fingerprint) return;
+        if (message.type !== 'call_invite') return;
+        const payload = (message.payload ?? {}) as { callId?: unknown; mode?: unknown };
+        const callId = typeof payload.callId === 'string' ? payload.callId : null;
+        const mode = payload.mode === 'voice' || payload.mode === 'video' ? payload.mode : null;
+        if (!callId || !mode) return;
+        const chatId = Object.entries(peerFingerprintsRef.current)
+          .find(([, fp]) => fp === message.senderFingerprint)?.[0];
+        if (!chatId) return;
+        setPendingIncomingCall({ chatId, callId, mode, from: message.senderFingerprint });
+        if (viewRef.current.chatId !== chatId || viewRef.current.screen !== 'chat-katie') {
+          navigate('chat-katie', { chatId });
+        }
+      });
       relay = new MeshRelay(identity.fingerprint);
       relayRef.current = relay;
 
@@ -265,7 +281,9 @@ export default function App() {
     return () => {
       manager?.close();
       transportManager?.disconnect();
+      unsubscribeCallInvite();
       signaling?.close();
+      setCallSignaling(null);
       relay?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -322,6 +340,13 @@ export default function App() {
     Array<{ screen: ScreenId; chatId: string; profileId: string; channelId: string }>
   >([]);
   const [activeChatId, setActiveChatId] = useState<string>('katie');
+  const [callSignaling, setCallSignaling] = useState<P2PSignalingClient | null>(null);
+  const [pendingIncomingCall, setPendingIncomingCall] = useState<{
+    chatId: string;
+    callId: string;
+    mode: 'voice' | 'video';
+    from: string;
+  } | null>(null);
   const [activeProfileId, setActiveProfileId] = useState<string>('katie');
   const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
   // Set when a link points at one post's comments; cleared once the channel
@@ -788,6 +813,9 @@ export default function App() {
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
+            sharedCallSignaling={callSignaling}
+            pendingIncomingCall={pendingIncomingCall}
+            onPendingIncomingCallConsumed={() => setPendingIncomingCall(null)}
           />
         );
       }
@@ -838,6 +866,9 @@ export default function App() {
             pendingBotStart={pendingBotStart}
             onBotStartSent={() => setPendingBotStart(null)}
             onBotCallback={handleBotCallback}
+            sharedCallSignaling={callSignaling}
+            pendingIncomingCall={pendingIncomingCall}
+            onPendingIncomingCallConsumed={() => setPendingIncomingCall(null)}
           />
         );
       }
