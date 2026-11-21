@@ -148,7 +148,7 @@ export default function App() {
     let relay: MeshRelay | null = null;
     let transportManager: TransportManager | null = null;
     const start = async () => {
-      signaling = new P2PSignalingClient({ url: resolveSignalingUrl() });
+      signaling = new P2PSignalingClient({ url: resolveSignalingUrl(), registerFingerprint: identity.fingerprint });
       relay = new MeshRelay(identity.fingerprint);
       relayRef.current = relay;
 

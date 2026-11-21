@@ -1912,7 +1912,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const signalingUrl = resolveSignalingUrl();
     if (!signalingUrl) return;
 
-    const client = new P2PSignalingClient({ url: signalingUrl });
+    const client = new P2PSignalingClient({ url: signalingUrl, registerFingerprint: localFingerprint });
     callSignalingRef.current = client;
 
     const unsubscribe = client.onMessage((message) => {
