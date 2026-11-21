@@ -228,6 +228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [adPrefs, setAdPrefs] = useState<LocalAdPreferences>(() => loadAdPreferences());
   const [adPrefsMsg, setAdPrefsMsg] = useState<string | null>(null);
   const [soundId, setSoundId] = useState<SoundId>(loadSoundId);
+  const [fabSide, setFabSideState] = useState<FabSide>(() => readFabSide());
 
   // Relay queue length and local ad preferences can change while the modal is closed.
   useEffect(() => {
@@ -980,7 +981,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { value: 'right', label: t('settings.fabHandRight', { defaultValue: 'Right hand' }) },
     { value: 'left', label: t('settings.fabHandLeft', { defaultValue: 'Left hand' }) },
   ];
-  const [fabSide, setFabSideState] = useState<FabSide>(() => readFabSide());
   const updateFabSide = (side: FabSide) => {
     setFabSideState(side);
     saveFabSide(side);
