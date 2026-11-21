@@ -1286,7 +1286,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     )}
 
       {/* Floating Action Button (FAB) in the thumb zone for One-Handed Operation */}
-      <div className="fixed bottom-20 right-4 z-40 md:hidden flex flex-col items-end pointer-events-auto">
+      <div className="fixed safe-bottom-fab right-4 z-40 md:hidden flex flex-col items-end pointer-events-auto">
         {/* FAB Quick Action Bottom Sheet / Menu */}
         {isFabMenuOpen && (
           <>

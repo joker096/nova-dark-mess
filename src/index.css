@@ -300,6 +300,17 @@ html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   padding-bottom: var(--nova-safe-bottom);
 }
 
+/* One-handed operation: keep floating controls above the gesture bar.
+   `fixed` children don't pick up padding, so add the system safe area to the
+   offset. `--nova-safe-bottom` is the variable the rest of the app uses
+   (`env()` directly would be 0 on platforms that report it differently). */
+.safe-bottom-fab {
+  bottom: calc(20px + var(--nova-safe-bottom));
+}
+.safe-bottom-nav {
+  bottom: calc(3px + var(--nova-safe-bottom));
+}
+
 /* Custom sleek dark scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

@@ -67,6 +67,14 @@ describe('MiniAppIframe', () => {
     expect(screen.getByText('Mini App URL must be HTTPS')).toBeInTheDocument();
   });
 
+  it('refuses a remote URL whose origin is not allowlisted', () => {
+    const { container } = render(
+      <MiniAppIframe {...baseProps} webAppUrl="https://evil.example/miniapp" />,
+    );
+    expect(getIframe(container)).toBeNull();
+    expect(screen.getByText('Mini App origin is not allowed')).toBeInTheDocument();
+  });
+
   it('renders without onInlineQuery / onMainButtonClick handlers', () => {
     const { botId, webAppUrl, userId, secret, onClose } = baseProps;
     const { container } = render(
