@@ -467,14 +467,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           const toBot = Boolean(peer) && botGroupPeersRef.current.includes(peer);
           if (toBot) {
             // A bot receives the same versioned group envelope over the 1:1
-            // P2P session, encrypted as any other message.
+            // P2P session, encrypted as any other message. A bot is not in the
+            // room, so a failure must be reported rather than parked in the
+            // join outbox: the sender-key distributor retries it on next send.
+            let failure: unknown;
             try {
               const wire = wrapGroupPayload(payload);
               const delivered = p2pManager ? await p2pManager.sendMessage(peer, wire) : false;
               if (delivered) return;
-            } catch {
-              /* fall through to the room/outbox paths */
+            } catch (error) {
+              failure = error;
             }
+            throw failure instanceof Error
+              ? failure
+              : new Error(`Group frame not delivered to bot ${peer}`);
           } else if (sendEnvelope({ v: 1, kind: 'group', payload })) {
             return;
           }

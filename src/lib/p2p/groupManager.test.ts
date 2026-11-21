@@ -50,6 +50,32 @@ describe('GroupChatManager', () => {
     );
   });
 
+  it('retries a failed sender-key delivery on the next send', async () => {
+    const alice = await createAnonymousIdentity();
+    const bob = await createAnonymousIdentity();
+    let sessionReady = false;
+    const delivered: Array<{ type: string }> = [];
+
+    const manager = new GroupChatManager({
+      groupId: 'g1',
+      localFingerprint: alice.fingerprint,
+      members: [alice.fingerprint, bob.fingerprint],
+      sendToPeer: async (_peer, payload) => {
+        if (payload.type === 'skdm' && !sessionReady) {
+          throw new Error('no session yet');
+        }
+        delivered.push({ type: payload.type });
+      },
+    });
+
+    await manager.sendText('before the session');
+    expect(delivered.some((item) => item.type === 'skdm')).toBe(false);
+
+    sessionReady = true;
+    await manager.sendText('after the session');
+    expect(delivered.filter((item) => item.type === 'skdm')).toHaveLength(1);
+  });
+
   it('rotates the sender key when a member is removed', async () => {
     const alice = await createAnonymousIdentity();
     const bob = await createAnonymousIdentity();
