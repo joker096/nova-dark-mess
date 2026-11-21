@@ -62,6 +62,12 @@ import {
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
+import {
+  loadBotGroupPeers,
+  registerBotGroupPeer,
+  syncBotGroupPeers,
+  unregisterBotGroupPeer,
+} from '../lib/bots/groupPeers';
 import type { MessageSink } from '../lib/bots/runtime';
 import { HttpMessageSink } from '../lib/bots/httpSink';
 import { BOT_REPORT_REASONS, recordBotReport, type BotReportReason } from '../lib/bots/reports';
@@ -213,9 +219,6 @@ type RoomEnvelope =
   | { v: 1; kind: 'group'; payload: GroupPayload }
   | { v: 1; kind: 'file'; message: FileTransferMessage };
 
-/** Group frames addressed to a bot peer, which is a normal P2P participant. */
-const BOT_GROUP_PEERS_KEY = 'nova_bot_group_peers';
-
 /**
  * Bot output is broadcast to every mounted ChatScreen (desktop and mobile are
  * both in the tree); each instance keeps only events for its own chatId.
@@ -226,16 +229,6 @@ const BOT_UI_EVENTS = {
   delete: 'nova:bot:delete',
   typing: 'nova:bot:typing',
 } as const;
-
-function loadBotGroupPeers(chatId: string): string[] {
-  try {
-    const stored = JSON.parse(localStorage.getItem(BOT_GROUP_PEERS_KEY) ?? '{}') as Record<string, unknown>;
-    const peers = stored[chatId];
-    return Array.isArray(peers) ? peers.filter((peer): peer is string => typeof peer === 'string') : [];
-  } catch {
-    return [];
-  }
-}
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({
   chatId,
@@ -415,6 +408,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // addressed to them directly because the room broadcast only reaches
   // WebRTC room peers (docs/bots-roadmap.md B4).
   const botGroupPeersRef = useRef<string[]>(loadBotGroupPeers(chatId));
+  // Drop uninstalled bots and members who left from the direct-delivery list.
+  useEffect(() => {
+    const bots = getBotSession?.().listBots() ?? [];
+    botGroupPeersRef.current = syncBotGroupPeers(chatId, groupMembers, bots);
+  }, [chatId, groupMembers, getBotSession]);
   const fingerprintSetRef = useRef<Set<string>>(new Set());
   const [roomPeerCount, setRoomPeerCount] = useState(0);
   const messagesRef = useRef(messages);
@@ -734,6 +732,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }
     const member = newMemberFingerprint.trim();
     if (!member || groupMembers.includes(member)) return;
+    botGroupPeersRef.current = registerBotGroupPeer(
+      chatId,
+      member,
+      getBotSession?.().listBots() ?? [],
+    );
     await groupManager.addMember(member);
     const nextRoles = setMemberRole(chatId, member, 'member');
     setGroupRoles(nextRoles);
@@ -751,6 +754,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       triggerPinnedToast(t('chat.adminOnly'));
       return;
     }
+    botGroupPeersRef.current = registerBotGroupPeer(
+      chatId,
+      member,
+      getBotSession?.().listBots() ?? [],
+    );
     await groupManager.addMember(member);
     const nextRoles = setMemberRole(chatId, member, 'member');
     setGroupRoles(nextRoles);
@@ -779,6 +787,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       triggerPinnedToast(t('chat.adminOnly'));
       return;
     }
+    botGroupPeersRef.current = unregisterBotGroupPeer(chatId, member);
     await groupManager.removeMember(member);
     const members = groupManager.getMembers();
     setGroupMembers(members);

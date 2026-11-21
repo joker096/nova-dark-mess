@@ -12,16 +12,53 @@
  *
  * Security:
  *   - Webhook URLs validated: https only, private/loopback ranges denied,
- *     re-validated after DNS resolution and on redirects (SSRF guard).
+ *     resolved and checked right before every delivery; redirects are never
+ *     followed (SSRF guard).
  *   - Webhook delivery signed with HMAC-SHA256; timestamp window + replay guard.
  *   - Rate limits: ~30 msg/s per bot, 1 msg/s per chat (Telegram-like).
  */
 
 import crypto from 'crypto';
+import { lookup } from 'dns/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
+import { isIP } from 'net';
 import { URL } from 'url';
 
-const PRIVATE_IP_RE = /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|::1$|fc00:|fe80:)/;
+/** True for loopback, private, link-local, CGNAT and other non-public IPs. */
+export function isPrivateAddress(address: string): boolean {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a, b, c] = address.split('.').map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
+      (a === 203 && b === 0 && c === 113) ||
+      a >= 224
+    );
+  }
+  if (version === 6) {
+    const lower = address.toLowerCase();
+    if (lower === '::' || lower === '::1') return true;
+    if (/^f[cd]/.test(lower) || /^fe[89ab]/.test(lower)) return true;
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateAddress(mapped[1]);
+    return false;
+  }
+  // Not a literal IP: callers resolve first; treat unknown input as unsafe.
+  return true;
+}
+
+async function resolveHostname(hostname: string): Promise<string[]> {
+  const rows = await lookup(hostname, { all: true, verbatim: true });
+  return rows.map((row) => row.address);
+}
 
 const RATE_LIMIT_PER_BOT = 30;   // msg/s per bot
 const RATE_LIMIT_PER_CHAT = 1;   // msg/s per chat
@@ -57,6 +94,8 @@ export interface BotHTTPGatewayOptions {
   };
   /** Optional long-poll timeout in ms for getUpdates. */
   longPollTimeoutMs?: number;
+  /** DNS resolver override (tests pass a stub; production uses dns.lookup). */
+  resolveHost?: (hostname: string) => Promise<string[]>;
 }
 
 export class BotHTTPGateway {
@@ -246,8 +285,11 @@ export class BotHTTPGateway {
       .update(body)
       .digest('hex');
     try {
+      // Re-check on every delivery: DNS can change after registration.
+      await validateWebhookDestination(webhook.url, this.options.resolveHost ?? resolveHostname);
       await fetch(webhook.url, {
         method: 'POST',
+        redirect: 'manual',
         headers: {
           'Content-Type': 'application/json',
           'X-Hub-Signature-256': `sha256=${signature}`,
@@ -268,7 +310,7 @@ export class BotHTTPGateway {
       this.sendJson(res, 200, { ok: true, result: true });
       return;
     }
-    validateWebhookUrl(url);
+    await validateWebhookDestination(url, this.options.resolveHost ?? resolveHostname);
     this.webhook = { url, secretToken: body.secret_token };
     this.sendJson(res, 200, { ok: true, result: true });
   }
@@ -308,14 +350,38 @@ export class BotHTTPGateway {
   }
 }
 
-/** SSRF guard: https only, private/loopback ranges denied. */
+/** SSRF guard: https only, private/loopback hostnames refused. Synchronous shape check. */
 export function validateWebhookUrl(url: string): void {
   let parsed: URL;
   try { parsed = new URL(url); } catch { throw new Error('Invalid webhook URL'); }
   if (parsed.protocol !== 'https:') throw new Error('Webhook URL must use HTTPS');
   const hostname = parsed.hostname.toLowerCase();
-  if (PRIVATE_IP_RE.test(hostname)) throw new Error('Webhook URL must not point to private/loopback addresses');
-  if (hostname === 'localhost' || hostname === 'localhost.localdomain') throw new Error('Webhook URL must not point to localhost');
+  if (hostname === 'localhost' || hostname === 'localhost.localdomain') {
+    throw new Error('Webhook URL must not point to localhost');
+  }
+  if (isIP(hostname) && isPrivateAddress(hostname)) {
+    throw new Error('Webhook URL must not point to private/loopback addresses');
+  }
+}
+
+/**
+ * Full SSRF guard: shape check, then resolve the hostname and reject if any
+ * answer is non-public. Used before storing a webhook and before every
+ * delivery, so a hostname that starts resolving privately is rejected.
+ */
+export async function validateWebhookDestination(
+  url: string,
+  resolveHost: (hostname: string) => Promise<string[]> = resolveHostname,
+): Promise<void> {
+  validateWebhookUrl(url);
+  const hostname = new URL(url).hostname;
+  const addresses = isIP(hostname) ? [hostname] : await resolveHost(hostname);
+  if (addresses.length === 0) throw new Error('Webhook host did not resolve');
+  for (const address of addresses) {
+    if (isPrivateAddress(address)) {
+      throw new Error('Webhook URL must not resolve to a private/loopback address');
+    }
+  }
 }
 
 export { RATE_LIMIT_PER_BOT, RATE_LIMIT_PER_CHAT };

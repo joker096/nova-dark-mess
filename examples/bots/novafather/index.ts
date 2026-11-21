@@ -25,14 +25,19 @@ interface BotConfig {
   name: string;
   username: string;
   description?: string;
-  permissions: string[];
+  permissions: BotPermissionName[];
+  /** Bundled module the installed manifest runs (set on the last step). */
+  entryPoint?: string;
+  commands?: { command: string; description: string }[];
 }
+
+type BotPermissionName = 'send_messages' | 'read_messages' | 'inline_keyboard' | 'media' | 'mention_only';
 
 interface UserState {
   pendingAction?: {
     type: 'newbot_name' | 'newbot_username' | 'newbot_desc' | 'newbot_perms' |
-          'gateway_bot' | 'gateway_url' | 'commands_bot' | 'commands_list' |
-          'desc_bot' | 'desc_text';
+          'gateway_bot' | 'gateway_url' | 'peer_bot' | 'commands_bot' |
+          'commands_list' | 'desc_bot' | 'desc_text';
     data: Partial<BotConfig> & {
       botId?: string;
     };
@@ -40,7 +45,7 @@ interface UserState {
   bots: InstalledBot[];
 }
 
-const ALL_PERMISSIONS = ['send_messages', 'read_messages', 'inline_keyboard', 'media', 'mention_only'] as const;
+const ALL_PERMISSIONS: readonly BotPermissionName[] = ['send_messages', 'read_messages', 'inline_keyboard', 'media', 'mention_only'];
 
 function getUserState(ctx: BotContext, userId: string): Promise<UserState> {
   return ctx.storage.get(`novafather_${userId}`).then(data => data ? JSON.parse(data) : { bots: [] });
@@ -74,7 +79,7 @@ function createBotListKeyboard(bots: InstalledBot[], action: string): any[][] {
   return keyboard;
 }
 
-function createPermissionsKeyboard(selected: string[] = []): any[][] {
+function createPermissionsKeyboard(selected: BotPermissionName[] = []): any[][] {
   const keyboard: any[][] = [];
   ALL_PERMISSIONS.forEach(perm => {
     const isSelected = selected.includes(perm);
@@ -84,6 +89,7 @@ function createPermissionsKeyboard(selected: string[] = []): any[][] {
     }]);
   });
   keyboard.push([{ text: '✅ Done', callback_data: 'perm_done' }]);
+  // `perm_done` installs the drafted manifest (see the newbot flow).
   keyboard.push([{ text: '⬅️ Back', callback_data: 'newbot_cancel' }]);
   return keyboard;
 }
@@ -102,7 +108,7 @@ function formatHelp(): string {
   return `🤖 <b>NovaFather — Bot Management</b>
 
 <b>Bot Creation:</b>
-/newbot — Create a new L1 local bot
+/newbot — Install a new local bot (manifest)
 /mybots — List and manage your bots
 
 <b>L3 (Telegram API) Tokens:</b>
@@ -115,6 +121,7 @@ function formatHelp(): string {
 
 <b>Gateway (L2/L3):</b>
 /setgateway — Attach a gateway URL to a bot
+/setpeer — Set the bot's mesh fingerprint (for groups)
 
 <b>Bot Settings:</b>
 /setcommands — Set bot command list
@@ -172,9 +179,7 @@ const novafatherBot: BotModule = {
         }
 
         if (cmd === 'newbot') {
-          await ctx.sendMessage(chatId,
-            '➕ <b>Creating a bot</b>\n\nAn L1 bot is a code module, so it cannot be created from chat. Install its manifest via <b>Settings → Bots</b>; after that I can list, enable, disable and remove installed bots with /mybots.'
-          );
+          await startNewBot(ctx, chatId, userId, state);
           return;
         }
 
@@ -221,6 +226,18 @@ const novafatherBot: BotModule = {
           await ctx.sendMessage(chatId,
             '🌐 <b>Set Gateway</b>\n\nSelect a bot to attach an L2/L3 gateway URL:',
             { keyboard: createBotListKeyboard(state.bots, 'gateway') }
+          );
+          return;
+        }
+
+        if (cmd === 'setpeer') {
+          if (state.bots.length === 0) {
+            await ctx.sendMessage(chatId, 'No bots available.');
+            return;
+          }
+          await ctx.sendMessage(chatId,
+            '🆔 <b>Set Peer Fingerprint</b>\n\nSelect a bot to attach its mesh fingerprint (printed by the gateway CLI or returned by getMe):',
+            { keyboard: createBotListKeyboard(state.bots, 'peer') }
           );
           return;
         }
@@ -280,11 +297,8 @@ const novafatherBot: BotModule = {
         }
 
         if (data === 'newbot') {
-          await ctx.editMessage(chat.id, messageId,
-            '➕ <b>Creating a bot</b>\n\nAn L1 bot is a code module, so it cannot be created from chat. Install its manifest via <b>Settings → Bots</b>.',
-            { keyboard: createMainKeyboard() }
-          );
           await ctx.answerCallbackQuery(queryId);
+          await startNewBot(ctx, chat.id, userId, state);
           return;
         }
 
@@ -294,6 +308,21 @@ const novafatherBot: BotModule = {
           await ctx.editMessage(chat.id, messageId,
             '❌ <b>Cancelled</b>\n\nBot creation cancelled.',
             { keyboard: createMainKeyboard() }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (data === 'newbot_skip_desc') {
+          if (state.pendingAction?.type !== 'newbot_desc') {
+            await ctx.answerCallbackQuery(queryId);
+            return;
+          }
+          state.pendingAction.type = 'newbot_perms';
+          await saveUserState(ctx, userId, state);
+          await ctx.editMessage(chat.id, messageId,
+            '➕ <b>Create New Bot</b>\n\nSelect <b>permissions</b>, then tap Done:\n\n<i>Tap to toggle</i>',
+            { keyboard: createPermissionsKeyboard(state.pendingAction.data.permissions) }
           );
           await ctx.answerCallbackQuery(queryId);
           return;
@@ -345,9 +374,9 @@ const novafatherBot: BotModule = {
           return;
         }
 
-        if (data.startsWith('perm_toggle:')) {
-          const perm = data.split(':')[1];
-          if (state.pendingAction?.type === 'newbot_perms') {
+        if (data.startsWith('perm_toggle:') && state.pendingAction?.type === 'newbot_perms') {
+          const perm = data.split(':')[1] as BotPermissionName;
+          if (ALL_PERMISSIONS.includes(perm)) {
             const perms = state.pendingAction.data.permissions || [];
             const idx = perms.indexOf(perm);
             if (idx >= 0) perms.splice(idx, 1);
@@ -355,7 +384,7 @@ const novafatherBot: BotModule = {
             state.pendingAction.data.permissions = perms;
             await saveUserState(ctx, userId, state);
             await ctx.editMessage(chat.id, messageId,
-              '➕ <b>Create New Bot</b>\n\nStep 4/4: Select <b>permissions</b>:\n\n<i>Tap to toggle</i>',
+              '➕ <b>Create New Bot</b>\n\nSelect <b>permissions</b>, then tap Done:\n\n<i>Tap to toggle</i>',
               { keyboard: createPermissionsKeyboard(perms) }
             );
           }
@@ -364,12 +393,37 @@ const novafatherBot: BotModule = {
         }
 
         if (data === 'perm_done') {
+          if (state.pendingAction?.type !== 'newbot_perms') {
+            await ctx.answerCallbackQuery(queryId);
+            return;
+          }
+          const draft = state.pendingAction.data;
           state.pendingAction = undefined;
-          await saveUserState(ctx, userId, state);
-          await ctx.answerCallbackQuery(queryId, {
-            text: 'Install a bot manifest from Settings → Bots',
-            showAlert: true,
-          });
+          try {
+            const installed = await ctx.installBotFromDraft({
+              entryPoint: draft.entryPoint ?? '',
+              name: draft.name ?? '',
+              username: draft.username ?? '',
+              description: draft.description,
+              commands: draft.commands,
+              permissions: draft.permissions ?? [],
+            });
+            state.bots = await ctx.listBots();
+            await saveUserState(ctx, userId, state);
+            await ctx.editMessage(chat.id, messageId,
+              `✅ <b>Bot installed</b>\n\n<b>${installed.manifest.name}</b> (@${installed.manifest.username})\n<b>Module:</b> <code>${installed.manifest.entryPoint}</code>\n\nThe module runs locally after the app reloads. Manage it with /mybots.`,
+              { keyboard: createMainKeyboard() }
+            );
+            await ctx.answerCallbackQuery(queryId, { text: 'Bot installed' });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Could not install the bot';
+            await saveUserState(ctx, userId, state);
+            await ctx.editMessage(chat.id, messageId,
+              `❌ <b>Not installed</b>\n\n${message}`,
+              { keyboard: createMainKeyboard() }
+            );
+            await ctx.answerCallbackQuery(queryId, { text: 'Install failed', showAlert: true });
+          }
           return;
         }
 
@@ -390,6 +444,7 @@ const novafatherBot: BotModule = {
               [{ text: '🔑 Token', callback_data: `token:${botId}` }],
               [{ text: '🔗 Webhook', callback_data: `webhook:${botId}` }],
               [{ text: '🌐 Gateway', callback_data: `gateway:${botId}` }],
+              [{ text: '🆔 Peer ID', callback_data: `peer:${botId}` }],
               [{ text: '📝 Commands', callback_data: `commands:${botId}` }],
               [{ text: '📄 Description', callback_data: `description:${botId}` }],
               [{ text: '🗑 Delete', callback_data: `delete:${botId}` }],
@@ -415,6 +470,7 @@ const novafatherBot: BotModule = {
               [{ text: '🔑 Token', callback_data: `token:${botId}` }],
               [{ text: '🔗 Webhook', callback_data: `webhook:${botId}` }],
               [{ text: '🌐 Gateway', callback_data: `gateway:${botId}` }],
+              [{ text: '🆔 Peer ID', callback_data: `peer:${botId}` }],
               [{ text: '📝 Commands', callback_data: `commands:${botId}` }],
               [{ text: '📄 Description', callback_data: `description:${botId}` }],
               [{ text: '🗑 Delete', callback_data: `delete:${botId}` }],
@@ -446,6 +502,17 @@ const novafatherBot: BotModule = {
           await saveUserState(ctx, userId, state);
           await ctx.editMessage(chat.id, messageId,
             `🌐 <b>Gateway for ${bot.manifest.name}</b>\n\nEnter the L2/L3 gateway URL, or "none" to clear it:\n\n<i>Example: https://gateway.your-domain.com</i>\n\n<i>The bot will use this gateway for L2/L3 transport instead of local L1 mode.</i>`,
+            { keyboard: [[{ text: '❌ Cancel', callback_data: `manage:${botId}` }]] }
+          );
+          await ctx.answerCallbackQuery(queryId);
+          return;
+        }
+
+        if (action === 'peer') {
+          state.pendingAction = { type: 'peer_bot', data: { botId } };
+          await saveUserState(ctx, userId, state);
+          await ctx.editMessage(chat.id, messageId,
+            `🆔 <b>Peer fingerprint for ${bot.manifest.name}</b>\n\nEnter the fingerprint printed by the gateway CLI (or <code>getMe</code>), or "none" to clear it:\n\n<i>Group frames will be delivered to this fingerprint over an encrypted 1:1 session.</i>`,
             { keyboard: [[{ text: '❌ Cancel', callback_data: `manage:${botId}` }]] }
           );
           await ctx.answerCallbackQuery(queryId);
@@ -508,6 +575,20 @@ const novafatherBot: BotModule = {
   },
 };
 
+async function startNewBot(
+  ctx: BotContext,
+  chatId: string,
+  userId: string,
+  state: UserState,
+): Promise<void> {
+  state.pendingAction = { type: 'newbot_name', data: { permissions: [] } };
+  await saveUserState(ctx, userId, state);
+  await ctx.sendMessage(chatId,
+    '➕ <b>Create New Bot</b>\n\nEnter the bot\'s <b>name</b>.\n\n<i>The bot is installed as a manifest: its code module must already be bundled in the app or arrive with the manifest. Nothing is downloaded and no key is created here.</i>',
+    { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
+  );
+}
+
 async function handlePendingAction(
   ctx: BotContext,
   chatId: string,
@@ -520,29 +601,34 @@ async function handlePendingAction(
   const action = state.pendingAction;
 
   if (action.type === 'newbot_name') {
-    action.data.name = text;
+    if (!text.trim()) {
+      await ctx.sendMessage(chatId, '❌ Name cannot be empty. Enter the bot name:');
+      return;
+    }
+    action.data.name = text.slice(0, 64);
     action.type = 'newbot_username';
     await saveUserState(ctx, userId, state);
     await ctx.sendMessage(chatId,
-      `➕ <b>Create New Bot</b>\n\nStep 2/4: Enter the bot's <b>username</b> (letters, numbers, underscores, 5-32 chars):\n\n<i>Example: movie_catalog_bot</i>`,
+      `➕ <b>Create New Bot</b>\n\nEnter the bot's <b>username</b> (a-z, 0-9, _, must end with "bot"):\n\n<i>Example: movie_catalog_bot</i>`,
       { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
     );
     return;
   }
 
   if (action.type === 'newbot_username') {
-    if (!/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(text)) {
+    // Same rule the manifest validator applies (isValidBotUsername).
+    if (!/^[a-z][a-z0-9_]{2,31}bot$/.test(text.toLowerCase())) {
       await ctx.sendMessage(chatId,
-        '❌ Invalid username. Must be 5-32 chars, start with letter, only letters/numbers/underscores.',
+        '❌ Invalid username. 5-32 chars, a-z/0-9/_, must end with "bot".',
         { keyboard: [[{ text: '❌ Cancel', callback_data: 'newbot_cancel' }]] }
       );
       return;
     }
-    action.data.username = text;
+    action.data.username = text.toLowerCase();
     action.type = 'newbot_desc';
     await saveUserState(ctx, userId, state);
     await ctx.sendMessage(chatId,
-      `➕ <b>Create New Bot</b>\n\nStep 3/4: Enter <b>description</b> (optional):`,
+      `➕ <b>Create New Bot</b>\n\nEnter a <b>description</b> (optional), or skip:`,
       { keyboard: [
         [{ text: 'Skip', callback_data: 'newbot_skip_desc' }],
         [{ text: '❌ Cancel', callback_data: 'newbot_cancel' }],
@@ -552,19 +638,68 @@ async function handlePendingAction(
   }
 
   if (action.type === 'newbot_desc') {
-    action.data.description = text;
+    action.data.description = text.slice(0, 256);
     action.type = 'newbot_perms';
     await saveUserState(ctx, userId, state);
     await ctx.sendMessage(chatId,
-      `➕ <b>Create New Bot</b>\n\nStep 4/4: Select <b>permissions</b>:\n\n<i>Tap to toggle</i>`,
+      `➕ <b>Create New Bot</b>\n\nSelect <b>permissions</b>, then tap Done:\n\n<i>Tap to toggle</i>`,
       { keyboard: createPermissionsKeyboard(action.data.permissions) }
     );
     return;
   }
 
-  if (action.type === 'gateway_bot' || action.type === 'commands_bot' ||
-      action.type === 'desc_bot') {
-    if (action.type === 'gateway_bot') {
+  if (action.type === 'newbot_perms') {
+    // Last step: the entry module the manifest will run. Sending it finishes
+    // the install, so the same install is reachable from /newbot and from the
+    // main-menu callback.
+    const entryPoint = text.trim().slice(0, 256);
+    if (!entryPoint) {
+      await ctx.sendMessage(chatId, '❌ Entry module cannot be empty. Send it again:');
+      return;
+    }
+    const draft = { ...action.data, entryPoint };
+    state.pendingAction = undefined;
+    try {
+      const installed = await ctx.installBotFromDraft({
+        entryPoint,
+        name: draft.name ?? '',
+        username: draft.username ?? '',
+        description: draft.description,
+        commands: draft.commands,
+        permissions: draft.permissions ?? [],
+      });
+      state.bots = await ctx.listBots();
+      await saveUserState(ctx, userId, state);
+      await ctx.sendMessage(chatId,
+        `✅ <b>Bot installed</b>\n\n<b>${installed.manifest.name}</b> (@${installed.manifest.username})\n<b>Module:</b> <code>${installed.manifest.entryPoint}</code>\n\nManage it with /mybots.`,
+        { keyboard: createMainKeyboard() }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not install the bot';
+      await saveUserState(ctx, userId, state);
+      await ctx.sendMessage(chatId, `❌ <b>Not installed</b>\n\n${message}`, {
+        keyboard: createMainKeyboard(),
+      });
+    }
+    return;
+  }
+
+  if (action.type === 'gateway_bot' || action.type === 'peer_bot' ||
+      action.type === 'commands_bot' || action.type === 'desc_bot') {
+    if (action.type === 'peer_bot') {
+      const value = text.trim();
+      const peerFingerprint = value.toLowerCase() === 'none' ? undefined : value;
+      try {
+        await ctx.setPeerFingerprint(action.data.botId, peerFingerprint);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid fingerprint';
+        await ctx.sendMessage(chatId, `❌ ${message}\n\nSend the gateway fingerprint or "none" to clear.`);
+        return;
+      }
+      state.bots = await ctx.listBots();
+      await ctx.sendMessage(chatId,
+        peerFingerprint ? `✅ Peer fingerprint set: ${peerFingerprint}` : '✅ Peer fingerprint cleared');
+    } else if (action.type === 'gateway_bot') {
       const value = text.trim();
       const gatewayUrl = value.toLowerCase() === 'none' ? undefined : value;
       try {

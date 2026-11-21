@@ -12,6 +12,7 @@ import {
   BotRuntime,
   InMemoryBotStorage,
   type BotAdminApi,
+  type BotManifestDraft,
   type BotRegistry,
   type BotStorage,
   type InstalledBot,
@@ -21,9 +22,20 @@ import {
   installBot,
   setBotBlocked,
   setBotEnabled,
+  setPeerFingerprint,
   uninstallBot,
 } from './runtime';
-import { isValidCommand, type BotPermission, type BotOutgoingMessage, type BotUpdate, type BotCommand } from './types';
+import {
+  isValidBotUsername,
+  isValidCommand,
+  type BotCommand,
+  type BotManifest,
+  type BotOutgoingMessage,
+  type BotPermission,
+  type BotUpdate,
+} from './types';
+
+export type { BotManifestDraft };
 import { echoBotManifest } from '../../../examples/bots/echo/manifest';
 import { novafatherManifest } from '../../../examples/bots/novafather/manifest';
 
@@ -61,8 +73,10 @@ export class BotSession {
   private readonly admin: BotAdminApi = {
     listBots: () => this.registry.bots,
     installBot: (manifest, granted) => this.installBot(manifest, granted),
+    installBotFromDraft: (draft) => this.installBotFromDraft(draft),
     setBotEnabled: (botId, enabled) => this.setBotEnabled(botId, enabled),
     setGatewayUrl: (botId, gatewayUrl) => this.setGatewayUrl(botId, gatewayUrl),
+    setPeerFingerprint: (botId, peerFingerprint) => this.setPeerFingerprint(botId, peerFingerprint),
     setBotCommands: (botId, commands) => this.setBotCommands(botId, commands),
     setBotDescription: (botId, description) => this.setBotDescription(botId, description),
     uninstallBot: (botId) => this.uninstallBot(botId),
@@ -154,6 +168,13 @@ export class BotSession {
     bot.manifest.gatewayUrl = gatewayUrl;
     await this.storage.save(registry);
     this.registry = registry;
+  }
+
+  /** Attach or clear a gateway bot's mesh fingerprint (Phase B4). */
+  public async setPeerFingerprint(botId: string, peerFingerprint: string | undefined): Promise<void> {
+    await this.ensureReady();
+    await setPeerFingerprint(botId, peerFingerprint, this.storage);
+    this.registry = await this.storage.load();
   }
 
   /** Replace an installed bot's command menu (Phase B6 / NovaFather). */
@@ -332,9 +353,41 @@ export class BotSession {
     this.registry = await this.storage.load();
     this.runtimes.delete(botId);
   }
+
+  /**
+   * Install a bot from fields collected in chat (/newbot, docs/bots-roadmap.md
+   * B6). The id is derived from the username, so typing the same username again
+   * updates nothing — `installBot` rejects a duplicate id and the caller shows
+   * that error. Permissions are granted exactly as chosen by the user.
+   */
+  public async installBotFromDraft(draft: BotManifestDraft): Promise<InstalledBot> {
+    await this.ensureReady();
+    const username = draft.username.trim().toLowerCase();
+    if (!isValidBotUsername(username)) {
+      throw new BotInstallError('Username must be 5-32 chars, a-z/0-9/_ and end with "bot"');
+    }
+    const entryPoint = draft.entryPoint.trim();
+    if (!entryPoint) throw new BotInstallError('A bot needs an entry module');
+    const manifest: BotManifest = {
+      id: username,
+      name: draft.name.trim() || username,
+      username,
+      description: draft.description?.trim() || undefined,
+      version: '1.0.0',
+      requestedPermissions: [...draft.permissions],
+      commands: (draft.commands ?? []).map((c) => ({
+        command: String(c.command).toLowerCase(),
+        description: String(c.description).slice(0, 256),
+      })),
+      entryPoint,
+    };
+    return this.installBot(manifest, draft.permissions);
+  }
 }
 
 /** App-wide bot session singleton (one per app lifetime). NovaFather and other
  * system bots use it for administrative operations (install, setGatewayUrl, …). */
 export const botSession = new BotSession();
+
+
 

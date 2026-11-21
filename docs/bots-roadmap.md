@@ -189,7 +189,12 @@ the bot's private key):
       `onGroupJoinRequest`. The client now addresses group frames to bot peers
       directly: a bot member is delivered over the encrypted 1:1 session instead
       of the room broadcast (`ChatScreen` keeps a per-group bot-peer roster,
-      `nova_bot_group_peers`). Gateway privacy mode (`mentionOnly`, `botId`)
+      `nova_bot_group_peers`). The roster is populated only from real bot
+      identities: NovaFather `/setpeer <bot> <fingerprint>` stores the gateway
+      bot's mesh fingerprint in the encrypted registry, and adding/approving
+      that fingerprint as a group member registers it for direct delivery;
+      `syncBotGroupPeers` prunes uninstalled bots and members who left, so a
+      human is never treated as a bot. Gateway privacy mode (`mentionOnly`, `botId`)
       filters small talk **after** decryption, so a bot in a group receives only
       commands and mentions while SKDM/role/join frames still get through —
       dropping an SKDM would leave the bot unable to read anything later.
@@ -197,8 +202,10 @@ the bot's private key):
       group join/SKDM/message exchange, removal (no further fan-out to the
       removed member), the own-echo rule and mention-only filtering;
       `src/lib/p2p/p2pManager.bundles.test.ts` proves the bundle hook fires on
-      a bot key rotation and cannot reject a bundle; `groupWire.test.ts` pins
-      the envelope and the mention rule. Sender-key rotation on removal is
+      a bot key rotation and cannot reject a bundle;      `groupWire.test.ts` pins
+      the envelope and the mention rule. Client-side roster registration and
+      pruning are covered by `src/lib/bots/groupPeers.test.ts` and the
+      ChatScreen group test; a full gateway-in-a-group E2E run is still open. Sender-key rotation on removal is
       covered by `groupManager.test.ts` and the gateway removal case.
 
 ### Phase B5 — Telegram-shaped HTTP surface, L3 (1 week, gateway-side only) — 🟡 Partial
@@ -211,8 +218,13 @@ the bot's private key):
       design and in this repo's server: HMAC signature, timestamp window,
       replay guard, retry with exponential backoff (cf. `server.js` IPN
       handler and the hardening in fix-roadmap F3).
-- [x] SSRF guard for `webhook_url`: https only, private/loopback ranges
-      denied, re-validated after DNS resolution and on redirects.
+- [x] SSRF guard for `webhook_url`: https only; every DNS answer is checked
+      against loopback/private/link-local/CGNAT/reserved IPv4 and IPv6 ranges at
+      registration and again immediately before each delivery. Webhook fetches
+      use `redirect: 'manual'`, so an HTTP redirect is never followed (a 3xx
+      response is simply treated as a failed best-effort delivery). DNS is
+      resolved again by the fetch itself, so pinning the checked address would
+      still require a custom dispatcher — noted as a hardening follow-up.
 - [x] Rate limits: ~30 msg/s per bot, 1 msg/s per chat (Telegram-like).
 - [x] Contract tests against a fake Telegram client (grammY in a test) +
       fuzz the update parser (`vitest` + seeded fuzz like
@@ -229,10 +241,14 @@ the bot's private key):
       `BotSession`, and NovaFather guards against disabling or deleting itself.
 - [x] `/mybots` reads the installed registry rather than a chat-local list;
       enable/disable and delete therefore act on the bots the app actually has.
-- [ ] `/newbot` no longer pretends to create an L1 bot from chat: an L1 bot is
-      a bundled code module, so the command explains that a manifest must be
-      installed via Settings → Bots. Creating an L1 module from chat remains
-      out of scope until a template/storage design exists.
+- [x] `/newbot` installs a real manifest instead of pretending: name →
+      username → description → permissions → entry module, then
+      `BotAdminApi.installBotFromDraft` (via `BotSession.installBotFromDraft`)
+      validates the username with the same rule as `isValidBotUsername`, grants
+      exactly the permissions the user toggled and registers the bot — so it
+      appears in `/mybots` and Settings → Bots immediately. Creating the code
+      module itself from chat is still out of scope (an L1 bot is a bundled
+      module), and the flow says so instead of faking it.
 - [x] `/setgateway` updates the installed manifest through
       `BotSession.setGatewayUrl` (a `none` value clears it and invalid URLs are
       rejected); the list refreshes from the registry afterwards.
@@ -243,7 +259,8 @@ the bot's private key):
       (`botToken`, `setWebhook`), because the app never holds gateway secrets.
       The main-menu callbacks for these screens are wired too.
 - [x] `src/lib/bots/novafather.test.ts` covers `/start`, `/mybots`, toggle,
-      gateway and command-list updates through `BotRuntime` + `BotAdminApi`;
+      gateway, peer fingerprint, command-list updates and the `/newbot` install
+      flow (including an invalid username) through `BotRuntime` + `BotAdminApi`;
       transport-level E2E is still missing.
 
 ### Phase B7 — Mini Apps — 🟡 Partial

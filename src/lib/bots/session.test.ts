@@ -78,6 +78,27 @@ describe('BotSession — blocked and disabled bots', () => {
     expect(second.isBlocked('novafather')).toBe(true);
   });
 
+  it('stores a gateway bot peer fingerprint and persists it across sessions', async () => {
+    const storage = new InMemoryBotStorage();
+    const first = new BotSession(storage);
+    await first.ensureReady();
+
+    await first.setPeerFingerprint('echo', 'gateway_fp_0001');
+    expect(first.listBots().find((bot) => bot.manifest.id === 'echo')?.peerFingerprint).toBe(
+      'gateway_fp_0001',
+    );
+
+    const second = new BotSession(storage);
+    await second.ensureReady();
+    expect(second.listBots().find((bot) => bot.manifest.id === 'echo')?.peerFingerprint).toBe(
+      'gateway_fp_0001',
+    );
+
+    await expect(first.setPeerFingerprint('echo', 'not a fingerprint')).rejects.toThrow();
+    await first.setPeerFingerprint('echo', undefined);
+    expect(first.listBots().find((bot) => bot.manifest.id === 'echo')?.peerFingerprint).toBeUndefined();
+  });
+
   it('drops updates for a disabled bot until it is enabled again', async () => {
     const session = new BotSession(new InMemoryBotStorage());
     await session.ensureReady();
