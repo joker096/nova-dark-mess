@@ -4,13 +4,11 @@
  * `frame-src` cannot be derived per bot at runtime: a CSP policy is fixed for
  * the document and several policies only intersect. The product decision is
  * therefore an operator-controlled list of Mini App hosts, configured at build
- * time with `VITE_MINI_APP_ORIGINS=https://mini-apps.your-domain.com`. Each bot
- * gets a path under one of those origins (for example `/echo/`), not its own
- * host. There is no built-in domain: the operator must supply a host they
- * control, otherwise every remote Mini App is denied.
- *
- * With no configured origins the app refuses every remote Mini App and the
- * generated CSP keeps `frame-src 'self' blob:`.
+ * time with `VITE_MINI_APP_ORIGINS=https://mess.cvr.name`. Each bot
+ * gets a path under one of those origins (for example `/mini-apps/echo/`), not
+ * its own host. This deployment defaults to `https://mess.cvr.name` (the app's
+ * landing host); an operator can override it with the env variable, and an
+ * explicitly empty value means "deny every remote Mini App".
  */
 
 /** Normalize a configured origin; returns null for anything but http(s). */
@@ -34,9 +32,12 @@ export function parseMiniAppOrigins(raw: string | undefined): string[] {
   return [...new Set(origins)];
 }
 
+/** Deployment default: the landing host, overridable via the build env. */
+export const DEFAULT_MINI_APP_ORIGIN = 'https://mess.cvr.name';
+
 /** Origins allowed to be framed, from the build environment. */
 export const MINI_APP_ORIGINS: readonly string[] = parseMiniAppOrigins(
-  import.meta.env.VITE_MINI_APP_ORIGINS,
+  import.meta.env.VITE_MINI_APP_ORIGINS ?? DEFAULT_MINI_APP_ORIGIN,
 );
 
 /** True only for an http(s) URL whose exact origin is allowlisted. */

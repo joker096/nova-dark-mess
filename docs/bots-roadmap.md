@@ -276,12 +276,12 @@ the bot's private key):
 - [x] iframe uses `sandbox="allow-scripts allow-forms"` — **no
       `allow-same-origin`** — and only HTTPS URLs are accepted.
 - [x] `frame-src` is restricted to an operator allowlist, not arbitrary
-      `https:`.      Decision: Mini Apps live under an operator-controlled host, configured
-      with `VITE_MINI_APP_ORIGINS=https://mini-apps.your-domain.com`, one path
-      per bot, because CSP is document-wide and per-bot hosts cannot be
-      expressed dynamically. `example.com` is a reserved placeholder, not a
-      working host: there is no default domain and every remote Mini App is
-      denied until the operator supplies their own. The allowlist feeds every CSP surface: `vite.config.ts`
+      `https:`. Decision: Mini Apps live under the app's landing host, one path per bot
+      (`https://mess.cvr.name/mini-apps/<bot>/`), because CSP is document-wide
+      and per-bot hosts cannot be expressed dynamically. This deployment
+      defaults to `https://mess.cvr.name`; `VITE_MINI_APP_ORIGINS` overrides it
+      and an empty value denies every remote Mini App. The Tauri CSP carries
+      the same default alongside the `{{MINI_APP_ORIGINS}}` placeholder. The allowlist feeds every CSP surface: `vite.config.ts`
       (browser build) and `src-tauri/tauri.conf.json`, whose `csp`/`devCsp`
       `frame-src` use the `{{MINI_APP_ORIGINS}}` placeholder that Tauri
       substitutes at build time. `MiniAppIframe` also refuses any URL whose
