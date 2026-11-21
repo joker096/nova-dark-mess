@@ -14,7 +14,8 @@
  *   - Webhook URLs validated: https only, private/loopback ranges denied,
  *     resolved and checked right before every delivery; redirects are never
  *     followed (SSRF guard).
- *   - Webhook delivery signed with HMAC-SHA256; timestamp window + replay guard.
+ *   - Webhook delivery signed with HMAC-SHA256 and an optional secret token.
+ *     Replay/timestamp enforcement is the receiver's job.
  *   - Rate limits: ~30 msg/s per bot, 1 msg/s per chat (Telegram-like).
  */
 
@@ -62,7 +63,7 @@ async function resolveHostname(hostname: string): Promise<string[]> {
 
 const RATE_LIMIT_PER_BOT = 30;   // msg/s per bot
 const RATE_LIMIT_PER_CHAT = 1;   // msg/s per chat
-const WEBHOOK_TOLERANCE_MS = 5 * 60 * 1000; // 5 min timestamp window
+const WEBHOOK_MAX_ATTEMPTS = 3;
 
 interface RateSlot {
   count: number;
@@ -220,11 +221,9 @@ export class BotHTTPGateway {
   private async getUpdatesHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = await this.readBody(req);
     const offset = Number(body.offset ?? 0);
-    // Malformed input (`limit: -1`, `timeout: 1e9`, strings) must not crash the
-    // handler; NaN would otherwise slip through Math.max/min.
-    const rawLimit = Number(body.limit ?? 100);
+    // Malformed input (`timeout: 1e9`, strings) must not crash the handler;
+    // NaN would otherwise slip through Math.max/min.
     const rawTimeout = Number(body.timeout ?? this.options.longPollTimeoutMs ?? 0);
-    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 100;
     const timeout = Number.isFinite(rawTimeout) ? Math.min(Math.max(rawTimeout, 0), 30000) : 0;
 
     // Deliver any pending update that is >= offset.
@@ -284,22 +283,30 @@ export class BotHTTPGateway {
       .createHmac('sha256', webhook.secretToken ?? this.options.webhookSecret)
       .update(body)
       .digest('hex');
-    try {
-      // Re-check on every delivery: DNS can change after registration.
-      await validateWebhookDestination(webhook.url, this.options.resolveHost ?? resolveHostname);
-      await fetch(webhook.url, {
-        method: 'POST',
-        redirect: 'manual',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Hub-Signature-256': `sha256=${signature}`,
-          ...(webhook.secretToken ? { 'X-Telegram-Bot-Api-Secret-Token': webhook.secretToken } : {}),
-        },
-        body,
-      });
-    } catch {
-      // Webhook delivery is best-effort; a down webhook must not break getUpdates.
+    for (let attempt = 1; attempt <= WEBHOOK_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        // Re-check on every attempt: DNS can change after registration.
+        await validateWebhookDestination(webhook.url, this.options.resolveHost ?? resolveHostname);
+        const response = await fetch(webhook.url, {
+          method: 'POST',
+          redirect: 'manual',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Hub-Signature-256': `sha256=${signature}`,
+            ...(webhook.secretToken ? { 'X-Telegram-Bot-Api-Secret-Token': webhook.secretToken } : {}),
+          },
+          body,
+        });
+        // 2xx delivered; 3xx is not followed and 4xx will not improve on retry.
+        if (response.ok || (response.status >= 300 && response.status < 500)) return;
+      } catch {
+        // Network/DNS failure: retry below.
+      }
+      if (attempt < WEBHOOK_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+      }
     }
+    // Webhook delivery is best-effort; a down webhook must not break getUpdates.
   }
 
   private async setWebhookHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
