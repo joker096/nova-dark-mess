@@ -32,6 +32,8 @@ export interface MediaCallOptions {
   peerFingerprint: string;
   mode: MediaCallMode;
   signalingUrl?: string;
+  /** Reuse an already connected signaling client (call-control socket). */
+  signaling?: P2PSignalingClient;
   iceServers?: RTCIceServer[];
   /** 'relay-only' routes media through TURN so the peer never sees the local IP. */
   icePolicy?: 'direct' | 'relay-only';
@@ -50,6 +52,7 @@ type QualityListener = (stats: CallQualityStats) => void;
 export class P2PMediaCall {
   private readonly options: MediaCallOptions;
   private signaling: P2PSignalingClient | null = null;
+  private ownsSignaling = false;
   private channel: P2PMessengerChannel | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
@@ -170,7 +173,9 @@ export class P2PMediaCall {
       return;
     }
 
-    this.signaling = new P2PSignalingClient({ url: this.options.signalingUrl });
+    this.signaling =
+      this.options.signaling ?? new P2PSignalingClient({ url: this.options.signalingUrl });
+    this.ownsSignaling = !this.options.signaling;
     this.channel = new P2PMessengerChannel(
       this.options.localFingerprint,
       this.options.peerFingerprint,
@@ -267,7 +272,9 @@ export class P2PMediaCall {
     }
     this.channel?.close();
     this.channel = null;
-    this.signaling?.close();
+    if (this.ownsSignaling) {
+      this.signaling?.close();
+    }
     this.signaling = null;
 
     this.setStatus('ended');

@@ -72,6 +72,7 @@ import { useAccount } from './hooks/useAccount';
 import { useSecurity } from './hooks/useSecurity';
 import { P2PManager } from './lib/p2p/p2pManager';
 import { P2PSignalingClient } from './lib/p2p/signaling';
+import { resolveSignalingUrl } from './lib/p2p/signalingConfig';
 import { observePeerKey } from './lib/security/peerKeyJournal';
 import { MeshRelay } from './lib/p2p/relay';
 import { TransportManager } from './lib/network/TransportManager';
@@ -137,10 +138,9 @@ export default function App() {
   }, [peerFingerprintsByChat]);
 
   // Wire the real P2P transport once the local identity is available. The
-  // signaling client uses the in-page BroadcastChannel bus so two manager
-  // instances in the same browser (or two tabs) can complete a prekey exchange
-  // and send encrypted messages over the mesh relay without a central server.
-  // In production pass signalingUrl to reach remote peers over WebSocket.
+  // signaling client uses the configured WebSocket endpoint when available;
+  // without one it falls back to the in-page BroadcastChannel bus (same
+  // browser/tabs only), which is not a remote transport.
   useEffect(() => {
     if (!identity || !setP2PManager) return;
     let manager: P2PManager | null = null;
@@ -148,7 +148,7 @@ export default function App() {
     let relay: MeshRelay | null = null;
     let transportManager: TransportManager | null = null;
     const start = async () => {
-      signaling = new P2PSignalingClient();
+      signaling = new P2PSignalingClient({ url: resolveSignalingUrl() });
       relay = new MeshRelay(identity.fingerprint);
       relayRef.current = relay;
 
