@@ -73,6 +73,8 @@ import { useSecurity } from './hooks/useSecurity';
 import { P2PManager } from './lib/p2p/p2pManager';
 import { P2PSignalingClient } from './lib/p2p/signaling';
 import { resolveSignalingUrl } from './lib/p2p/signalingConfig';
+import { identityPrivateKeys } from './lib/crypto/identity';
+import { bufferToBase64 } from './lib/crypto/aes';
 import { observePeerKey } from './lib/security/peerKeyJournal';
 import { MeshRelay } from './lib/p2p/relay';
 import { TransportManager } from './lib/network/TransportManager';
@@ -149,7 +151,13 @@ export default function App() {
     let transportManager: TransportManager | null = null;
     let unsubscribeCallInvite: (() => void) | null = null;
     const start = async () => {
-      signaling = new P2PSignalingClient({ url: resolveSignalingUrl(), registerFingerprint: identity.fingerprint });
+      const identityKeys = identityPrivateKeys(identity);
+      signaling = new P2PSignalingClient({
+        url: resolveSignalingUrl(),
+        registerFingerprint: identity.fingerprint,
+        signingPrivateKey: bufferToBase64(identityKeys.ed25519Secret),
+        signingPublicKey: identity.signingPublicKey,
+      });
       setCallSignaling(signaling);
       unsubscribeCallInvite = signaling.onMessage((message) => {
         if (message.targetFingerprint !== identity.fingerprint) return;
@@ -834,7 +842,6 @@ export default function App() {
             }}
             onOpenChannel={openChannel}
             onOpenProfile={() => openProfile(account.id)}
-            onOpenMeshMap={() => navigate('mesh-map')}
             onOpenAnonymous={() => navigate('anonymous')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenPremium={() => setIsPremiumOpen(true)}
@@ -1043,22 +1050,7 @@ export default function App() {
           )}
         </button>
 
-          {/* Mesh Map tab */}
-          <button
-            onClick={() => navigate('mesh-map')}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
-              currentScreen === 'mesh-map'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
-                : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
-            }`}
-            title={t('meshMap.title')}
-            aria-label={t('meshMap.title')}
-          >
-            <MapPin className={`w-5 h-5 ${currentScreen === 'mesh-map' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
-        {currentScreen === 'mesh-map' && (
-          <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
-        )}
-      </button>
+          
 
       {/* Sites tab */}
       <button
@@ -1134,7 +1126,6 @@ export default function App() {
           }}
           onOpenChannel={openChannel}
           onOpenProfile={() => openProfile(account.id)}
-          onOpenMeshMap={() => navigate('mesh-map')}
           onOpenAnonymous={() => navigate('anonymous')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenPremium={() => setIsPremiumOpen(true)}
@@ -1253,6 +1244,7 @@ export default function App() {
             setPendingBotStart({ chatId: botId, payload: '' });
             navigate('chat-katie', { chatId: botId });
           }}
+          onOpenMeshMap={() => navigate('mesh-map')}
         />
       </Suspense>
 

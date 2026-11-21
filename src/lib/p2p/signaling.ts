@@ -1,4 +1,7 @@
 import { sha256Hex } from '../crypto/aes';
+import { base64ToBuffer, bufferToBase64 } from '../crypto/aes';
+import { ed25519 } from '@noble/curves/ed25519.js';
+import { fingerprintFromSigningKey } from '../crypto/identity';
 
 export type SignalingMessageType =
   | 'offer'
@@ -21,6 +24,8 @@ export interface SignalingMessage {
   payload: unknown;
   nonce?: number;
   timestamp?: number;
+  signature?: string;
+  signingPublicKey?: string;
 }
 
 export type SignalingStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -33,6 +38,10 @@ export interface SignalingOptions {
   // opens (and again after every reconnect). Without this the peer is never
   // registered as a delivery target and incoming calls/signaling are dropped.
   registerFingerprint?: string;
+  // Ed25519 signing key (base64) used to sign outgoing signaling messages.
+  signingPrivateKey?: string;
+  // Matching Ed25519 public key (base64). Derived from the private key if omitted.
+  signingPublicKey?: string;
 }
 
 type MessageListener = (msg: SignalingMessage) => void;
@@ -54,12 +63,19 @@ export class P2PSignalingClient {
   private readonly reconnect: boolean;
   private readonly maxReconnectDelayMs: number;
   private readonly registerFingerprint?: string;
+  private readonly signingPrivateKey?: string;
+  private readonly signingPublicKey?: string;
 
   constructor(options: SignalingOptions = {}) {
     this.url = options.url;
     this.reconnect = options.reconnect ?? true;
     this.maxReconnectDelayMs = options.maxReconnectDelayMs ?? 30000;
     this.registerFingerprint = options.registerFingerprint;
+    this.signingPrivateKey = options.signingPrivateKey;
+    this.signingPublicKey = options.signingPublicKey
+      ?? (options.signingPrivateKey
+        ? bufferToBase64(ed25519.getPublicKey(base64ToBuffer(options.signingPrivateKey)))
+        : undefined);
   }
 
   public onMessage(callback: MessageListener): () => void {
@@ -82,7 +98,39 @@ export class P2PSignalingClient {
     this.statusListeners.forEach((listener) => listener(status));
   }
 
+  private canonicalMessage(message: SignalingMessage): Uint8Array {
+    const obj = {
+      type: message.type,
+      senderFingerprint: message.senderFingerprint,
+      targetFingerprint: message.targetFingerprint,
+      payload: message.payload ?? null,
+      nonce: message.nonce ?? null,
+      timestamp: message.timestamp ?? null,
+      signingPublicKey: message.signingPublicKey ?? null,
+    };
+    return new TextEncoder().encode(JSON.stringify(obj));
+  }
+
+  private verifyIncoming(message: SignalingMessage): boolean {
+    // Backward compatible: unsigned messages are accepted so older clients and
+    // test harnesses keep working. Signed messages are strictly verified.
+    if (!message.signature || !message.signingPublicKey) return true;
+    if (fingerprintFromSigningKey(message.signingPublicKey) !== message.senderFingerprint) {
+      return false;
+    }
+    try {
+      return ed25519.verify(
+        base64ToBuffer(message.signature),
+        this.canonicalMessage(message),
+        base64ToBuffer(message.signingPublicKey),
+      );
+    } catch {
+      return false;
+    }
+  }
+
   private emit(message: SignalingMessage): void {
+    if (!this.verifyIncoming(message)) return;
     this.messageListeners.forEach((listener) => listener(message));
   }
 
@@ -227,7 +275,14 @@ export class P2PSignalingClient {
     const outgoing: SignalingMessage = {
       ...message,
       timestamp: message.timestamp ?? Date.now(),
+      signingPublicKey: this.signingPublicKey,
     };
+
+    if (this.signingPrivateKey && this.signingPublicKey) {
+      outgoing.signature = bufferToBase64(
+        ed25519.sign(this.canonicalMessage(outgoing), base64ToBuffer(this.signingPrivateKey)),
+      );
+    }
 
     if (this.localChannel) {
       this.localChannel.postMessage(outgoing);

@@ -62,6 +62,8 @@ import {
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
+import { identityPrivateKeys } from '../lib/crypto/identity';
+import { bufferToBase64 } from '../lib/crypto/aes';
 import {
   loadBotGroupPeers,
   registerBotGroupPeer,
@@ -1925,7 +1927,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const signalingUrl = resolveSignalingUrl();
     if (!signalingUrl && !sharedCallSignaling) return;
 
-    const client = sharedCallSignaling ?? new P2PSignalingClient({ url: signalingUrl, registerFingerprint: localFingerprint });
+    const client = sharedCallSignaling ?? new P2PSignalingClient({
+      url: signalingUrl,
+      registerFingerprint: localFingerprint,
+      signingPrivateKey: identity ? bufferToBase64(identityPrivateKeys(identity).ed25519Secret) : undefined,
+      signingPublicKey: identity?.signingPublicKey,
+    });
     callSignalingRef.current = client;
 
     const unsubscribe = client.onMessage((message) => {
