@@ -63,7 +63,9 @@ function setup(bots: InstalledBot[] = []) {
       const bot = bots.find((b) => b.manifest.id === botId);
       if (bot) bot.enabled = enabled;
     }),
+    installBotFromDraft: vi.fn() as unknown as BotAdminApi['installBotFromDraft'],
     setGatewayUrl: vi.fn(async () => {}) as BotAdminApi['setGatewayUrl'],
+    setPeerFingerprint: vi.fn(async () => {}) as BotAdminApi['setPeerFingerprint'],
     setBotCommands: vi.fn(async () => {}) as BotAdminApi['setBotCommands'],
     setBotDescription: vi.fn(async () => {}) as BotAdminApi['setBotDescription'],
     uninstallBot: vi.fn(async (botId: string) => {
@@ -165,6 +167,45 @@ describe('NovaFather system bot', () => {
     expect(sink.sent.some((m) => m.text.includes('Gateway URL set'))).toBe(true);
   });
 
+  it('sets a gateway bot peer fingerprint through the admin API', async () => {
+    const echo: InstalledBot = {
+      manifest: echoBotManifest,
+      grantedPermissions: [...echoBotManifest.requestedPermissions],
+      installedAt: Date.now(),
+      enabled: true,
+    };
+    const { sink, runtime, admin } = setup([echo]);
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/mybots', 'mybots'));
+    await runtime.deliverUpdate({
+      type: 'callback_query',
+      payload: {
+        id: 'cb_peer',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        messageId: 'm_list',
+        data: 'peer:echo',
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+    await runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: 'm_peer_fp',
+        chat: { id: 'chat_novafather', kind: 'direct' },
+        text: 'gw_fp_0001',
+        isCommand: false,
+        mentionsBot: false,
+        from: 'fp_owner',
+        timestamp: Date.now(),
+      },
+    });
+
+    expect(admin.setPeerFingerprint).toHaveBeenCalledWith('echo', 'gw_fp_0001');
+    expect(sink.sent.some((m) => m.text.includes('Peer fingerprint set'))).toBe(true);
+  });
+
   it('updates a bot command list through the admin API', async () => {
     const echo: InstalledBot = {
       manifest: echoBotManifest,
@@ -203,5 +244,78 @@ describe('NovaFather system bot', () => {
     expect(admin.setBotCommands).toHaveBeenCalledWith('echo', [
       { command: 'ping', description: 'Ping the bot' },
     ]);
+  });
+
+  it('installs a drafted bot manifest through /newbot', async () => {
+    const installedDrafts: unknown[] = [];
+    const { sink, runtime, admin } = setup();
+    (admin.installBotFromDraft as unknown as { mockImplementation: (fn: unknown) => void }).mockImplementation(
+      async (draft: unknown) => {
+        installedDrafts.push(draft);
+        return {
+          manifest: { ...echoBotManifest, id: 'moviebot', username: 'moviebot', name: 'Movie Bot', entryPoint: '/movie' },
+          grantedPermissions: ['send_messages'],
+          installedAt: Date.now(),
+          enabled: true,
+        };
+      },
+    );
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/newbot', 'newbot'));
+    expect(sink.sent.at(-1)?.text).toContain('Enter the bot');
+
+    const reply = (text: string) => runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: `m_${text}`, chat: { id: 'chat_novafather', kind: 'direct' }, text,
+        isCommand: false, mentionsBot: false, from: 'fp_owner', timestamp: Date.now(),
+      },
+    });
+
+    await reply('Movie Bot');
+    await reply('moviebot');
+    await reply('Finds movies');
+    await runtime.deliverUpdate({
+      type: 'callback_query',
+      payload: {
+        id: 'cb_perm', chat: { id: 'chat_novafather', kind: 'direct' }, messageId: 'm_perms',
+        data: 'perm_toggle:send_messages', from: 'fp_owner', timestamp: Date.now(),
+      },
+    });
+    await reply('/movie');
+
+    expect(installedDrafts).toEqual([{
+      entryPoint: '/movie',
+      name: 'Movie Bot',
+      username: 'moviebot',
+      description: 'Finds movies',
+      commands: undefined,
+      permissions: ['send_messages'],
+    }]);
+    expect(sink.sent.at(-1)?.text).toContain('Bot installed');
+  });
+
+  it('rejects a username the manifest validator would refuse', async () => {
+    const { sink, runtime } = setup();
+    await novafatherBot.init(runtime.createContext());
+
+    await runtime.deliverUpdate(command('/newbot', 'newbot'));
+    await runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: 'm_name', chat: { id: 'chat_novafather', kind: 'direct' }, text: 'Bad Bot',
+        isCommand: false, mentionsBot: false, from: 'fp_owner', timestamp: Date.now(),
+      },
+    });
+    await runtime.deliverUpdate({
+      type: 'message',
+      payload: {
+        messageId: 'm_user', chat: { id: 'chat_novafather', kind: 'direct' }, text: 'not_a_bot_name',
+        isCommand: false, mentionsBot: false, from: 'fp_owner', timestamp: Date.now(),
+      },
+    });
+
+    expect(sink.sent.at(-1)?.text).toContain('Invalid username');
   });
 });

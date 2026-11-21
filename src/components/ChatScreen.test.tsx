@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { ChatScreen } from './ChatScreen';
 import { CONVERSATION_HISTORIES } from '../data/mockMessengerData';
 
@@ -105,7 +106,8 @@ const baseProps = {
   onOpenProfile: vi.fn(),
 };
 
-const renderChat = (props = baseProps) => render(<ChatScreen {...props} />);
+const renderChat = (props: ComponentProps<typeof ChatScreen> = baseProps) =>
+  render(<ChatScreen {...props} />);
 
 const getBubble = (id = 'm1') => {
   const bubble = screen.getByTestId(`bubble-${id}`);
@@ -688,6 +690,31 @@ describe('ChatScreen - group chat and P2P wiring', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'chat.makeMember: nova_pk_bob' }));
     expect(screen.getByTestId('group-role-nova_pk_bob').textContent).toBe('chat.roleMember');
+  });
+
+  it('remembers an installed bot member for direct group delivery', async () => {
+    const getBotSession = () =>
+      ({
+        listBots: () => [{ peerFingerprint: 'nova_pk_gateway_bot' }],
+      }) as never;
+    renderChat({
+      chatId: 'thailand',
+      onBack: vi.fn(),
+      onOpenProfile: vi.fn(),
+      getBotSession,
+    });
+
+    openGroupMembers();
+    fireEvent.change(screen.getByLabelText('chat.memberFingerprint'), {
+      target: { value: 'nova_pk_gateway_bot' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'chat.addMember' }));
+    await waitFor(() => expect(screen.getByText('nova_pk_gateway_bot')).toBeTruthy());
+
+    await waitFor(() => {
+      const roster = JSON.parse(localStorage.getItem('nova_bot_group_peers') ?? '{}');
+      expect(roster.thailand).toEqual(['nova_pk_gateway_bot']);
+    });
   });
 
   it('adds system messages for roster and role changes', async () => {

@@ -1,7 +1,12 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { BotHTTPGateway, validateWebhookUrl } from './http';
+import {
+  BotHTTPGateway,
+  isPrivateAddress,
+  validateWebhookDestination,
+  validateWebhookUrl,
+} from './http';
 import { createHmac } from 'crypto';
 
 describe('BotHTTPGateway', () => {
@@ -24,6 +29,8 @@ describe('BotHTTPGateway', () => {
       webhookSecret: 'wh_secret',
       gateway,
       longPollTimeoutMs: 200,
+      // Keep tests offline: public answer unless a test overrides it.
+      resolveHost: async () => ['93.184.216.34'],
     });
     await server.listen(0);
     port = server.port;
@@ -141,6 +148,32 @@ describe('BotHTTPGateway', () => {
     }
   });
 
+  it('checks every DNS answer and refuses empty resolutions', async () => {
+    const res = await post('/setWebhook', { url: 'https://rebind.example/webhook' });
+    expect(res.status).toBe(200);
+
+    // The default resolver in this suite is public, so prove the guard directly.
+    await expect(
+      validateWebhookDestination('https://rebind.example/webhook', async () => ['127.0.0.1']),
+    ).rejects.toThrow(/private\/loopback/);
+    await expect(
+      validateWebhookDestination('https://rebind.example/webhook', async () => ['93.184.216.34', '10.0.0.5']),
+    ).rejects.toThrow(/private\/loopback/);
+    await expect(
+      validateWebhookDestination('https://rebind.example/webhook', async () => []),
+    ).rejects.toThrow(/did not resolve/);
+  });
+
+  it('classifies private, loopback and IPv6 ranges', () => {
+    for (const address of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.4', '169.254.1.1',
+      '100.64.0.1', '0.0.0.0', '224.0.0.1', '::1', 'fd00::1', 'fe80::1', '::ffff:192.168.0.1']) {
+      expect(isPrivateAddress(address), address).toBe(true);
+    }
+    for (const address of ['93.184.216.34', '8.8.8.8', '2606:4700:4700::1111']) {
+      expect(isPrivateAddress(address), address).toBe(false);
+    }
+  });
+
   it('validateWebhookUrl rejects invalid schemes and private hosts', () => {
     expect(() => validateWebhookUrl('http://example.com/x')).toThrow();
     expect(() => validateWebhookUrl('https://127.0.0.1/x')).toThrow();
@@ -255,13 +288,19 @@ describe('BotHTTPGateway', () => {
   });
 
   it('delivers webhook with HMAC signature on incoming message', async () => {
-    const fetchCalls: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
+    const fetchCalls: Array<{
+      url: string;
+      headers: Record<string, string>;
+      body: string;
+      redirect?: RequestRedirect;
+    }> = [];
     const origFetch = (globalThis as any).fetch;
     (globalThis as any).fetch = vi.fn(async (_url: string, init: RequestInit) => {
       fetchCalls.push({
         url: _url as string,
         headers: init.headers as Record<string, string>,
         body: typeof init.body === 'string' ? init.body : '',
+        redirect: init.redirect,
       });
       return { ok: true } as Response;
     });
@@ -276,6 +315,7 @@ describe('BotHTTPGateway', () => {
       expect(fetchCalls).toHaveLength(1);
       const { url, headers, body } = fetchCalls[0];
       expect(url).toBe('https://example.com/webhook');
+      expect(fetchCalls[0].redirect).toBe('manual');
       expect(headers['Content-Type']).toBe('application/json');
       expect(headers['X-Telegram-Bot-Api-Secret-Token']).toBe('mysecret');
       const parsed = JSON.parse(body);

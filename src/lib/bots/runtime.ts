@@ -56,6 +56,12 @@ export interface InstalledBot {
    * never this value.
    */
   webAppSecret?: string;
+  /**
+   * Mesh fingerprint of an L2/L3 bot, learned from its gateway (`getMe`/CLI).
+   * Used to address group frames to the bot over an encrypted 1:1 session
+   * instead of the WebRTC room broadcast (Phase B4).
+   */
+  peerFingerprint?: string;
 }
 
 export interface BotRegistry {
@@ -224,6 +230,29 @@ export async function setGatewayUrl(
   await storage.save(registry);
 }
 
+/** Mesh fingerprint format accepted for bot peers. */
+export function isValidPeerFingerprint(value: string): boolean {
+  return /^[A-Za-z0-9_-]{8,128}$/.test(value);
+}
+
+/** Attach or clear the mesh fingerprint of a gateway bot (Phase B4). */
+export async function setPeerFingerprint(
+  botId: string,
+  peerFingerprint: string | undefined,
+  storage: BotStorage,
+): Promise<void> {
+  const registry = await storage.load();
+  const bot = registry.bots.find((b) => b.manifest.id === botId);
+  if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
+  const trimmed = peerFingerprint?.trim();
+  if (trimmed !== undefined && !isValidPeerFingerprint(trimmed)) {
+    throw new BotInstallError('Peer fingerprint must be 8-128 URL-safe characters');
+  }
+  if (trimmed) bot.peerFingerprint = trimmed;
+  else delete bot.peerFingerprint;
+  await storage.save(registry);
+}
+
 export function pendingConsent(installed: InstalledBot): BotPermission[] {
   return permissionsChanged(installed.grantedPermissions, installed.manifest.requestedPermissions);
 }
@@ -265,11 +294,23 @@ const LOCAL_BOT_MODULES = import.meta.glob<{
  * Administrative operations for system bots (NovaFather). Supplied by
  * BotSession; every method additionally requires the `manage_bots` grant.
  */
+/** Fields collected from chat by NovaFather's /newbot flow (Phase B6). */
+export interface BotManifestDraft {
+  entryPoint: string;
+  name: string;
+  username: string;
+  description?: string;
+  commands?: BotCommand[];
+  permissions: BotPermission[];
+}
+
 export interface BotAdminApi {
   listBots(): readonly InstalledBot[];
   installBot(manifest: unknown, granted: readonly BotPermission[]): Promise<InstalledBot>;
+  installBotFromDraft(draft: BotManifestDraft): Promise<InstalledBot>;
   setBotEnabled(botId: string, enabled: boolean): Promise<void>;
   setGatewayUrl(botId: string, gatewayUrl: string | undefined): Promise<void>;
+  setPeerFingerprint(botId: string, peerFingerprint: string | undefined): Promise<void>;
   setBotCommands(botId: string, commands: BotCommand[]): Promise<void>;
   setBotDescription(botId: string, description: string | undefined): Promise<void>;
   uninstallBot(botId: string): Promise<void>;
@@ -302,10 +343,14 @@ export interface BotContext {
   listBots(): Promise<InstalledBot[]>;
   /** Install a bot manifest (requires `manage_bots`). */
   installBot(manifest: unknown, granted: readonly BotPermission[]): Promise<InstalledBot>;
+  /** Install from fields collected in chat; the id comes from the username (requires `manage_bots`). */
+  installBotFromDraft(draft: BotManifestDraft): Promise<InstalledBot>;
   /** Enable/disable an installed bot (requires `manage_bots`). */
   setBotEnabled(botId: string, enabled: boolean): Promise<void>;
   /** Attach or clear an L2/L3 gateway URL (requires `manage_bots`). */
   setGatewayUrl(botId: string, gatewayUrl: string | undefined): Promise<void>;
+  /** Attach or clear the gateway bot's mesh fingerprint (requires `manage_bots`). */
+  setPeerFingerprint(botId: string, peerFingerprint: string | undefined): Promise<void>;
   /** Replace the command list of an installed bot (requires `manage_bots`). */
   setBotCommands(botId: string, commands: BotCommand[]): Promise<void>;
   /** Update the description of an installed bot (requires `manage_bots`). */
@@ -387,8 +432,11 @@ export class BotRuntime {
       },
       listBots: async () => [...requireAdmin().listBots()],
       installBot: async (manifestInput, granted) => requireAdmin().installBot(manifestInput, granted),
+      installBotFromDraft: async (draft) => requireAdmin().installBotFromDraft(draft),
       setBotEnabled: async (botId, enabled) => requireAdmin().setBotEnabled(botId, enabled),
       setGatewayUrl: async (botId, gatewayUrl) => requireAdmin().setGatewayUrl(botId, gatewayUrl),
+      setPeerFingerprint: async (botId, peerFingerprint) =>
+        requireAdmin().setPeerFingerprint(botId, peerFingerprint),
       setBotCommands: async (botId, commands) => requireAdmin().setBotCommands(botId, commands),
       setBotDescription: async (botId, description) => requireAdmin().setBotDescription(botId, description),
       uninstallBot: async (botId) => requireAdmin().uninstallBot(botId),

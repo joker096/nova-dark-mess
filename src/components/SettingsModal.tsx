@@ -339,9 +339,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     (botId: string) => {
       const session = getBotSession?.();
       if (!session) return;
-      void session.uninstallBot(botId).catch((err) => {
-        console.error('Failed to uninstall bot:', err);
-      });
+      void session
+        .uninstallBot(botId)
+        .then(() => setBotsVersion((version) => version + 1))
+        .catch((err) => {
+          console.error('Failed to uninstall bot:', err);
+        });
     },
     [getBotSession],
   );
