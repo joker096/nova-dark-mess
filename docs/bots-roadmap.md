@@ -165,7 +165,7 @@ the bot's private key):
       on-device and never leave it — this is the L1 analogue of the old
       client-side `CreateBotModal`, but without any token-containing-a-key.
 
-### Phase B4 — Gateway transport, L2 (1–1.5 weeks) — 🟡 Partial
+### Phase B4 — Gateway transport, L2 (1–1.5 weeks) — ✅ Done (2026-11-21)
 
 - [x] The bot-as-participant joins via the existing transports: WebRTC
       DataChannel (`roomChannel.ts`) when on the same mesh, or the
