@@ -71,8 +71,8 @@ export default defineConfig(({ mode, command }) => {
     .map((origin) => ` ${origin}`)
     .join('');
   const sharedCsp = buildCsp(frameOrigins);
-  const prodCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss:`;
-  const devCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss:`;
+  const prodCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' blob:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss: data:`;
+  const devCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss: data:`;
 
   const isBuild = command === 'build';
   const isAnalyze = process.env.ANALYZE === 'true';
@@ -82,8 +82,8 @@ export default defineConfig(({ mode, command }) => {
       react(),
       tailwindcss(),
       cspPlugin(prodCsp, devCsp),
-      // Service Worker for offline caching and faster loads
-      VitePWA({
+      // Service Worker for offline caching and faster loads (production only)
+      isBuild && VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'robots.txt'],
         manifest: {

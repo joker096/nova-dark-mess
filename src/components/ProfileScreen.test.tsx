@@ -23,6 +23,11 @@ vi.mock('../context/LanguageContext', () => ({
       if (key === 'profile.downloading') return `Downloading ${opts?.name}...`;
       if (key === 'profile.playingVoice') return `Playing voice note (${opts?.duration})...`;
       if (key === 'profile.voiceMessage') return `Voice message (${opts?.duration})`;
+      if (key === 'profile.newDevice') return 'New device';
+      if (key === 'profile.thisDevice') return 'This device';
+      if (key === 'profile.scanQrWithCamera') return 'Scan QR with camera';
+      if (key === 'profile.stopCameraScan') return 'Stop camera scan';
+      if (key === 'profile.linkNewDevice') return 'Link a new device';
       return key;
     },
     language: 'en',

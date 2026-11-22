@@ -1,42 +1,73 @@
-import type { ReactNode } from 'react';
-import { formatCount } from './formatCount';
+import { forwardRef, type HTMLAttributes } from 'react';
 
-export interface NovaBadgeProps {
-  /** Numeric badge value; strings for labels like "New". */
-  value?: number | string;
-  /** Caps numeric values (`99` → `99+`). */
+interface NovaBadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  value: string | number;
   max?: number;
-  variant?: 'accent' | 'neutral' | 'danger';
-  /** Hides the badge when the value is zero/empty. */
-  hideZero?: boolean;
-  className?: string;
-  children?: ReactNode;
+  variant?: 'default' | 'muted' | 'success' | 'warning' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  dot?: boolean;
 }
 
-const VARIANTS: Record<NonNullable<NovaBadgeProps['variant']>, string> = {
-  accent: 'bg-[var(--nova-accent-color)] text-white',
-  neutral: 'bg-white/[0.12] text-white/80',
-  danger: 'bg-red-500 text-white',
-};
+export const NovaBadge = forwardRef<HTMLSpanElement, NovaBadgeProps>(
+  ({
+    value,
+    max = 99,
+    variant = 'default',
+    size = 'md',
+    dot = false,
+    className,
+    style,
+    children,
+    ...props
+  }, ref) => {
+    const displayValue = typeof value === 'number' && value > max ? `${max}+` : String(value);
 
-/** Small numeric/label pill used by nav rails, chat rows and channel lists. */
-export function NovaBadge({
-  value,
-  max,
-  variant = 'accent',
-  hideZero = true,
-  className = '',
-  children,
-}: NovaBadgeProps) {
-  const isNumber = typeof value === 'number';
-  const text = isNumber ? formatCount(value, { max }) : value;
-  if (hideZero && (value === 0 || text === '' || text === undefined)) return null;
+    const variantClasses = {
+      default: 'bg-[var(--c-badge)] text-[var(--c-on-primary)]',
+      muted: 'bg-[var(--c-badge-muted)] text-white',
+      success: 'bg-emerald-500 text-white',
+      warning: 'bg-amber-500 text-white',
+      danger: 'bg-red-500 text-white',
+    };
 
-  return (
-    <span
-      className={`inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${VARIANTS[variant]} ${className}`}
-    >
-      {children ?? text}
-    </span>
-  );
-}
+    const sizeClasses = {
+      sm: 'min-w-[16px] h-5 px-1 text-[10px]',
+      md: 'min-w-[18px] h-5 px-1.5 text-[11px]',
+      lg: 'min-w-[20px] h-6 px-2 text-[12px]',
+    };
+
+    const dotClasses = {
+      sm: 'w-1.5 h-1.5',
+      md: 'w-2 h-2',
+      lg: 'w-2.5 h-2.5',
+    };
+
+    if (dot) {
+      return (
+        <span
+          ref={ref}
+          className={`inline-flex items-center justify-center rounded-full ${variantClasses[variant]} ${dotClasses[size]} ${className ?? ''}`}
+          style={style}
+          {...props}
+        >
+          {children}
+        </span>
+      );
+    }
+
+    return (
+      <span
+        ref={ref}
+        className={`inline-flex items-center justify-center rounded-full font-bold ${variantClasses[variant]} ${sizeClasses[size]} ${className ?? ''}`}
+        style={style}
+        {...props}
+      >
+        {displayValue}
+      </span>
+    );
+  }
+);
+
+NovaBadge.displayName = 'NovaBadge';
+
+export type { NovaBadgeProps };

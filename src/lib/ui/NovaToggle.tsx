@@ -5,15 +5,38 @@ interface NovaToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   label?: string;
   checked?: boolean;
   onChange?: (checked: boolean) => void;
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
+const SIZE_CLASSES: Record<string, string> = {
+  sm: 'w-7 h-4',
+  md: 'w-9 h-5',
+  lg: 'w-11 h-6',
+};
+
+const THUMB_SIZES: Record<string, string> = {
+  sm: 'w-3 h-3',
+  md: 'w-4 h-4',
+  lg: 'w-5 h-5',
+};
+
+const TRACK_PADDING: Record<string, string> = {
+  sm: 'px-0.5',
+  md: 'px-0.5',
+  lg: 'px-1',
+};
+
 export const NovaToggle = forwardRef<HTMLButtonElement, NovaToggleProps>(
-  ({ label, checked = false, onChange, className, ...props }, ref) => {
+  ({ label, checked = false, onChange, size = 'md', className, ...props }, ref) => {
     const handleClick = () => {
       const next = !checked;
       onChange?.(next);
     };
+
+    const trackSize = SIZE_CLASSES[size] ?? SIZE_CLASSES.md;
+    const thumbSize = THUMB_SIZES[size] ?? THUMB_SIZES.md;
+    const trackPadding = TRACK_PADDING[size] ?? TRACK_PADDING.md;
 
     return (
       <button
@@ -32,13 +55,13 @@ export const NovaToggle = forwardRef<HTMLButtonElement, NovaToggleProps>(
           </span>
         )}
         <span
-          className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 ${
+          className={`relative ${trackSize} rounded-full transition-colors duration-200 flex items-center ${trackPadding} ${
             checked ? 'bg-[var(--nova-accent-color,#ff4e18)]' : 'bg-white/10'
           }`}
         >
           <span
-            className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 ${
-              checked ? 'translate-x-4' : 'translate-x-0'
+            className={`${thumbSize} rounded-full bg-white shadow-md transition-transform duration-200 ${
+              checked ? 'translate-x-full' : 'translate-x-0'
             }`}
           />
         </span>

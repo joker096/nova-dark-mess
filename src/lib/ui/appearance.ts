@@ -83,9 +83,9 @@ export function isFontSize(value: unknown): value is FontSize {
 export function readAppTheme(): AppTheme {
   try {
     const saved = localStorage.getItem(APP_THEME_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'dark';
+    return saved === 'light' || saved === 'dark' ? saved : 'system';
   } catch {
-    return 'dark';
+    return 'system';
   }
 }
 

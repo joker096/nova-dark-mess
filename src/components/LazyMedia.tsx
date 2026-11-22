@@ -69,6 +69,7 @@ export function LazyMedia({ src, alt, className, eager, onError, onClick, dragga
 
   const handleLoad = async () => {
     if (cached) return; // already cached, nothing to store
+    if (src.startsWith('data:')) return; // data: URLs don't need caching
     const el = ref.current;
     if (!el || !el.complete) return;
     try {

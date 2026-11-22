@@ -1,81 +1,136 @@
-import { forwardRef } from 'react';
-import type { ImgHTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes, useMemo } from 'react';
 import { LazyMedia } from '../../components/LazyMedia';
 
-interface NovaAvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'size'> {
+interface NovaAvatarProps extends HTMLAttributes<HTMLDivElement> {
+  src?: string;
+  alt?: string;
   name?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  status?: 'online' | 'offline' | 'away';
+  size?: 'xs' | 'sm' | 's' | 'm' | 'l' | 'xl' | number;
+  status?: 'online' | 'offline' | 'busy' | 'away';
   showStatus?: boolean;
-  className?: string;
+  statusSize?: number;
+  fallbackColor?: string;
 }
 
-const SIZE_CONFIG: Record<string, string> = {
-  sm: 'w-6 h-6',
-  md: 'w-8 h-8',
-  lg: 'w-10 h-10',
-  xl: 'w-12 h-12',
-};
+const SIZE_MAP = {
+  xs: 24,
+  sm: 36,
+  s: 36,
+  m: 40,
+  l: 100,
+  xl: 120,
+} as const;
 
-const STATUS_COLORS: Record<string, string> = {
-  online: 'bg-emerald-400',
-  offline: 'bg-[#6b7280]',
-  away: 'bg-[#f59e0b]',
-};
+const STATUS_SIZE_MAP = {
+  24: 8,
+  36: 10,
+  40: 12,
+  100: 24,
+  120: 28,
+} as const;
 
-const BASE_AVATAR =
-  'rounded-full object-cover border border-white/10 flex items-center justify-center overflow-hidden';
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
 
-const FALLBACK_TEXT =
-  'text-white font-medium text-xs leading-none';
-
-const STATUS_DOT =
-  'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0c0d11] shadow-sm';
+function getColorFromName(name: string): string {
+  const colors = [
+    'var(--c-name-1)',
+    'var(--c-name-2)',
+    'var(--c-name-3)',
+    'var(--c-name-4)',
+    'var(--c-name-5)',
+    'var(--c-name-6)',
+    'var(--c-name-7)',
+    'var(--c-name-8)',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
 
 export const NovaAvatar = forwardRef<HTMLDivElement, NovaAvatarProps>(
-  ({ name, size = 'md', status, showStatus = false, className, src, ...props }, ref) => {
-    const sizeClass = SIZE_CONFIG[size];
-    const initials = name
-      ? name
-          .split(' ')
-          .map((n) => n[0])
-          .filter(Boolean)
-          .slice(0, 2)
-          .join('')
-          .toUpperCase()
-      : '?';
+  ({
+    src,
+    alt,
+    name,
+    size = 'm',
+    status,
+    showStatus = false,
+    statusSize,
+    fallbackColor,
+    className,
+    style,
+    children,
+    ...props
+  }, ref) => {
+    const sizePx = typeof size === 'number' ? size : SIZE_MAP[size];
+    const statusDotSize = statusSize ?? STATUS_SIZE_MAP[sizePx as keyof typeof STATUS_SIZE_MAP] ?? 10;
+    const fontSize = sizePx * 0.4;
 
-    const hasImage = !!src;
+    const fallbackBgColor = useMemo(() => {
+      if (fallbackColor) return fallbackColor;
+      if (name) return getColorFromName(name);
+      return 'var(--c-primary)';
+    }, [fallbackColor, name]);
+
+    const initials = name ? getInitials(name) : '?';
 
     return (
       <div
         ref={ref}
-        className={`relative ${sizeClass}`}
+        data-testid="avatar-wrapper"
+        className={`relative inline-flex shrink-0 ${className ?? ''}`}
+        style={{
+          ...(style as React.CSSProperties),
+          width: sizePx,
+          height: sizePx,
+        } as React.CSSProperties}
+        {...props}
       >
-        {hasImage ? (
+        {src ? (
           <LazyMedia
             src={src}
-            alt={name || ''}
+            alt={alt ?? name ?? 'Avatar'}
+            className="w-full h-full rounded-full object-cover"
             eager
-            className={`${BASE_AVATAR} ${sizeClass} ${className ?? ''}`}
-            {...(props as Record<string, unknown>)}
           />
         ) : (
           <div
-            className={`${BASE_AVATAR} ${sizeClass} bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] border-[var(--nova-accent-color,#ff4e18)]/30 ${className ?? ''} flex items-center justify-center`}
+            className="w-full h-full rounded-full flex items-center justify-center font-semibold select-none"
+            style={{
+              backgroundColor: fallbackBgColor,
+              color: 'var(--c-on-primary)',
+              fontSize: `${fontSize}px`,
+            } as React.CSSProperties}
           >
-            <span className={FALLBACK_TEXT}>{initials}</span>
+            {initials}
           </div>
         )}
+
         {showStatus && status && status !== 'offline' && (
           <span
-            className={`${STATUS_DOT} ${STATUS_COLORS[status]}`}
-            aria-label={status}
+            className="absolute bottom-0 right-0 rounded-full border-2 border-[var(--bg-screen)] flex items-center justify-center"
+            style={{
+              width: statusDotSize,
+              height: statusDotSize,
+              backgroundColor: status === 'online' ? 'var(--c-online)' : 'var(--text-secondary)',
+            } as React.CSSProperties}
+            aria-label={`Status: ${status}`}
           />
         )}
+
+        {children}
       </div>
     );
-  },
+  }
 );
 
 NovaAvatar.displayName = 'NovaAvatar';

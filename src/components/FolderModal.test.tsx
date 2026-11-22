@@ -51,8 +51,8 @@ describe('FolderModal - open/close', () => {
 
   it('renders title and subtitle when open', () => {
     renderModal();
-    expect(screen.getByText('folders.title')).toBeTruthy();
-    expect(screen.getByText('folders.subtitle')).toBeTruthy();
+    expect(screen.getByText('foldersObj.title')).toBeTruthy();
+    expect(screen.getByText('foldersObj.subtitle')).toBeTruthy();
   });
 
   it('calls onClose when X close button clicked', () => {
@@ -79,17 +79,17 @@ describe('FolderModal - create folder save', () => {
   it('shows error and does not call onSave when name is empty', () => {
     const onSave = vi.fn();
     render(<FolderModal isOpen folders={[]} chats={[]} editingFolder={null} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'folders.createButton' }));
-    expect(screen.getByText('folders.nameError')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.createButton' }));
+    expect(screen.getByText('foldersObj.nameError')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it('calls onSave with folder object when name provided', () => {
     const onSave = vi.fn();
     render(<FolderModal isOpen folders={[]} chats={CHATS} editingFolder={null} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
-    const nameInput = screen.getByPlaceholderText('folders.namePlaceholder');
+    const nameInput = screen.getByPlaceholderText('foldersObj.namePlaceholder');
     fireEvent.change(nameInput, { target: { value: 'Crypto' } });
-    fireEvent.click(screen.getByRole('button', { name: 'folders.createButton' }));
+    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.createButton' }));
     expect(onSave).toHaveBeenCalledTimes(1);
     const saved = onSave.mock.calls[0][0];
     expect(saved.name).toBe('Crypto');
@@ -106,17 +106,17 @@ describe('FolderModal - manage tab', () => {
 
   it('lists folders and shows default badge', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'folders.manageTab' }));
+    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.manageTab' }));
     expect(screen.getByText('Work')).toBeTruthy();
     expect(screen.getByText('Crypto')).toBeTruthy();
-    expect(screen.getAllByText('folders.defaultBadge').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('foldersObj.defaultBadge').length).toBeGreaterThanOrEqual(1);
   });
 
   it('calls onDelete for non-default folder', () => {
     const onDelete = vi.fn();
     render(<FolderModal isOpen folders={FOLDERS} chats={[]} editingFolder={null} onSave={vi.fn()} onDelete={onDelete} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'folders.manageTab' }));
-    fireEvent.click(screen.getByTitle('folders.deleteFolder'));
+    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.manageTab' }));
+    fireEvent.click(screen.getByTitle('foldersObj.deleteFolder'));
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith('custom');
   });

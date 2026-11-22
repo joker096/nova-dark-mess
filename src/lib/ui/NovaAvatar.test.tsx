@@ -29,43 +29,44 @@ describe('NovaAvatar', () => {
 
   it('applies size classes', () => {
     render(<NovaAvatar name="K" size="xl" />);
-    const avatar = screen.getByText('K').closest('div')!;
-    expect(avatar.className).toContain('w-12 h-12');
+    const avatar = screen.getByText('K').closest('div[style*="width: 120"]')!;
+    expect(avatar).toHaveStyle({ width: '120px', height: '120px' });
   });
 
   it('applies sm size', () => {
     render(<NovaAvatar name="K" size="sm" />);
-    const avatar = screen.getByText('K').closest('div')!;
-    expect(avatar.className).toContain('w-6 h-6');
+    const avatar = screen.getByText('K').closest('div[style*="width: 36"]')!;
+    expect(avatar).toHaveStyle({ width: '36px', height: '36px' });
   });
 
   it('shows online status dot', () => {
     render(<NovaAvatar name="K" status="online" showStatus />);
-    const statusDot = screen.getByLabelText('online');
+    const statusDot = screen.getByLabelText('Status: online');
     expect(statusDot).toBeInTheDocument();
-    expect(statusDot.className).toContain('bg-emerald-400');
+    expect(statusDot).toHaveStyle({ backgroundColor: 'var(--c-online)' });
   });
 
   it('shows away status dot', () => {
     render(<NovaAvatar name="K" status="away" showStatus />);
-    const statusDot = screen.getByLabelText('away');
-    expect(statusDot.className).toContain('bg-[#f59e0b]');
+    const statusDot = screen.getByLabelText('Status: away');
+    expect(statusDot).toBeInTheDocument();
+    expect(statusDot).toHaveStyle({ backgroundColor: 'var(--text-secondary)' });
   });
 
   it('does not show status dot when showStatus is false', () => {
     render(<NovaAvatar name="K" status="online" />);
-    expect(screen.queryByLabelText('online')).toBeNull();
+    expect(screen.queryByLabelText('Status: online')).toBeNull();
   });
 
   it('does not show offline status dot even when showStatus is true', () => {
     render(<NovaAvatar name="K" status="offline" showStatus />);
-    expect(screen.queryByLabelText('offline')).toBeNull();
+    expect(screen.queryByLabelText('Status: offline')).toBeNull();
   });
 
   it('applies custom className', () => {
     render(<NovaAvatar name="K" className="my-avatar" />);
-    const avatar = screen.getByText('K').closest('div')!;
-    expect(avatar.className).toContain('my-avatar');
+    const avatar = screen.getByTestId('avatar-wrapper');
+    expect(avatar).toHaveClass('my-avatar');
   });
 
   it('forwards ref to wrapper div element', () => {

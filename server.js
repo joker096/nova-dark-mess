@@ -59,7 +59,7 @@ try {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
+dotenv.config({ path: '.env', override: true });
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -170,7 +170,7 @@ const PAYMENTO_SECRETS = (process.env.PAYMENTO_SECRET_KEYS || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
-const PAYMENTO_SECRET = (PAYMENTO_SECRETS[0] || process.env.PAYMENTO_SECRET_KEY || process.env.PAYMENTO_SECRET || '').trim();
+const PAYMENTO_SECRET = (PAYMENTO_SECRETS[0] || process.env.PAYMENTO_SECRET || process.env.PAYMENTO_SECRET_KEY || '').trim();
 if (PAYMENTO_SECRET && !PAYMENTO_SECRETS.includes(PAYMENTO_SECRET)) PAYMENTO_SECRETS.unshift(PAYMENTO_SECRET);
 const PAYMENTO_RETURN_URL = (process.env.PAYMENTO_RETURN_URL || '').trim();
 const PAYMENTO_VERIFY_URL = (process.env.PAYMENTO_VERIFY_URL || `${PAYMENTO_API_URL}/v1/payment/verify`).trim();

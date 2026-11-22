@@ -38,6 +38,9 @@ import {
   clearPinFailures,
   getPinLockoutUntil,
   recordPinFailure,
+  requestPinReset,
+  isPinResetAllowed,
+  clearPinResetRequest,
 } from '../lib/security/pinAttemptLimiter';
 import { createKeychain } from '../lib/storage/keychain';
 import { checkPin, hashPin } from '../lib/security/pinHash';
@@ -140,6 +143,12 @@ export interface SecurityContextType {
   recoverAccessWithBackup: (backupContent: string, passphrase: string) => Promise<BackupPayload>;
   /** Erases the identity, local data and PIN, then sends the app back to onboarding. */
   resetLocalAccount: () => Promise<void>;
+  /** Requests a PIN reset (starts 7-day wait). Returns when reset will be allowed. */
+  requestPinReset: () => number;
+  /** Checks if PIN reset is allowed (7 days elapsed). */
+  isPinResetAllowed: () => boolean;
+  /** Performs PIN reset after wait period: wipes local data, removes PIN, keeps identity. */
+  performPinReset: () => Promise<void>;
 }
 
 export const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -769,6 +778,38 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsLocked(false);
   }, []);
 
+  const requestPinReset = useCallback((): number => {
+    return requestPinReset();
+  }, []);
+
+  const isPinResetAllowed = useCallback((): boolean => {
+    return isPinResetAllowed();
+  }, []);
+
+  const performPinReset = useCallback(async (): Promise<void> => {
+    if (!isPinResetAllowed()) {
+      throw new Error('PIN reset not yet allowed. Wait 7 days after request.');
+    }
+    clearPinFailures();
+    clearPinResetRequest();
+    const kc = createKeychain();
+    await kc.remove(KEYCHAIN_SERVICE, PIN_HASH_KEY);
+    await kc.remove(KEYCHAIN_SERVICE, PIN_ENABLED_KEY);
+    await kc.remove(KEYCHAIN_SERVICE, PIN_SALT_KEY);
+    await removeWrappedMasterKey();
+    unwrappedMasterKey = null;
+    try {
+      localStorage.removeItem(PIN_HASH_KEY);
+      localStorage.removeItem(PIN_ENABLED_KEY);
+    } catch {
+      /* storage may be unavailable */
+    }
+    setPinHash(null);
+    setPinEnabled(false);
+    setPinLockoutUntil(null);
+    setIsLocked(false);
+  }, []);
+
   const unlock = useCallback((): void => {
     setIsLocked(false);
   }, []);
@@ -939,6 +980,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         recoverAccessWithMnemonic,
         recoverAccessWithBackup,
         resetLocalAccount,
+        requestPinReset,
+        isPinResetAllowed,
+        performPinReset,
       }}
     >
       {children}

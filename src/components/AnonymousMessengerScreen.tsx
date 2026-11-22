@@ -73,7 +73,7 @@ import { clearPendingPremiumGiftOrder, purchasePremiumGiftCode } from '../lib/pr
 const STORAGE_KEY = 'anon_messenger_state_v1';
 const FAILURES_KEY = 'anon_relay_failures_v1';
 const MAX_STORED_MESSAGES = 500;
-const DEFAULT_PUBLIC_APP_URL = 'https://mess.cvr.name';
+const DEFAULT_PUBLIC_APP_URL = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || 'https://mess.cvr.name';
 /**
  * Build-time relay override; without it the messenger runs local-only.
  *

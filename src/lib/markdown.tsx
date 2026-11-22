@@ -11,6 +11,8 @@
  *   ## header  -> <h2> / <h3>
  *   - item     -> <ul><li>
  *
+ * HTML tags (safe subset): <b>, <strong>, <i>, <em>, <u>, <code>, <a href>
+ *
  * HTML escaping is handled automatically by React JSX text nodes (no
  * double-escaping).
  */
@@ -18,13 +20,30 @@
 import React, { ReactNode } from 'react';
 import { toSafeExternalUrl } from './security/safeUrl';
 
-/**
- * Inline renderers only ever return phrasing content (span/strong/em/code/del),
- * and `renderBlocks` puts its output inside <p>. The type says so explicitly:
- * inline layers must never reach for block tags, or the chat bubble ends up
- * with a <p> inside a <p>.
- */
-type InlineNode = Exclude<ReactNode, undefined>;
+const ALLOWED_HTML_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'code', 'a', 'br', 'p']);
+const ALLOWED_HTML_ATTRS = new Set(['href']);
+
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<\/?([a-z]+)[^>]*>/gi, (match, tagName) => {
+      const lowerTag = tagName.toLowerCase();
+      if (!ALLOWED_HTML_TAGS.has(lowerTag)) {
+        return match
+          .replace(/</g, '<')
+          .replace(/>/g, '>');
+      }
+      if (lowerTag === 'a') {
+        const hrefMatch = match.match(/href\s*=\s*["']([^"']+)["']/i);
+        const href = hrefMatch ? toSafeExternalUrl(hrefMatch[1]) : null;
+        if (!href) return `<a>`;
+        return `<a href="${href}">`;
+      }
+      return match;
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<p\s*>/gi, '\n\n')
+    .replace(/<\/p>/gi, '');
+}
 
 /** Splits text into segments separated by a delimiter pair (open/close). */
 function splitByPair(
@@ -55,20 +74,21 @@ interface RenderMarkdownProps {
 
 export function renderMarkdown({ text, onLinkPress }: RenderMarkdownProps): ReactNode {
   if (!text) return <></>;
+  const sanitized = sanitizeHtml(text);
   // Links: [text](url) — processed first on raw text
   const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
   const parts: Array<string | { type: 'link'; text: string; url: string }> = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = linkRegex.exec(text)) !== null) {
+  while ((match = linkRegex.exec(sanitized)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+      parts.push(sanitized.slice(lastIndex, match.index));
     }
     parts.push({ type: 'link', text: match[1], url: match[2] });
     lastIndex = linkRegex.lastIndex;
   }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+  if (lastIndex < sanitized.length) {
+    parts.push(sanitized.slice(lastIndex));
   }
 
   return (

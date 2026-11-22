@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'nova_pin_attempts_v1';
+const RESET_REQUEST_KEY = 'nova_pin_reset_request_v1';
 const MAX_DELAY_MS = 5 * 60 * 1000;
+const PIN_RESET_WAIT_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface PinAttemptState {
   version: 1;
@@ -83,5 +85,43 @@ export function clearPinFailures(): void {
     throw new Error(
       `PIN retry state could not be cleared: ${error instanceof Error ? error.message : String(error)}`,
     );
+  }
+}
+
+export function requestPinReset(): number {
+  const now = Date.now();
+  try {
+    localStorage.setItem(RESET_REQUEST_KEY, String(now));
+  } catch (error) {
+    throw new Error(
+      `PIN reset request could not be saved: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  return now + PIN_RESET_WAIT_MS;
+}
+
+export function getPinResetAllowedAt(): number | null {
+  try {
+    const raw = localStorage.getItem(RESET_REQUEST_KEY);
+    if (!raw) return null;
+    const requestedAt = parseInt(raw, 10);
+    if (isNaN(requestedAt)) return null;
+    return requestedAt + PIN_RESET_WAIT_MS;
+  } catch {
+    return null;
+  }
+}
+
+export function isPinResetAllowed(): boolean {
+  const allowedAt = getPinResetAllowedAt();
+  if (allowedAt === null) return false;
+  return Date.now() >= allowedAt;
+}
+
+export function clearPinResetRequest(): void {
+  try {
+    localStorage.removeItem(RESET_REQUEST_KEY);
+  } catch {
+    /* ignore */
   }
 }

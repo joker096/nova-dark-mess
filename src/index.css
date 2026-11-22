@@ -4,6 +4,8 @@
 @source "../index.html";
 @source "../src";
 
+@import "./theme/tokens.css";
+
 :root {
   --nova-accent-color: #ff4e18;
   --nova-canvas: #0c0d11;

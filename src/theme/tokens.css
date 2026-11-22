@@ -1,0 +1,142 @@
+:root {
+  /* Brand colors */
+  --color-primary: #0087fd;
+  --color-accent: #008bff;
+  --color-info: #339ffd;
+  --color-info-dark: #000e19;
+
+  /* Text colors */
+  --text-strong: #171717;
+  --text-soft: #a3a3a3;
+  --text-control-primary: #404040;
+  --text-control-secondary: #8c8c8c;
+
+  /* Surface colors */
+  --bg-white: #ffffff;
+  --bg-weak: #f7f7f7;
+  --bg-soft: #ebebeb;
+  --bg-screen: #ededf0;
+  --stroke-soft: #ebebeb;
+  --static-black: #171717;
+
+  /* Semantic role aliases (section 12) */
+  --c-primary: var(--color-primary);
+  --c-primary-soft: #d6f0ff;
+  --c-on-primary: #ffffff;
+
+  --bg-card: var(--bg-white);
+  --bg-field: var(--bg-weak);
+  --bg-quote: #f0f4f8;
+
+  --text-primary: var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-control: var(--text-control-primary);
+
+  --border-divider: var(--stroke-soft);
+  --c-forward: #ff6b35;
+  --c-online: #34c759;
+  --c-badge: var(--c-primary);
+  --c-badge-muted: #8c8c8c;
+  --c-bubble-own: var(--color-info);
+  --c-danger: #ff3b30;
+
+  /* Sender name palette (8 colors) */
+  --c-name-1: #9b6bd1;
+  --c-name-2: #ff6b35;
+  --c-name-3: #34c759;
+  --c-name-4: #00c7be;
+  --c-name-5: #ff9500;
+  --c-name-6: #ff2d55;
+  --c-name-7: #5856d6;
+  --c-name-8: #af52de;
+
+  /* Icon colors for settings rows */
+  --c-icon-1: #0087fd;
+  --c-icon-2: #34c759;
+  --c-icon-3: #ff9500;
+  --c-icon-4: #00c7be;
+
+  /* Spacing & radius */
+  --space-screen: 16px;
+  --radius-card: 24px;
+  --radius-field: 9999px;
+  --radius-media: 8px;
+  --radius-sheet: 24px;
+
+  /* Avatar sizes */
+  --avatar-s: 36px;
+  --avatar-m: 40px;
+  --avatar-l: 100px;
+
+  /* Typography */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-nav: -apple-system, 'SF Pro', 'Inter', sans-serif;
+  --fs-body: 16px;
+  --fs-label: 14px;
+  --fs-caption: 12px;
+
+  /* Safe area insets */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+[data-theme="dark"] {
+  /* Brand colors */
+  --color-primary: #339ffd;
+  --color-accent: #008bff;
+  --color-info: #0087fd;
+  --color-info-dark: #339ffd;
+
+  /* Text colors */
+  --text-strong: #ffffff;
+  --text-soft: #7b7b7b;
+  --text-control-primary: #ffffff;
+  --text-control-secondary: #8c8c8c;
+
+  /* Surface colors */
+  --bg-white: #1c1c1c;
+  --bg-weak: #1c1c1c;
+  --bg-soft: #333333;
+  --bg-screen: #171717;
+  --stroke-soft: #5c5c5c;
+  --static-black: #171717;
+
+  /* Semantic role aliases */
+  --c-primary: var(--color-primary);
+  --c-primary-soft: #001f33;
+  --c-on-primary: #171717;
+
+  --bg-card: var(--bg-white);
+  --bg-field: var(--bg-soft);
+  --bg-quote: #262626;
+
+  --text-primary: var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-control: var(--text-control-primary);
+
+  --border-divider: var(--stroke-soft);
+  --c-forward: #ff6b35;
+  --c-online: #34c759;
+  --c-badge: var(--c-primary);
+  --c-badge-muted: #5c5c5c;
+  --c-bubble-own: var(--color-info);
+  --c-danger: #ff453a;
+
+  /* Sender name palette (8 colors) - adjusted for dark */
+  --c-name-1: #bf8fff;
+  --c-name-2: #ff9f6a;
+  --c-name-3: #6aff9e;
+  --c-name-4: #6afff5;
+  --c-name-5: #ffcc6a;
+  --c-name-6: #ff6a8a;
+  --c-name-7: #a2a0ff;
+  --c-name-8: #d48aff;
+
+  /* Icon colors for settings rows */
+  --c-icon-1: #339ffd;
+  --c-icon-2: #34c759;
+  --c-icon-3: #ff9500;
+  --c-icon-4: #00c7be;
+}

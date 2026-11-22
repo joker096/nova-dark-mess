@@ -38,6 +38,8 @@ export interface BridgeConfig {
   priority?: number;
 }
 
+const DEFAULT_BRIDGE_DOMAIN = (import.meta.env.VITE_BRIDGE_DOMAIN as string | undefined) || 'mess.cvr.name';
+
 /**
  * Default anti-censorship bridge configurations.
  *
@@ -46,17 +48,17 @@ export interface BridgeConfig {
  */
 export const DEFAULT_BRIDGES: BridgeConfig[] = [
   {
-    address: 'webtunnel.mess.cvr.name:443',
+    address: `webtunnel.${DEFAULT_BRIDGE_DOMAIN}:443`,
     transport: 'webtunnel',
     priority: 1,
   },
   {
-    address: 'reality.mess.cvr.name:443',
+    address: `reality.${DEFAULT_BRIDGE_DOMAIN}:443`,
     transport: 'reality',
     priority: 2,
   },
   {
-    address: 'tor.mess.cvr.name:9050',
+    address: `tor.${DEFAULT_BRIDGE_DOMAIN}:9050`,
     transport: 'tor',
     secret: undefined,
     priority: 3,

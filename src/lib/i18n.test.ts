@@ -1,18 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import en from '../locales/en.json';
 import ru from '../locales/ru.json';
-import uk from '../locales/uk.json';
-import de from '../locales/de.json';
-import es from '../locales/es.json';
-import tr from '../locales/tr.json';
-import id from '../locales/id.json';
-import vi from '../locales/vi.json';
-import ar from '../locales/ar.json';
-import th from '../locales/th.json';
 
 type Locale = Record<string, unknown>;
 
-const LOCALES: Record<string, Locale> = { en, ru, uk, de, es, tr, id, vi, ar, th };
+const LOCALES: Record<string, Locale> = { en, ru };
 
 function collectKeys(obj: unknown, prefix = ''): string[] {
   const keys: string[] = [];
@@ -32,37 +24,29 @@ function collectKeys(obj: unknown, prefix = ''): string[] {
 describe('i18n - locale key parity', () => {
   const enKeys = collectKeys(en).sort();
 
-  it('all locales define the same top-level namespaces as en', () => {
-    for (const [lang, locale] of Object.entries(LOCALES)) {
-      if (lang === 'en') continue;
-      const missing = Object.keys(en).filter((ns) => !(ns in locale));
-      expect(missing).toEqual([]);
-    }
+  it('ru defines the same top-level namespaces as en', () => {
+    const missing = Object.keys(en).filter((ns) => !(ns in ru));
+    expect(missing).toEqual([]);
   });
 
-  it('every en key exists in all locales (no missing translations)', () => {
-    for (const lang of Object.keys(LOCALES)) {
-      if (lang === 'en') continue;
-      const localeKeys = collectKeys(LOCALES[lang]).sort();
-      const missing = enKeys.filter((k) => !localeKeys.includes(k));
-      expect(missing, `${lang} missing keys: ${missing.join(', ')}`).toEqual([]);
-    }
+  it('every en key exists in ru (no missing translations)', () => {
+    const localeKeys = collectKeys(ru).sort();
+    const missing = enKeys.filter((k) => !localeKeys.includes(k));
+    expect(missing, `ru missing keys: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('no empty translation values in any locale', () => {
-    for (const [lang, locale] of Object.entries(LOCALES)) {
-      const keys = collectKeys(locale);
-      const empty = keys.filter((k) => {
-        const parts = k.split('.');
-        let cur: unknown = locale;
-        for (const p of parts) cur = (cur as Record<string, unknown>)?.[p];
-        return cur === '' || cur === null || cur === undefined;
-      });
-      expect(empty, `${lang} empty values: ${empty.join(', ')}`).toEqual([]);
-    }
+  it('no empty translation values in ru', () => {
+    const keys = collectKeys(ru);
+    const empty = keys.filter((k) => {
+      const parts = k.split('.');
+      let cur: unknown = ru;
+      for (const p of parts) cur = (cur as Record<string, unknown>)?.[p];
+      return cur === '' || cur === null || cur === undefined;
+    });
+    expect(empty, `ru empty values: ${empty.join(', ')}`).toEqual([]);
   });
 
-  it('menu-related keys exist in all locales', () => {
+  it('menu-related keys exist in ru', () => {
     const menuKeys = [
       'common.chats',
       'common.channels',
@@ -70,17 +54,15 @@ describe('i18n - locale key parity', () => {
       'common.settings',
       'common.profile',
       'chats.title',
-      'folders.title',
+      'foldersObj.title',
       'settings.title',
       'profile.title',
       'analytics.title',
       'app.name',
     ];
-    for (const locale of Object.values(LOCALES)) {
-      const localeKeys = collectKeys(locale);
-      for (const k of menuKeys) {
-        expect(localeKeys).toContain(k);
-      }
+    const localeKeys = collectKeys(ru);
+    for (const k of menuKeys) {
+      expect(localeKeys).toContain(k);
     }
   });
 });

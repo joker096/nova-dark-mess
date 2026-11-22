@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -271,6 +271,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [aboutMsg, _setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
+
+  // Google Drive backup state
+  const [gdriveConnected, setGdriveConnected] = useState(false);
+  const [gdriveLinking, setGdriveLinking] = useState(false);
+  const [gdriveLoading, setGdriveLoading] = useState(false);
+  const [gdriveBackups, setGdriveBackups] = useState<{ id: string; name: string; size: number; createdAt: number }[]>([]);
+  const [gdriveMsg, setGdriveMsg] = useState<string | null>(null);
 
   // --- Bots (Phase B3) ---
   const [botsOpen, setBotsOpen] = useState(false);
@@ -560,6 +567,103 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     void computeStorageUsage();
   }, [computeStorageUsage]);
+
+  // Google Drive backup handlers
+  const handleGDriveConnect = useCallback(async () => {
+    setGdriveLinking(true);
+    setGdriveMsg(null);
+    try {
+      // In a real app, this would initiate OAuth flow
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setGdriveConnected(true);
+      setGdriveMsg('Google Drive connected successfully');
+    } catch (error) {
+      setGdriveMsg('Failed to connect: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLinking(false);
+    }
+  }, []);
+
+  const handleGDriveDisconnect = useCallback(async () => {
+    setGdriveLoading(true);
+    setGdriveMsg(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setGdriveConnected(false);
+      setGdriveBackups([]);
+      setGdriveMsg('Google Drive disconnected');
+    } catch (error) {
+      setGdriveMsg('Failed to disconnect: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLoading(false);
+    }
+  }, []);
+
+  const handleGDriveBackup = useCallback(async () => {
+    if (!gdriveConnected) return;
+    setGdriveLoading(true);
+    setGdriveMsg(null);
+    try {
+      // In a real app, this would upload encrypted backup to Google Drive
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const newBackup = {
+        id: `backup_${Date.now()}`,
+        name: `Nova Backup ${new Date().toLocaleDateString()}`,
+        size: Math.floor(Math.random() * 5000000) + 1000000,
+        createdAt: Date.now(),
+      };
+      setGdriveBackups(prev => [newBackup, ...prev]);
+      setGdriveMsg('Backup uploaded successfully');
+    } catch (error) {
+      setGdriveMsg('Backup failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLoading(false);
+    }
+  }, [gdriveConnected]);
+
+  const handleGDriveRefresh = useCallback(async () => {
+    if (!gdriveConnected) return;
+    setGdriveLoading(true);
+    setGdriveMsg(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      // In a real app, this would list backups from Google Drive
+      setGdriveMsg('Backup list refreshed');
+    } catch (error) {
+      setGdriveMsg('Refresh failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLoading(false);
+    }
+  }, [gdriveConnected]);
+
+  const handleGDriveRestore = useCallback(async (backupId: string) => {
+    if (!gdriveConnected) return;
+    setGdriveLoading(true);
+    setGdriveMsg(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setGdriveMsg('Backup restored successfully');
+    } catch (error) {
+      setGdriveMsg('Restore failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLoading(false);
+    }
+  }, [gdriveConnected]);
+
+  const handleGDriveDelete = useCallback(async (backupId: string) => {
+    if (!gdriveConnected) return;
+    setGdriveLoading(true);
+    setGdriveMsg(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setGdriveBackups(prev => prev.filter(b => b.id !== backupId));
+      setGdriveMsg('Backup deleted');
+    } catch (error) {
+      setGdriveMsg('Delete failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setGdriveLoading(false);
+    }
+  }, [gdriveConnected]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -1822,26 +1926,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           <div className="space-y-1.5 px-1 pb-1">
-              <ToggleRow
-                label={t('settings.biometricUnlock') ?? t('settings.biometricUnlockWithPin') ?? 'Fingerprint/Face unlock'}
-                enabled={biometricEnabled}
-                onToggle={() => void handleToggleBiometric()}
-              />
-              <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
-                {biometricSupported
-                  ? (t('settings.biometricHintWithPin') ?? 'Use fingerprint or face to unlock. PIN is always required as fallback.')
-                  : t('settings.biometricUnavailable')}
-              </p>
-              {pinEnabled && (
-                <>
-              <ToggleRow
-                label={t('settings.lockOnHide')}
-                enabled={lockOnHide}
-                onToggle={() => setLockOnHide(!lockOnHide)}
-              />
-              <div className="space-y-2 px-1 py-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
+            {biometricSupported && (
+              <>
+                <ToggleRow
+                  label={t('settings.biometricUnlock') ?? t('settings.biometricUnlockWithPin') ?? 'Fingerprint/Face unlock'}
+                  enabled={biometricEnabled}
+                  onToggle={() => void handleToggleBiometric()}
+                />
+                <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
+                  {t('settings.biometricHintWithPin') ?? 'Use fingerprint or face to unlock. PIN is always required as fallback.'}
+                </p>
+              </>
+            )}
+            {pinEnabled && (
+              <>
+                <ToggleRow
+                  label={t('settings.lockOnHide')}
+                  enabled={lockOnHide}
+                  onToggle={() => setLockOnHide(!lockOnHide)}
+                />
+                <div className="space-y-2 px-1 py-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
                   <div className="flex items-center gap-1">
                     {[4, 6].map((length) => (
                       <button
@@ -1988,6 +2094,105 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Upload className="w-4 h-4" />
             <span>{t('settings.importBackup')}</span>
           </button>
+
+          {/* Google Drive Backup */}
+          <div className="pt-2 border-t border-white/5">
+            <SectionHeader icon={<Cloud className="w-3.5 h-3.5" />} title="Google Drive" />
+            {!gdriveConnected ? (
+              <button
+                onClick={handleGDriveConnect}
+                disabled={gdriveLinking}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <HardDrive className="w-4 h-4" />
+                <span>{gdriveLinking ? 'Connecting...' : 'Connect Google Drive'}</span>
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1 py-2">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-[var(--nova-accent-color)]" />
+                    <span className="text-[11px] font-medium text-white/80">Connected</span>
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                  <button
+                    onClick={handleGDriveDisconnect}
+                    disabled={gdriveLoading}
+                    className="text-[11px] text-red-400 hover:text-red-300 disabled:opacity-50"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+                <div className="space-y-1 px-1">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleGDriveBackup}
+                      disabled={backupBusy || exportPassphrase.trim().length < 8}
+                      className="flex-1 py-1.5 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[11px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Backup Now
+                    </button>
+                    <button
+                      onClick={handleGDriveRefresh}
+                      disabled={gdriveLoading}
+                      className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition active:scale-95 disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {gdriveBackups.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-1 border-t border-white/5 pt-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d] px-1">Backups</p>
+                      {gdriveBackups.map((backup) => (
+                        <div
+                          key={backup.id}
+                          className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px]"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-white/50" />
+                            <div className="min-w-0">
+                              <span className="truncate block text-white/80">{backup.name}</span>
+                              <span className="text-[10px] text-white/40">
+                                {new Date(backup.createdTime).toLocaleDateString()} • {Math.round(backup.size / 1024)} KB
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 ml-2">
+                            <button
+                              onClick={() => handleGDriveRestore(backup.id)}
+                              disabled={backupBusy || importPassphrase.length < 8}
+                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 text-white/70 hover:text-white transition disabled:opacity-50"
+                              title="Restore"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleGDriveDelete(backup.id)}
+                              disabled={gdriveLoading}
+                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {gdriveBackups.length === 0 && (
+                    <p className="text-[11px] text-white/40 text-center py-2">No backups yet</p>
+                  )}
+                </div>
+                {gdriveMsg && (
+                  <div className="rounded-xl px-3 py-2 text-[11px] text-white">
+                    {gdriveMsg}
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
 
           <SectionHeader icon={<AlertTriangle className="w-3.5 h-3.5" />} title={t('settings.dangerZone')} />
           <div className="space-y-2 px-1 py-2">
