@@ -14,10 +14,10 @@ const ACTIVE_STYLE =
   'text-[var(--nova-accent-color,#ff4e18)] font-bold';
 
 const INACTIVE_STYLE =
-  'text-white/50 hover:text-white';
+  'text-[var(--text-secondary)] hover:text-[var(--text-primary)]';
 
 const ICON_ACTIVE = 'fill-current';
-const ICON_INACTIVE = 'fill-white/50';
+const ICON_INACTIVE = 'fill-[var(--text-secondary)]';
 
 export const NovaNavButton = forwardRef<HTMLButtonElement, NovaNavButtonProps>(
   ({ active = false, icon, label, className, children, ...props }, ref) => {

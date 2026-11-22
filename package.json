@@ -1,7 +1,7 @@
 {
   "name": "nova-dark-messenger",
   "private": true,
-  "version": "1.0.57",
+  "version": "1.0.58",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -23,6 +23,7 @@
     "icons:android": "node scripts/generate-android-icons.mjs",
     "check:android-icons": "node scripts/check-android-icons.mjs",
     "audit:buttons": "tsx scripts/audit-buttons.ts",
+    "lint:colors": "tsx scripts/check-hardcoded-colors.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "server": "node server.js",

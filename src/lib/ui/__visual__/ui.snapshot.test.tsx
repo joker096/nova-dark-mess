@@ -56,28 +56,28 @@ describe('UI visual snapshot - NovaCard', () => {
 
   it('matches default card visual snapshot', () => {
     const { container } = render(<NovaCard>Content</NovaCard>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[#181921] border border-white/5 p-5">Content</div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[var(--bg-surface)] border border-[var(--border)] p-5">Content</div>"`);
     const card = container.firstChild as HTMLElement;
     expect(card.className).toContain('rounded-2xl');
-    expect(card.className).toContain('bg-[#181921]');
-    expect(card.className).toContain('border-white/5');
+    expect(card.className).toContain('bg-[var(--bg-surface)]');
+    expect(card.className).toContain('border-[var(--border)]');
     expect(card.className).toContain('p-5');
   });
 
   it('matches accent variant visual snapshot', () => {
     const { container } = render(<NovaCard variant="accent" padding="lg">Accent</NovaCard>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/20 p-6">Accent</div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[var(--accent-soft)] border border-[var(--accent)] p-6">Accent</div>"`);
     const card = container.firstChild as HTMLElement;
-    expect(card.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]/10');
+    expect(card.className).toContain('bg-[var(--accent-soft)]');
     expect(card.className).toContain('p-6');
   });
 
   it('matches hover visual snapshot', () => {
     const { container } = render(<NovaCard hover>Hover</NovaCard>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[#181921] border border-white/5 p-5 hover:border-white/10 hover:bg-[#20222a]">Hover</div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="rounded-2xl transition-colors duration-200 bg-[var(--bg-surface)] border border-[var(--border)] p-5 hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)]">Hover</div>"`);
     const card = container.firstChild as HTMLElement;
-    expect(card.className).toContain('hover:border-white/10');
-    expect(card.className).toContain('hover:bg-[#20222a]');
+    expect(card.className).toContain('hover:bg-[var(--bg-hover)]');
+    expect(card.className).toContain('hover:border-[var(--border-strong)]');
   });
 });
 
@@ -88,19 +88,19 @@ describe('UI visual snapshot - NovaAvatar', () => {
 
   it('matches initials avatar visual snapshot', () => {
     const { container } = render(<NovaAvatar name="Katie Rogers" size="xl" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="relative w-12 h-12"><div class="rounded-full object-cover border border-white/10 flex items-center justify-center overflow-hidden w-12 h-12 bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] border-[var(--nova-accent-color,#ff4e18)]/30  flex items-center justify-center"><span class="text-white font-medium text-xs leading-none">KR</span></div></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div data-testid="avatar-wrapper" class="relative inline-flex shrink-0 " style="width: 120px; height: 120px;"><div class="w-full h-full rounded-full flex items-center justify-center font-semibold select-none" style="background-color: var(--c-name-3); color: var(--c-on-primary); font-size: 48px;">KR</div></div>"`);
     expect(screen.getByText('KR')).toBeInTheDocument();
-    const avatar = screen.getByText('KR').closest('div')!;
-    expect(avatar.className).toContain('w-12 h-12');
+    const avatar = screen.getByTestId('avatar-wrapper');
+    expect(avatar).toHaveStyle({ width: '120px', height: '120px' });
   });
 
   it('matches image avatar visual snapshot', () => {
     const { container } = render(
       <NovaAvatar src="https://example.com/a.jpg" name="Katie" size="sm" status="online" showStatus />,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="relative w-6 h-6"><img alt="Katie" class="rounded-full object-cover border border-white/10 flex items-center justify-center overflow-hidden w-6 h-6 " loading="lazy" decoding="async" src="https://example.com/a.jpg"><span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0c0d11] shadow-sm bg-emerald-400" aria-label="online"></span></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div data-testid="avatar-wrapper" class="relative inline-flex shrink-0 " style="width: 36px; height: 36px;"><img alt="Katie" class="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" src="https://example.com/a.jpg"><span class="absolute bottom-0 right-0 rounded-full border-2 border-[var(--bg-surface)] flex items-center justify-center" style="width: 10px; height: 10px; background-color: var(--online);" aria-label="Status: online"></span></div>"`);
     expect(screen.getByAltText('Katie')).toHaveAttribute('src', 'https://example.com/a.jpg');
-    expect(screen.getByLabelText('online').className).toContain('bg-emerald-400');
+    expect(screen.getByLabelText('Status: online').className).toContain('border-[var(--bg-surface)]');
   });
 });
 
@@ -111,19 +111,19 @@ describe('UI visual snapshot - NovaToggle', () => {
 
   it('matches off toggle visual snapshot', () => {
     const { container } = render(<NovaToggle checked={false} onChange={vi.fn()} />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" role="switch" aria-checked="false" class="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none"><span class="relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 bg-white/10"><span class="w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 translate-x-0"></span></span></button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" role="switch" aria-checked="false" class="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--bg-hover)] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none"><span class="relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 bg-[var(--border-strong)]"><span class="w-4 h-4 rounded-full bg-[var(--text-on-accent)] shadow-md transition-transform duration-200 translate-x-0"></span></span></button>"`);
     const switchEl = screen.getByRole('switch');
     const track = switchEl.querySelector('span')!;
-    expect(track.className).toContain('bg-white/10');
+    expect(track.className).toContain('bg-[var(--border-strong)]');
     expect(switchEl.getAttribute('aria-checked')).toBe('false');
   });
 
   it('matches on toggle visual snapshot', () => {
     const { container } = render(<NovaToggle checked={true} onChange={vi.fn()} />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" role="switch" aria-checked="true" class="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none"><span class="relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 bg-[var(--nova-accent-color,#ff4e18)]"><span class="w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 translate-x-4"></span></span></button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" role="switch" aria-checked="true" class="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--bg-hover)] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none"><span class="relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 bg-[var(--accent)]"><span class="w-4 h-4 rounded-full bg-[var(--text-on-accent)] shadow-md transition-transform duration-200 translate-x-full"></span></span></button>"`);
     const switchEl = screen.getByRole('switch');
     const track = switchEl.querySelector('span')!;
-    expect(track.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
+    expect(track.className).toContain('bg-[var(--accent)]');
     expect(switchEl.getAttribute('aria-checked')).toBe('true');
   });
 });
@@ -135,18 +135,18 @@ describe('UI visual snapshot - NovaInput', () => {
 
   it('matches default input visual snapshot', () => {
     const { container } = render(<NovaInput id="nova-input-test" placeholder="Enter text" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:bg-[color-mix(in_srgb,var(--nova-accent-color,#ff4e18)_5%,transparent)] border-white/10"><input id="nova-input-test" placeholder="Enter text" data-inline-focus="true" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="false"></div></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--focus-ring)]/35 focus-within:border-[var(--focus-ring)]/60 focus-within:bg-[var(--accent-soft)]/20 border-[var(--border)]"><input id="nova-input-test" placeholder="Enter text" data-inline-focus="true" class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none py-1 min-w-0" aria-invalid="false"></div></div>"`);
     const input = screen.getByRole('textbox');
     expect(input).toHaveAttribute('placeholder', 'Enter text');
     expect(input.className).toContain('bg-transparent');
-    expect(input.className).toContain('placeholder-white/35');
+    expect(input.className).toContain('text-[var(--text-primary)]');
   });
 
   it('matches error input visual snapshot', () => {
     const { container } = render(<NovaInput id="nova-input-test" error="Error" placeholder="Error" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:bg-[color-mix(in_srgb,var(--nova-accent-color,#ff4e18)_5%,transparent)] border-red-500/50 focus-within:border-red-500/60"><input id="nova-input-test" placeholder="Error" data-inline-focus="true" class="w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0" aria-invalid="true" aria-describedby="nova-input-test-error"></div><span id="nova-input-test-error" class="text-xs text-red-400">Error</span></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div class="flex flex-col gap-1.5"><div class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--focus-ring)]/35 focus-within:border-[var(--focus-ring)]/60 focus-within:bg-[var(--accent-soft)]/20 border-[var(--danger)] focus-within:border-[var(--danger)]/70"><input id="nova-input-test" placeholder="Error" data-inline-focus="true" class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none py-1 min-w-0" aria-invalid="true" aria-describedby="nova-input-test-error"></div><span id="nova-input-test-error" class="text-xs text-[var(--danger)]">Error</span></div>"`);
     const wrapper = screen.getByRole('textbox').closest('div')!;
-    expect(wrapper.className).toContain('border-red-500/50');
+    expect(wrapper.className).toContain('border-[var(--danger)]');
     const input = screen.getByRole('textbox');
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
@@ -159,7 +159,7 @@ describe('UI visual snapshot - NovaColorChip', () => {
 
   it('matches selected color chip visual snapshot', () => {
     const { container } = render(<NovaColorChip selected onSelect={vi.fn()}>Blue</NovaColorChip>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="true" class="flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25"><div class="relative w-6 h-6 rounded-full border border-white/20 shadow-sm overflow-hidden"><div class="absolute inset-1 rounded-full bg-white/30"></div></div><span class="text-[11px] font-medium "></span>Blue</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="true" class="flex flex-col items-center gap-1 py-2 px-2 rounded-xl border border-[var(--border-strong)] transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25"><div class="relative w-6 h-6 rounded-full border border-[var(--border-strong)] shadow-sm overflow-hidden"><div class="absolute inset-1 rounded-full bg-[var(--bg-surface-2)]"></div></div><span class="text-[11px] font-medium "></span>Blue</button>"`);
     const chip = screen.getByRole('button');
     expect(chip.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]/10');
     expect(chip.className).toContain('border-[var(--nova-accent-color,#ff4e18)]/40');
@@ -170,10 +170,10 @@ describe('UI visual snapshot - NovaColorChip', () => {
     const { container } = render(
       <NovaColorChip selected={false} onSelect={vi.fn()}>Blue</NovaColorChip>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none bg-white/[0.03] border-transparent hover:bg-white/[0.06]"><div class="relative w-6 h-6 rounded-full border border-white/20 shadow-sm overflow-hidden"><div class="absolute inset-1 rounded-full bg-white/30"></div></div><span class="text-[11px] font-medium "></span>Blue</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex flex-col items-center gap-1 py-2 px-2 rounded-xl border border-[var(--border-strong)] transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none bg-[var(--bg-surface-2)] border-transparent hover:bg-[var(--bg-hover)]"><div class="relative w-6 h-6 rounded-full border border-[var(--border-strong)] shadow-sm overflow-hidden"><div class="absolute inset-1 rounded-full bg-[var(--bg-surface-2)]"></div></div><span class="text-[11px] font-medium "></span>Blue</button>"`);
     const chip = screen.getByRole('button');
-    expect(chip.className).toContain('bg-white/[0.03]');
-    expect(chip.className).toContain('border-transparent');
+    expect(chip.className).toContain('bg-[var(--bg-surface-2)]');
+    expect(chip.className).toContain('border-[var(--border-strong)]');
     expect(chip.getAttribute('aria-pressed')).toBe('false');
   });
 });
@@ -222,10 +222,10 @@ describe('UI visual snapshot - NovaNavButton', () => {
 
   it('matches inactive nav button visual snapshot', () => {
     const { container } = render(<NovaNavButton active={false} icon="msg" label="Chats" />);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition text-white/50 hover:text-white"><span class="w-5 h-5 fill-white/50">msg</span><span class="text-[9px] font-normal">Chats</span></button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" aria-pressed="false" class="flex flex-col items-center gap-0.5 cursor-pointer active:scale-90 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><span class="w-5 h-5 fill-[var(--text-secondary)]">msg</span><span class="text-[9px] font-normal">Chats</span></button>"`);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('text-white/50');
-    expect(btn.className).toContain('hover:text-white');
+    expect(btn.className).toContain('text-[var(--text-secondary)]');
+    expect(btn.className).toContain('hover:text-[var(--text-primary)]');
     expect(btn.getAttribute('aria-pressed')).toBe('false');
   });
 });
@@ -241,7 +241,7 @@ describe('UI visual snapshot - NovaModal', () => {
         <div data-testid="modal-content">Modal content</div>
       </NovaModal>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<div tabindex="-1" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200 " role="dialog" aria-modal="true" aria-label="Modal"><div class="relative w-full h-full max-w-[90vw] max-h-[90vh] flex items-center justify-center p-4"><div class="bg-[#14151c]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/80 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 max-w-[700px] flex flex-col"><div class="flex items-center justify-between px-6 py-4 border-b border-white/10"><span aria-hidden="true"></span><button type="button" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]" aria-label="Close modal"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x w-4 h-4" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="flex-1 overflow-y-auto p-6"><div data-testid="modal-content">Modal content</div></div></div></div></div>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<div tabindex="-1" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200 " role="dialog" aria-modal="true" aria-label="Modal"><div class="relative w-full h-full max-w-[90vw] max-h-[90vh] flex items-center justify-center p-4"><div class="bg-[var(--bg-surface)]/[0.95] backdrop-blur-xl border border-[var(--border)] rounded-2xl shadow-[var(--shadow-2)] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 max-w-[700px] flex flex-col"><div class="flex items-center justify-between px-6 py-4 border-b border-[var(--border-strong)]"><span aria-hidden="true"></span><button type="button" class="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]" aria-label="Close modal"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x w-4 h-4" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="flex-1 overflow-y-auto p-6"><div data-testid="modal-content">Modal content</div></div></div></div></div>"`);
     expect(screen.getByTestId('modal-content')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

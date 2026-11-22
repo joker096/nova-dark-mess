@@ -154,7 +154,7 @@ export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps
             role="menu"
             aria-label={label}
             onKeyDown={onMenuKeyDown}
-            className="fixed z-[80] min-w-[180px] max-w-[260px] rounded-xl border border-white/10 bg-[#141520] p-1 shadow-2xl shadow-black/80"
+            className="fixed z-[80] min-w-[180px] max-w-[260px] rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-2)]"
             style={{
               top: position.top,
               bottom: position.bottom,
@@ -178,7 +178,7 @@ function NovaMenuRow({ item, onClose }: { item: NovaMenuItemDef; onClose: (retur
   const shortcutLabel = useShortcutLabel(item.shortcut ?? '');
   return (
     <>
-      {item.separatorBefore && <div className="my-1 h-px bg-white/10" role="separator" />}
+      {item.separatorBefore && <div className="my-1 h-px bg-[var(--border-strong)]" role="separator" />}
       <button
         type="button"
         role="menuitem"
@@ -190,12 +190,14 @@ function NovaMenuRow({ item, onClose }: { item: NovaMenuItemDef; onClose: (retur
           item.onSelect();
         }}
         className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] disabled:opacity-40 disabled:cursor-not-allowed ${
-          item.danger ? 'text-red-400 hover:bg-red-500/15' : 'text-white/85 hover:bg-white/[0.08] hover:text-white'
+          item.danger
+            ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
+            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
         }`}
       >
         {item.icon && <span className="w-4 h-4 shrink-0 [&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>}
         <span className="flex-1 truncate">{item.label}</span>
-        {shortcutLabel && <span className="text-[10px] text-white/40">{shortcutLabel}</span>}
+        {shortcutLabel && <span className="text-[10px] text-[var(--text-tertiary)]">{shortcutLabel}</span>}
       </button>
     </>
   );

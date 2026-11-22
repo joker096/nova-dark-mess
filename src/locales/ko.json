@@ -195,6 +195,11 @@
     "nameLabel": "닉네임 선택",
     "namePlaceholder": "예: 미라",
     "nicknameHint": "닉네임은 고유하지 않습니다. 암호화 ID로 연락처의 신원을 확인하세요.",
+    "shortNicknameTitle": "짧은 닉네임",
+    "shortNicknameDesc": "5자 미만의 닉네임은 프리미엄 기능입니다. 이 짧은 이름을 일회성 요금으로 구매할 수 있습니다.",
+    "payNow": "$50 지불",
+    "processing": "처리 중...",
+    "chooseDifferentName": "다른 이름 선택",
     "continue": "계속",
     "back": "뒤로",
     "identityTitle": "복구 문구",
@@ -883,8 +888,9 @@
     "idOnly": "신분증만",
     "idOnlyDesc": "연락처 ID만 공유됩니다. 전화, 이메일 또는 기타 개인 데이터는 공개되지 않습니다.",
     "contactId": "연락처 ID",
+    "appLink": "앱 링크",
     "consent": "이 연락처 ID만 공유하는 데 동의합니다.",
-    "share": "아이디 공유"
+    "share": "공유"
   },
   "stickers": {
     "title": "스티커",
@@ -1047,6 +1053,8 @@
     "subscribe": "구독",
     "subscribed": "구독함",
     "unsubscribe": "구독 취소",
+    "enableNotifications": "알림 켜기",
+    "disableNotifications": "알림 끄기",
     "channelInfo": "채널 정보",
     "hideSubscriberCount": "구독자 수 숨기기",
     "showSubscriberCount": "구독자 수 표시",

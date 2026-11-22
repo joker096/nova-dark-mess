@@ -711,11 +711,11 @@ export const AnonymousMessengerScreen: React.FC<{
   );
   const pushToken = configuredSettings?.pushToken.trim() ?? '';
   const hasTorRouting = Boolean(configuredSettings?.tor);
-  const usesLocalMode = Boolean(
-    configuredSettings &&
-      !configuredSettings.relayUrl.trim() &&
-      !hasProxyRouting &&
-      !hasTorRouting,
+  // No settings at all means nothing was configured yet, which is the same
+  // situation as an empty relay: every invite would fall back to local.
+  const usesLocalMode = Boolean(isLoaded) && (
+    !configuredSettings ||
+    (!configuredSettings.relayUrl.trim() && !hasProxyRouting && !hasTorRouting)
   );
   // Contacts saved with a local invitation have no relay to sync through; a
   // contact accepted from a real relay still works even while this device is
@@ -730,14 +730,23 @@ export const AnonymousMessengerScreen: React.FC<{
       ? 1
       : 0;
 
-  // Re-render when the pending invitation expires so the badge count and the
-  // "waiting" indicators drop to zero without a manual refresh.
+  // Re-render exactly when the pending invitation expires so the badge count
+  // and the "waiting" indicators drop to zero without a manual refresh.
+  //
+  // Deliberately not keyed on `inviteClock`: recomputing the delay after the
+  // tick would just schedule another full timeout for an invite that already
+  // expired. A changed expiry or a new invite re-arms it.
   useEffect(() => {
     const pending = state.pendingInbox;
-    if (!pending || pending.expiresAt <= Date.now()) return;
+    if (!pending) return;
+    const remaining = pending.expiresAt - Date.now();
+    if (remaining <= 0) {
+      if (inviteClock < pending.expiresAt) setInviteClock(Date.now());
+      return;
+    }
     const timer = window.setTimeout(
       () => setInviteClock(Date.now()),
-      Math.min(pending.expiresAt - Date.now() + 50, 2_147_483_647),
+      Math.min(remaining + 50, 2_147_483_647),
     );
     return () => window.clearTimeout(timer);
   }, [state.pendingInbox, inviteClock]);
@@ -1886,11 +1895,11 @@ export const AnonymousMessengerScreen: React.FC<{
   };
 
   if (!isLoaded) {
-    return <div className="flex h-full items-center justify-center bg-[#090a0e] text-sm text-white/60">{labels.loading}</div>;
+    return <div className="flex h-full items-center justify-center bg-[#090a0e] text-sm text-white/60" data-theme-preserve="dark">{labels.loading}</div>;
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[#090a0e] text-white">
+    <main className="flex h-full min-h-0 flex-col bg-[#090a0e] text-white" data-theme-preserve="dark">
       <header className="flex shrink-0 items-center gap-3 border-b border-white/[0.08] px-4 py-3">
         <button
           type="button"
@@ -1911,6 +1920,9 @@ export const AnonymousMessengerScreen: React.FC<{
             onClick={() => setLocalContactsOpen((open) => !open)}
             aria-expanded={localContactsOpen}
             aria-controls="local-contacts-panel"
+            // The badge text only says "Local only"; the title carries the full
+            // explanation, so name the control after the mode itself.
+            aria-label={labels.localModeTitle}
             title={labels.localModeNote}
             className="ml-auto shrink-0 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-[10px] font-medium text-sky-200 hover:bg-sky-400/20"
           >
@@ -1995,7 +2007,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 tabIndex={-1}
                 className="rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
               >
-                <p className="text-xs font-semibold text-sky-100">{labels.localModeTitle}</p>
+                <h2 className="text-xs font-semibold text-sky-100">{labels.localModeTitle}</h2>
                 <p className="pt-1 text-[11px] leading-relaxed text-sky-100/80">
                   {labels.localModeNote}
                 </p>

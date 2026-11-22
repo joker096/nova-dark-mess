@@ -48,6 +48,10 @@ import {
   ShieldAlert,
   Flag,
   Bot,
+  Share2,
+  ZoomIn,
+  ZoomOut,
+  Languages,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -59,6 +63,7 @@ import {
   registerCreatedGroups,
   saveCreatedGroups,
 } from '../data/mockMessengerData';
+import { LinkPreview, useLinkPreviews } from './LinkPreview';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
@@ -87,17 +92,19 @@ import { PollCreateModal } from './PollCreateModal';
 import { MessageInlineKeyboard } from './MessageInlineKeyboard';
 import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
+import { ChatHeader } from './chat/ChatHeader';
 import {
   isNotificationsEnabled,
   setNotificationsEnabledForChannel,
 } from '../lib/social/channelSubscriptions';
 import { renderMarkdown } from '../lib/markdown';
+import { suggestSmartReplies } from '../lib/chat/smartReplies';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { PollBubble } from './chat/PollBubble';
 import { LocationPickerModal } from './LocationPickerModal';
 import { LocationBubble } from './chat/LocationBubble';
 import { ACCENT_COLORS, applyAccentColor } from '../lib/ui/appearance';
-import { NovaAvatar } from '../lib/ui/NovaAvatar';
+import { Avatar } from '../lib/ui';
 import { useAccount } from '../hooks/useAccount';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { StickerMedia } from './chat/StickerMedia';
@@ -120,8 +127,10 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
+import { GroupCallManager, GroupCallStatus, GroupCallParticipant } from '../lib/p2p/groupCall';
 import { P2PSignalingClient } from '../lib/p2p/signaling';
 import { resolveSignalingUrl, resolveTurnServers } from '../lib/p2p/signalingConfig';
+import { GroupVideoCallOverlay } from './GroupVideoCallOverlay';
 import { loadPrivacyPrefs } from '../lib/network/privacyMode';
 import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
 import { wrapGroupPayload } from '../lib/p2p/groupWire';
@@ -191,6 +200,12 @@ interface ChatScreenProps {
     from: string;
   } | null;
   onPendingIncomingCallConsumed?: () => void;
+  /** Thread root message ID for desktop thread sidebar integration. */
+  threadRootId?: string | null;
+  /** Callback when thread root changes (open/close thread). */
+  onThreadRootChange?: (threadRootId: string | null) => void;
+  /** Callback to request scrolling to a message in the thread. */
+  onScrollToThreadMessage?: (msgId: string) => void;
 }
 
 interface ScheduledMessageItem {
@@ -208,10 +223,10 @@ const isVideoMediaUrl = (url: string) =>
 
 // Premium outgoing bubble themes (additive — default theme keeps the current design untouched)
 const PREMIUM_THEMES: Record<string, { label: string; grad: string; shadow: string; border: string }> = {
-  default: { label: 'Default', grad: 'from-[var(--nova-accent-color,#ff521a)] to-[var(--nova-accent-color,#ff3b00)]', shadow: 'shadow-[var(--nova-accent-color,#ff4e18)]/25', border: 'border-[var(--nova-accent-color,#ff4e18)]/45' },
-  sapphire: { label: 'Sapphire', grad: 'from-[#1E3A8A] to-[#3B82F6]', shadow: 'shadow-[#3B82F6]/25', border: 'border-[#3B82F6]/60' },
-  amethyst: { label: 'Amethyst', grad: 'from-[#4C1D95] to-[#8B5CF6]', shadow: 'shadow-[#8B5CF6]/25', border: 'border-[#8B5CF6]/60' },
-  emerald: { label: 'Emerald', grad: 'from-[#064E3B] to-[#10B981]', shadow: 'shadow-[#10B981]/25', border: 'border-[#10B981]/60' },
+  default: { label: 'Default', grad: 'from-[var(--chat-theme-default-from)] to-[var(--chat-theme-default-to)]', shadow: 'shadow-[var(--chat-theme-default-to)]/25', border: 'border-[var(--chat-theme-default-to)]/45' },
+  sapphire: { label: 'Sapphire', grad: 'from-[var(--chat-theme-sapphire-from)] to-[var(--chat-theme-sapphire-to)]', shadow: 'shadow-[var(--chat-theme-sapphire-to)]/25', border: 'border-[var(--chat-theme-sapphire-to)]/60' },
+  amethyst: { label: 'Amethyst', grad: 'from-[var(--chat-theme-amethyst-from)] to-[var(--chat-theme-amethyst-to)]', shadow: 'shadow-[var(--chat-theme-amethyst-to)]/25', border: 'border-[var(--chat-theme-amethyst-to)]/60' },
+  emerald: { label: 'Emerald', grad: 'from-[var(--chat-theme-emerald-from)] to-[var(--chat-theme-emerald-to)]', shadow: 'shadow-[var(--chat-theme-emerald-to)]/25', border: 'border-[var(--chat-theme-emerald-to)]/60' },
 };
 const CHAT_THEME_KEY = 'nova_chat_theme';
 
@@ -244,6 +259,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   sharedCallSignaling,
   pendingIncomingCall,
   onPendingIncomingCallConsumed,
+  threadRootId,
+  onThreadRootChange,
+  onScrollToThreadMessage,
 }) => {
   const { t } = useLanguage();
   const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer, p2pManager, setPeerFingerprint } = useSecurity();
@@ -1050,10 +1068,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     window.addEventListener('nova:p2p:receipt', onReceipt as EventListener);
     window.addEventListener('nova:p2p:file', onFile as EventListener);
 
+    // Handle scroll to thread message from sidebar
+    const onScrollToThread = (event: CustomEvent<{ msgId: string }>) => {
+      const msgId = event.detail.msgId;
+      const el = document.getElementById(`msg-${msgId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedMsgId(msgId);
+        setTimeout(() => setHighlightedMsgId((curr) => (curr === msgId ? null : curr)), 2200);
+      }
+    };
+    window.addEventListener('nova:scrollToThreadMessage', onScrollToThread as EventListener);
+
     return () => {
       window.removeEventListener('nova:p2p:message', onMessage as EventListener);
       window.removeEventListener('nova:p2p:receipt', onReceipt as EventListener);
       window.removeEventListener('nova:p2p:file', onFile as EventListener);
+      window.removeEventListener('nova:scrollToThreadMessage', onScrollToThread as EventListener);
     };
   }, [chatId, chatItem?.type, identity, botId, getBotSession, receiptManager]);
 
@@ -1199,24 +1230,52 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }, []);
 
   // Position the reaction picker so it never overflows the viewport edges.
-  // Measures the trigger element on first open and clamps to screen bounds.
+  // Uses the long press position (or double tap position) to show picker near the touch point.
   useLayoutEffect(() => {
-    if (!activeReactionMsgId || !pickerTriggerRef.current) {
+    if (!activeReactionMsgId) {
       setPickerPosition(null);
+      longPressPosRef.current = null;
       return;
     }
-    const rect = pickerTriggerRef.current.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const pickerWidth = 260;
     const viewportHeight = window.innerHeight;
 
-    let left = rect.left + rect.width / 2 - pickerWidth / 2;
-    left = Math.min(Math.max(left, 8), viewportWidth - pickerWidth - 8);
+    // Use long press position if available, otherwise fall back to trigger ref
+    let left: number;
+    let top: number | undefined;
+    let bottom: number | undefined;
 
-    const openUpwards = rect.bottom + 10 > viewportHeight - 8;
-    setPickerPosition(openUpwards
-      ? { bottom: viewportHeight - rect.top + 6, left }
-      : { top: rect.bottom + 6, left });
+    if (longPressPosRef.current) {
+      // Center picker horizontally on the long press position
+      left = longPressPosRef.current.x - pickerWidth / 2;
+      left = Math.min(Math.max(left, 8), viewportWidth - pickerWidth - 8);
+
+      // Determine if picker should open upwards
+      const openUpwards = longPressPosRef.current.y + 10 > viewportHeight - 8;
+      if (openUpwards) {
+        bottom = viewportHeight - longPressPosRef.current.y + 6;
+      } else {
+        top = longPressPosRef.current.y + 6;
+      }
+    } else if (pickerTriggerRef.current) {
+      // Fallback to trigger element position
+      const rect = pickerTriggerRef.current.getBoundingClientRect();
+      left = rect.left + rect.width / 2 - pickerWidth / 2;
+      left = Math.min(Math.max(left, 8), viewportWidth - pickerWidth - 8);
+
+      const openUpwards = rect.bottom + 10 > viewportHeight - 8;
+      if (openUpwards) {
+        bottom = viewportHeight - rect.top + 6;
+      } else {
+        top = rect.bottom + 6;
+      }
+    } else {
+      setPickerPosition(null);
+      return;
+    }
+
+    setPickerPosition({ left, top, bottom });
   }, [activeReactionMsgId]);
 
   // Premium chat theme (persisted). 'default' keeps the existing design exactly as-is.
@@ -1311,6 +1370,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const mediaLightboxRef = useFocusTrap<HTMLDivElement>(Boolean(mediaLightbox), () =>
     setMediaLightbox(null),
   );
+  // Media lightbox pinch-zoom & pan state
+  const [mediaScale, setMediaScale] = useState(1);
+  const [mediaPosition, setMediaPosition] = useState({ x: 0, y: 0 });
+  const mediaTouchStartRef = useRef<{ x: number; y: number; distance: number; scale: number } | null>(null);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVideoCallMinimized, setIsVideoCallMinimized] = useState(false);
   const [callMode, setCallMode] = useState<MediaCallMode>('video');
@@ -1337,6 +1400,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const incomingCallRef = useRef(incomingCall);
   const outgoingCallRef = useRef(outgoingCall);
 
+  // Group Video Call State
+  const [isGroupCallOpen, setIsGroupCallOpen] = useState(false);
+  const [groupCallManager, setGroupCallManager] = useState<GroupCallManager | null>(null);
+  const [groupCallStatus, setGroupCallStatus] = useState<GroupCallStatus>('idle');
+  const groupCallManagerRef = useRef<GroupCallManager | null>(null);
+
   // Pinned Messages Carousel State
   const [isPinnedCarouselOpen, setIsPinnedCarouselOpen] = useState(false);
   const [isProtectionOpen, setIsProtectionOpen] = useState(false);
@@ -1352,12 +1421,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [disappearAfter, setDisappearAfter] = useState(0);
 
   const [viewOnceMode, setViewOnceMode] = useState(false);
-  const [threadRootId, setThreadRootId] = useState<string | null>(null);
+  // The parent owns the open thread through `threadRootId`; local state keeps
+  // the panel working when the screen is rendered standalone (tests, preview).
+  const [localThreadRootId, setLocalThreadRootId] = useState<string | null>(null);
+  const activeThreadRootId = threadRootId ?? localThreadRootId;
+  const setActiveThreadRootId = (id: string | null) => {
+    if (onThreadRootChange) onThreadRootChange(id);
+    else setLocalThreadRootId(id);
+  };
   const groupMembersRef = useFocusTrap<HTMLDivElement>(isGroupMembersOpen, () =>
     setIsGroupMembersOpen(false),
   );
-  const threadRef = useFocusTrap<HTMLDivElement>(Boolean(threadRootId), () =>
-    setThreadRootId(null),
+  const threadRef = useFocusTrap<HTMLDivElement>(Boolean(activeThreadRootId), () =>
+    setActiveThreadRootId(null),
   );
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
@@ -1372,7 +1448,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     document?: DocumentAttachment;
   } | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [dismissedSmartReplyMsgId, setDismissedSmartReplyMsgId] = useState<string | null>(null);
 
   // Forward / Multi-select state
   const [isForwardSelecting, setIsForwardSelecting] = useState(false);
@@ -1405,6 +1480,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const voiceMemoRef = useRef<VoiceMemoInputHandle>(null);
   const [recordedVoiceNote, setRecordedVoiceNote] = useState<VoiceNoteData | null>(null);
 
+  // Text selection state for message bubbles
+  const [textSelection, setTextSelection] = useState<{
+    messageId: string;
+    text: string;
+    position: { x: number; y: number };
+  } | null>(null);
+  const closeTextSelection = useCallback(() => setTextSelection(null), []);
+
   // Swipe-to-reply gesture states
   const [swipingMsgId, setSwipingMsgId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState<number>(0);
@@ -1414,15 +1497,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const isDraggingRef = useRef(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressFiredRef = useRef(false);
   const pointerStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
   const quickSearchChipsRef = useWheelScroll();
   const attachmentMenuRef = useWheelScroll();
   const emojiBarRef = useWheelScroll();
-  const smartRepliesRef = useWheelScroll();
-
 
 
   const pinnedMessages = messages.filter((m) => m.isPinned);
@@ -1779,6 +1861,35 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setSearchFilterMode('context');
   };
 
+  // Demo functions for ChatHeader (simulate incoming activity)
+  const handleTriggerIncomingVoiceNote = () => {
+    // Simulate receiving a voice note
+    const demoVoiceMsg: ChatMessage = {
+      id: `demo-${Date.now()}`,
+      senderId: 'other',
+      text: '',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      deliveryStatus: 'delivered',
+      voiceNote: { duration: '0:05', durationSeconds: 5, waveform: new Array(20).fill(0).map(() => Math.random()) },
+    };
+    setMessages((prev) => [...prev, demoVoiceMsg]);
+    setIsTyping(false);
+  };
+
+  const handleSimulateTypingActivity = (activityType: 'typing' | 'recording' = 'typing') => {
+    setIsTyping(true);
+    setTypingActivity(activityType);
+    // Auto-clear after 3 seconds
+    setTimeout(() => {
+      setIsTyping(false);
+    }, 3000);
+  };
+
+  // Open the E2EE protection card (safety number, verification history).
+  const handleOpenProtection = () => {
+    setIsProtectionOpen(true);
+  };
+
   // Scroll to first match whenever search query changes
   useEffect(() => {
     if (isSearchOpen && searchQuery.trim() && matchingMessages.length > 0) {
@@ -2117,6 +2228,52 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }, 30_000);
   };
 
+  // Group Video Call - Start a group call with all group members
+  const handleStartGroupCall = (mode: MediaCallMode) => {
+    if (!isGroupChat || !groupMembers.length) return;
+
+    // Get all member fingerprints including local
+    const participantFingerprints = [identity?.fingerprint, ...groupMembers].filter(Boolean) as string[];
+
+    if (participantFingerprints.length < 2) {
+      triggerPinnedToast('Need at least 2 participants for a group call');
+      return;
+    }
+
+    stopActiveMediaCall();
+    clearCallInviteTimer();
+
+    // Create group call manager
+    const manager = new GroupCallManager({
+      localFingerprint: identity?.fingerprint || '',
+      localName: account.displayName,
+      localAvatar: account.avatar,
+      mode,
+      signalingUrl: resolveSignalingUrl(),
+      signaling: callSignalingRef.current ?? undefined,
+      icePolicy: loadPrivacyPrefs().webrtcRelayOnly ? 'relay-only' : 'direct',
+      onStatusChange: (status) => setGroupCallStatus(status),
+      onParticipantsChange: () => {}, // State updates via manager ref
+      onLocalStream: (stream) => setLocalCallStream(stream),
+      onLocalScreenStream: (stream) => {}, // handled by manager
+      onError: (err) => triggerPinnedToast(`Group call error: ${err.message}`),
+    });
+
+    groupCallManagerRef.current = manager;
+    setGroupCallManager(manager);
+
+    // Start the group call
+    manager.start(participantFingerprints).catch((err) => {
+      triggerPinnedToast(`Failed to start group call: ${err.message}`);
+      setGroupCallManager(null);
+      groupCallManagerRef.current = null;
+    });
+
+    setCallMode(mode);
+    setIsGroupCallOpen(true);
+    triggerPinnedToast(`Starting group ${mode} call...`);
+  };
+
   const handleAcceptIncomingCall = () => {
     const incoming = incomingCall;
     const localFingerprint = identity?.fingerprint;
@@ -2164,6 +2321,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setIncomingCall(null);
   };
 
+
+
   const handleStartVideoCall = () => handleStartCall('video');
   const handleStartVoiceCall = () => handleStartCall('voice');
 
@@ -2194,6 +2353,52 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       id: 'call-' + Date.now(),
       senderId: 'me',
       text: `${mode === 'voice' ? '📞 Voice' : '📹 Video'} call with ${profile.name.split(' ')[0]} • Duration: ${durationFormatted}`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+    };
+    setMessages((prev) => [...prev, callRecordMsg]);
+  };
+
+  // Group call end handler
+  const handleEndGroupCall = (durationFormatted: string) => {
+    const mode = callMode;
+    groupCallManagerRef.current?.end();
+    groupCallManagerRef.current = null;
+    setGroupCallManager(null);
+    setIsGroupCallOpen(false);
+    triggerPinnedToast(`Group ${mode === 'voice' ? 'voice' : 'video'} call ended • ${durationFormatted}`);
+
+    // Add a record to chat history
+    const callRecordMsg: ChatMessage = {
+      id: 'call-' + Date.now(),
+      senderId: 'me',
+      text: `📹 Group ${mode === 'voice' ? 'voice' : 'video'} call with ${groupMembers.length + 1} participant${groupMembers.length !== 0 ? 's' : ''} • Duration: ${durationFormatted}`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+    };
+    setMessages((prev) => [...prev, callRecordMsg]);
+  };
+
+  const handleDeclineIncomingGroupCall = () => {
+    const incoming = incomingCall;
+    const localFingerprint = identity?.fingerprint;
+    const signaling = callSignalingRef.current;
+    if (incoming && localFingerprint && signaling) {
+      void signaling.sendSignal({
+        type: 'call_decline',
+        senderFingerprint: localFingerprint,
+        targetFingerprint: incoming.from,
+        payload: { callId: incoming.callId },
+      });
+    }
+    incomingCallRef.current = null;
+    setIncomingCall(null);
+
+    // Leave a missed-call record; there is no duration for a declined call.
+    const callRecordMsg: ChatMessage = {
+      id: 'call-' + Date.now(),
+      senderId: 'me',
+      text: `📞 Missed ${incoming?.mode === 'video' ? 'video' : 'voice'} call from ${profile.name.split(' ')[0]}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: true,
     };
@@ -2378,7 +2583,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent, msgId: string) => {
-    if (e.button !== 0) return;
+    // Touch and pen never report `button`; only a secondary mouse button is a
+    // real rejection here (right-click, middle-click).
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (isInteractiveGestureTarget(e.target)) return;
 
     // Forward-select mode uses taps only; suppress long-press and swipe gestures.
@@ -2410,6 +2617,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     longPressTimerRef.current = setTimeout(() => {
       if (!isDraggingRef.current) {
         isLongPressFiredRef.current = true;
+        longPressPosRef.current = pointerStartPosRef.current;
         setActiveReactionMsgId(msgId);
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate(40);
@@ -2507,11 +2715,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       return;
     }
 
-    // Double-tap detection
+    // Double-tap detection → quick ❤️ reaction (Telegram-style)
     const now = Date.now();
     const prev = lastTapRef.current;
     if (prev.id === msg.id && now - prev.time < 320) {
-      setActiveReactionMsgId(msg.id);
+      handleSelectReaction(msg.id, '❤️');
       lastTapRef.current = { id: '', time: 0 };
     } else {
       lastTapRef.current = { id: msg.id, time: now };
@@ -3165,6 +3373,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     mainInputRef.current?.focus();
   };
 
+  // Suggestions follow the last message, so they vanish the moment we send.
+  const lastMessage = messages[messages.length - 1];
+  const smartReplySuggestions = useMemo(
+    () =>
+      lastMessage && lastMessage.senderId !== 'me' && lastMessage.text
+        ? suggestSmartReplies(lastMessage.text)
+        : [],
+    [lastMessage],
+  );
+
+  const handleSendSmartReply = (reply: string) => {
+    handleSendMessage(reply);
+  };
+
   const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
     const text = (customText ?? inputText).trim();
 
@@ -3286,26 +3508,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // Context-aware Smart Reply suggestions based on the last received message content.
   // They only make sense right after an incoming message: suggesting "For sure!"
   // under your own message replies to nothing.
-  const lastReceivedMessage = useMemo(() => {
-    // Roster and role changes render as system rows; they are not a message
-    // to reply to, so the last real bubble decides.
-    const lastMessage = [...messages].reverse().find((m) => !m.system);
-    if (!lastMessage || lastMessage.senderId !== 'other') return undefined;
-    return lastMessage;
-  }, [messages]);
-
-  const smartReplies = useMemo(() => {
-    if (!lastReceivedMessage || dismissedSmartReplyMsgId === lastReceivedMessage.id) return [];
-    const text = lastReceivedMessage.text?.toLowerCase() || '';
-    if (text.includes('?')) {
-      return ['Yes', 'No', 'Maybe 😄', 'Tell me more'];
-    }
-    if (text.includes('love') || text.includes('❤️')) {
-      return ['❤️', '💕', 'Same here!'];
-    }
-    return ['Nice! 👍', 'Haha 😄', 'For sure!'];
-  }, [lastReceivedMessage, dismissedSmartReplyMsgId]);
-  const shouldShowSmartReplies = smartReplies.length > 0 && !inputText.trim();
+  
 
   // Renders the delivery/status icon for an outgoing message bubble based on
   // deliveryStatus (queued → sent → delivered → read, or error with retry).
@@ -3486,383 +3689,58 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         </div>
       )}
 
-      {/* Floating Header Pill */}
-      <div className="p-2 shrink-0 relative z-20">
-        <div className="@container bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
-          {isSearchOpen ? (
-            /* ACTIVE SEARCH BAR HEADER WITH WORD STEPPER & CONTROLS */
-            <div className="flex items-center gap-1.5 w-full animate-in fade-in duration-200">
-              <button
-                onClick={handleCloseSearch}
-                className="w-8 h-8 rounded-full bg-[#1f2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer shrink-0"
-                title={t('common.back')}
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color,#ff4e18)]/50 focus-within:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
-                <Search className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      handleCloseSearch();
-                    } else if (e.key === 'Enter') {
-                      if (e.shiftKey) {
-                        handlePrevMatch();
-                      } else {
-                        handleNextMatch();
-                      }
-                    } else if (e.key === 'ArrowDown') {
-                      handleNextMatch();
-                    } else if (e.key === 'ArrowUp') {
-                      handlePrevMatch();
-                    }
-                  }}
-                  placeholder={t('chat.searchInChat')}
-                  className="w-full bg-transparent text-xs text-white placeholder-white/40 focus:outline-none py-0.5 min-w-0"
-                />
-
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setActiveMatchIndex(0);
-                      searchInputRef.current?.focus();
-                    }}
-                    className="p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition cursor-pointer shrink-0"
-                    title={t('common.close')}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-
-                {/* Match counter badge */}
-                {searchQuery.trim() && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30 font-semibold whitespace-nowrap">
-                    {matchingMessages.length > 0
-                      ? `${activeMatchIndex + 1}/${matchingMessages.length}`
-                      : '0/0'}
-                  </span>
-                )}
-              </div>
-
-              {/* Stepper buttons: Jump Up / Down through matches */}
-              {searchQuery.trim() && matchingMessages.length > 0 && (
-                <div className="flex items-center gap-0.5 bg-[#1a1b26] border border-white/10 rounded-xl p-0.5 shrink-0">
-                  <button
-                    onClick={handlePrevMatch}
-                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
-                    title={t('common.previous')}
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleNextMatch}
-                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
-                    title={t('common.next')}
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Toggle View Mode: Filter Only vs Context Stream */}
-              {searchQuery.trim() && (
-                <button
-                  onClick={() =>
-                    setSearchFilterMode((mode) =>
-                      mode === 'context' ? 'filtered' : 'context'
-                    )
-                  }
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0 ${
-                    searchFilterMode === 'filtered'
-                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]'
-                      : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
-                  }`}
-                  title={
-                    searchFilterMode === 'filtered'
-                      ? 'Showing filtered matches only. Click for conversation context.'
-                      : 'Showing conversation context. Click to filter only matching messages.'
-                  }
-                >
-                  <ListFilter className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              <button
-                onClick={handleCloseSearch}
-                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/80 hover:text-white transition cursor-pointer active:scale-95 shrink-0"
-              >
-                Done
-              </button>
-            </div>
-          ) : (
-            /* STANDARD CONTACT HEADER */
-            <>
-              <button
-                onClick={onBack}
-                className="w-9 h-9 rounded-full bg-[#1f2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer md:hidden shrink-0"
-                aria-label="Back to chats"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-2 min-w-0 flex-1 mx-0.5">
-                <button
-                  onClick={onOpenProfile}
-                  className="flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none group"
-                  aria-label={t('common.profile')}
-                >
-                  <span className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20 shrink-0">
-                      <LazyMedia
-                        src={profile.avatar}
-                        alt={profile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    {isProfileOnline && !isTyping && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
-                    )}
-                  </span>
-                  <span className="flex flex-col items-start min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color,#ff4e18)] transition truncate">
-                        {profile.name}
-                      </span>
-                      {botId && (
-                        <span
-                          className="px-1.5 py-px rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 text-[9px] font-semibold text-[var(--nova-accent-color,#ff4e18)] shrink-0"
-                          title={t('bot.badge', { defaultValue: 'Bot' })}
-                        >
-                          {t('bot.badge', { defaultValue: 'Bot' })}
-                        </span>
-                      )}
-                      {isDemo === true && (
-                        <span
-                          className="px-1.5 py-px rounded-full bg-[#6b7280]/15 border border-[#6b7280]/30 text-[9px] font-semibold text-[#9ca3af] shrink-0 ml-1"
-                          title={t('chat.e2eeDemo', { defaultValue: 'Demo' })}
-                        >
-                          {t('chat.e2eeDemo', { defaultValue: 'Demo' })}
-                        </span>
-                      )}
-                    </div>
-                    {(isTyping || botTyping) ? (
-                      <div className="flex items-center gap-1 mt-0.5 px-1.5 py-px rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 border border-[var(--nova-accent-color,#ff4e18)]/30 animate-in fade-in zoom-in-95 duration-200 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/20 select-none">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--nova-accent-color,#ff4e18)] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--nova-accent-color,#ff4e18)]"></span>
-                        </span>
-                        {typingActivity === 'recording' ? (
-                          <>
-                            <Mic className="w-2 h-2 text-[var(--nova-accent-color,#ff4e18)] animate-pulse" />
-                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">recording</span>
-                            <div className="flex items-center gap-0.5 h-1.5">
-                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-0.5" />
-                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.2s] h-1" />
-                              <span className="w-0.5 bg-[var(--nova-accent-color,#ff4e18)] rounded-full animate-[pulse_0.8s_ease-in-out_infinite_0.4s] h-1" />
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] tracking-tight">typing</span>
-                            <div className="flex items-center gap-0.5 pt-px">
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.32s]" />
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce [animation-delay:-0.16s]" />
-                              <span className="w-1 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-bounce" />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 mt-0.5 select-none">
-                        {isProfileOnline && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
-                        )}
-                        <span className="max-w-[140px] truncate whitespace-nowrap text-[10px] text-[#868b98] font-normal leading-none">
-                          {profile.status}
-                        </span>
-                      </div>
-                    )}
-                  </span>
-                </button>
-
-                {/* Header Menu Tabs: [ Chat | Gallery ] */}
-                <div className="hidden @min-[440px]:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
-                  <button
-                    onClick={() => setActiveHeaderTab('chat')}
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
-                      activeHeaderTab === 'chat'
-                        ? 'text-white shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                    style={activeHeaderTab === 'chat' ? { backgroundColor: 'var(--nova-accent-color)' } : undefined}
-                  >
-                    Chat
-                  </button>
-                  <button
-                    onClick={() => setActiveHeaderTab('gallery')}
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center gap-0.5 ${
-                      activeHeaderTab === 'gallery'
-                        ? 'text-white shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                    style={activeHeaderTab === 'gallery' ? { backgroundColor: 'var(--nova-accent-color)' } : undefined}
-                  >
-                    <ImageIcon className="w-2.5 h-2.5" />
-                    <span>Gallery</span>
-                    <span className="text-[9px] opacity-80 font-mono">({sharedMediaCount})</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1">
-                {roomPeerCount > 0 && (
-                  <span
-                    data-testid="p2p-peer-count"
-                    title={`P2P · ${roomPeerCount}`}
-                    className="hidden @min-[400px]:inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
-                  >
-                    P2P · {roomPeerCount}
-                  </span>
-                )}
-
-                {/* Group members live in the "..." menu; the pending-request
-                    badge rides on that button instead of a second icon. */}
-
-                {/* Bot Start button: sends /start to the bot (docs/bots-roadmap.md §B2) */}
-                {botId && (
-                  <button
-                    type="button"
-                    onClick={() => handleSendMessage('/start')}
-                    className="w-7 h-7 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/10 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
-                    title={t('bot.start')}
-                    aria-label={t('bot.start')}
-                  >
-                    <span className="text-[10px] font-bold">{t('bot.start')}</span>
-                  </button>
-                )}
-
-                {/* Search Messages in Chat Button */}
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
-                  title={t('common.search')}
-                  aria-label={t('common.search')}
-                >
-                  <Search className="w-3 h-3" />
-                </button>
-
-                {/* End-to-End Encryption / Protection of this chat */}
-                <button
-                  onClick={() => setIsProtectionOpen(true)}
-                  data-testid="e2ee-badge"
-                  className="hidden @min-[380px]:flex w-7 h-7 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 items-center justify-center transition cursor-pointer active:scale-95"
-                  title={t('chat.e2eeBadgeTitle')}
-                  aria-label={t('chat.e2eeCardTitle')}
-                >
-                  <ShieldCheck className="w-3 h-3" />
-                </button>
-
-                {/* Hide call buttons when no real peer (demo peer = no WebRTC connection possible) */}
-                {!isDemoPeer(chatId) && (
-                  <>
-                    {/* Voice Call Toggle Button */}
-                    <button
-                      onClick={handleStartVoiceCall}
-                      className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                        isVideoCallOpen && callMode === 'voice'
-                          ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                          : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
-                      }`}
-                      title={
-                        isVideoCallOpen && callMode === 'voice'
-                          ? 'Voice call in progress (click to view)'
-                          : `Start voice call with ${profile.name}`
-                      }
-                    >
-                      <Phone className="w-3 h-3" />
-                    </button>
-
-                    {/* Video Call Toggle Button */}
-                    <button
-                      onClick={handleStartVideoCall}
-                      className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                        isVideoCallOpen && callMode === 'video'
-                          ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                          : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
-                      }`}
-                      title={
-                        isVideoCallOpen && callMode === 'video'
-                          ? 'Video call in progress (click to view)'
-                          : `Start video call with ${profile.name}`
-                      }
-                    >
-                      <Video className="w-3 h-3" />
-                    </button>
-                  </>
-                )}
-
-                {/* Pinned Messages Header Button (only when pinned exist) */}
-                {pinnedMessages.length > 0 && (
-                  <button
-                    onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
-                    className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
-                      isPinnedCarouselOpen
-                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
-                        : 'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
-                    }`}
-                    title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
-                    aria-label={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
-                  >
-                    <Pin className={`w-3 h-3 ${isPinnedCarouselOpen ? 'fill-current' : ''}`} />
-                    <span
-                      className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
-                        isPinnedCarouselOpen
-                          ? 'bg-white text-[var(--nova-accent-color,#ff4e18)]'
-                          : 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-sm'
-                      }`}
-                    >
-                      {pinnedMessages.length}
-                    </span>
-                  </button>
-                )}
-
-                {/* More menu */}
-                <div className="relative">
-                  <button
-                    ref={moreMenuAnchorRef}
-                    onClick={() => setIsMoreMenuOpen((prev) => !prev)}
-                    aria-haspopup="menu"
-                    aria-expanded={isMoreMenuOpen}
-                    aria-label={t('chat.chatActions')}
-                    title={t('chat.chatActions')}
-                    data-pending-requests={pendingJoinRequests.length || undefined}
-                    className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
-                      isMoreMenuOpen
-                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
-                    }`}
-                  >
-                    <MoreHorizontal className="w-3.5 h-3.5" />
-                    {isGroupChat && currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
-                      <span
-                        data-testid="join-request-badge"
-                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
-                      >
-                        {pendingJoinRequests.length}
-                      </span>
-                    )}
-                  </button>
-
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      {/* Floating Header Pill - using ChatHeader component */}
+      <ChatHeader
+        onBack={onBack}
+        onOpenProfile={onOpenProfile}
+        profile={{ name: profile.name, status: profile.status, avatar: profile.avatar }}
+        isSearchOpen={isSearchOpen}
+        setIsSearchOpen={setIsSearchOpen}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchInputRef={searchInputRef}
+        matchingMessages={matchingMessages}
+        activeMatchIndex={activeMatchIndex}
+        setActiveMatchIndex={setActiveMatchIndex}
+        searchFilterMode={searchFilterMode}
+        setSearchFilterMode={setSearchFilterMode}
+        handleCloseSearch={handleCloseSearch}
+        handlePrevMatch={handlePrevMatch}
+        handleNextMatch={handleNextMatch}
+        isTyping={isTyping}
+        typingActivity={typingActivity}
+        handleTriggerIncomingVoiceNote={handleTriggerIncomingVoiceNote}
+        handleSimulateTypingActivity={handleSimulateTypingActivity}
+        activeHeaderTab={activeHeaderTab}
+        setActiveHeaderTab={setActiveHeaderTab}
+        sharedMediaCount={sharedMediaCount}
+        isVideoCallOpen={isVideoCallOpen}
+        handleStartVideoCall={handleStartVideoCall}
+        isWallpaperModalOpen={isWallpaperModalOpen}
+        setIsWallpaperModalOpen={setIsWallpaperModalOpen}
+        chatTheme={chatTheme}
+        setChatTheme={setChatTheme}
+        canUse={canUse}
+        checkout={checkout}
+        pinnedMessages={pinnedMessages}
+        isPinnedCarouselOpen={isPinnedCarouselOpen}
+        setIsPinnedCarouselOpen={setIsPinnedCarouselOpen}
+        onOpenProtection={handleOpenProtection}
+        avatarPosition="left"
+        roomPeerCount={roomPeerCount}
+        isGroupChat={isGroupChat}
+        groupMembers={groupMembers}
+        botId={botId}
+        handleStartVoiceCall={handleStartVoiceCall}
+        handleStartGroupCall={handleStartGroupCall}
+        isGroupCallOpen={isGroupCallOpen}
+        callMode={callMode}
+        pendingJoinRequests={pendingJoinRequests}
+        currentUserIsGroupAdmin={currentUserIsGroupAdmin}
+        isMoreMenuOpen={isMoreMenuOpen}
+        setIsMoreMenuOpen={setIsMoreMenuOpen}
+        moreMenuAnchorRef={moreMenuAnchorRef}
+      />
 
       {/* CONDITIONAL BODY: SHARED MEDIA GALLERY vs ACTIVE CONVERSATION */}
       {activeHeaderTab === 'gallery' ? (
@@ -3976,7 +3854,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 <p className="text-[11px] text-[#8c919d] mt-0.5">
                   {t('chat.e2eeVerifyDesc')}
                 </p>
-                <p className="text-[10px] font-mono text-[#8c919d] mt-1 break-all">
+                <p className="text-[10px] font-mono text-[var(--text-tertiary)] mt-1 break-all">
                   {peerFingerprint ?? '—'}
                 </p>
               </div>
@@ -3987,7 +3865,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 data-testid="peer-key-change-history"
                 className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-2"
               >
-                <p className="text-xs font-semibold text-[var(--nova-warning-text)] mb-2">
+                <p className="text-xs font-semibold text-[var(--text-secondary)] mb-2">
                   {keyChangedLabel}
                 </p>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -3995,19 +3873,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     <div
                       key={change.id}
                       data-testid="peer-key-change-entry"
-                      className="text-[10px] text-[var(--nova-text-secondary)]"
+                      className="text-[10px] text-[var(--text-secondary)]"
                     >
                       <p>{new Date(change.changedAt).toLocaleString()}</p>
                       <p className="font-mono break-all">
                         {change.previousFingerprint} → {change.currentFingerprint}
                       </p>
                       {change.previousSigningKeyId !== change.currentSigningKeyId && (
-                        <p className="font-mono break-all text-[var(--nova-text-muted)]">
+                        <p className="font-mono break-all text-[var(--text-tertiary)]">
                           {change.previousSigningKeyId} → {change.currentSigningKeyId}
                         </p>
                       )}
                       {change.previousIdentityKeyId !== change.currentIdentityKeyId && (
-                        <p className="font-mono break-all text-[var(--nova-text-muted)]">
+                        <p className="font-mono break-all text-[var(--text-tertiary)]">
                           {change.previousIdentityKeyId} → {change.currentIdentityKeyId}
                         </p>
                       )}
@@ -4367,7 +4245,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   person's picture is visible in the conversation itself. */}
               {item.groupStart && (
                 <div className={`mb-1 flex items-center ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <NovaAvatar
+                  <Avatar
                     name={isMine ? account.displayName : profile.name}
                     src={isMine ? account.avatar : profile.avatar}
                     size="sm"
@@ -4394,6 +4272,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       isThresholdReached ? 'rotate-[-12deg] scale-110' : ''
                     }`}
                   />
+                </div>
+              )}
+
+              {/* Live Reply Preview during swipe (Telegram-style) */}
+              {isThisSwiping && isThresholdReached && (
+                <div
+                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-10 w-64 bg-[#161724]/95 border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-xl p-2 text-xs z-10 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-100"
+                  style={{ opacity: Math.min(1, (currentOffset - 42) / 30) }}
+                >
+                  <div className="flex items-center gap-1.5 text-[var(--nova-accent-color,#ff4e18)] font-bold mb-1">
+                    <Reply className="w-3 h-3" />
+                    <span>Replying to {msg.senderId === 'me' ? 'Yourself' : profile.name}</span>
+                  </div>
+                  <p className="text-white/70 truncate text-[11px]">
+                    {msg.text || (msg.voiceNote ? t('voiceMessage', { duration: msg.voiceNote.duration }) : t('chat.photoAttachment'))}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1 text-[10px] text-white/40">
+                    <X className="w-3 h-3" />
+                    <span>Release to cancel</span>
+                  </div>
                 </div>
               )}
 
@@ -4544,7 +4442,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     touchAction: 'pan-y',
                   }}
-                  className={`relative group touch-manipulation cursor-pointer transition-all duration-150 select-none active:scale-[0.99] ${
+                  className={`relative group touch-manipulation cursor-pointer transition-all duration-150 active:scale-[0.99] ${
                     isCurrentSearchMatch
                       ? 'ring-2 ring-[var(--nova-accent-color,#ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[24px]'
                       : isHighlighted
@@ -4557,7 +4455,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   {/* Quick Action Pill on hover (Desktop) attached directly to the message bubble */}
                   <div
                     onPointerDown={(e) => e.stopPropagation()}
-                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[#141520]/95 border border-white/20 backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 group-hover:opacity-100 transition-all duration-150 scale-95 group-hover:scale-100 select-none`}
+                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[#141520]/95 border border-white/20 backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 transition-all duration-150 scale-95 select-none hidden`}
                   >
                     <NovaTooltip label="Add reaction (emoji popup)">
                       <NovaIconButton
@@ -4652,7 +4550,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                                 key: 'thread',
                                 label: 'Thread',
                                 icon: <Reply />,
-                                onSelect: () => setThreadRootId(msg.id),
+                                onSelect: () => setActiveThreadRootId(msg.id),
                               },
                             ]
                           : []),
@@ -4926,7 +4824,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                          <div
+                            className="min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 select-text"
+                            onContextMenu={(e) => {
+                              const selection = window.getSelection();
+                              if (selection && selection.toString().trim()) {
+                                e.preventDefault();
+                                const range = selection.getRangeAt(0);
+                                const rect = range.getBoundingClientRect();
+                                setTextSelection({
+                                  messageId: msg.id,
+                                  text: selection.toString(),
+                                  position: { x: rect.left + rect.width / 2, y: rect.top },
+                                });
+                              }
+                            }}
+                          >
                             {isSearchOpen && searchQuery.trim().length > 0
                               ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
                               : renderMarkdown({ text: msg.text })}
@@ -4935,6 +4848,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                                 {t('chat.edited')}
                               </span>
                             )}
+
+                            {/* Link Previews */}
+                            {msg.text && (() => {
+                              const urls = useLinkPreviews(msg.text);
+                              if (urls.length > 0) {
+                                return (
+                                  <div className="mt-2 flex flex-col gap-1.5" role="list" aria-label="Link previews">
+                                    {urls.slice(0, 3).map((url) => (
+                                        <LinkPreview key={url} url={url} />
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         )}
                         <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
@@ -5465,6 +5393,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         )}
 
+        {/* SMART REPLY SUGGESTIONS */}
+        {smartReplySuggestions.length > 0 && (
+          <div
+            className="flex items-center gap-1.5 overflow-x-auto no-scrollbar animate-in fade-in slide-in-from-bottom-1 duration-150"
+            data-testid="smart-replies"
+          >
+            {smartReplySuggestions.map((reply) => (
+              <button
+                key={reply}
+                type="button"
+                onClick={() => handleSendSmartReply(reply)}
+                className="shrink-0 rounded-full border border-white/10 bg-[#1e2028] px-3 py-1.5 text-xs font-medium text-white/80 transition hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-white active:scale-95"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* EMOJI QUICK BAR */}
         {isEmojiPickerOpen && (
           <div ref={emojiBarRef} className="flex items-center gap-1.5 p-2 bg-[#141520]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto no-scrollbar" data-testid="emoji-bar">
@@ -5518,38 +5465,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           }
         />
 
-        {/* ROW OF SMART REPLY PILL BUTTONS */}
-        {shouldShowSmartReplies && (
-          <div ref={smartRepliesRef} className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200 select-none" data-testid="smart-replies">
-            <div className="flex items-center gap-1 text-[11px] text-[var(--nova-accent-color,#ff4e18)] font-semibold shrink-0 pl-1 pr-1">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-              <span className="hidden sm:inline">Smart:</span>
-            </div>
-
-            {smartReplies.map((reply, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(reply, replyingTo ?? lastReceivedMessage)}
-                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium bg-[#161723]/95 hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-white border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)] text-white/90 shadow-sm backdrop-blur-md transition-all duration-150 active:scale-95 shrink-0 whitespace-nowrap cursor-pointer group flex items-center gap-1.5"
-                title={`Tap to send: "${reply}"`}
-              >
-                <span>{reply}</span>
-              </button>
-            ))}
-
-            <button
-              onClick={() => {
-                if (lastReceivedMessage) {
-                  setDismissedSmartReplyMsgId(lastReceivedMessage.id);
-                }
-              }}
-              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 text-white/40 hover:text-white flex items-center justify-center shrink-0 transition cursor-pointer ml-0.5"
-              title="Dismiss smart replies"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+        
         {/* STAGED ATTACHMENT PREVIEW CHIP */}
         {stagedAttachment && (
           <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
@@ -6331,7 +6247,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={handleDeclineIncomingCall}
+                onClick={handleDeclineIncomingGroupCall}
                 className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08]"
               >
                 {t('videoCall.decline')}
@@ -6376,6 +6292,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             return !prev;
           });
         }}
+      />
+
+      {/* GROUP VIDEO CALL OVERLAY */}
+      <GroupVideoCallOverlay
+        isOpen={isGroupCallOpen}
+        onEndCall={handleEndGroupCall}
+        onMinimize={() => {}} // Group calls don't minimize for now
+        callManager={groupCallManager}
+        mode={callMode}
+        hidesIp={loadPrivacyPrefs().webrtcRelayOnly}
+        localName={account.displayName}
+        localAvatar={account.avatar}
       />
 
       {/* SIMULATED FILE & MEDIA SELECTION MODAL */}
@@ -6451,7 +6379,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
         </div>
       )}
-      {threadRootId && (
+      {activeThreadRootId && (
         <div
           ref={threadRef}
           role="dialog"
@@ -6463,7 +6391,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-white">Thread</h3>
               <button
-                onClick={() => setThreadRootId(null)}
+                onClick={() => setActiveThreadRootId(null)}
                 className="p-1.5 text-white/50 hover:text-white transition cursor-pointer"
                 aria-label="Close thread"
               >
@@ -6471,7 +6399,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               </button>
             </div>
             <div className="space-y-2">
-              {getThreadMessages(messages, threadRootId).map((m) => (
+              {getThreadMessages(messages, activeThreadRootId).map((m) => (
                   <div key={m.id} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/90">
                     {m.text || (m.deleted ? t('chat.messageDeleted') : '…')}
                   </div>
@@ -6489,9 +6417,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               role="menu"
               aria-label={t('chat.chatActions')}
               style={{ top: moreMenuPosition?.top ?? 8, left: moreMenuPosition?.left ?? 8 }}
-              className="fixed z-50 max-h-[calc(100vh-1rem)] w-64 overflow-y-auto rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150"
+              className="fixed z-50 max-h-[calc(100dvh-1rem)] w-64 overflow-y-auto rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-surface)]/[0.98] shadow-[var(--shadow-2)] backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150"
             >
-              <div className="px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/50">
+              <div className="px-3 py-2 border-b border-[var(--border-strong)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
                 {t('chat.chatActions')}
               </div>
               <button
@@ -6654,24 +6582,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <button
               type="button"
               aria-label="Close media viewer"
-              onClick={() => setMediaLightbox(null)}
+              onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
               className="absolute right-4 top-4 z-20 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="absolute inset-0" onClick={() => setMediaLightbox(null)} />
+            <div className="absolute inset-0" onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }} />
             <div className="relative z-10 flex max-h-full max-w-full items-center gap-3" onClick={(event) => event.stopPropagation()}>
               {mediaLightbox.urls.length > 1 && (
                 <button
                   type="button"
                   aria-label="Previous media"
-                  onClick={() =>
+                  onClick={() => {
                     setMediaLightbox((current) =>
                       current
                         ? { ...current, index: (current.index - 1 + current.urls.length) % current.urls.length }
                         : current,
-                    )
-                  }
+                    );
+                    setMediaScale(1);
+                    setMediaPosition({ x: 0, y: 0 });
+                  }}
                   className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -6686,24 +6616,69 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   className="max-h-[85vh] max-w-[85vw] rounded-xl bg-black"
                 />
               ) : (
-                <LazyMedia
-                  src={mediaLightbox.urls[mediaLightbox.index]}
-                  alt={`Media ${mediaLightbox.index + 1}`}
-                  eager
-                  className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
-                />
+                <div
+                  className="relative"
+                  onWheel={(e) => {
+                    e.preventDefault();
+                    if (e.ctrlKey || e.metaKey) {
+                      setMediaScale((s) => Math.max(0.5, Math.min(4, s - e.deltaY * 0.005)));
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (e.touches.length === 2) {
+                      const touch1 = e.touches[0];
+                      const touch2 = e.touches[1];
+                      const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+                      mediaTouchStartRef.current = { x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2, distance, scale: mediaScale };
+                    } else if (e.touches.length === 1 && mediaScale > 1) {
+                      mediaTouchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance: 0, scale: mediaScale };
+                    }
+                  }}
+                  onTouchMove={(e) => {
+                    if (!mediaTouchStartRef.current) return;
+                    if (e.touches.length === 2) {
+                      const touch1 = e.touches[0];
+                      const touch2 = e.touches[1];
+                      const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+                      const newScale = Math.max(0.5, Math.min(4, mediaTouchStartRef.current.scale * (distance / mediaTouchStartRef.current.distance)));
+                      setMediaScale(newScale);
+                    } else if (e.touches.length === 1 && mediaScale > 1) {
+                      const dx = e.touches[0].clientX - mediaTouchStartRef.current.x;
+                      const dy = e.touches[0].clientY - mediaTouchStartRef.current.y;
+                      setMediaPosition((p) => ({ x: p.x + dx, y: p.y + dy }));
+                      mediaTouchStartRef.current = { ...mediaTouchStartRef.current, x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    }
+                  }}
+                  onTouchEnd={() => {
+                    mediaTouchStartRef.current = null;
+                  }}
+                >
+                  <LazyMedia
+                    src={mediaLightbox.urls[mediaLightbox.index]}
+                    alt={`Media ${mediaLightbox.index + 1}`}
+                    eager
+                    className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
+                    style={{
+                      transform: `translate(${mediaPosition.x}px, ${mediaPosition.y}px) scale(${mediaScale})`,
+                      transformOrigin: 'center center',
+                      transition: mediaScale > 1 ? 'none' : 'transform 0.2s ease-out',
+                    }}
+                  />
+                </div>
               )}
               {mediaLightbox.urls.length > 1 && (
                 <button
                   type="button"
                   aria-label="Next media"
-                  onClick={() =>
+                  onClick={() => {
                     setMediaLightbox((current) =>
                       current
                         ? { ...current, index: (current.index + 1) % current.urls.length }
                         : current,
-                    )
-                  }
+                    );
+                    setMediaScale(1);
+                    setMediaPosition({ x: 0, y: 0 });
+                  }}
                   className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -6715,11 +6690,122 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 {mediaLightbox.index + 1} / {mediaLightbox.urls.length}
               </span>
             )}
+
+            {/* Zoom controls & actions */}
+            {!isVideoMediaUrl(mediaLightbox.urls[mediaLightbox.index]) && mediaScale > 1 && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
+                <button
+                  type="button"
+                  aria-label="Zoom out"
+                  onClick={() => setMediaScale((s) => Math.max(1, s - 0.5))}
+                  className="p-1.5 text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                >
+                  <ZoomOut className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Reset zoom"
+                  onClick={() => { setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
+                  className="px-2 py-1.5 text-xs font-medium text-white/80 bg-white/10 rounded-full hover:bg-white/20 cursor-pointer"
+                >
+                  100%
+                </button>
+                <button
+                  type="button"
+                  aria-label="Zoom in"
+                  onClick={() => setMediaScale((s) => Math.min(4, s + 0.5))}
+                  className="p-1.5 text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                >
+                  <ZoomIn className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Share & Save actions */}
+            <div className="absolute bottom-16 right-4 z-20 flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Share"
+                onClick={async () => {
+                  const url = mediaLightbox.urls[mediaLightbox.index];
+                  if (navigator.share) {
+                    await navigator.share({ title: 'Media', url });
+                  } else {
+                    await navigator.clipboard.writeText(url);
+                    triggerPinnedToast('Link copied');
+                  }
+                }}
+                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Download"
+                onClick={() => {
+                  const url = mediaLightbox.urls[mediaLightbox.index];
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `media-${Date.now()}`;
+                  a.rel = 'noopener';
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  triggerPinnedToast('Download started');
+                }}
+                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+              >
+                <Download className="h-5 w-5" />
+              </button>
+            </div>
           </div>,
           document.body,
         )}
         {/* Mini App overlay (Phase B7) — opens on top of the chat when a `web_app` button is pressed. */}
-        {openMiniApp && (
+        {/* Text Selection Context Menu */}
+      {textSelection && (
+        <div
+          className="fixed inset-0 z-[80]"
+          onClick={closeTextSelection}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="fixed z-[85] bg-[#181922] border border-white/10 rounded-xl p-2 shadow-[var(--shadow-2)] animate-in zoom-in-95 fade-in duration-150"
+            style={{
+              top: textSelection.position.y - 60,
+              left: textSelection.position.x,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(textSelection.text);
+                closeTextSelection();
+                triggerPinnedToast('Copied');
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg cursor-pointer"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copy</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                closeTextSelection();
+                // Future: Add translate functionality
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg cursor-pointer"
+            >
+              <Languages className="w-4 h-4" />
+              <span>Translate</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mini App overlay (Phase B7) — opens on top of the chat when a `web_app` button is pressed. */}
+      {openMiniApp && (
           <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0c10]/95 backdrop-blur-sm">
             <MiniAppIframe
               botId={openMiniApp.botId}

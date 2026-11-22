@@ -8,10 +8,10 @@ interface NovaCardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const VARIANT_CONFIG: Record<string, string> = {
-  default: 'bg-[#181921] border border-white/5',
-  elevated: 'bg-[#181921] border border-white/5 shadow-lg shadow-black/40',
-  outline: 'bg-transparent border border-white/10',
-  accent: 'bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/20',
+  default: 'bg-[var(--bg-surface)] border border-[var(--border)]',
+  elevated: 'bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-2)]',
+  outline: 'bg-transparent border border-[var(--border-strong)]',
+  accent: 'bg-[var(--accent-soft)] border border-[var(--accent)]',
 };
 
 const PADDING_CONFIG: Record<string, string> = {
@@ -27,7 +27,7 @@ export const NovaCard = forwardRef<HTMLDivElement, NovaCardProps>(
   ({ variant = 'default', padding = 'md', hover = false, className, children, ...props }, ref) => {
     const variantClasses = VARIANT_CONFIG[variant];
     const paddingClasses = PADDING_CONFIG[padding];
-    const hoverClasses = hover ? 'hover:border-white/10 hover:bg-[#20222a]' : '';
+    const hoverClasses = hover ? 'hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)]' : '';
 
     return (
       <div

@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes, type ReactNode, useMemo } from 'react';
 import { ChevronRight, Download, Play, FileText, Image as ImageIcon, Link2, X, Reply, Share2 } from 'lucide-react';
-import { NovaAvatar } from './NovaAvatar';
+import { Avatar } from './Avatar';
 import { NovaBadge } from './NovaBadge';
 import { NovaReactionChips } from './NovaReactionChips';
 import { LazyMedia } from '../../components/LazyMedia';
@@ -244,7 +244,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
               className="absolute inset-0 flex items-center justify-center"
               aria-label="Play video"
             >
-              <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white transition-transform hover:scale-110">
+              <div className="w-16 h-16 rounded-full bg-[var(--text-primary)]/10 backdrop-blur-sm flex items-center justify-center text-[var(--text-primary)] transition-transform hover:scale-110">
                 <Play className="w-6 h-6 ml-1" aria-hidden="true" />
               </div>
             </button>
@@ -326,9 +326,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         {...props}
       >
         {showAvatar && !grouped && (
-          <NovaAvatar
+          <Avatar
             src={senderAvatar}
-            alt={senderName}
             name={senderName}
             size="m"
             onClick={onAvatarClick}

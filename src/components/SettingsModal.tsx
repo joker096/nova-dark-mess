@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2 } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2, Globe, UserRound, Users, Phone, Clock, ShieldCheck, MessageSquare, VolumeX, Star } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -22,6 +22,14 @@ import {
 } from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
 import {
+  getSocialPrivacy,
+  setSocialPrivacy,
+  setContactBlocked,
+  getBlockedContactsWithProfiles,
+  type SocialPrivacySettings,
+  type PrivacyScope,
+} from '../lib/social/socialPrivacy';
+import {
   clearLocalAdPrefs,
   loadAdPreferences,
   restoreHiddenAd,
@@ -29,6 +37,19 @@ import {
   type LocalAdPreferences,
 } from '../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
+import {
+  getNotificationPrefs,
+  setNotificationPref,
+  setNotificationException,
+  setNotificationSound,
+  muteContact,
+  getMutedContacts,
+  setPriorityContact,
+  getPriorityContacts,
+  type NotificationPrefs,
+  type NotificationLevel,
+  type MuteDurationKey,
+} from '../lib/notifications/notificationPrefs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
@@ -63,6 +84,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenAnalytics?: () => void;
+  onOpenSites?: () => void;
   /** Bot session for Settings → Bots management (Phase B3). */
   getBotSession?: () => BotSession;
   /** Pending bot install from deep link (Phase B3). */
@@ -173,10 +195,71 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
   </button>
 );
 
+const PrivacyScopeSelector: React.FC<{ value: PrivacyScope; onChange: (v: PrivacyScope) => void }> = ({
+  value,
+  onChange,
+}) => {
+  const scopes: { value: PrivacyScope; label: string }[] = [
+    { value: 'everyone', label: 'Everyone' },
+    { value: 'contacts', label: 'My Contacts' },
+    { value: 'nobody', label: 'Nobody' },
+  ];
+
+  return (
+    <div className="flex items-center gap-1">
+      {scopes.map((s) => (
+        <button
+          key={s.value}
+          type="button"
+          onClick={() => onChange(s.value)}
+          className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+            value === s.value
+              ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm'
+              : 'bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white'
+          }`}
+        >
+          {s.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const NotificationLevelSelector: React.FC<{ value: NotificationLevel; onChange: (v: NotificationLevel) => void }> = ({
+  value,
+  onChange,
+}) => {
+  const levels: { value: NotificationLevel; label: string }[] = [
+    { value: 'all', label: 'All Messages' },
+    { value: 'mentions', label: 'Mentions Only' },
+    { value: 'none', label: 'None' },
+  ];
+
+  return (
+    <div className="flex items-center gap-1">
+      {levels.map((l) => (
+        <button
+          key={l.value}
+          type="button"
+          onClick={() => onChange(l.value)}
+          className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+            value === l.value
+              ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm'
+              : 'bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white'
+          }`}
+        >
+          {l.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   onOpenAnalytics,
+  onOpenSites,
   getBotSession,
   pendingBotInstall,
   onBotInstallHandled,
@@ -229,6 +312,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [cloudUrl, setCloudUrl] = useState('');
   const [cloudToken, setCloudToken] = useState('');
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
+  const [socialPrivacy, setSocialPrivacyState] = useState<SocialPrivacySettings>(() => getSocialPrivacy());
+  const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>(() => getNotificationPrefs());
   const [torStatus, setTorStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [newRelayUrl, setNewRelayUrl] = useState('');
   const [newRelayOperator, setNewRelayOperator] = useState('');
@@ -248,6 +333,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setJoinOutboxCount(loadJoinOutbox().length);
     setAdPrefs(loadAdPreferences());
     setAdPrefsMsg(null);
+    setSocialPrivacyState(getSocialPrivacy());
+    setNotificationPrefsState(getNotificationPrefs());
   }, [isOpen]);
 
   const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
@@ -271,6 +358,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [aboutMsg, _setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
+  const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
 
   // Google Drive backup state
   const [gdriveConnected, setGdriveConnected] = useState(false);
@@ -1305,7 +1393,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             <button
-              onClick={checkout}
+              onClick={async () => {
+                const result = await checkout();
+                if (!result.ok && result.error) {
+                  // Show error via toast or inline
+                  alert(result.error);
+                }
+              }}
               className={`w-full py-2.5 px-4 rounded-xl border transition cursor-pointer active:scale-95 flex items-center justify-center gap-2 shadow-md ${
                 premium
                   ? 'bg-[var(--nova-accent-color)] text-white border-[var(--nova-accent-color)] shadow-lg shadow-[var(--nova-accent-color)]/25'
@@ -1384,6 +1478,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onToggle={() => updatePref('previewMessages', !prefs.previewMessages)}
           />
 
+          {/* Granular Notification Settings (Telegram-style) */}
+          <SectionHeader icon={<Bell className="w-3.5 h-3.5" />} title={t('settings.notificationSettings')} />
+          <div className="px-1 pb-2 space-y-2">
+            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              {t('settings.notificationSettingsDesc')}
+            </p>
+
+            {/* Per chat type defaults */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-white/70">{t('settings.defaultNotifications')}</p>
+              {[
+                { key: 'privateChats', label: t('settings.privateChats'), icon: <MessageSquare className="w-3.5 h-3.5" /> },
+                { key: 'groups', label: t('settings.groups'), icon: <Users className="w-3.5 h-3.5" /> },
+                { key: 'channels', label: t('settings.channels'), icon: <Megaphone className="w-3.5 h-3.5" /> },
+                { key: 'bots', label: t('settings.bots'), icon: <Bot className="w-3.5 h-3.5" /> },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
+                      {item.icon}
+                    </div>
+                    <span className="text-[13px] text-white/90 group-hover:text-white transition">{item.label}</span>
+                  </div>
+                  <NotificationLevelSelector
+                    value={notificationPrefs[item.key as keyof NotificationPrefs] as NotificationLevel}
+                    onChange={(v) => {
+                      setNotificationPref(item.key as keyof NotificationPrefs, v);
+                      setNotificationPrefsState(getNotificationPrefs());
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Muted Contacts */}
+            <div className="pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between py-2 px-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400">
+                    <VolumeX className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[13px] text-white/90">{t('settings.mutedContacts')}</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+              </div>
+            </div>
+
+            {/* Priority Contacts */}
+            <div className="pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between py-2 px-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
+                    <Star className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[13px] text-white/90">{t('settings.priorityContacts')}</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+              </div>
+            </div>
+          </div>
+
           <SectionHeader icon={<Lock className="w-3.5 h-3.5" />} title={t('settings.privacy')} />
           <ToggleRow
             label={t('settings.metadataMinimization')}
@@ -1400,6 +1555,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {t('settings.webrtcRelayOnlyHint')}
             </p>
           )}
+
+          {/* Social Privacy (Telegram-style) */}
+          <SectionHeader icon={<ShieldCheck className="w-3.5 h-3.5" />} title={t('settings.socialPrivacy')} />
+          <div className="px-1 pb-2 space-y-2">
+            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              {t('settings.socialPrivacyDesc')}
+            </p>
+            {[
+              { key: 'lastSeen', label: t('settings.lastSeen'), icon: <Clock className="w-3.5 h-3.5" /> },
+              { key: 'profilePhoto', label: t('settings.profilePhoto'), icon: <UserRound className="w-3.5 h-3.5" /> },
+              { key: 'calls', label: t('settings.calls'), icon: <Phone className="w-3.5 h-3.5" /> },
+              { key: 'groupsAndChannels', label: t('settings.groupsAndChannels'), icon: <Users className="w-3.5 h-3.5" /> },
+              { key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-3.5 h-3.5" /> },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
+                    {item.icon}
+                  </div>
+                  <span className="text-[13px] text-white/90 group-hover:text-white transition">{item.label}</span>
+                </div>
+                <PrivacyScopeSelector
+                  value={socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope}
+                  onChange={(v) => {
+                    setSocialPrivacy(item.key as keyof SocialPrivacySettings, v);
+                    setSocialPrivacyState(getSocialPrivacy());
+                  }}
+                />
+              </div>
+            ))}
+            <div className="pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setBlockedUsersOpen(true)}
+                className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400">
+                    <Ban className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[13px] text-white/90 hover:text-white transition">{t('settings.blockedUsers')}</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+              </button>
+            </div>
+          </div>
 
           <SectionHeader
             icon={<ShieldAlert className="w-3.5 h-3.5" />}
@@ -2124,6 +2325,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
                 <div className="space-y-1 px-1">
+                  {/* Passphrase input for Google Drive backup */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-medium text-white/50">Passphrase (min 8 chars)</label>
+                    <input
+                      type="password"
+                      value={exportPassphrase}
+                      onChange={(e) => setExportPassphrase(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                      placeholder="••••••••"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={handleGDriveBackup}
@@ -2154,7 +2366,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="min-w-0">
                               <span className="truncate block text-white/80">{backup.name}</span>
                               <span className="text-[10px] text-white/40">
-                                {new Date(backup.createdTime).toLocaleDateString()} • {Math.round(backup.size / 1024)} KB
+                                {new Date(backup.createdAt).toLocaleDateString()} • {Math.round(backup.size / 1024)} KB
                               </span>
                             </div>
                           </div>
@@ -2292,6 +2504,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {analyticsActiveChats} · {t('analytics.activeChats')}
                 </span>
               </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+          </button>
+
+          <SectionHeader icon={<Globe className="w-3.5 h-3.5" />} title={t('sites.title')} />
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenSites?.();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+          >
+            <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+              <Globe className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-white/90">{t('sites.manageWidgets')}</p>
+              <p className="text-[10.5px] text-[#8c919d] truncate">{t('sites.manageWidgetsDesc')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
           </button>
@@ -2571,6 +2802,75 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       {/* Moderation / appeals */}
       {moderationOpen && <SanctionScreen onClose={() => setModerationOpen(false)} />}
+
+      {/* Blocked Users */}
+      {blockedUsersOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
+              <h3 className="font-bold text-sm text-white">{t('settings.blockedUsers')}</h3>
+              <button
+                onClick={() => setBlockedUsersOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2 max-h-[50vh] overflow-y-auto">
+              {(() => {
+                const blocked = getBlockedContactsWithProfiles();
+                if (blocked.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-8 text-[#8c919d] text-[11px]">
+                      {t('settings.noBlockedUsers')}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-1.5">
+                    {blocked.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-white/[0.05] flex items-center justify-center shrink-0">
+                            {contact.avatar ? (
+                              <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-xs font-bold text-[var(--nova-accent-color)]">
+                                {contact.name.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-semibold text-white truncate">{contact.name}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContactBlocked(contact.id, false);
+                            setSocialPrivacyState(getSocialPrivacy());
+                            showToast(t('settings.unblockedUser', { name: contact.name }));
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                        >
+                          {t('settings.unblock')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Terms / Privacy */}
       {legalDoc && <LegalModal docId={legalDoc} onClose={() => setLegalDoc(null)} />}

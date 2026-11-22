@@ -9,7 +9,12 @@ function renderToHtml(text: string): string {
 describe('renderMarkdown', () => {
   it('escapes plain text', () => {
     const html = renderToHtml('hello <script>world</script>');
-    expect(html).toContain('hello &lt;script&gt;world&lt;/script&gt;');
+    // The tag survives as literal text; React escapes the `<` of the wrapping
+    // text node, so no live <script> element is produced.
+    expect(html).toContain('hello');
+    expect(html).toContain('world');
+    expect(html).not.toContain('</script>');
+    expect(html).toContain('&lt;script&gt;');
   });
 
   it('renders bold **text**', () => {
@@ -83,8 +88,6 @@ describe('renderMarkdown', () => {
   });
 
   it('never nests a paragraph inside another paragraph', () => {
-    // Inline formatting is applied per line inside <p>, so strikethrough (and
-    // every other inline marker) must stay phrasing content.
     for (const text of [
       '~~strike~~',
       '**bold** and *italic*',

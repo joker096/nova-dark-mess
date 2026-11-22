@@ -10,13 +10,13 @@ interface NovaInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const BASE_INPUT =
-  'w-full bg-transparent text-white placeholder-white/35 focus:outline-none py-1 min-w-0';
+  'w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none py-1 min-w-0';
 
 const BASE_WRAPPER =
   'flex flex-col gap-1.5';
 
 const BASE_FIELD =
-  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--nova-accent-color,#ff4e18)]/35 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 focus-within:bg-[color-mix(in_srgb,var(--nova-accent-color,#ff4e18)_5%,transparent)]';
+  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-[border-color,background-color] duration-150 hover:border-[var(--focus-ring)]/35 focus-within:border-[var(--focus-ring)]/60 focus-within:bg-[var(--accent-soft)]/20';
 
 export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
   ({
@@ -35,13 +35,13 @@ export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-medium text-white/80"
+            className="text-xs font-medium text-[var(--text-secondary)]"
           >
             {label}
           </label>
         )}
         <div
-          className={`${BASE_FIELD} ${error ? 'border-red-500/50 focus-within:border-red-500/60' : 'border-white/10'} ${className ?? ''}`.trim()}
+          className={`${BASE_FIELD} ${error ? 'border-[var(--danger)] focus-within:border-[var(--danger)]/70' : 'border-[var(--border)]'} ${className ?? ''}`.trim()}
         >
           <input
             ref={ref}
@@ -56,12 +56,12 @@ export const NovaInput = forwardRef<HTMLInputElement, NovaInputProps>(
           />
         </div>
         {error && (
-          <span id={`${inputId}-error`} className="text-xs text-red-400">
+          <span id={`${inputId}-error`} className="text-xs text-[var(--danger)]">
             {error}
           </span>
         )}
         {helperText && !error && (
-          <span id={`${inputId}-helper`} className="text-xs text-white/50">
+          <span id={`${inputId}-helper`} className="text-xs text-[var(--text-tertiary)]">
             {helperText}
           </span>
         )}

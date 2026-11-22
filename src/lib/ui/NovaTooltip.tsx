@@ -69,11 +69,11 @@ export function NovaTooltip({ label, shortcut, delay = 400, children }: NovaTool
         <span
           id={tooltipId}
           role="tooltip"
-          className="pointer-events-none absolute left-1/2 top-full z-[60] mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#1c1d27] px-2 py-1 text-[11px] font-medium text-white shadow-lg shadow-black/60 border border-white/10 animate-in fade-in duration-100"
+          className="pointer-events-none absolute left-1/2 top-full z-[60] mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--bg-surface)] px-2 py-1 text-[11px] font-medium text-[var(--text-primary)] shadow-[var(--shadow-2)] border border-[var(--border-strong)] animate-in fade-in duration-100"
         >
           {label}
           {shortcut && (
-            <span className="ml-1.5 text-white/50">{formatShortcut(shortcut, isApple)}</span>
+            <span className="ml-1.5 text-[var(--text-secondary)]">{formatShortcut(shortcut, isApple)}</span>
           )}
         </span>
       )}

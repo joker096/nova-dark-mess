@@ -15,7 +15,7 @@ import {
   NovaToggle,
   NovaCard,
   NovaModal,
-  NovaAvatar,
+  Avatar,
   NovaSelectableButton,
   NovaColorChip,
   NovaNavButton,
@@ -113,15 +113,15 @@ export const UIShowcase = () => {
         </div>
       </section>
 
-      {/* NovaAvatar */}
+      {/* Avatar */}
       <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaAvatar</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Avatar</h2>
         <div className="flex items-center gap-4">
-          <NovaAvatar name="Katie Rogers" size="xl" status="online" showStatus />
-          <NovaAvatar name="Kurt Cobain" size="lg" status="away" showStatus />
-          <NovaAvatar name="Offline User" size="md" status="offline" showStatus />
-          <NovaAvatar name="Single" size="sm" />
-          <NovaAvatar size="md" />
+          <Avatar name="Katie Rogers" size="xl" status="online" />
+          <Avatar name="Kurt Cobain" size="l" status="away" />
+          <Avatar name="Offline User" size="m" status="offline" />
+          <Avatar name="Single" size="sm" />
+          <Avatar size="m" />
         </div>
         <div className="mt-4 text-xs text-[#6b7280]">
           <div className="flex items-center gap-2 mb-1">

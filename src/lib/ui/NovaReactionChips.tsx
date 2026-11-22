@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { NovaAvatar } from './NovaAvatar';
+import { Avatar } from './Avatar';
 import { NovaBadge } from './NovaBadge';
 
 interface Reaction {
@@ -63,7 +63,7 @@ export function NovaReactionChips({
             .filter(r => r.fromMe)
             .slice(0, 3)
             .map((reaction, index) => (
-              <NovaAvatar
+              <Avatar
                 key={index}
                 name={reaction.emoji}
                 size={avatarSize}

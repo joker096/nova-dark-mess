@@ -98,15 +98,15 @@ function ToastCard({
 }) {
   const tone =
     toast.tone === 'danger'
-      ? 'border-red-500/30'
+      ? 'border-[var(--danger)]/30'
       : toast.tone === 'success'
-        ? 'border-emerald-500/30'
-        : 'border-white/10';
+        ? 'border-[var(--success)]/30'
+        : 'border-[var(--border)]';
 
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border ${tone} bg-[#141520]/96 px-3.5 py-2.5 text-[13px] text-white shadow-2xl shadow-black/70 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150`}
+      className={`pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border ${tone} bg-[var(--bg-surface)]/[0.96] px-3.5 py-2.5 text-[13px] text-[var(--text-primary)] shadow-[var(--shadow-2)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150`}
     >
       <span className="flex-1 min-w-0 break-words">{toast.message}</span>
       {toast.undo && (
@@ -116,7 +116,7 @@ function ToastCard({
             onUndo(toast.id);
             toast.undo!.onUndo();
           }}
-          className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)] hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] cursor-pointer"
+          className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] cursor-pointer"
         >
           {toast.undo.label}
         </button>
@@ -125,7 +125,7 @@ function ToastCard({
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Dismiss notification"
-        className="shrink-0 rounded-full p-1 text-white/50 hover:text-white hover:bg-white/[0.08] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+        className="shrink-0 rounded-full p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
       >
         <X className="w-3.5 h-3.5" />
       </button>

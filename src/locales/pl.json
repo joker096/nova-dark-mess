@@ -195,6 +195,11 @@
     "nameLabel": "Wybierz pseudonim",
     "namePlaceholder": "np. Mira",
     "nicknameHint": "Pseudonimy nie są unikalne. Weryfikuj tożsamość kontaktu za pomocą jego identyfikatora kryptograficznego.",
+    "shortNicknameTitle": "Krótki pseudonim",
+    "shortNicknameDesc": "Pseudonimy krótsze niż 5 znaków to funkcja premium. Możesz kupić tę krótką nazwę jednorazowo.",
+    "payNow": "Zapłać $50",
+    "processing": "Przetwarzanie...",
+    "chooseDifferentName": "Wybierz inną nazwę",
     "continue": "Kontynuuj",
     "back": "Powrót",
     "identityTitle": "Twoje zdanie dotyczące odzyskiwania",
@@ -883,8 +888,9 @@
     "idOnly": "Tylko dowód osobisty",
     "idOnlyDesc": "Udostępniany jest tylko identyfikator kontaktu. Nie są ujawniane żadne dane telefoniczne, e-mailowe ani inne dane osobowe.",
     "contactId": "Identyfikator kontaktu",
+    "appLink": "Link do aplikacji",
     "consent": "Zgadzam się na udostępnianie wyłącznie tego identyfikatora kontaktu",
-    "share": "Udostępnij identyfikator"
+    "share": "Udostępnij"
   },
   "stickers": {
     "title": "Naklejki",
@@ -1047,6 +1053,8 @@
     "subscribe": "Subskrybuj",
     "subscribed": "Zasubskrybowano",
     "unsubscribe": "Zrezygnuj z subskrypcji",
+    "enableNotifications": "Włącz powiadomienia",
+    "disableNotifications": "Wyłącz powiadomienia",
     "channelInfo": "Informacje o kanale",
     "hideSubscriberCount": "Ukryj liczbę subskrybentów",
     "showSubscriberCount": "Pokaż liczbę subskrybentów",

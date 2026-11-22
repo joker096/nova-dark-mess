@@ -95,26 +95,26 @@ export function NovaCalendar({
 
   return (
     <div
-      className={`rounded-2xl border border-white/10 bg-[#101118] p-3 ${className ?? ''}`.trim()}
+      className={`rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-surface)] p-3 ${className ?? ''}`.trim()}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => shiftMonth(-1)}
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white active:scale-95"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-surface-2)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] active:scale-95"
           aria-label={t('common.previous')}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/85">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-secondary)]">
             {monthLabel}
           </span>
           <button
             type="button"
             onClick={selectToday}
-            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold text-white/60 transition hover:border-[var(--nova-accent-color)]/40 hover:text-white"
+            className="rounded-full border border-[var(--border)] bg-[var(--bg-surface-2)] px-2 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)] transition hover:border-[var(--nova-accent-color)]/40 hover:text-[var(--nova-accent-color)]"
           >
             {t('common.today')}
           </button>
@@ -123,7 +123,7 @@ export function NovaCalendar({
         <button
           type="button"
           onClick={() => shiftMonth(1)}
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white active:scale-95"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-surface-2)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] active:scale-95"
           aria-label={t('common.next')}
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -134,7 +134,7 @@ export function NovaCalendar({
         {weekdayLabels.map((label) => (
           <span
             key={label}
-            className="text-center text-[9px] font-semibold uppercase tracking-wide text-white/30"
+            className="text-center text-[9px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]"
           >
             {label}
           </span>
@@ -162,12 +162,12 @@ export function NovaCalendar({
               aria-pressed={isSelected}
               className={`relative flex h-8 items-center justify-center rounded-lg text-[11px] font-semibold transition ${
                 isSelected
-                  ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/25'
+                  ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-md shadow-[var(--nova-accent-color)]/25'
                   : isDisabled
-                    ? 'cursor-not-allowed text-white/15'
+                    ? 'cursor-not-allowed text-[var(--text-disabled)]'
                     : isCurrentMonth
-                      ? 'text-white/75 hover:bg-white/5 hover:text-white'
-                      : 'text-white/25 hover:bg-white/5'
+                      ? 'text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)] hover:text-[var(--text-primary)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-2)]'
               } ${isToday && !isSelected ? 'ring-1 ring-inset ring-[var(--nova-accent-color)]/60' : ''}`}
             >
               {date.getDate()}

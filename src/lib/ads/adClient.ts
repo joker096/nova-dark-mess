@@ -6,6 +6,7 @@
  * All interaction (click, dismiss, block) stays local.
  */
 import type { AdCampaign } from './types';
+import { cachedFetch } from '../../lib/api';
 
 const AD_SERVER_URL = (import.meta.env.VITE_AD_SERVER_URL || 'http://localhost:8082').replace(/\/+$/, '');
 
@@ -50,20 +51,28 @@ function mapAd(serverAd: AdServerAd): AdCampaign {
 /**
  * Fetch an ad creative for a channel. Returns null if no ad is available
  * (204 No Content) or the ad server is unreachable.
+ * Results are cached for 60 seconds with stale-while-revalidate.
  */
 export async function fetchAd(channelId: string): Promise<AdCampaign | null> {
-  try {
-    const res = await fetch(`${AD_SERVER_URL}/v1/ads?channel_id=${encodeURIComponent(channelId)}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (res.status === 204) return null; // no ad available
-    if (!res.ok) return null;
-    const data = (await res.json()) as AdServerResponse;
-    return data.ad ? mapAd(data.ad) : null;
-  } catch {
-    return null;
-  }
+  const key = `ad:${channelId}`;
+  return cachedFetch<AdCampaign | null>(
+    key,
+    async () => {
+      try {
+        const res = await fetch(`${AD_SERVER_URL}/v1/ads?channel_id=${encodeURIComponent(channelId)}`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (res.status === 204) return null; // no ad available
+        if (!res.ok) return null;
+        const data = (await res.json()) as AdServerResponse;
+        return data.ad ? mapAd(data.ad) : null;
+      } catch {
+        return null;
+      }
+    },
+    { ttl: 60_000, staleWhileRevalidate: true }
+  );
 }
 
 /**

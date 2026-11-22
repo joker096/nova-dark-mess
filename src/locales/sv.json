@@ -195,6 +195,11 @@
     "nameLabel": "Välj ett smeknamn",
     "namePlaceholder": "t.ex. Mira",
     "nicknameHint": "Smeknamn är inte unika. Kontrollera kontaktens identitet med dess kryptografiska ID.",
+    "shortNicknameTitle": "Kort smeknamn",
+    "shortNicknameDesc": "Smeknamn med färre än 5 tecken är en premiumfunktion. Du kan köpa detta korta namn för en engångsavgift.",
+    "payNow": "Betala $50",
+    "processing": "Bearbetar...",
+    "chooseDifferentName": "Välj ett annat namn",
     "continue": "Fortsätt",
     "back": "Tillbaka",
     "identityTitle": "Din återhämtningsfras",
@@ -883,8 +888,9 @@
     "idOnly": "Endast ID",
     "idOnlyDesc": "Endast kontakt-ID delas. Ingen telefon, e-post eller annan personlig information avslöjas.",
     "contactId": "Kontakt-ID",
+    "appLink": "App-länk",
     "consent": "Jag samtycker till att endast dela detta kontakt-ID",
-    "share": "Dela ID"
+    "share": "Dela"
   },
   "stickers": {
     "title": "Klistermärken",
@@ -1047,6 +1053,8 @@
     "subscribe": "Prenumerera",
     "subscribed": "Prenumererade",
     "unsubscribe": "Avsluta prenumeration",
+    "enableNotifications": "Aktivera notifieringar",
+    "disableNotifications": "Inaktivera notifieringar",
     "channelInfo": "Kanalinformation",
     "hideSubscriberCount": "Dölj antalet prenumeranter",
     "showSubscriberCount": "Visa antalet prenumeranter",

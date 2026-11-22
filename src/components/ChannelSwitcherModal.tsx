@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
-import { ChannelAvatar } from './ChannelAvatar';
+import { Avatar } from '../lib/ui';
 import type { ChannelInfo } from '../types/messenger';
 
 interface ChannelSwitcherModalProps {
@@ -161,7 +161,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                       : 'border-white/5 bg-[#171820] hover:border-white/10 hover:bg-[#1e1f27]'
                 } ${selecting && !channel.isOwned ? 'opacity-45' : ''}`}
               >
-                <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-xs font-semibold text-white">

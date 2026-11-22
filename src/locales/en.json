@@ -265,6 +265,8 @@
     "subscribe": "Subscribe",
     "subscribed": "Subscribed",
     "unsubscribe": "Unsubscribe",
+    "enableNotifications": "Enable notifications",
+    "disableNotifications": "Disable notifications",
     "channelInfo": "Channel info",
     "hideSubscriberCount": "Hide subscriber count",
     "showSubscriberCount": "Show subscriber count",
@@ -387,8 +389,9 @@
     "idOnly": "ID only",
     "idOnlyDesc": "Only the contact ID is shared. No phone, email, or other personal data is revealed.",
     "contactId": "Contact ID",
+    "appLink": "App Link",
     "consent": "I agree to share only this contact ID",
-    "share": "Share ID"
+    "share": "Share"
   },
   "analytics": {
     "title": "Analytics Dashboard",
@@ -1062,6 +1065,11 @@
     "nameLabel": "Choose a nickname",
     "namePlaceholder": "e.g. Mira",
     "nicknameHint": "Nicknames are not unique. Verify a contact's identity using their cryptographic ID.",
+    "shortNicknameTitle": "Short nickname",
+    "shortNicknameDesc": "Nicknames shorter than 5 characters are a premium feature. You can purchase this short name for a one-time fee.",
+    "payNow": "Pay $50",
+    "processing": "Processing...",
+    "chooseDifferentName": "Choose a different name",
     "continue": "Continue",
     "back": "Back",
     "identityTitle": "Your recovery phrase",
@@ -1228,6 +1236,8 @@
   },
   "sites": {
     "title": "Sites",
+    "manageWidgets": "Manage chat widgets",
+    "manageWidgetsDesc": "Create and configure embedded chat widgets for your websites.",
     "noSites": "No sites yet",
     "noSitesDesc": "Connect your first site to receive chat messages from visitors.",
     "connectSite": "Connect site",

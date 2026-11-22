@@ -386,14 +386,21 @@ export async function resumePremiumCheckout(): Promise<boolean> {
   return false;
 }
 
-export async function checkoutPremium(options: CheckoutOptions = {}): Promise<boolean> {
-  if (isPremium()) return true;
+export interface CheckoutResult {
+  ok: boolean;
+  error?: string;
+  orderId?: string;
+  url?: string;
+}
+
+export async function checkoutPremium(options: CheckoutOptions = {}): Promise<CheckoutResult> {
+  if (isPremium()) return { ok: true };
   const started = await startPremiumCheckout();
-  if (!started) return false;
+  if (!started) return { ok: false, error: 'checkout unavailable' };
   const opened = openPaymentUrl(started.url);
   if (!opened) {
     clearPendingOrder();
-    return false;
+    return { ok: false, error: 'payment window blocked' };
   }
   const result = await waitForPremiumOrder(started.orderId, {
     intervalMs: options.pollIntervalMs ?? 3000,
@@ -401,9 +408,10 @@ export async function checkoutPremium(options: CheckoutOptions = {}): Promise<bo
   });
   if (result === 'paid') {
     clearPendingOrder();
-    return true;
+    return { ok: true };
   }
-  return false;
+  if (result === 'error') clearPendingOrder();
+  return { ok: false, error: result === 'pending' ? 'waiting for payment' : 'checkout failed' };
 }
 
 export interface CheckoutResult {

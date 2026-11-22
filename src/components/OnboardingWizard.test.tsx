@@ -56,7 +56,8 @@ const answerPhraseCheck = () => {
 const createIdentity = () => {
   fireEvent.click(screen.getByText('onboarding.createOption'));
   fireEvent.change(screen.getByLabelText('onboarding.nameLabel'), {
-    target: { value: 'Mira' },
+    // Regular length: under 5 characters the wizard opens the paid short-name step.
+    target: { value: 'Mirai' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
   fireEvent.click(screen.getByRole('button', { name: 'onboarding.savedPhrase' }));
@@ -220,8 +221,10 @@ describe('OnboardingWizard', () => {
       expect(screen.getByTestId('onboarding-nickname')).toBeTruthy();
     });
 
+    // Short nicknames (< 5 chars) open the paid short-name step instead, so the
+    // restore flow uses a regular one.
     fireEvent.change(screen.getByLabelText('onboarding.nameLabel'), {
-      target: { value: 'Mira' },
+      target: { value: 'Mirai' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.continue' }));
     expect(screen.getByTestId('onboarding-security')).toBeTruthy();

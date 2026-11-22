@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { NovaAvatar } from './NovaAvatar';
+import { Avatar } from './Avatar';
 import { NovaBadge } from './NovaBadge';
 
 interface NovaListGroupProps extends HTMLAttributes<HTMLDivElement> {
@@ -57,27 +57,22 @@ export const NovaListRow = ({
   ref,
   ...props
 }: NovaListRowProps & { ref?: Ref<HTMLDivElement | HTMLButtonElement> }) => {
-  const Tag = onClick ? 'button' : 'div';
+  const rowClassName = `flex items-center gap-3 px-[var(--space-screen)] py-3.5 transition-colors ${
+    inset ? 'border-t border-[var(--border-divider)]' : 'first:border-t-0 border-t border-[var(--border-divider)]'
+  } ${
+    onClick
+      ? 'cursor-pointer active:bg-[var(--bg-field)]'
+      : ''
+  } ${destructive ? 'text-[var(--c-danger)]' : ''} ${active ? 'bg-[var(--bg-field)]' : ''} ${className ?? ''}`;
+  // `style` comes from the typed props; it must not be read back from the rest
+  // object, where only the attributes that were not destructured remain.
+  const rowStyle = {
+    ...(style as React.CSSProperties),
+    paddingLeft: inset ? 'calc(var(--space-screen) + 56px)' : 'var(--space-screen)',
+  } as React.CSSProperties;
 
-  return (
-    <Tag
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={ref as any}
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-      className={`flex items-center gap-3 px-[var(--space-screen)] py-3.5 transition-colors ${
-        inset ? 'border-t border-[var(--border-divider)]' : 'first:border-t-0 border-t border-[var(--border-divider)]'
-      } ${
-        onClick
-          ? 'cursor-pointer active:bg-[var(--bg-field)]'
-          : ''
-      } ${destructive ? 'text-[var(--c-danger)]' : ''} ${active ? 'bg-[var(--bg-field)]' : ''} ${className ?? ''}`}
-      style={{
-        ...(style as React.CSSProperties),
-        paddingLeft: inset ? 'calc(var(--space-screen) + 56px)' : 'var(--space-screen)',
-      } as React.CSSProperties}
-      {...props}
-    >
+  const content = (
+    <>
         {icon && (
           <div
             className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0"
@@ -112,9 +107,39 @@ export const NovaListRow = ({
         </div>
 
         {children}
-      </Tag>
+    </>
+  );
+
+  // Events are typed against <div>; spreading them onto <button> narrows the
+  // element type and fails. The interactive row therefore only takes the
+  // button-safe props, while the static row keeps the full div prop set.
+  if (onClick) {
+    return (
+      <button
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ref={ref as any}
+        type="button"
+        onClick={onClick}
+        className={rowClassName}
+        style={rowStyle}
+      >
+        {content}
+      </button>
     );
-  };
+  }
+
+  return (
+    <div
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ref={ref as any}
+      className={rowClassName}
+      style={rowStyle}
+      {...props}
+    >
+      {content}
+    </div>
+  );
+};
 
 NovaListRow.displayName = 'NovaListRow';
 

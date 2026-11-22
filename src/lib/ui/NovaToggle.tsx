@@ -46,21 +46,21 @@ export const NovaToggle = forwardRef<HTMLButtonElement, NovaToggleProps>(
         aria-checked={checked}
         aria-label={label}
         onClick={handleClick}
-        className={`w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className ?? ''}`.trim()}
+        className={`w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--bg-hover)] transition group cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className ?? ''}`.trim()}
         {...props}
       >
         {label && (
-          <span className="text-[13px] text-white/90 group-hover:text-white transition">
+          <span className="text-[13px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
             {label}
           </span>
         )}
         <span
           className={`relative ${trackSize} rounded-full transition-colors duration-200 flex items-center ${trackPadding} ${
-            checked ? 'bg-[var(--nova-accent-color,#ff4e18)]' : 'bg-white/10'
+            checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
           }`}
         >
           <span
-            className={`${thumbSize} rounded-full bg-white shadow-md transition-transform duration-200 ${
+            className={`${thumbSize} rounded-full bg-[var(--text-on-accent)] shadow-md transition-transform duration-200 ${
               checked ? 'translate-x-full' : 'translate-x-0'
             }`}
           />

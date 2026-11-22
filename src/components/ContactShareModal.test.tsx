@@ -12,8 +12,9 @@ vi.mock('../context/LanguageContext', () => ({
         'contact.idOnly': 'ID only',
         'contact.idOnlyDesc': 'Only the contact ID is shared.',
         'contact.contactId': 'Contact ID',
+        'contact.appLink': 'App Link',
         'contact.consent': 'I agree to share only this contact ID',
-        'contact.share': 'Share ID',
+        'contact.share': 'Share',
         'common.copy': 'Copy',
         'common.cancel': 'Cancel',
       };
@@ -41,6 +42,10 @@ beforeEach(() => {
     value: { writeText: vi.fn(async () => undefined) },
     configurable: true,
   });
+  Object.defineProperty(navigator, 'share', {
+    value: vi.fn(async () => undefined),
+    configurable: true,
+  });
 });
 
 afterEach(() => {
@@ -56,13 +61,19 @@ describe('ContactShareModal - privacy & consent', () => {
     expect(screen.queryByText(/@/)).toBeNull();
   });
 
+  it('renders app link (nova:// deep link)', () => {
+    renderModal();
+    expect(screen.getByText('App Link')).toBeInTheDocument();
+    expect(screen.getByText('nova://katierogers')).toBeInTheDocument();
+  });
+
   it('requires consent before sharing but always allows cancelling', () => {
     const onClose = vi.fn();
     renderModal({ onClose });
 
     const consent = screen.getByLabelText(/I agree to share only this contact ID/);
     expect(consent).not.toBeChecked();
-    expect(screen.getByRole('button', { name: /Share ID/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Share/ })).toBeDisabled();
 
     const cancel = screen.getByRole('button', { name: /Cancel/ });
     expect(cancel).not.toBeDisabled();
@@ -73,23 +84,27 @@ describe('ContactShareModal - privacy & consent', () => {
   it('enables sharing only after consent is given', () => {
     renderModal();
     const consent = screen.getByLabelText(/I agree to share only this contact ID/);
-    const shareBtn = screen.getByRole('button', { name: /Share ID/ });
+    const shareBtn = screen.getByRole('button', { name: /Share/ });
 
     fireEvent.click(consent);
     expect(consent).toBeChecked();
     expect(shareBtn).not.toBeDisabled();
   });
 
-  it('copies only the contact ID on share and notifies the parent', async () => {
+  it('shares the app link via native share API and notifies the parent', async () => {
     const onClose = vi.fn();
     const onShared = vi.fn();
     renderModal({ onClose, onShared });
 
     fireEvent.click(screen.getByLabelText(/I agree to share/));
-    fireEvent.click(screen.getByRole('button', { name: /Share ID/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('katie');
+      expect(navigator.share).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'nova://katierogers',
+        }),
+      );
       expect(onShared).toHaveBeenCalledWith('katie');
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -102,10 +117,26 @@ describe('ContactShareModal - privacy & consent', () => {
     const onShared = vi.fn();
     renderModal({ onShared });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    // Click the first copy button (for Contact ID)
+    const copyButtons = screen.getAllByRole('button', { name: 'Copy' });
+    fireEvent.click(copyButtons[0]);
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('katie');
+    });
+    expect(onShared).not.toHaveBeenCalled();
+  });
+
+  it('copies the app link from the inline copy button without consent', async () => {
+    const onShared = vi.fn();
+    renderModal({ onShared });
+
+    // Click the second copy button (for App Link)
+    const copyButtons = screen.getAllByRole('button', { name: 'Copy' });
+    fireEvent.click(copyButtons[1]);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('nova://katierogers');
     });
     expect(onShared).not.toHaveBeenCalled();
   });
@@ -118,15 +149,55 @@ describe('ContactShareModal - privacy & consent', () => {
     const onShared = vi.fn();
     renderModal({ onShared });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    // Click the first copy button (for Contact ID)
+    const copyButtons = screen.getAllByRole('button', { name: 'Copy' });
+    fireEvent.click(copyButtons[0]);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
+      expect(copyButtons[0]).toBeTruthy();
     });
 
     fireEvent.click(screen.getByLabelText(/I agree to share/));
-    fireEvent.click(screen.getByRole('button', { name: /Share ID/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
     await waitFor(() => {
       expect(onShared).toHaveBeenCalledWith('katie');
+    });
+  });
+
+  it('uses native share API when available', async () => {
+    const onClose = vi.fn();
+    const onShared = vi.fn();
+    renderModal({ onClose, onShared });
+
+    fireEvent.click(screen.getByLabelText(/I agree to share/));
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+
+    await waitFor(() => {
+      expect(navigator.share).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'nova://katierogers',
+        }),
+      );
+      expect(onShared).toHaveBeenCalledWith('katie');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('falls back to clipboard when native share is unavailable', async () => {
+    Object.defineProperty(navigator, 'share', {
+      value: vi.fn(async () => { throw new Error('Share cancelled'); }),
+      configurable: true,
+    });
+    const onClose = vi.fn();
+    const onShared = vi.fn();
+    renderModal({ onClose, onShared });
+
+    fireEvent.click(screen.getByLabelText(/I agree to share/));
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('nova://katierogers');
+      expect(onShared).toHaveBeenCalledWith('katie');
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 

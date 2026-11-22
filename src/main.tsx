@@ -3,11 +3,15 @@ import App from './App.tsx';
 import { LanguageProvider } from './context/LanguageContext';
 import { SecurityProvider } from './context/SecurityContext';
 import { NovaToastProvider } from './lib/ui';
+import { registerForPush, isPushSupported } from './lib/notifications/push';
+import { registerBackgroundFetch } from './lib/background/backgroundFetch';
+import { isTauri } from './lib/utils/platform';
+import { initAccessibility } from './lib/accessibility/a11y';
 import './index.css';
 import i18n, { loadLanguage } from './i18n';
 
-// Register service worker for offline caching
-if ('serviceWorker' in navigator) {
+// Register service worker for offline caching (web only)
+if ('serviceWorker' in navigator && !isTauri()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       // SW registration failed (e.g., offline), ignore
@@ -32,6 +36,28 @@ const bootstrap = async () => {
   void loadLanguage(i18n.language).catch(() => {
     /* locale load failure is non-fatal */
   });
+
+  // Initialize push notifications after first paint (non-blocking)
+  if (isPushSupported()) {
+    // Small delay to not block initial render
+    setTimeout(() => {
+      registerForPush().catch((err) => {
+        console.warn('[Push] Auto-registration failed:', err);
+      });
+    }, 2000);
+  }
+
+  // Initialize background fetch
+  if (isTauri() || 'BackgroundFetchManager' in window || 'periodicSync' in navigator.serviceWorker) {
+    setTimeout(() => {
+      registerBackgroundFetch().catch((err) => {
+        console.warn('[BackgroundFetch] Registration failed:', err);
+      });
+    }, 3000);
+  }
+
+  // Initialize accessibility (reduced motion, skip link, focus styles)
+  initAccessibility();
 
   createRoot(document.getElementById('root')!).render(
     <LanguageProvider>

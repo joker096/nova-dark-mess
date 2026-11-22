@@ -2,6 +2,7 @@ import { CURRENT_USER } from '../../data/mockMessengerData';
 
 export const ACCOUNT_STORAGE_KEY = 'nova_account_profile_v1';
 export const ACCOUNT_UPDATED_EVENT = 'nova-account-updated';
+export const SHORT_NICKNAME_PAID_KEY = 'nova_short_nickname_paid';
 
 export interface AccountProfile {
   version: 1;
@@ -19,12 +20,38 @@ function defaultAccount(): AccountProfile {
     version: 1,
     id: CURRENT_USER.id,
     displayName: 'Nova user',
-    nickname: '@nova',
+    // Paid-free by default: the placeholder must be saveable (short unpaid
+    // nicknames are reserved for the onboarding payment flow).
+    nickname: '@nova_user',
     phone: '',
     avatar: '',
     status: 'Online',
     createdAt: Date.now(),
   };
+}
+
+/** Shortest nickname (without the leading `@`) that needs no payment. */
+export const MIN_FREE_NICKNAME_LENGTH = 5;
+
+/** Error code thrown by `normalizeNickname` for a too-short, unpaid nickname. */
+export const SHORT_NICKNAME_REQUIRES_PAYMENT = 'SHORT_NICKNAME_REQUIRES_PAYMENT';
+
+export function isShortNicknamePaid(): boolean {
+  try {
+    return localStorage.getItem(SHORT_NICKNAME_PAID_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setShortNicknamePaid(paid: boolean): void {
+  try {
+    if (paid) {
+      localStorage.setItem(SHORT_NICKNAME_PAID_KEY, 'true');
+    } else {
+      localStorage.removeItem(SHORT_NICKNAME_PAID_KEY);
+    }
+  } catch { /* ignore */ }
 }
 
 export function normalizeNickname(value: string): string {
@@ -39,6 +66,10 @@ export function normalizeNickname(value: string): string {
 
   if (!cleaned || length > 32) {
     throw new Error('Choose a nickname with 1 to 32 characters.');
+  }
+
+  if (length < MIN_FREE_NICKNAME_LENGTH && !isShortNicknamePaid()) {
+    throw new Error(SHORT_NICKNAME_REQUIRES_PAYMENT);
   }
 
   return `@${cleaned}`;

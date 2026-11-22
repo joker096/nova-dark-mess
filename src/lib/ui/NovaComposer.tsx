@@ -154,7 +154,7 @@ export const NovaComposer = forwardRef<NovaComposerHandle, NovaComposerProps>(
               placeholder={placeholder}
               disabled={disabled}
               rows={1}
-              className="w-full bg-[var(--bg-field)] rounded-[var(--radius-field)] px-4 py-2.5 pr-12 text-[16px] leading-[24px] text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none resize-none transition-colors"
+              className="w-full bg-[var(--bg-field)] rounded-[var(--radius-field)] px-4 py-2.5 pr-12 text-[16px] leading-[24px] text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none focus-visible:ring-0 resize-none transition-colors"
               style={{
                 height: `${height}px`,
                 maxHeight: `${44 * maxLines}px`,

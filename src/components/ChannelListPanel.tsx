@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Radio, Search, Star, Trash2, Check, Lock } from 'lucide-react';
+import { Plus, Radio, Search, Star, Trash2, Check, Lock, ArrowLeft } from 'lucide-react';
 import type { ChannelDraft, ChannelInfo } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
-import { ChannelAvatar } from './ChannelAvatar';
+import { Avatar } from '../lib/ui';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { NovaBadge } from '../lib/ui';
 
@@ -13,6 +13,7 @@ interface ChannelListPanelProps {
   onCreateChannel?: (draft: ChannelDraft) => ChannelInfo | void;
   onTogglePopular?: (channelId: string) => void;
   onDeleteChannels?: (channelIds: string[]) => void;
+  onBack?: () => void;
 }
 
 export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
@@ -22,6 +23,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
   onCreateChannel,
   onTogglePopular,
   onDeleteChannels,
+  onBack,
 }) => {
   const { t, language } = useLanguage();
   const [createOpen, setCreateOpen] = useState(false);
@@ -123,8 +125,18 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#0b0c10] text-white select-none">
+    <div className="flex h-full flex-col bg-[#0b0c10] text-white select-none" data-theme-preserve="dark">
       <div className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-4">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#1e2029]/80 text-white/50 hover:bg-white/10 hover:text-white transition active:scale-95"
+            aria-label={t('common.back', 'Back')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        )}
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
           <Radio className="h-4 w-4" />
         </div>
@@ -201,7 +213,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                     : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'
                 }`}
               >
-                <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-semibold text-white">
                     {channel.name}
@@ -255,7 +267,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 const isActive = channel.id === activeChannelId;
                 return (
                   <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
-                    <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                    <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
@@ -279,7 +291,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
                   <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
-                    <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                    <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
@@ -288,7 +300,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                       <p className="truncate text-[10.5px] text-white/40">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
                       <div className="mt-1 flex items-center gap-2">
                         {previewTime && <span className="text-[9px] tabular-nums text-white/30">{previewTime}</span>}
-                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'neutral' : 'danger'} />}
+                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'muted' : 'danger'} />}
                       </div>
                     </div>
                     {isActive && <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--nova-accent-color)] shadow-sm shadow-[var(--nova-accent-color)]" />}
@@ -307,7 +319,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
                   <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-white/5 bg-[#14151b] hover:border-white/10 hover:bg-[#191a22]'}`}>
-                    <ChannelAvatar avatar={channel.avatar} name={channel.name} size="md" />
+                    <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-white">{channel.name}</span>
@@ -317,7 +329,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                       <p className="truncate text-[10.5px] text-white/40">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
                       <div className="mt-1 flex items-center gap-2">
                         {previewTime && <span className="text-[9px] tabular-nums text-white/30">{previewTime}</span>}
-                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'neutral' : 'danger'} />}
+                        {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'muted' : 'danger'} />}
                       </div>
                     </div>
                     {onTogglePopular && (

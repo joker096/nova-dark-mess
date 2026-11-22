@@ -32,8 +32,8 @@ describe('NovaNavButton', () => {
   it('applies inactive state styles', () => {
     render(<NovaNavButton label="Inactive">Inactive</NovaNavButton>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('text-white/50');
-    expect(btn.className).toContain('hover:text-white');
+    expect(btn.className).toContain('text-[var(--text-secondary)]');
+    expect(btn.className).toContain('hover:text-[var(--text-primary)]');
   });
 
   it('calls onClick handler', () => {

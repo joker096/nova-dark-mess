@@ -195,6 +195,11 @@
     "nameLabel": "Wähle einen Spitznamen",
     "namePlaceholder": "z. B. Mira",
     "nicknameHint": "Spitznamen sind nicht eindeutig. Prüfe die Kontaktidentität anhand der kryptografischen Kennung.",
+    "shortNicknameTitle": "Kurzer Spitzname",
+    "shortNicknameDesc": "Spitznamen mit weniger als 5 Zeichen sind ein Premium-Feature. Du kannst diesen kurzen Namen einmalig erwerben.",
+    "payNow": "50 $ bezahlen",
+    "processing": "Verarbeite...",
+    "chooseDifferentName": "Anderen Namen wählen",
     "continue": "Weiter",
     "back": "Zurück",
     "identityTitle": "Deine Wiederherstellungsphrase",
@@ -956,8 +961,9 @@
     "idOnly": "Nur ID",
     "idOnlyDesc": "Nur die Kontakt-ID wird geteilt. Keine Telefonnummer, E-Mail oder andere personenbezogene Daten werden offenbart.",
     "contactId": "Kontakt-ID",
+    "appLink": "App-Link",
     "consent": "Ich stimme zu, nur diese Kontakt-ID zu teilen",
-    "share": "ID teilen"
+    "share": "Teilen"
   },
   "location": {
     "shareTitle": "Standort teilen",
@@ -1055,6 +1061,8 @@
     "subscribe": "Abonnieren",
     "subscribed": "Abonniert",
     "unsubscribe": "Abbestellen",
+    "enableNotifications": "Benachrichtigungen aktivieren",
+    "disableNotifications": "Benachrichtigungen deaktivieren",
     "channelInfo": "Kanaldetails",
     "hideSubscriberCount": "Abonnentenzahl ausblenden",
     "showSubscriberCount": "Abonnentenzahl anzeigen",

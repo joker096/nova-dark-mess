@@ -195,6 +195,11 @@
     "nameLabel": "ニックネームを選択",
     "namePlaceholder": "例: ミラ",
     "nicknameHint": "ニックネームは一意ではありません。暗号IDで連絡先の本人性を確認してください。",
+    "shortNicknameTitle": "短いニックネーム",
+    "shortNicknameDesc": "5文字未満のニックネームはプレミアム機能です。この短い名前を一度限りの料金で購入できます。",
+    "payNow": "$50を支払う",
+    "processing": "処理中...",
+    "chooseDifferentName": "別の名前を選ぶ",
     "continue": "続ける",
     "back": "戻る",
     "identityTitle": "あなたの回復フレーズ",
@@ -883,8 +888,9 @@
     "idOnly": "IDのみ",
     "idOnlyDesc": "連絡先 ID のみが共有されます。電話、電子メール、その他の個人データは公開されません。",
     "contactId": "連絡先ID",
+    "appLink": "アプリへのリンク",
     "consent": "この連絡先 ID のみを共有することに同意します",
-    "share": "シェアID"
+    "share": "共有"
   },
   "stickers": {
     "title": "ステッカー",
@@ -1047,6 +1053,8 @@
     "subscribe": "購読する",
     "subscribed": "購読済み",
     "unsubscribe": "購読を解除する",
+    "enableNotifications": "通知を有効にする",
+    "disableNotifications": "通知を無効にする",
     "channelInfo": "チャンネル情報",
     "hideSubscriberCount": "チャンネル登録者数を隠す",
     "showSubscriberCount": "チャンネル登録者数を表示する",

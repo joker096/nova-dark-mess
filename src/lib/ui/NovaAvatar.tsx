@@ -117,11 +117,11 @@ export const NovaAvatar = forwardRef<HTMLDivElement, NovaAvatarProps>(
 
         {showStatus && status && status !== 'offline' && (
           <span
-            className="absolute bottom-0 right-0 rounded-full border-2 border-[var(--bg-screen)] flex items-center justify-center"
+            className="absolute bottom-0 right-0 rounded-full border-2 border-[var(--bg-surface)] flex items-center justify-center"
             style={{
               width: statusDotSize,
               height: statusDotSize,
-              backgroundColor: status === 'online' ? 'var(--c-online)' : 'var(--text-secondary)',
+              backgroundColor: status === 'online' ? 'var(--online)' : 'var(--text-secondary)',
             } as React.CSSProperties}
             aria-label={`Status: ${status}`}
           />

@@ -71,30 +71,30 @@ export const HandoffPrompt: React.FC<Props> = ({ handoff, onDone, onOpened }) =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-[#1a1a1a] p-5 text-white" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--bg-surface)] p-5 text-[var(--text-primary)]" role="dialog" aria-modal="true">
         <h2 className="mb-2 text-base font-semibold">Продолжить переписку</h2>
         {error ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : (
           <>
-            <p className="mb-4 text-sm text-white/70">
+            <p className="mb-4 text-sm text-[var(--text-secondary)]">
               {siteName ? `Чат с сайта «${siteName}»` : 'Проверяем ссылку…'}
             </p>
             <button
               type="button"
               disabled={busy || !siteName}
               onClick={handleOpen}
-              className="w-full rounded-xl bg-[#007aff] py-2.5 text-sm font-medium disabled:opacity-50"
+              className="w-full rounded-xl bg-[var(--nova-accent-color)] py-2.5 text-[var(--text-on-accent)] text-sm font-medium disabled:opacity-50"
             >
               {busy ? 'Открываем…' : 'Открыть в мессенджере'}
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={onDone}
-          className="mt-2 w-full rounded-xl py-2 text-sm text-white/60"
-        >
+          <button
+            type="button"
+            onClick={onDone}
+            className="mt-2 w-full rounded-xl py-2 text-sm text-[var(--text-tertiary)]"
+          >
           Отмена
         </button>
       </div>

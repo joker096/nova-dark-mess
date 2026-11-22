@@ -195,6 +195,11 @@
     "nameLabel": "Scegli un soprannome",
     "namePlaceholder": "es. Mira",
     "nicknameHint": "I soprannomi non sono univoci. Verifica l’identità del contatto tramite il suo ID crittografico.",
+    "shortNicknameTitle": "Soprannome breve",
+    "shortNicknameDesc": "I soprannomi con meno di 5 caratteri sono una funzionalità premium. Puoi acquistare questo nome breve con un pagamento una tantum.",
+    "payNow": "Paga $50",
+    "processing": "Elaborazione...",
+    "chooseDifferentName": "Scegli un altro nome",
     "continue": "Continua",
     "back": "Indietro",
     "identityTitle": "La tua frase di recupero",
@@ -883,8 +888,9 @@
     "idOnly": "Solo carta d'identità",
     "idOnlyDesc": "Viene condiviso solo l'ID contatto. Nessun telefono, email o altri dati personali vengono rivelati.",
     "contactId": "Contatto identificativo",
+    "appLink": "Link all'app",
     "consent": "Accetto di condividere solo questo ID contatto",
-    "share": "Condividi l'ID"
+    "share": "Condividi"
   },
   "stickers": {
     "title": "Adesivi",
@@ -1047,6 +1053,8 @@
     "subscribe": "Iscriviti",
     "subscribed": "Sottoscritto",
     "unsubscribe": "Annulla l'iscrizione",
+    "enableNotifications": "Attiva le notifiche",
+    "disableNotifications": "Disattiva le notifiche",
     "channelInfo": "Informazioni sul canale",
     "hideSubscriberCount": "Nascondi il conteggio degli iscritti",
     "showSubscriberCount": "Mostra il conteggio degli iscritti",

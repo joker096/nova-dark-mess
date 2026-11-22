@@ -43,7 +43,7 @@ describe('NovaAvatar', () => {
     render(<NovaAvatar name="K" status="online" showStatus />);
     const statusDot = screen.getByLabelText('Status: online');
     expect(statusDot).toBeInTheDocument();
-    expect(statusDot).toHaveStyle({ backgroundColor: 'var(--c-online)' });
+    expect(statusDot).toHaveStyle({ backgroundColor: 'var(--online)' });
   });
 
   it('shows away status dot', () => {

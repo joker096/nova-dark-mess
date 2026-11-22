@@ -367,19 +367,19 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByText('settings.metadataMinimization'));
 
     await waitFor(() => expect(screen.getByText(/Cover traffic paused/)).toBeTruthy());
-    expect(JSON.parse(localStorage.getItem('nova_privacy_mode') ?? '{}')).toEqual({
-      metadataMinimization: true,
-      presenceSharing: false,
-      presenceHashing: true,
-      presenceTtl: 'normal',
-      webrtcRelayOnly: false,
-      relayEndpoints: [],
-      turnServers: [],
-      torEnabled: false,
-      torSocksPort: 9050,
-      analyticsConsent: false,
-      crashReports: false,
-    });
+    const saved = JSON.parse(localStorage.getItem('nova_privacy_mode') ?? '{}');
+    expect(saved.metadataMinimization).toBe(true);
+    expect(saved.presenceSharing).toBe(false);
+    expect(saved.presenceHashing).toBe(true);
+    expect(saved.presenceTtl).toBe('normal');
+    expect(saved.webrtcRelayOnly).toBe(false);
+    expect(saved.torEnabled).toBe(false);
+    expect(saved.torSocksPort).toBe(9050);
+    expect(saved.analyticsConsent).toBe(false);
+    expect(saved.crashReports).toBe(false);
+    // relayEndpoints and turnServers now include build-time defaults from VITE_* env vars
+    expect(Array.isArray(saved.relayEndpoints)).toBe(true);
+    expect(Array.isArray(saved.turnServers)).toBe(true);
     delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
   });
 

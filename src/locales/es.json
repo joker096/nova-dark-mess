@@ -195,6 +195,11 @@
     "nameLabel": "Elige un apodo",
     "namePlaceholder": "p. ej., Mira",
     "nicknameHint": "Los apodos no son únicos. Verifica la identidad del contacto con su identificador criptográfico.",
+    "shortNicknameTitle": "Apodo corto",
+    "shortNicknameDesc": "Los apodos de menos de 5 caracteres son una característica premium. Puedes comprar este nombre corto por una tarifa única.",
+    "payNow": "Pagar $50",
+    "processing": "Procesando...",
+    "chooseDifferentName": "Elegir otro nombre",
     "continue": "Continuar",
     "back": "Atrás",
     "identityTitle": "Tu frase de recuperación",
@@ -957,8 +962,9 @@
     "idOnly": "Solo ID",
     "idOnlyDesc": "Solo se comparte el ID del contacto. No se revela teléfono, correo electrónico ni otros datos personales.",
     "contactId": "ID del contacto",
+    "appLink": "Enlace a la app",
     "consent": "Estoy de acuerdo en compartir solo esta ID de contacto",
-    "share": "Compartir ID"
+    "share": "Compartir"
   },
   "location": {
     "shareTitle": "Compartir ubicación",
@@ -1058,6 +1064,8 @@
     "subscribe": "Suscribirse",
     "subscribed": "Suscrito",
     "unsubscribe": "Cancelar suscripción",
+    "enableNotifications": "Activar notificaciones",
+    "disableNotifications": "Desactivar notificaciones",
     "channelInfo": "Información del canal",
     "hideSubscriberCount": "Ocultar número de suscriptores",
     "showSubscriberCount": "Mostrar número de suscriptores",

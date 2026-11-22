@@ -195,6 +195,11 @@
     "nameLabel": "Bir takma ad seçin",
     "namePlaceholder": "örn. Mira",
     "nicknameHint": "Takma adlar benzersiz değildir. Kişiyi kriptografik kimliğiyle doğrulayın.",
+    "shortNicknameTitle": "Kısa takma ad",
+    "shortNicknameDesc": "5 karakterden kısa takma adlar bir premium özelliğidir. Bu kısa adı tek seferlik ücretle satın alabilirsiniz.",
+    "payNow": "$50 öde",
+    "processing": "İşleniyor...",
+    "chooseDifferentName": "Farklı bir isim seçin",
     "continue": "Devam",
     "back": "Geri",
     "identityTitle": "Kurtarma ifadeniz",
@@ -956,8 +961,9 @@
     "idOnly": "Yalnızca Kimlik",
     "idOnlyDesc": "Yalnızca kişi kimliği paylaşılır. Telefon, e-posta veya diğer kişisel veriler ifşa edilmez.",
     "contactId": "Kişi Kimliği",
+    "appLink": "Uygulama bağlantısı",
     "consent": "Bu kişi kimliğini yalnızca paylaşmayı kabul ediyorum",
-    "share": "Kimliği paylaş"
+    "share": "Paylaş"
   },
   "location": {
     "shareTitle": "Konumu paylaş",
@@ -1055,6 +1061,8 @@
     "subscribe": "Abone ol",
     "subscribed": "Abone olundu",
     "unsubscribe": "Abonelikten çık",
+    "enableNotifications": "Bildirimleri aç",
+    "disableNotifications": "Bildirimleri kapat",
     "channelInfo": "Kanal bilgisi",
     "hideSubscriberCount": "Abone sayısını gizle",
     "showSubscriberCount": "Abone sayısını göster",

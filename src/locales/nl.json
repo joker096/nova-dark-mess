@@ -195,6 +195,11 @@
     "nameLabel": "Kies een bijnaam",
     "namePlaceholder": "bijv. Mira",
     "nicknameHint": "Bijnamen zijn niet uniek. Controleer de identiteit van een contact met diens cryptografische ID.",
+    "shortNicknameTitle": "Korte bijnaam",
+    "shortNicknameDesc": "Bijnamen van minder dan 5 tekens zijn een premium-functie. Je kunt deze korte naam eenmalig kopen.",
+    "payNow": "$50 betalen",
+    "processing": "Bezig...",
+    "chooseDifferentName": "Kies een andere naam",
     "continue": "Ga door",
     "back": "Terug",
     "identityTitle": "Uw herstelzin",
@@ -883,8 +888,9 @@
     "idOnly": "Alleen identiteitsbewijs",
     "idOnlyDesc": "Alleen de contact-ID wordt gedeeld. Er worden geen telefoon-, e-mail- of andere persoonlijke gegevens onthuld.",
     "contactId": "Contact-ID",
+    "appLink": "App-link",
     "consent": "Ik ga ermee akkoord alleen deze contact-ID te delen",
-    "share": "Deel-ID"
+    "share": "Delen"
   },
   "stickers": {
     "title": "Stickers",
@@ -1047,6 +1053,8 @@
     "subscribe": "Abonneer je",
     "subscribed": "Geabonneerd",
     "unsubscribe": "Afmelden",
+    "enableNotifications": "Meldingen inschakelen",
+    "disableNotifications": "Meldingen uitschakelen",
     "channelInfo": "Kanaalinformatie",
     "hideSubscriberCount": "Aantal abonnees verbergen",
     "showSubscriberCount": "Toon het aantal abonnees",

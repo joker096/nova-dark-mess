@@ -31,9 +31,19 @@ import {
   Flag,
   Calendar,
   Pin,
+  PinOff,
+  UserPlus,
+  UserMinus,
+  ShieldCheck,
+  BarChart3,
+  Users,
+  Settings as SettingsIcon,
+  Crown,
+  Heart,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
-import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker } from '../lib/ui';
+import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker, Avatar } from '../lib/ui';
+import { cachedFetch, invalidateCachePrefix } from '../lib/api';
 import { isSubscribed, setSubscribed, isNotificationsEnabled, setNotificationsEnabledForChannel } from '../lib/social/channelSubscriptions';
 import { buildDeepLink } from '../lib/network/deepLinks';
 import { formatCount } from '../lib/ui';
@@ -47,7 +57,7 @@ import type { AdCampaign } from '../lib/ads/types';
 import { DoodleBackground } from './DoodleBackground';
 import { useLanguage } from '../context/LanguageContext';
 import { usePremium } from '../hooks/usePremium';
-import { ChannelAvatar } from './ChannelAvatar';
+
 import { ChannelSwitcherModal } from './ChannelSwitcherModal';
 import { ChannelCreateModal } from './ChannelCreateModal';
 import { ChannelPostComposerModal } from './ChannelPostComposerModal';
@@ -95,6 +105,15 @@ interface ChannelScreenProps {
   initialCommentsPostId?: string | null;
   /** Fired once the deep-link comments open, so the app can drop the target. */
   onInitialCommentsHandled?: () => void;
+  /** Pin/unpin a post in the channel. */
+  onPinPost?: (postId: string) => void;
+  onUnpinPost?: (postId: string) => void;
+  /** Open channel statistics panel. */
+  onOpenStats?: () => void;
+  /** Open admin management panel. */
+  onManageAdmins?: () => void;
+  /** Toggle admin role for a member. */
+  onToggleAdmin?: (memberId: string, makeAdmin: boolean) => void;
 }
 
 const POST_REACTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉', '😍', '😎', '🙏', '💯', '🤔', '😢', '😡', '🎊', '🍻', '🎁', '👀', '💪'];
@@ -136,6 +155,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   onVotePoll,
   initialCommentsPostId,
   onInitialCommentsHandled,
+  onPinPost,
+  onUnpinPost,
+  onOpenStats,
+  onManageAdmins,
+  onToggleAdmin,
 }) => {
   const { t, language } = useLanguage();
   const { checkout, canUse } = usePremium();
@@ -281,6 +305,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   }, []);
   const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [statsPanelOpen, setStatsPanelOpen] = useState(false);
+  const [adminsPanelOpen, setAdminsPanelOpen] = useState(false);
 
   // A deep link can point at one post's comments; jump to its day and open it.
   useEffect(() => {
@@ -315,6 +341,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   const manualCollapsedRef = useRef(false);
   const scrollDirectionRef = useRef<'up' | 'down' | null>(null);
   const scrollAccumulatorRef = useRef(0);
+  const lastTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
 
   useEffect(() => {
     return () => {
@@ -512,6 +539,30 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     } catch {
       // Clipboard unavailable in this browser context.
     }
+  };
+
+  const handlePinPost = (postId: string) => {
+    if (!channel) return;
+    onPinPost?.(postId);
+    showToast(t('channel.postPinned'));
+    setPostMenuId(null);
+  };
+
+  const handleUnpinPost = (postId: string) => {
+    if (!channel) return;
+    onUnpinPost?.(postId);
+    showToast(t('channel.postUnpinned'));
+    setPostMenuId(null);
+  };
+
+  const openStats = () => {
+    onOpenStats?.();
+    setStatsPanelOpen(true);
+  };
+
+  const openAdmins = () => {
+    onManageAdmins?.();
+    setAdminsPanelOpen(true);
   };
 
   const weekDays = useMemo(() => {
@@ -759,6 +810,18 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     }
   };
 
+  // Double-tap detection → quick ❤️ reaction (Telegram-style)
+  const handlePostDoubleTap = (postId: string) => {
+    const now = Date.now();
+    const prev = lastTapRef.current;
+    if (prev.id === postId && now - prev.time < 320) {
+      handleToggleReaction(postId, '❤️');
+      lastTapRef.current = { id: '', time: 0 };
+    } else {
+      lastTapRef.current = { id: postId, time: now };
+    }
+  };
+
   const soundEnabled = onToggleSound
     ? Boolean(channel?.soundEnabled)
     : localSoundEnabled;
@@ -773,7 +836,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   if (!channel) {
     return (
-      <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none" data-theme-preserve="dark">
         <DoodleBackground />
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center p-6 text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#181921] text-[var(--nova-accent-color)]">
@@ -808,7 +871,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
   }).format(channel.subscribers);
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[#0b0c10] text-white select-none" data-theme-preserve="dark">
       {/* Floating Header Card with Date Scrubber */}
       <div className="relative z-20 shrink-0 p-3">
           <div
@@ -879,7 +942,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   aria-label={t('channel.switchChannel')}
                   title={t('channel.switchChannel')}
                 >
-                  <ChannelAvatar avatar={channel.avatar} name={channel.name} size="sm" />
+                  <Avatar src={channel.avatar} name={channel.name} size="sm" channelType="default" />
                   <span className="min-w-0">
                     <span className="flex items-center gap-1 truncate text-[14px] font-bold tracking-tight text-white">
                       {channel.visibility === 'private' && (
@@ -968,6 +1031,15 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                           },
                         ]
                       : []),
+                    {
+                      key: 'calendar',
+                      label: headerCollapsed
+                        ? t('channel.showCalendar', 'Show calendar')
+                        : t('channel.hideCalendar', 'Hide calendar'),
+                      icon: <Calendar />,
+                      onSelect: toggleHeader,
+                      disabled: !canUse('date_picker'),
+                    },
                     ...(channel.isOwned && onToggleSubscriberPrivacy
                       ? [
                           {
@@ -993,6 +1065,26 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                           },
                         ]
                       : []),
+                    ...(channel.isOwned && onOpenStats
+                      ? [
+                          {
+                            key: 'stats',
+                            label: t('channel.statistics', 'Statistics'),
+                            icon: <BarChart3 />,
+                            onSelect: openStats,
+                          },
+                        ]
+                      : []),
+                    ...(channel.isOwned && onManageAdmins
+                      ? [
+                          {
+                            key: 'admins',
+                            label: t('channel.manageAdmins', 'Manage admins'),
+                            icon: <Users />,
+                            onSelect: openAdmins,
+                          },
+                        ]
+                      : []),
                     {
                       key: 'unsubscribe',
                       label: subscribed ? t('channel.unsubscribe') : t('channel.subscribe'),
@@ -1004,23 +1096,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   ]}
                 />
 
-                <NovaIconButton
-                  label={
-                    headerCollapsed
-                      ? t('channel.showCalendar', 'Show calendar')
-                      : t('channel.hideCalendar', 'Hide calendar')
-                  }
-                  icon={<Calendar />}
-                  size={36}
-                  variant="subtle"
-                  className={`border-white/5 bg-[#1e2029]/80 ${
-                    !headerCollapsed ? 'text-[var(--nova-accent-color)]' : 'text-white/70'
-                  }`}
-                  aria-expanded={!headerCollapsed}
-                  aria-controls="channel-date-scrubber"
-                  onClick={toggleHeader}
-                />
-              </>
+                </>
             )}
           </div>
 
@@ -1181,7 +1257,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                         if (!isFuture) setSelectedDay(key);
                       }
                     }}
-                    className={`shrink-0 min-w-[48px] group relative z-10 flex flex-col items-center rounded-lg px-1 py-1.5 transition active:scale-95 ${
+                    className={`shrink-0 min-w-[52px] group relative z-10 flex flex-col items-center rounded-lg px-2 py-1.5 transition active:scale-95 ${
                       isFuture ? 'cursor-not-allowed opacity-35' : 'hover:bg-white/5'
                     } ${isSelected ? 'bg-[var(--nova-accent-color)]/20 ring-1 ring-[var(--nova-accent-color)]' : ''} ${isToday && !isSelected ? 'ring-1 ring-inset ring-[var(--nova-accent-color)]/50' : ''}`}
                   >
@@ -1219,6 +1295,43 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           )}
         </div>
       </div>
+
+      {/* Reply Preview Bar - shows when composing a comment */}
+      {commentingPost && commentDraft && (
+        <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+          <div
+            onClick={() => postsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2.5 truncate cursor-pointer group flex-1 mr-2"
+            title={t('channel.replyPreviewTitle', { defaultValue: 'Replying to post' })}
+          >
+            <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
+              <MessageCircle className="w-3.5 h-3.5" />
+            </div>
+            <div className="truncate flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[var(--nova-accent-color,#ff4e18)] font-bold text-[11px] group-hover:underline">
+                  {t('channel.replyingTo', { defaultValue: 'Replying to' })} {commentingPost.title || t('channel.post')}
+                </span>
+                <span className="text-[10px] text-white/40">· Click to jump</span>
+              </div>
+              <p className="text-[#868b98] truncate text-[11px] mt-0.5 font-normal">
+                {commentDraft}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setCommentingPostId(null);
+              setCommentDraft('');
+            }}
+            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer shrink-0 active:scale-95"
+            title={t('common.cancel')}
+          >
+            <X className="w-3.5 h-3.5 text-white/60" />
+            <span>{t('common.cancel')}</span>
+          </button>
+        </div>
+      )}
 
       {/* Posts Stream */}
       <div
@@ -1333,14 +1446,15 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       </span>
                     </div>
                   )}
-                  <div className="relative flex items-start gap-2.5">
-                  {/* Left Timestamp Margin */}
-                  <div className="w-10 shrink-0 pt-3 text-right text-[11px] font-medium tabular-nums text-[#717682]">
-                    {post.time}
-                  </div>
-
-                  {/* Post Card */}
-                  <div className={`flex-1 space-y-3 rounded-[24px] p-4 text-white ${postCardClassName}`}>
+                  {/* Post Card - full width with time inside */}
+                  <div
+                    className={`space-y-3 rounded-[24px] p-4 text-white ${postCardClassName}`}
+                    onDoubleClick={() => handlePostDoubleTap(post.id)}
+                  >
+                    {/* Time inside card at top */}
+                    <div className="text-right text-[11px] font-medium tabular-nums text-[#717682]">
+                      {post.time}
+                    </div>
                     {scheduled && (
                       <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--nova-accent-color)]">
                         <Clock className="h-3 w-3" />
@@ -1395,6 +1509,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                                   src={src}
                                   alt={post.title}
                                   className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                  eager
                                 />
                                 {isLastVisible && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-bold text-white">
@@ -1560,6 +1675,30 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                                 {t('channel.deletePost')}
                               </button>
                             )}
+                            {channel.isOwned && onPinPost && onUnpinPost && (
+                              <>
+                                {!post.isPinned && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePinPost(post.id)}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                                  >
+                                    <Pin className="h-3.5 w-3.5" />
+                                    {t('channel.pinPost', 'Pin post')}
+                                  </button>
+                                )}
+                                {post.isPinned && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnpinPost(post.id)}
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-white/75 transition hover:bg-white/5 hover:text-white"
+                                  >
+                                    <PinOff className="h-3.5 w-3.5" />
+                                    {t('channel.unpinPost', 'Unpin post')}
+                                  </button>
+                                )}
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1690,8 +1829,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                </div>
-                {showSponsoredCard && index === 3 && (
+                  {showSponsoredCard && index === 3 && (
                   <div
                     className="relative flex items-start gap-2.5"
                     data-testid="channel-sponsored-slot"
@@ -1706,8 +1844,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       />
                     </div>
                   </div>
-                )}
-                  </React.Fragment>
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
@@ -1859,6 +1997,140 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           returnFocusTo={commentTriggerRef.current}
         />
       )}
+
+      {/* Channel Statistics Panel */}
+      {statsPanelOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setStatsPanelOpen(false)}>
+          <div className="w-full max-w-2xl bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.statistics', 'Statistics')}</h2>
+              <button onClick={() => setStatsPanelOpen(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 hover:text-white transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard label={t('channel.statsViews', 'Views')} value={formatCount(channelPosts.reduce((acc, post) => acc + (post.views ?? 0), 0))} icon={<Eye className="w-5 h-5" />} color="text-blue-400" />
+              <StatCard label={t('channel.statsSubscribers', 'Subscribers')} value={formatCount(channel?.subscribers ?? 0)} icon={<Users className="w-5 h-5" />} color="text-green-400" />
+              <StatCard label={t('channel.statsPosts', 'Posts')} value={formatCount(channelPosts.length)} icon={<MessageCircle className="w-5 h-5" />} color="text-purple-400" />
+              <StatCard label={t('channel.statsReactions', 'Reactions')} value={formatCount(channelPosts.reduce((acc, p) => acc + (p.reactions?.reduce((r, re) => r + re.count, 0) ?? 0), 0))} icon={<Heart className="w-5 h-5" />} color="text-red-400" />
+            </div>
+
+            <div className="border-t border-[var(--border)] pt-4 space-y-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{t('channel.statsTopPosts', 'Top posts by engagement')}</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {channelPosts
+                  .map((post) => ({
+                    ...post,
+                    engagement: (post.reactions?.reduce((acc, r) => acc + r.count, 0) ?? 0) + (post.views ?? 0) / 100 + (post.commentsCount ?? 0) * 2,
+                  }))
+                  .sort((a, b) => b.engagement - a.engagement)
+                  .slice(0, 5)
+                  .map((post) => (
+                    <div key={post.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
+                      <div className="w-10 h-10 rounded-lg bg-[var(--bg-surface-2)] flex items-center justify-center text-[var(--text-tertiary)]">
+                        <MessageCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[var(--text-primary)] truncate">{post.title}</p>
+                        <p className="text-[11px] text-[var(--text-tertiary)]">{formatCount(post.views ?? 0)} views · {formatCount(post.reactions?.reduce((acc, r) => acc + r.count, 0) ?? 0)} reactions</p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <button onClick={() => setStatsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)] mt-2">
+              {t('common.close')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Management Panel */}
+      {adminsPanelOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAdminsPanelOpen(false)}>
+          <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.manageAdmins', 'Manage admins')}</h2>
+              <button onClick={() => setAdminsPanelOpen(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 hover:text-white transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-[13px] text-[var(--text-secondary)]">{t('channel.adminsDesc', 'Add or remove channel administrators.')}</p>
+
+            <div className="space-y-2">
+              {(channel?.admins ?? []).map((admin) => {
+                const adminId = admin.id;
+                const isOwner = admin.isOwner === true || adminId === channel?.ownerFingerprint;
+                return (
+                <div key={adminId} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)] font-bold">
+                      {adminId.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-medium text-[var(--text-primary)]">{adminId}</p>
+                      <p className="text-[11px] text-[var(--text-tertiary)]">{t('channel.adminRole', 'Administrator')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (onToggleAdmin && !isOwner) {
+                        onToggleAdmin(adminId, false);
+                        showToast(t('channel.adminDemoted'));
+                      }
+                    }}
+                    disabled={isOwner || !onToggleAdmin}
+                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition disabled:opacity-40 disabled:cursor-not-allowed bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  >
+                    {t('channel.demote', 'Demote')}
+                  </button>
+                </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-[var(--border)]">
+              <label className="block text-[11px] font-medium text-[var(--text-tertiary)] mb-2">{t('channel.addAdmin', 'Add admin')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={t('channel.addAdminPlaceholder', 'User ID or @username')}
+                  className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] text-sm"
+                />
+                <button
+                  onClick={() => {
+                    // Add admin logic would go here
+                    showToast(t('channel.adminAdded'));
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] text-xs font-semibold hover:opacity-90"
+                >
+                  {t('channel.addAdmin', 'Add')}
+                </button>
+              </div>
+            </div>
+
+            <button onClick={() => setAdminsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)] mt-2">
+              {t('common.close')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+// StatCard component for statistics panel
+const StatCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string }> = ({ label, value, icon, color }) => (
+  <div className="p-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
+    <div className="flex items-center justify-between">
+      <span className={color}>{icon}</span>
+      <span className="text-[11px] font-medium text-[var(--text-tertiary)]">{label}</span>
+    </div>
+    <p className="mt-2 text-2xl font-bold text-[var(--text-primary)] tabular-nums">{value}</p>
+  </div>
+);
+
+export default ChannelScreen;

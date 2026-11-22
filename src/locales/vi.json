@@ -195,6 +195,11 @@
     "nameLabel": "Chọn biệt danh",
     "namePlaceholder": "ví dụ: Mira",
     "nicknameHint": "Biệt danh không duy nhất. Hãy xác minh danh tính liên hệ bằng mã định danh mật mã.",
+    "shortNicknameTitle": "Biệt danh ngắn",
+    "shortNicknameDesc": "Biệt danh dưới 5 ký tự là tính năng premium. Bạn có thể mua tên ngắn này với phí một lần.",
+    "payNow": "Thanh toán $50",
+    "processing": "Đang xử lý...",
+    "chooseDifferentName": "Chọn tên khác",
     "continue": "Tiếp tục",
     "back": "Quay lại",
     "identityTitle": "Cụm từ khôi phục của bạn",
@@ -956,8 +961,9 @@
     "idOnly": "Chỉ ID",
     "idOnlyDesc": "Chỉ chia sẻ ID liên hệ. Không tiết lộ số điện thoại, email hoặc dữ liệu cá nhân khác.",
     "contactId": "ID liên hệ",
+    "appLink": "Liên kết đến ứng dụng",
     "consent": "Tôi đồng ý chia sẻ chỉ ID liên hệ này",
-    "share": "Chia sẻ ID"
+    "share": "Chia sẻ"
   },
   "location": {
     "shareTitle": "Chia sẻ vị trí",
@@ -1055,6 +1061,8 @@
     "subscribe": "Theo dõi",
     "subscribed": "Đang theo dõi",
     "unsubscribe": "Bỏ theo dõi",
+    "enableNotifications": "Bật thông báo",
+    "disableNotifications": "Tắt thông báo",
     "channelInfo": "Thông tin kênh",
     "hideSubscriberCount": "Ẩn số người theo dõi",
     "showSubscriberCount": "Hiện số người theo dõi",

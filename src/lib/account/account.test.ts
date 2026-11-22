@@ -43,7 +43,8 @@ describe('account store', () => {
 
   it('keeps the stable account id even if a stored profile tries to change it', () => {
     const original = loadAccount();
-    saveAccount({ ...original, id: 'someone-else' });
+    // A regular nickname: short unpaid ones are rejected by `saveAccount`.
+    saveAccount({ ...original, nickname: '@stable_user', id: 'someone-else' });
     expect(loadAccount().id).toBe(original.id);
   });
 
@@ -56,13 +57,15 @@ describe('account store', () => {
   it('dispatches an update event when the profile is saved', () => {
     const listener = vi.fn();
     window.addEventListener(ACCOUNT_UPDATED_EVENT, listener);
-    updateAccount({ displayName: 'Event User' });
+    // Nicknames under 5 characters are reserved for the paid short-name flow,
+    // so every save in these tests carries a regular one.
+    updateAccount({ displayName: 'Event User', nickname: '@event_user' });
     window.removeEventListener(ACCOUNT_UPDATED_EVENT, listener);
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('surfaces storage failures instead of reporting a successful save', () => {
-    const account = loadAccount();
+    const account = updateAccount({ nickname: '@storage_user' });
     const storageError = new Error('storage is unavailable');
     vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
       throw storageError;
