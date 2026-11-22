@@ -101,14 +101,18 @@ export function NovaReactionPicker({
       close(false);
     };
 
+    const onScroll = () => close(false);
+
     const frame = requestAnimationFrame(() => {
       pickerRef.current?.querySelector<HTMLElement>('[data-emoji-option]')?.focus();
     });
 
     document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('scroll', onScroll, { capture: true });
     };
   }, [open, close]);
 
@@ -174,7 +178,7 @@ export function NovaReactionPicker({
             role="dialog"
             aria-label={label}
             onKeyDown={onPickerKeyDown}
-            className="fixed z-[80] rounded-2xl border border-white/10 bg-[#1b1c28] p-1.5 shadow-2xl shadow-black/60"
+            className="fixed z-[80] rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--shadow-2)]"
             style={{
               top: position.top,
               bottom: position.bottom,
@@ -199,7 +203,7 @@ export function NovaReactionPicker({
                     className={`flex h-8 w-8 items-center justify-center rounded-xl text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] active:scale-90 ${
                       reacted
                         ? 'bg-[var(--nova-accent-color)]/20 ring-1 ring-[var(--nova-accent-color)]/50'
-                        : 'hover:bg-white/10'
+                        : 'hover:bg-[var(--bg-surface-2)]'
                     }`}
                     aria-label={emoji}
                     aria-pressed={reacted}
@@ -210,7 +214,7 @@ export function NovaReactionPicker({
               })}
             </div>
             {allowCustom && (
-              <div className="mt-1.5 flex items-center gap-1 border-t border-white/10 pt-1.5">
+              <div className="mt-1.5 flex items-center gap-1 border-t border-[var(--border-strong)] pt-1.5">
                 <label htmlFor={customInputId} className="sr-only">
                   {customLabel}
                 </label>

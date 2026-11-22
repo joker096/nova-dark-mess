@@ -8,6 +8,19 @@ interface NovaBadgeProps extends HTMLAttributes<HTMLSpanElement> {
   dot?: boolean;
 }
 
+function formatBadgeValue(value: string | number, max: number): string {
+  if (typeof value === 'number') {
+    if (value === 0) return '';
+    if (value > max) {
+      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+      if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+      return `${max}+`;
+    }
+    return String(value);
+  }
+  return String(value);
+}
+
 export const NovaBadge = forwardRef<HTMLSpanElement, NovaBadgeProps>(
   ({
     value,
@@ -20,14 +33,14 @@ export const NovaBadge = forwardRef<HTMLSpanElement, NovaBadgeProps>(
     children,
     ...props
   }, ref) => {
-    const displayValue = typeof value === 'number' && value > max ? `${max}+` : String(value);
+    const displayValue = formatBadgeValue(value, max);
 
     const variantClasses = {
-      default: 'bg-[var(--c-badge)] text-[var(--c-on-primary)]',
-      muted: 'bg-[var(--c-badge-muted)] text-white',
-      success: 'bg-emerald-500 text-white',
-      warning: 'bg-amber-500 text-white',
-      danger: 'bg-red-500 text-white',
+      default: 'bg-[var(--accent)] text-[var(--text-on-accent)]',
+      muted: 'bg-[var(--text-disabled)] text-[var(--text-primary)]',
+      success: 'bg-[var(--success-soft)] text-[var(--success)]',
+      warning: 'bg-[var(--warning-soft)] text-[var(--warning)]',
+      danger: 'bg-[var(--danger-soft)] text-[var(--danger)]',
     };
 
     const sizeClasses = {
@@ -65,7 +78,7 @@ export const NovaBadge = forwardRef<HTMLSpanElement, NovaBadgeProps>(
         {displayValue}
       </span>
     );
-  }
+  },
 );
 
 NovaBadge.displayName = 'NovaBadge';

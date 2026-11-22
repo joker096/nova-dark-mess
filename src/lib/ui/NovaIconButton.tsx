@@ -25,9 +25,9 @@ export interface NovaIconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButto
 }
 
 const SIZES: Record<IconButtonSize, string> = {
-  32: 'w-8 h-8',
-  36: 'w-9 h-9',
-  44: 'w-11 h-11',
+  32: 'w-8 h-8 min-w-[44px] min-h-[44px]',
+  36: 'w-9 h-9 min-w-[44px] min-h-[44px]',
+  44: 'w-11 h-11 min-w-[44px] min-h-[44px]',
 };
 
 const ICON_SIZES: Record<IconButtonSize, string> = {
@@ -43,19 +43,16 @@ const ICON_WRAPPERS: Record<IconButtonSize, string> = {
 };
 
 const VARIANTS: Record<IconButtonVariant, string> = {
-  ghost: 'bg-transparent text-white/70 hover:text-white hover:bg-white/[0.08]',
-  subtle: 'bg-[#181921] border border-white/10 text-white/80 hover:text-white hover:bg-white/[0.12]',
+  ghost:
+    'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]',
+  subtle:
+    'bg-[var(--bg-surface-2)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
   primary:
-    'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 hover:brightness-110',
-  danger: 'bg-transparent text-red-400 hover:text-red-300 hover:bg-red-500/20',
+    'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30 hover:brightness-110',
+  danger:
+    'bg-transparent text-[var(--danger)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)]',
 };
 
-/**
- * The single icon-only button in the app.
- *
- * Every instance carries a `label`, so the accessible name and the tooltip can
- * never drift apart, and the focus ring / press feedback stay identical.
- */
 export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>(function NovaIconButton(
   {
     label,
@@ -94,7 +91,7 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
         SIZES[size],
         VARIANTS[variant],
-        active && size !== 44 ? 'text-white bg-white/[0.12]' : '',
+        active && size !== 44 ? 'text-[var(--text-primary)] bg-[var(--bg-surface-2)]' : '',
         showShortcut && shortcutLabel ? 'px-3 w-auto' : '',
         className,
       ]
@@ -105,12 +102,12 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
         {icon}
       </span>
       {showShortcut && shortcutLabel && (
-        <span className="text-[11px] font-semibold text-white/60">{shortcutLabel}</span>
+        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{shortcutLabel}</span>
       )}
       {loading && <Loader2 className={`absolute animate-spin ${ICON_SIZES[size]}`} aria-hidden="true" />}
       {badge !== undefined && badge > 0 && (
         <span
-          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--nova-accent-color)] text-white text-[9px] font-bold leading-4 text-center shadow-sm"
+          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] text-[9px] font-bold leading-4 text-center shadow-sm"
           aria-hidden="true"
         >
           {formatCount(badge, { max: 99 })}

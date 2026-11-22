@@ -74,6 +74,12 @@ const renderProfile = (
     />,
   );
 
+/** The additional phone is masked until the user double-clicks the value. */
+const revealPhone = () => {
+  const value = screen.getByText('profile.additionalPhone').nextElementSibling!;
+  fireEvent.doubleClick(value);
+};
+
 const firstMedia = KATIE_SHARED_MEDIA[0];
 const firstVideo = KATIE_SHARED_MEDIA.find((item) => item.type === 'video')!;
 
@@ -137,6 +143,8 @@ describe('ProfileScreen - ID-based anonymous profile', () => {
   it('renders additional phone as an optional secondary field', () => {
     renderProfile('katie');
     expect(screen.getByText('profile.additionalPhone')).toBeTruthy();
+    // The number is masked until it is deliberately revealed (double-click).
+    revealPhone();
     expect(screen.getByText('+38 063 980 20 90')).toBeTruthy();
   });
 
@@ -274,6 +282,7 @@ describe('ProfileScreen - inline field editing', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '+1 234 5678' } });
     fireEvent.click(screen.getByTitle('common.save'));
 
+    revealPhone();
     expect(screen.getByText('+1 234 5678')).toBeTruthy();
     expect(screen.queryByText('+38 063 980 20 90')).toBeNull();
   });
@@ -326,6 +335,7 @@ describe('ProfileScreen - contact options', () => {
 
     expect(screen.getByText('Katie Updated')).toBeTruthy();
     expect(screen.getByText('@Katie_New')).toBeTruthy();
+    revealPhone();
     expect(screen.getByText('+1 555 0100')).toBeTruthy();
     expect(screen.getByText('profile.contactUpdated')).toBeTruthy();
     expect(JSON.parse(localStorage.getItem(CONTACT_OVERRIDES_KEY)!).katie).toEqual({
@@ -400,7 +410,9 @@ describe('ProfileScreen - contact options', () => {
     renderProfile('katie');
     expect(screen.getByText('Stored Katie')).toBeTruthy();
     expect(screen.getByText('@stored')).toBeTruthy();
-    expect(screen.getByText('+9 999')).toBeTruthy();
+    revealPhone();
+    // Search highlighting can split the text into spans, so match on the row.
+    expect(screen.getByText('profile.additionalPhone').nextElementSibling?.textContent).toContain('+9 999');
   });
 });
 

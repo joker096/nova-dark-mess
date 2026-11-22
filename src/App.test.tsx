@@ -69,17 +69,41 @@ vi.mock('./components/MeshMap', () => ({
   )),
 }));
 vi.mock('./components/SettingsModal', () => ({
-  SettingsModal: vi.fn(({ isOpen, getBotSession }: { isOpen: boolean; getBotSession?: unknown }) => (
-    <div
-      data-testid="settings-modal"
-      data-isopen={String(isOpen)}
-      data-has-bot-session={String(Boolean(getBotSession))}
-    />
-  )),
+  SettingsModal: vi.fn(
+    ({
+      isOpen,
+      getBotSession,
+      onOpenMeshMap,
+    }: {
+      isOpen: boolean;
+      getBotSession?: unknown;
+      onOpenMeshMap?: () => void;
+    }) => (
+      <div
+        data-testid="settings-modal"
+        data-isopen={String(isOpen)}
+        data-has-bot-session={String(Boolean(getBotSession))}
+      >
+        {/* The real modal exposes the mesh map entry; keep that reachable. */}
+        {isOpen && onOpenMeshMap && (
+          <button type="button" onClick={onOpenMeshMap}>
+            meshMap.title
+          </button>
+        )}
+      </div>
+    ),
+  ),
 }));
 vi.mock('./components/AppIcon', () => ({ AppIcon: vi.fn(() => <div data-testid="app-icon" />) }));
 vi.mock('./components/PinLockScreen', () => ({
-  PinLockScreen: vi.fn(() => <div data-testid="pin-lock" />),
+  // Expose the unlock callback so specs can get past the lock screen.
+  PinLockScreen: vi.fn(({ onUnlock }: { onUnlock?: () => void }) => (
+    <div data-testid="pin-lock">
+      <button type="button" onClick={onUnlock}>
+        unlock
+      </button>
+    </div>
+  )),
 }));
 
 import App from './App';
@@ -173,6 +197,10 @@ describe('App - desktop navigation rail', () => {
 
   it('opens the mesh map from the desktop rail and closes it from the mobile header', async () => {
     render(<App />);
+    // Let the async screen chunks mount, then open the map from Settings —
+    // where the entry lives now (the rail no longer has a map button).
+    await screen.findAllByTestId('chats-screen');
+    fireEvent.click(screen.getByRole('button', { name: 'settings.title' }));
     fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
 
     const mapScreens = await screen.findAllByTestId('mesh-map-screen');

@@ -1,5 +1,6 @@
 mod anon_net;
 mod keychain;
+mod push;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,7 +11,10 @@ pub fn run() {
         keychain::keychain_available,
         keychain::keychain_get,
         keychain::keychain_set,
-        keychain::keychain_remove
+        keychain::keychain_remove,
+        push::register_push_token,
+        push::unregister_push_token,
+        push::get_push_token,
     ])
     .on_permission_request(|_, kind| match kind {
       tauri::webview::PermissionKind::Camera
@@ -23,6 +27,9 @@ pub fn run() {
       _ => tauri::webview::PermissionResponse::Default,
     })
     .plugin(tauri_plugin_deep_link::init())
+    .plugin(tauri_plugin_push::init())
+    .plugin(tauri_plugin_background_fetch::init())
+    .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -30,6 +37,17 @@ pub fn run() {
             .level(log::LevelFilter::Info)
             .build(),
         )?;
+      }
+
+      // Initialize push notifications on mobile
+      #[cfg(mobile)]
+      {
+        let handle = app.handle().clone();
+        tauri::async_runtime::spawn(async move {
+          if let Err(e) = push::init_push(&handle).await {
+            log::warn!("Failed to initialize push: {}", e);
+          }
+        });
       }
 
       // Desktop deep links (`nova://chat/<id>`) are only registered by the

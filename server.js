@@ -184,7 +184,9 @@ const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
  * are used; everything else falls back to the public site.
  */
 function resolveReturnUrl(req) {
-  if (PAYMENTO_RETURN_URL) return PAYMENTO_RETURN_URL;
+  // In development, never use PAYMENTO_RETURN_URL - use the actual origin
+  // so local checkouts can complete. Only production should use the configured URL.
+  if (IS_PRODUCTION && PAYMENTO_RETURN_URL) return PAYMENTO_RETURN_URL;
   const origin = String(req.headers.origin || '').replace(/\/+$/, '');
   if (origin && CORS_ORIGINS.has(origin)) return `${origin}/premium.html`;
   return 'https://mess.cvr.name/premium.html';
@@ -677,6 +679,7 @@ app.post('/api/premium/checkout', async (req, res) => {
     if (!p) return res.status(400).json({ ok: false, error: 'unknown plan' });
     if (!DEVICE_PATTERN.test(device)) return res.status(400).json({ ok: false, error: 'invalid device' });
     if (!PAYMENTO_API_KEY) return res.status(503).json({ ok: false, error: 'payments disabled' });
+
     const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
     const order = { orderId, plan, device, amount: p.price, currency: p.currency, status: 'pending', createdAt: new Date().toISOString() };
     saveOrder(order);
@@ -700,6 +703,7 @@ app.post('/api/premium/gift/checkout', async (req, res) => {
     if (!DEVICE_PATTERN.test(device)) return res.status(400).json({ ok: false, error: 'invalid device' });
     if (!PAYMENTO_API_KEY) return res.status(503).json({ ok: false, error: 'payments disabled' });
     if (!PREMIUM_LICENSE_SECRET) return res.status(503).json({ ok: false, error: 'gift service unavailable' });
+
     const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
     const order = {
       orderId,
@@ -748,12 +752,13 @@ app.get('/api/premium/order/:orderId', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'gift code unavailable' });
     }
   }
+
   if (order.token && PAYMENTO_API_KEY) {
     try {
       const fresh = await fulfillOrder(order.orderId);
       if (!fresh) return res.status(404).json({ ok: false, error: 'order not found' });
       if (fresh.kind === 'gift' && fresh.status === 'paid' && fresh.giftCodeEncrypted) {
-        return res.json({ ok: true, status: 'paid', giftCode: decryptGiftCode(fresh.giftCodeEncrypted) });
+        return res.json({ ok: 1, status: 'paid', giftCode: decryptGiftCode(fresh.giftCodeEncrypted) });
       }
       if (fresh.license) {
         return res.json({ ok: true, status: 'paid', license: fresh.license, expiresAt: fresh.expiresAt });

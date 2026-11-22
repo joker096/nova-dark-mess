@@ -111,6 +111,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'nickname' | 'phone' | null>(null);
+  const [phoneRevealed, setPhoneRevealed] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [fieldDraft, setFieldDraft] = useState('');
@@ -147,6 +148,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [avatar, setAvatar] = useState(profile.avatar);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState('');
+  const [avatarLightboxOpen, setAvatarLightboxOpen] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
@@ -629,13 +631,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div className="relative mb-3">
           <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[var(--nova-accent-color)]/40 shadow-xl shadow-black/80">
             {avatar && !avatarLoadFailed ? (
-              <LazyMedia
-                src={avatar}
-                alt={profile.name}
-                className="w-full h-full rounded-full object-cover"
-                eager
-                onError={() => setAvatarLoadFailed(true)}
-              />
+              <button
+                type="button"
+                onClick={() => setAvatarLightboxOpen(true)}
+                className="w-full h-full rounded-full object-cover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+                aria-label={t('profile.viewAvatar', { defaultValue: 'View profile photo' })}
+              >
+                <LazyMedia
+                  src={avatar}
+                  alt={profile.name}
+                  className="w-full h-full rounded-full object-cover"
+                  eager
+                  onError={() => setAvatarLoadFailed(true)}
+                />
+              </button>
             ) : (
               <div className="w-full h-full rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center font-bold text-2xl text-white">
                 {initials}
@@ -657,11 +666,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/95 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[#0c0d11]"
+                className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/95 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[#0c0d11]"
                 title={t('profile.changeAvatar')}
                 aria-label={t('profile.changeAvatar')}
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="w-4 h-4" />
               </button>
               {avatar && (
                 <button
@@ -1059,8 +1068,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <p className="text-[11px] text-[#6a6f7b] font-normal leading-tight">
                   {t('profile.additionalPhone')}
                 </p>
-                <p className="text-[14px] font-semibold text-[#cbd5e1] tracking-wide mt-0.5">
-                  {profile.phone || '—'}
+                <p 
+                  className={`text-[14px] font-semibold tracking-wide mt-0.5 transition-all duration-200 ${
+                    phoneRevealed ? 'text-[#cbd5e1]' : 'text-transparent bg-clip-text bg-gradient-to-r from-white/20 via-white/10 to-white/20'
+                  }`}
+                  onDoubleClick={() => {
+                    if (profile.phone && profile.phone !== '—') {
+                      setPhoneRevealed(!phoneRevealed);
+                    }
+                  }}
+                  title={phoneRevealed ? 'Double-click to hide' : 'Double-click to reveal'}
+                >
+                  {phoneRevealed ? profile.phone : profile.phone?.replace(/./g, '●') || '—'}
                 </p>
               </div>
             </div>
@@ -1991,6 +2010,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           triggerToast(t('profile.contactIdCopied'));
         }}
       />
+
+      {/* Avatar Lightbox */}
+      {avatarLightboxOpen && avatar && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setAvatarLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('profile.viewAvatar', { defaultValue: 'View profile photo' })}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAvatarLightboxOpen(false);
+            }}
+            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            aria-label={t('common.close')}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={avatar}
+            alt={profile.name}
+            className="max-w-[90vw] max-h-[80vh] rounded-xl shadow-2xl"
+          />
+        </div>
+      )}
     </div>
   );
 };

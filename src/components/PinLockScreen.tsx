@@ -57,7 +57,20 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
   const [pinResetAllowedAt, setPinResetAllowedAt] = useState<number | null>(null);
   const isLockedOut = pinLockoutUntil !== null && pinLockoutUntil > now;
   const remainingSeconds = isLockedOut ? Math.ceil((pinLockoutUntil - now) / 1000) : 0;
+  // Turn the hint into "Touch the sensor" once at least one attempt failed,
+  // which is the whole reason the sensor was promoted into the keypad.
+  const [biometricHintActive, setBiometricHintActive] = useState(false);
   const dots = Math.max(4, Math.min(6, pinLength));
+  const showBiometricKey = !isSetting && biometricEnabled;
+  const placementHint = biometricHintActive
+    ? t('settings.biometricHint')
+    : isSetting
+      ? t('common.passcodeCreate')
+      : t('common.passcodeEnter');
+
+  useEffect(() => {
+    if (biometricEnabled) setBiometricHintActive(false);
+  }, [biometricEnabled]);
 
   const renderPinUI = () => (
     <div className="flex flex-col w-full gap-4">
@@ -69,9 +82,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
         <h2 className="text-lg font-semibold text-white">
           {isSetting ? t('settings.passcodeLock') : t('common.passcodeLock')}
         </h2>
-        <p className="text-[12.5px] leading-relaxed text-[#8c919d]">
-          {isSetting ? t('common.passcodeCreate') : t('common.passcodeEnter')}
-        </p>
+        <p className="text-[12.5px] leading-relaxed text-[#8c919d]">{placementHint}</p>
       </div>
 
       <div className="flex items-center gap-2.5" aria-live="polite">
@@ -112,7 +123,19 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
             {d}
           </button>
         ))}
-        <div className="h-14 w-full" aria-hidden="true" />
+        {showBiometricKey ? (
+          <button
+            type="button"
+            onClick={() => void handleBiometric()}
+            disabled={isBiometricBusy || isLockedOut}
+            className={`${numpadButton} text-[var(--nova-accent-color)]`}
+            aria-label={t('common.unlockWithBiometric')}
+          >
+            <Fingerprint className={`w-5 h-5 ${isBiometricBusy ? 'animate-pulse' : ''}`} />
+          </button>
+        ) : (
+          <div className="h-14 w-full" aria-hidden="true" />
+        )}
         <button
           disabled={isLockedOut || isVerifying}
           onClick={() => handleDigit('0')}
@@ -138,18 +161,6 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
           className="w-full rounded-2xl bg-[var(--nova-accent-color)] py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:opacity-35 disabled:pointer-events-none"
         >
           {t('common.unlock')}
-        </button>
-      )}
-
-      {!isSetting && biometricEnabled && (
-        <button
-          type="button"
-          onClick={() => void handleBiometric()}
-          disabled={isBiometricBusy || isLockedOut}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/[0.08] py-2.5 text-[12.5px] font-medium text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/15 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
-        >
-          <Fingerprint className={`w-4 h-4 ${isBiometricBusy ? 'animate-pulse' : ''}`} />
-          {t('common.unlockWithBiometric')}
         </button>
       )}
 
@@ -396,6 +407,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
       } else {
         setPinInput('');
         setError(t('common.passcodeError'));
+        if (biometricEnabled) setBiometricHintActive(true);
       }
     } catch (verificationError) {
       setPinInput('');
@@ -432,12 +444,14 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onUnlock, onSetPin
     if (!unlockWithBiometric || isBiometricBusy || isLockedOut) return;
     setIsBiometricBusy(true);
     setError(null);
+    setBiometricHintActive(false);
     try {
       const ok = await unlockWithBiometric();
       if (ok) {
         onUnlock();
       } else {
         setError(t('common.biometricFailed'));
+        setBiometricHintActive(true);
       }
     } finally {
       setIsBiometricBusy(false);

@@ -17,6 +17,7 @@ import {
   connectWs, subscribeSites,
   type Site, type Thread, type Message,
 } from './sitesApi';
+import { cachedFetch, invalidateCachePrefix } from '../../lib/api';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { HandoffPrompt, type SiteHandoff } from './HandoffPrompt';
 
@@ -49,10 +50,10 @@ const wizardModal = (
   t: any
 ) => (
   <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-    <div className="w-full max-w-md bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
       {step === 1 ? (
         <>
-          <h2 className="font-semibold text-white text-lg">{t('sites.wizard.title')}</h2>
+          <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.wizard.title')}</h2>
           <form onSubmit={onSubmit} className="mt-4 space-y-3">
             <div>
               <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.name')}</label>
@@ -76,37 +77,37 @@ const wizardModal = (
                 </select>
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t border-white/[0.1]">
-              <input type="checkbox" checked={wizardForm.dnd} onChange={(e) => setWizardForm({ ...wizardForm, dnd: e.target.checked })} className="rounded bg-white/[0.05] border-white/[0.2] text-[#ff4e18] focus:ring-0" />
+            <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
+              <input type="checkbox" checked={wizardForm.dnd} onChange={(e) => setWizardForm({ ...wizardForm, dnd: e.target.checked })} className="rounded bg-[var(--bg-surface-2)] border-[var(--border-strong)] text-[var(--nova-accent-color)] focus:ring-0" />
               <label className="text-[11px] text-[#8c919d] cursor-pointer">{t('sites.wizard.dnd')}</label>
             </div>
             <div className="flex justify-between">
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-[#8c919d] hover:text-white text-sm">{t('common.cancel')}</button>
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-sm">{t('common.cancel')}</button>
               <button type="submit" disabled={!wizardForm.name.trim()} className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold disabled:opacity-50">{t('sites.wizard.create')}</button>
             </div>
           </form>
         </>
       ) : (
         <>
-          <h2 className="font-semibold text-white text-lg">{t('sites.wizard.created')}</h2>
+          <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.wizard.created')}</h2>
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[#8c919d] text-xs">{t('sites.wizard.siteId')}:</span>
-              <code className="text-xs text-[#8c919d] truncate">{wizardSite?.site_id}</code>
+              <span className="text-[var(--text-tertiary)] text-xs">{t('sites.wizard.siteId')}:</span>
+              <code className="text-xs text-[var(--text-tertiary)] truncate">{wizardSite?.site_id}</code>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#8c919d] text-xs">{t('sites.wizard.pubkey')}:</span>
-              <code className="text-xs text-[#8c919d] truncate">{wizardSite?.site_pubkey}</code>
+              <span className="text-[var(--text-tertiary)] text-xs">{t('sites.wizard.pubkey')}:</span>
+              <code className="text-xs text-[var(--text-tertiary)] truncate">{wizardSite?.site_pubkey}</code>
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.snippet')}</label>
+            <label className="text-[11px] text-[var(--text-tertiary)] block mb-1">{t('sites.wizard.snippet')}</label>
             <div className="flex gap-2">
-              <input value={wizardSite?.snippet} readOnly className="flex-1 px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-xs focus:outline-none" />
-              <button onClick={() => { navigator.clipboard.writeText(wizardSite?.snippet || ''); }} className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold">{t('common.copy')}</button>
+              <input value={wizardSite?.snippet} readOnly className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none" />
+              <button onClick={() => { navigator.clipboard.writeText(wizardSite?.snippet || ''); }} className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold">{t('common.copy')}</button>
             </div>
           </div>
-          <button onClick={onClose} className="w-full px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-xs font-semibold hover:bg-white/[0.1]">{t('common.close')}</button>
+          <button onClick={onClose} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)]">{t('common.close')}</button>
         </>
       )}
     </div>
@@ -175,7 +176,7 @@ export default function SitesScreen({
     (async () => {
       setLoading(true);
       try {
-        const list = await fetchSites();
+        const list = await cachedFetch('sites:list', fetchSites, { ttl: 60_000 });
         if (!cancelled) setSites(list);
       } catch (err: any) {
         if (!cancelled) setError(err.message || 'Failed to load sites');
@@ -192,12 +193,12 @@ export default function SitesScreen({
     let cancelled = false;
     (async () => {
       try {
-        const list = await fetchThreads(selectedSite.id);
+        const list = await cachedFetch(`threads:${selectedSite.id}`, () => fetchThreads(selectedSite.id), { ttl: 30_000 });
         if (!cancelled) setThreads(list);
-        const notes = await fetchNotifications(selectedSite.id);
+        const notes = await cachedFetch(`notifications:${selectedSite.id}`, () => fetchNotifications(selectedSite.id), { ttl: 15_000 });
         if (!cancelled) setNotifications(notes);
         if (!cancelled) setUnreadCount(notes.filter((n) => !n.read).length);
-        const st = await fetchStats(selectedSite.id);
+        const st = await cachedFetch(`stats:${selectedSite.id}`, () => fetchStats(selectedSite.id), { ttl: 60_000 });
         if (!cancelled) setStats(st);
       } catch { /* ignore */ }
     })();
@@ -236,7 +237,7 @@ export default function SitesScreen({
     let cancelled = false;
     (async () => {
       try {
-        const j = await fetchUnreadNotifications();
+        const j = await cachedFetch('unread:all', fetchUnreadNotifications, { ttl: 10_000 });
         if (!cancelled) setUnreadCount(j.count);
       } catch { /* ignore */ }
     })();
@@ -249,7 +250,7 @@ export default function SitesScreen({
     let cancelled = false;
     const load = async () => {
       try {
-        const list = await fetchMessages(selectedThread.id);
+        const list = await cachedFetch(`messages:${selectedThread.id}`, () => fetchMessages(selectedThread.id), { ttl: 15_000 });
         const decrypted: DecryptedMessage[] = [];
         for (const m of list) {
           const dm = m as DecryptedMessage;
@@ -315,6 +316,8 @@ export default function SitesScreen({
       const ctArr = new Uint8Array(ct);
       const ephemPub = new Uint8Array(x25519.getPublicKey(pair));
       await sendMessage(selectedThread.id, b64u(ctArr), b64u(iv), b64u(ephemPub));
+      invalidateCachePrefix(`messages:${selectedThread.id}`);
+      invalidateCachePrefix(`threads:${selectedSite!.id}`);
       setInput('');
     } catch (err: any) {
       setError(err.message || 'Send failed');
@@ -346,6 +349,7 @@ export default function SitesScreen({
         owner_user_id: account.id,
         settings: { color: wizardForm.color, greeting: wizardForm.greeting, language: wizardForm.language, position: wizardForm.position, dnd: { enabled: wizardForm.dnd, start: wizardForm.dndStart, end: wizardForm.dndEnd } },
       });
+      invalidateCachePrefix('sites:');
       setWizardSite(created);
       setWizardStep(2);
     } catch (err: any) {
@@ -354,10 +358,13 @@ export default function SitesScreen({
   }
 
   async function doCloseThread() {
-    if (!selectedThread) return;
+    if (!selectedThread || !selectedSite) return;
     setMutating(true);
     try {
       await closeThread(selectedThread.id);
+      invalidateCachePrefix(`sites:threads:${selectedSite.id}`);
+      invalidateCachePrefix(`sites:list`);
+      invalidateCachePrefix(`stats:${selectedSite.id}`);
       setCloseConfirm(false);
       setSelectedThread(null);
       setView('threads');
@@ -369,10 +376,13 @@ export default function SitesScreen({
   }
 
   async function doBlockGuest() {
-    if (!selectedThread) return;
+    if (!selectedThread || !selectedSite) return;
     setMutating(true);
     try {
       await blockGuest(selectedThread.guest_id);
+      invalidateCachePrefix(`sites:threads:${selectedSite.id}`);
+      invalidateCachePrefix(`sites:list`);
+      invalidateCachePrefix(`stats:${selectedSite.id}`);
       setBlockConfirm(false);
       setSelectedThread(null);
       setView('threads');
@@ -443,17 +453,17 @@ export default function SitesScreen({
           onOpened={() => setHandoffNotice(true)}
         />
         {handoffNotice && (
-          <div className="px-4 py-2 text-xs text-white/60" role="status">
+          <div className="px-4 py-2 text-xs text-[var(--text-tertiary)]" role="status">
             Переписка с сайта перенесена в мессенджер
           </div>
         )}
-        <div className="h-full flex flex-col bg-[#0c0d11] text-white">
-          <header className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
-            <button onClick={onBack} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('common.back')}>
+        <div className="h-full flex flex-col bg-[var(--bg-app)] text-[var(--text-primary)]">
+          <header className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-strong)] shrink-0">
+            <button onClick={onBack} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('common.back')}>
               <ArrowLeft size={18} />
             </button>
             <h1 className="font-semibold text-[15px]">{t('sites.title')}</h1>
-            <button onClick={() => setNotifPanelOpen(!notifPanelOpen)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] relative ${unreadCount > 0 ? 'text-[#ff4e18]' : ''}`} aria-label={t('sites.notifications')}>
+            <button onClick={() => setNotifPanelOpen(!notifPanelOpen)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)] relative ${unreadCount > 0 ? 'text-[var(--nova-accent-color)]' : ''}`} aria-label={t('sites.notifications')}>
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#ff4e18]" aria-hidden="true" />}
             </button>
@@ -463,10 +473,10 @@ export default function SitesScreen({
             {error && <div className="p-4 rounded-xl bg-red/10 border border-red/30 text-red text-xs">{error}</div>}
             {!loading && !error && sites.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Lock className="w-12 h-12 text-[#8c919d] mb-3" />
-                <h3 className="font-semibold text-white mb-2">{t('sites.noSites')}</h3>
-                <p className="text-[#8c919d] text-xs max-w-xs">{t('sites.noSitesDesc')}</p>
-                <button onClick={openWizard} className="mt-4 px-4 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold hover:opacity-90">
+                <Lock className="w-12 h-12 text-[var(--text-tertiary)] mb-3" />
+                <h3 className="font-semibold text-[var(--text-primary)] mb-2">{t('sites.noSites')}</h3>
+                <p className="text-[var(--text-tertiary)] text-xs max-w-xs">{t('sites.noSitesDesc')}</p>
+                <button onClick={openWizard} className="mt-4 px-4 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold hover:opacity-90">
                   {t('sites.connectSite')}
                 </button>
               </div>
@@ -477,17 +487,17 @@ export default function SitesScreen({
                   <button
                     key={site.id}
                     onClick={() => { setSelectedSite(site); setView('threads'); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-left transition"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface-2)] hover:bg-[var(--bg-hover)] text-left transition"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-white truncate">{site.name}</div>
-                      <div className="text-[11px] text-[#8c919d] truncate">{site.domains.join(', ')}</div>
+                      <div className="font-medium text-[var(--text-primary)] truncate">{site.name}</div>
+                      <div className="text-[11px] text-[var(--text-tertiary)] truncate">{site.domains.join(', ')}</div>
                     </div>
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                    <button onClick={(e) => { e.stopPropagation(); openBotPanel(site); }} className="w-6 h-6 rounded-lg flex items-center justify-center text-[#8c919d] hover:text-white hover:bg-white/[0.1]" aria-label={t('sites.manageBot')}>
+                    <div className="w-2 h-2 rounded-full bg-[var(--online)]" aria-hidden="true" />
+                    <button onClick={(e) => { e.stopPropagation(); openBotPanel(site); }} className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.manageBot')}>
                       <Bot size={16} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); createOAuthLink(); }} className="w-6 h-6 rounded-lg flex items-center justify-center text-[#8c919d] hover:text-[#ff4e18] hover:bg-white/[0.1]" aria-label={t('sites.createOAuthLink')}>
+                    <button onClick={(e) => { e.stopPropagation(); createOAuthLink(); }} className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.createOAuthLink')}>
                       <Link2 size={16} />
                     </button>
                   </button>
@@ -497,9 +507,9 @@ export default function SitesScreen({
             {!loading && !error && sites.length > 0 && !sites.some((s) => s.confirmed) && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <ShieldAlert className="w-12 h-12 text-[#ff4e18] mb-3" />
-                <h3 className="font-semibold text-white mb-2">{t('sites.notConfirmed')}</h3>
-                <p className="text-[#8c919d] text-xs max-w-xs text-center">{t('sites.notConfirmedDesc')}</p>
-                <button onClick={openWizard} className="mt-4 px-4 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold hover:opacity-90">
+                <h3 className="font-semibold text-[var(--text-primary)] mb-2">{t('sites.notConfirmed')}</h3>
+                <p className="text-[var(--text-tertiary)] text-xs max-w-xs text-center">{t('sites.notConfirmedDesc')}</p>
+                <button onClick={openWizard} className="mt-4 px-4 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold hover:opacity-90">
                   {t('sites.connectSite')}
                 </button>
               </div>
@@ -514,29 +524,29 @@ export default function SitesScreen({
   if (view === 'threads') {
     return (
       <>
-        <div className="h-full flex flex-col bg-[#0c0d11] text-white">
-          <header className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
-            <button onClick={() => { setSelectedSite(null); setView('sites'); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('common.back')}>
+      <div className="h-full flex flex-col bg-[var(--bg-app)] text-[var(--text-primary)]">
+        <header className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-strong)] shrink-0">
+          <button onClick={() => { setSelectedSite(null); setView('sites'); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('common.back')}>
               <ArrowLeft size={18} />
             </button>
             <h1 className="font-semibold text-[15px] truncate flex-1">{selectedSite?.name}</h1>
-            <button onClick={openWizard} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('sites.connectSite')}>
+            <button onClick={openWizard} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.connectSite')}>
               <Plus size={16} />
             </button>
-            <button onClick={() => setNotifPanelOpen(!notifPanelOpen)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08] relative ${unreadCount > 0 ? 'text-[#ff4e18]' : ''}`} aria-label={t('sites.notifications')}>
+            <button onClick={() => setNotifPanelOpen(!notifPanelOpen)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)] relative ${unreadCount > 0 ? 'text-[var(--nova-accent-color)]' : ''}`} aria-label={t('sites.notifications')}>
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#ff4e18]" aria-hidden="true" />}
             </button>
-            <button onClick={() => { setStatsPanelOpen(!statsPanelOpen); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('sites.analytics')}>
+              <button onClick={() => { setStatsPanelOpen(!statsPanelOpen); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.analytics')}>
               <BarChart3 size={18} />
             </button>
           </header>
           <main className="flex-1 overflow-y-auto p-4">
             {threads.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <MessageSquare className="w-12 h-12 text-[#8c919d] mb-3" />
-                <h3 className="font-semibold text-white mb-2">{t('sites.noThreads')}</h3>
-                <p className="text-[#8c919d] text-xs">{t('sites.noThreadsDesc')}</p>
+                <MessageSquare className="w-12 h-12 text-[var(--text-tertiary)] mb-3" />
+                <h3 className="font-semibold text-[var(--text-primary)] mb-2">{t('sites.noThreads')}</h3>
+                <p className="text-[var(--text-tertiary)] text-xs">{t('sites.noThreadsDesc')}</p>
               </div>
             )}
             <div className="space-y-2">
@@ -544,15 +554,15 @@ export default function SitesScreen({
                 <button
                   key={th.id}
                   onClick={() => { setSelectedThread(th); setView('chat'); }}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-left transition"
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface-2)] hover:bg-[var(--bg-hover)] text-left transition"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white truncate">{t('sites.guestChat', { site: selectedSite!.name })}</div>
-                    <div className="text-[11px] text-[#8c919d] truncate">{fmtTime(th.last_message_at || th.created_at)}</div>
+                    <div className="font-medium text-[var(--text-primary)] truncate">{t('sites.guestChat', { site: selectedSite!.name })}</div>
+                    <div className="text-[11px] text-[var(--text-tertiary)] truncate">{fmtTime(th.last_message_at || th.created_at)}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                    {th.status === 'open' ? null : <Lock size={14} className="text-[#8c919d]" />}
+                    <span className="w-2 h-2 rounded-full bg-[var(--online)]" aria-hidden="true" />
+                    {th.status === 'open' ? null : <Lock size={14} className="text-[var(--text-tertiary)]" />}
                   </div>
                 </button>
               ))}
@@ -562,8 +572,8 @@ export default function SitesScreen({
         {wizardOpen && wizardContent}
         {notifPanelOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setNotifPanelOpen(false)}>
-            <div className="w-full max-w-md bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-              <h2 className="font-semibold text-white text-lg">{t('sites.notificationsTitle')}</h2>
+            <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.notificationsTitle')}</h2>
               {notifications.length === 0 ? (
                 <div className="text-center py-8 text-[#8c919d] text-xs">{t('sites.notificationsEmpty')}</div>
               ) : (
@@ -572,29 +582,29 @@ export default function SitesScreen({
                     <div
                       key={n.id}
                       onClick={() => { markAsRead(n.id); setNotifPanelOpen(false); }}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl ${!n.read ? 'bg-white/[0.05] border border-white/[0.1]' : 'bg-white/[0.02]'} cursor-pointer hover:bg-white/[0.05] transition`}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl ${!n.read ? 'bg-[var(--bg-surface-2)] border border-[var(--border-strong)]' : 'bg-[var(--bg-surface-2)]/30'} cursor-pointer hover:bg-[var(--bg-hover)] transition`}
                     >
-                      <div className="w-2 h-2 rounded-full bg-[#ff4e18]" aria-hidden="true" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--nova-accent-color)]" aria-hidden="true" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-white truncate">{n.preview || t('sites.notificationNew')}</div>
-                        <div className="text-[10px] text-[#8c919d]">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-xs font-medium text-[var(--text-primary)] truncate">{n.preview || t('sites.notificationNew')}</div>
+                        <div className="text-[10px] text-[var(--text-tertiary)]">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <button onClick={() => setNotifPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-xs font-semibold hover:bg-white/[0.1]">{t('common.close')}</button>
+              <button onClick={() => setNotifPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border-strong)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)]">{t('common.close')}</button>
             </div>
           </div>
         )}
         {statsPanelOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setStatsPanelOpen(false)}>
-            <div className="w-full max-w-md bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-white text-lg">{t('sites.statsTitle')}</h2>
+                <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.statsTitle')}</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => setStatsDays(7)} className={`px-3 py-1 rounded-lg text-xs ${statsDays === 7 ? 'bg-[#ff4e18] text-white' : 'bg-white/[0.05] text-[#8c919d] border border-white/[0.1]'}`}>7 {t('sites.statsDays')}</button>
-                  <button onClick={() => setStatsDays(30)} className={`px-3 py-1 rounded-lg text-xs ${statsDays === 30 ? 'bg-[#ff4e18] text-white' : 'bg-white/[0.05] text-[#8c919d] border border-white/[0.1]'}`}>30 {t('sites.statsDays')}</button>
+                  <button onClick={() => setStatsDays(7)} className={`px-3 py-1 rounded-lg text-xs ${statsDays === 7 ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)]' : 'bg-[var(--bg-surface-2)] text-[var(--text-tertiary)] border border-[var(--border)]'}`}>7 {t('sites.statsDays')}</button>
+                  <button onClick={() => setStatsDays(30)} className={`px-3 py-1 rounded-lg text-xs ${statsDays === 30 ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)]' : 'bg-[var(--bg-surface-2)] text-[var(--text-tertiary)] border border-[var(--border)]'}`}>30 {t('sites.statsDays')}</button>
                 </div>
               </div>
               {stats.length === 0 ? (
@@ -602,12 +612,12 @@ export default function SitesScreen({
               ) : (
                 <div className="space-y-2">
                   {stats.slice(0, statsDays).map((s) => (
-                    <div key={s.date} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+                    <div key={s.date} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)]">
                       <div>
-                        <div className="text-xs text-[#8c919d]">{s.date}</div>
-                        <div className="text-xs font-medium text-white">{t('sites.statsLoaded', { count: s.loaded })}</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">{s.date}</div>
+                        <div className="text-xs font-medium text-[var(--text-primary)]">{t('sites.statsLoaded', { count: s.loaded })}</div>
                       </div>
-                      <div className="flex gap-2 text-[10px] text-[#8c919d]">
+                      <div className="flex gap-2 text-[10px] text-[var(--text-tertiary)]">
                         <span>{t('sites.statsOpened', { count: s.opened })}</span>
                         <span>{t('sites.statsFirstMsg', { count: s.first_message })}</span>
                         <span>{t('sites.statsOwnerReplied', { count: s.owner_replied })}</span>
@@ -617,39 +627,39 @@ export default function SitesScreen({
                   ))}
                 </div>
               )}
-              <button onClick={() => setStatsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-xs font-semibold hover:bg-white/[0.1]">{t('common.close')}</button>
+              <button onClick={() => setStatsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)]">{t('common.close')}</button>
             </div>
           </div>
         )}
         {botPanelOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setBotPanelOpen(false)}>
-            <div className="w-full max-w-md bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-              <h2 className="font-semibold text-white text-lg">{t('sites.botTitle')}</h2>
+            <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.botTitle')}</h2>
               <form onSubmit={(e) => { e.preventDefault(); saveBotConfig(); }} className="mt-4 space-y-3">
                 <div>
-                  <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.botWebhookUrl')}</label>
-                  <input value={botWebhookUrl} onChange={(e) => setBotWebhookUrl(e.target.value)} placeholder="https://your-server.com/webhook" className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
+                  <label className="text-[11px] text-[var(--text-tertiary)] block mb-1">{t('sites.botWebhookUrl')}</label>
+                  <input value={botWebhookUrl} onChange={(e) => setBotWebhookUrl(e.target.value)} placeholder="https://your-server.com/webhook" className="w-full px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.botSecret')}</label>
-                  <input value={botSecret} onChange={(e) => setBotSecret(e.target.value)} placeholder="random-secret" className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
-                  <p className="text-[10px] text-[#8c919d] mt-1">{t('sites.botSecretHint')}</p>
+                  <label className="text-[11px] text-[var(--text-tertiary)] block mb-1">{t('sites.botSecret')}</label>
+                  <input value={botSecret} onChange={(e) => setBotSecret(e.target.value)} placeholder="random-secret" className="w-full px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
+                  <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('sites.botSecretHint')}</p>
                 </div>
                 <div className="flex justify-between">
-                  <button type="button" onClick={() => setBotPanelOpen(false)} className="px-4 py-2 rounded-lg text-[#8c919d] hover:text-white text-sm">{t('common.cancel')}</button>
-                  <button type="submit" className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold">{t('sites.botSave')}</button>
+                  <button type="button" onClick={() => setBotPanelOpen(false)} className="px-4 py-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-sm">{t('common.cancel')}</button>
+                  <button type="submit" className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold">{t('sites.botSave')}</button>
                 </div>
               </form>
-              <div className="mt-4 border-t border-white/[0.1] pt-3 space-y-2">
-                <h3 className="text-xs text-[#8c919d]">{t('sites.botTokens')}</h3>
+              <div className="mt-4 border-t border-[var(--border)] pt-3 space-y-2">
+                <h3 className="text-xs text-[var(--text-tertiary)]">{t('sites.botTokens')}</h3>
                 {botTokens.length === 0 ? (
-                  <div className="text-center py-4 text-[#8c919d] text-xs">{t('sites.botTokensEmpty')}</div>
+                  <div className="text-center py-4 text-[var(--text-tertiary)] text-xs">{t('sites.botTokensEmpty')}</div>
                 ) : (
                   <div className="space-y-1">
                     {botTokens.map((bt) => (
-                      <div key={bt.token} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.05]">
-                        <span className="text-[10px] text-[#8c919d] truncate">{bt.token}</span>
-                        <button onClick={(e) => { e.stopPropagation(); revokeBotToken(bt.token); }} className="text-[#ff4e18] text-[10px] hover:underline">{t('sites.botRevoke')}</button>
+                      <div key={bt.token} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)]">
+                        <span className="text-[10px] text-[var(--text-tertiary)] truncate">{bt.token}</span>
+                        <button onClick={(e) => { e.stopPropagation(); revokeBotToken(bt.token); }} className="text-[var(--danger)] text-[10px] hover:underline">{t('sites.botRevoke')}</button>
                       </div>
                     ))}
                   </div>
@@ -659,20 +669,20 @@ export default function SitesScreen({
                     const t = await createBotTokenApi(botSiteId);
                     setBotTokens([...botTokens, t]);
                   } catch { /* ignore */ }
-                }} className="w-full px-4 py-2 rounded-lg border border-white/[0.1] text-[#8c919d] text-xs hover:bg-white/[0.05]">{t('sites.botCreateToken')}</button>
+                }} className="w-full px-4 py-2 rounded-lg border border-[var(--border-strong)] text-[var(--text-tertiary)] text-xs hover:bg-[var(--bg-surface-2)]">{t('sites.botCreateToken')}</button>
               </div>
             </div>
           </div>
         )}
         {oauthShowing && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setOauthShowing(false)}>
-            <div className="w-full max-w-md bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-              <h2 className="font-semibold text-white text-lg">{t('sites.oauthTitle')}</h2>
-              <p className="text-[#8c919d] text-xs">{t('sites.oauthDesc')}</p>
-              <div className="bg-[#0c0d11] border border-white/[0.1] rounded-lg p-3 text-[11px] text-[#8c919d] break-all mb-3">{oauthUrl}</div>
+            <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.oauthTitle')}</h2>
+              <p className="text-[var(--text-tertiary)] text-xs">{t('sites.oauthDesc')}</p>
+              <div className="bg-[var(--bg-app)] border border-[var(--border)] rounded-lg p-3 text-[11px] text-[var(--text-tertiary)] break-all mb-3">{oauthUrl}</div>
               <div className="flex gap-2">
-                <button onClick={() => { navigator.clipboard.writeText(oauthUrl); setOauthShowing(false); }} className="flex-1 px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold">{t('sites.oauthCopy')}</button>
-                <button onClick={() => setOauthShowing(false)} className="px-4 py-2 rounded-lg text-[#8c919d] hover:text-white text-sm">{t('common.close')}</button>
+                <button onClick={() => { navigator.clipboard.writeText(oauthUrl); setOauthShowing(false); }} className="flex-1 px-4 py-2 rounded-lg bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold">{t('sites.oauthCopy')}</button>
+                <button onClick={() => setOauthShowing(false)} className="px-4 py-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-sm">{t('common.close')}</button>
               </div>
             </div>
           </div>
@@ -684,26 +694,26 @@ export default function SitesScreen({
   /* view === 'chat' */
   return (
     <>
-      <div className="h-full flex flex-col bg-[#090a0e] text-white">
-        <header className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
-          <button onClick={() => { setSelectedThread(null); setView('threads'); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('common.back')}>
+      <div className="h-full flex flex-col bg-[var(--bg-app)] text-[var(--text-primary)]">
+        <header className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-strong)] shrink-0">
+          <button onClick={() => { setSelectedThread(null); setView('threads'); }} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('common.back')}>
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-[15px] truncate">{t('sites.guestChat', { site: selectedSite!.name })}</div>
-            <div className="text-[11px] text-[#8c919d]">{online ? t('sites.online') : t('sites.offline')}</div>
+            <div className="text-[11px] text-[var(--text-tertiary)]">{online ? t('sites.online') : t('sites.offline')}</div>
           </div>
-          {!online && <ShieldAlert className="w-5 h-5 text-[#8c919d]" />}
-          <button onClick={() => setActionsOpen(!actionsOpen)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.08]" aria-label={t('sites.threadActions')}>
+          {!online && <ShieldAlert className="w-5 h-5 text-[var(--text-tertiary)]" />}
+          <button onClick={() => setActionsOpen(!actionsOpen)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.threadActions')}>
             <MoreVertical size={18} />
           </button>
           {actionsOpen && (
-            <div className="absolute right-4 top-14 w-48 bg-[#151621] border border-white/15 rounded-xl shadow-2xl p-2">
-              <button onClick={() => { setActionsOpen(false); setCloseConfirm(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-[#8c919d] hover:bg-white/[0.05] rounded-lg">
+            <div className="absolute right-4 top-14 w-48 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl shadow-[var(--shadow-2)] p-2">
+              <button onClick={() => { setActionsOpen(false); setCloseConfirm(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-2)] rounded-lg">
                 <Ban size={14} className="shrink-0" />
                 {t('sites.actionCloseThread')}
               </button>
-              <button onClick={() => { setActionsOpen(false); setBlockConfirm(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-[#8c919d] hover:bg-white/[0.05] rounded-lg">
+              <button onClick={() => { setActionsOpen(false); setBlockConfirm(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-2)] rounded-lg">
                 <X size={14} className="shrink-0" />
                 {t('sites.actionBlockGuest')}
               </button>
@@ -727,16 +737,16 @@ export default function SitesScreen({
           </div>
           {!online && <div className="text-center py-4 text-[#8c919d] text-xs">{t('sites.ownerOffline')}</div>}
         </main>
-        <form onSubmit={handleSend} className="p-4 border-t border-white/[0.06] bg-[#0c0d11] shrink-0">
+        <form onSubmit={handleSend} className="p-4 border-t border-[var(--border-strong)] bg-[var(--bg-app)] shrink-0">
           <div className="flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('sites.typeMessage')}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white placeholder-[#8c919d] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm"
               disabled={!online}
             />
-            <button type="submit" disabled={!input.trim() || sending || !online} className="px-4 py-2.5 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90">
+            <button type="submit" disabled={!input.trim() || sending || !online} className="px-4 py-2.5 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90">
               {t('common.send') || 'Send'}
             </button>
           </div>
@@ -745,24 +755,24 @@ export default function SitesScreen({
       {wizardOpen && wizardContent}
       {closeConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setCloseConfirm(false)}>
-          <div className="bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-white">{t('sites.confirmCloseTitle')}</h3>
-            <p className="text-[#8c919d] text-xs">{t('sites.confirmCloseBody')}</p>
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-[var(--text-primary)]">{t('sites.confirmCloseTitle')}</h3>
+            <p className="text-[var(--text-tertiary)] text-xs">{t('sites.confirmCloseBody')}</p>
             <div className="flex gap-2">
-              <button onClick={() => setCloseConfirm(false)} className="px-4 py-2 rounded-lg text-[#8c919d] hover:text-white text-xs">{t('common.cancel')}</button>
-              <button onClick={doCloseThread} disabled={mutating} className="px-4 py-2 rounded-lg bg-red/20 border border-red/30 text-red text-xs font-semibold disabled:opacity-50">{t('sites.actionCloseThread')}</button>
+              <button onClick={() => setCloseConfirm(false)} className="px-4 py-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-xs">{t('common.cancel')}</button>
+              <button onClick={doCloseThread} disabled={mutating} className="px-4 py-2 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-[var(--danger)] text-xs font-semibold disabled:opacity-50">{t('sites.actionCloseThread')}</button>
             </div>
           </div>
         </div>
       )}
       {blockConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setBlockConfirm(false)}>
-          <div className="bg-[#151621] border border-white/15 rounded-3xl shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-white">{t('sites.confirmBlockTitle')}</h3>
-            <p className="text-[#8c919d] text-xs">{t('sites.confirmBlockBody')}</p>
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-[var(--text-primary)]">{t('sites.confirmBlockTitle')}</h3>
+            <p className="text-[var(--text-tertiary)] text-xs">{t('sites.confirmBlockBody')}</p>
             <div className="flex gap-2">
-              <button onClick={() => setBlockConfirm(false)} className="px-4 py-2 rounded-lg text-[#8c919d] hover:text-white text-xs">{t('common.cancel')}</button>
-              <button onClick={doBlockGuest} disabled={mutating} className="px-4 py-2 rounded-lg bg-red/20 border border-red/30 text-red text-xs font-semibold disabled:opacity-50">{t('sites.actionBlockGuest')}</button>
+              <button onClick={() => setBlockConfirm(false)} className="px-4 py-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-xs">{t('common.cancel')}</button>
+              <button onClick={doBlockGuest} disabled={mutating} className="px-4 py-2 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-[var(--danger)] text-xs font-semibold disabled:opacity-50">{t('sites.actionBlockGuest')}</button>
             </div>
           </div>
         </div>

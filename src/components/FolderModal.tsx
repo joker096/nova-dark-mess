@@ -129,7 +129,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200"
     >
       <div
         ref={dialogRef}
@@ -137,7 +137,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="folder-modal-title"
-        className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-sm p-4 text-white shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-3 duration-250"
+        className="bg-[#151621] border border-white/10 rounded-3xl w-full max-w-lg p-4 text-white shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">

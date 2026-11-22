@@ -8,9 +8,10 @@ import {
   getMinSubscriptionCost,
   resumePremiumCheckout,
   type PremiumFeature,
+  type CheckoutResult,
 } from '../lib/premium';
 
-export type { PremiumFeature };
+export type { PremiumFeature, CheckoutResult };
 
 export function usePremium() {
   const [premium, setPremiumState] = useState<boolean>(isPremium());
@@ -41,12 +42,12 @@ export function usePremium() {
     };
   }, [refresh]);
 
-  const checkout = useCallback(async () => {
+  const checkout = useCallback(async (): Promise<CheckoutResult> => {
     setLoading(true);
-    const ok = await checkoutPremium();
+    const result = await checkoutPremium();
     setLoading(false);
-    setPremiumState(isPremium());
-    return ok;
+    if (result.ok) setPremiumState(isPremium());
+    return result;
   }, []);
 
   const canUse = useCallback(

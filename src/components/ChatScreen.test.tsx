@@ -159,6 +159,11 @@ describe('ChatScreen - message rendering', () => {
 
   it('labels the safety number as demo when the peer key is device-generated', async () => {
     renderChat();
+    // The shield is rendered once, inside the contact-name row. Pressing the
+    // bubble area first resets the gesture state left over from other specs.
+    const bubble = getBubble();
+    pointer(bubble, 'pointerDown', 100, 200);
+    pointer(bubble, 'pointerUp', 100, 200);
     fireEvent.click(screen.getByTestId('e2ee-badge'));
 
     const row = await screen.findByTestId('safety-number-row');
@@ -239,7 +244,8 @@ describe('ChatScreen - message rendering', () => {
   });
 
   it('renders chat action menu in a top-level portal and closes it from the menu', () => {
-    renderChat();
+    // The "..." menu is a group-chat affordance; the 1:1 chat header has none.
+    renderChat({ chatId: 'thailand', onBack: vi.fn(), onOpenProfile: vi.fn() });
     fireEvent.click(screen.getByRole('button', { name: 'chat.chatActions' }));
 
     const menu = screen.getByRole('menu', { name: 'chat.chatActions' });
@@ -447,10 +453,17 @@ describe('ChatScreen - long press and double tap', () => {
     renderChat();
     const bubble = getBubble();
 
-    pointer(bubble, 'pointerUp', 100, 200);
-    pointer(bubble, 'pointerUp', 100, 200);
+    // Both taps must land inside the double-tap window; a single render pass
+    // between them would push the second tap past it.
+    act(() => {
+      pointer(bubble, 'pointerDown', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+      pointer(bubble, 'pointerDown', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+    });
 
-    expect(screen.getByTitle('React with ❤️')).toBeTruthy();
+    // The quick reaction lands on the message bubble instead of opening a picker.
+    expect(screen.getByTestId('bubble-m1').textContent).toContain('❤️');
   });
 
   it('ignores taps that land on interactive message controls', () => {
@@ -468,9 +481,14 @@ describe('ChatScreen - long press and double tap', () => {
     renderChat();
     const bubble = getBubble();
 
-    pointer(bubble, 'pointerUp', 100, 200);
-    pointer(bubble, 'pointerUp', 100, 200);
-    expect(screen.getByTitle('React with ❤️')).toBeTruthy();
+    act(() => {
+      pointer(bubble, 'pointerDown', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+      pointer(bubble, 'pointerDown', 100, 200);
+      pointer(bubble, 'pointerUp', 100, 200);
+    });
+    // A double tap is a quick ❤️ reaction, not a picker; the picker opens on long press.
+    expect(bubble.textContent).toContain('❤️');
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByTitle('React with ❤️')).toBeNull();
@@ -487,10 +505,11 @@ describe('ChatScreen - long press and double tap', () => {
       renderChat();
       scrolls.length = 0; // drop the initial mount autoscroll
 
+      // Open the picker with a press (its first pointer event starts the long
+      // press), then pick the reaction from it.
       const bubble = getBubble();
       pointer(bubble, 'pointerDown', 100, 200);
-      pointer(bubble, 'pointerUp', 100, 200);
-      pointer(bubble, 'pointerUp', 100, 200);
+      fireEvent.contextMenu(bubble);
       fireEvent.click(screen.getByTitle('React with ❤️'));
 
       expect(screen.getByTestId('bubble-m1').textContent).toContain('❤️');

@@ -195,6 +195,11 @@
     "nameLabel": "Choisissez un pseudonyme",
     "namePlaceholder": "par ex. Mira",
     "nicknameHint": "Les pseudonymes ne sont pas uniques. Vérifiez l’identité de votre contact avec son identifiant cryptographique.",
+    "shortNicknameTitle": "Pseudonyme court",
+    "shortNicknameDesc": "Les pseudonymes de moins de 5 caractères sont une fonctionnalité premium. Vous pouvez acheter ce nom court pour un frais unique.",
+    "payNow": "Payer 50 $",
+    "processing": "Traitement...",
+    "chooseDifferentName": "Choisir un autre nom",
     "continue": "Continuer",
     "back": "Retour",
     "identityTitle": "Votre phrase de récupération",
@@ -883,8 +888,9 @@
     "idOnly": "pièce d'identité seulement",
     "idOnlyDesc": "Seul l'ID du contact est partagé. Aucune donnée de téléphone, e-mail ou autre donnée personnelle n'est révélée.",
     "contactId": "Identifiant du contact",
+    "appLink": "Lien vers l'application",
     "consent": "J'accepte de partager uniquement cet identifiant de contact",
-    "share": "Partager l'identifiant"
+    "share": "Partager"
   },
   "stickers": {
     "title": "Autocollants",
@@ -1047,6 +1053,8 @@
     "subscribe": "Abonnez-vous",
     "subscribed": "Abonné",
     "unsubscribe": "Se désabonner",
+    "enableNotifications": "Activer les notifications",
+    "disableNotifications": "Désactiver les notifications",
     "channelInfo": "Informations sur la chaîne",
     "hideSubscriberCount": "Masquer le nombre d'abonnés",
     "showSubscriberCount": "Afficher le nombre d'abonnés",

@@ -20,16 +20,16 @@ const MAX_WIDTH_CONFIG: Record<string, string> = {
 };
 
 const MODAL_CONTENT =
-  'bg-[#14151c]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/80 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200';
+  'bg-[var(--bg-surface)]/[0.95] backdrop-blur-xl border border-[var(--border)] rounded-2xl shadow-[var(--shadow-2)] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200';
 
 const MODAL_HEADER =
-  'flex items-center justify-between px-6 py-4 border-b border-white/10';
+  'flex items-center justify-between px-6 py-4 border-b border-[var(--border-strong)]';
 
 const MODAL_TITLE =
-  'text-lg font-semibold text-white';
+  'text-lg font-semibold text-[var(--text-primary)]';
 
 const MODAL_CLOSE =
-  'w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]';
+  'w-8 h-8 rounded-full bg-[var(--bg-surface-2)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]';
 
 const MODAL_BODY = 'flex-1 overflow-y-auto p-6';
 

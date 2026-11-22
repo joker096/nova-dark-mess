@@ -80,6 +80,60 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(23,23,23,0.06), 0 1px 3px rgba(23,23,23,0.08);
+  --shadow-2: 0 8px 24px rgba(23,23,23,0.12);
+
+  /* ── Semantic UI tokens (light theme) ──
+     Single source of truth for component colours instead of hardcoded
+     Tailwind values. Mirrors docs/messenger-ui-fix-instructions.md §2.2.  */
+  --bg-app:        #ededf0;
+  --bg-surface:    #ffffff;
+  --bg-surface-2:  #f7f7f7;
+  --bg-hover:      #ebebeb;
+  --bg-pressed:    #d9d9d9;
+  --bg-overlay:    rgba(23, 23, 23, 0.45);
+
+  --text-primary:   var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-tertiary:  #8c8c8c;
+  --text-disabled:  #a3a3a3;
+  --text-on-accent: #ffffff;
+  --text-link:      var(--color-primary);
+
+  --border:         var(--stroke-soft);
+  --border-strong:  #c4c4c4;
+  --focus-ring:     var(--color-primary);
+
+  --accent:         var(--nova-accent-color);
+  --accent-hover:   var(--nova-accent-color);
+  --accent-soft:    #d6f0ff;
+  --danger:         #ff3b30;
+  --danger-soft:    #ffe6e6;
+  --success:        #34c759;
+  --success-soft:   #e6f4ea;
+  --warning:        #ff9500;
+  --warning-soft:   #ffe8cc;
+
+  --bubble-in-bg:    #ffffff;
+  --bubble-in-text:  #171717;
+  --bubble-out-bg:   var(--c-primary-soft);
+  --bubble-out-text: #000e19;
+  --bubble-meta:     var(--text-soft);
+  --unread-badge-bg: var(--c-primary);
+  --unread-badge-text:#ffffff;
+  --online:          var(--c-online);
+
+  /* Chat theme colors (light theme) */
+  --chat-theme-default-from: #ff521a;
+  --chat-theme-default-to: #ff3b00;
+  --chat-theme-sapphire-from: #1e3a8a;
+  --chat-theme-sapphire-to: #3b82f6;
+  --chat-theme-amethyst-from: #4c1d95;
+  --chat-theme-amethyst-to: #8b5cf6;
+  --chat-theme-emerald-from: #064e3b;
+  --chat-theme-emerald-to: #10b981;
 }
 
 [data-theme="dark"] {
@@ -139,4 +193,56 @@
   --c-icon-2: #34c759;
   --c-icon-3: #ff9500;
   --c-icon-4: #00c7be;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-2: 0 8px 24px rgba(0,0,0,0.6);
+
+  /* ── Semantic UI tokens (dark theme) ── */
+  --bg-app:        #171717;
+  --bg-surface:    #1c1c1c;
+  --bg-surface-2:  #333333;
+  --bg-hover:      #2a2a2a;
+  --bg-pressed:    #3a3a3a;
+  --bg-overlay:    rgba(0, 0, 0, 0.6);
+
+  --text-primary:   var(--text-strong);
+  --text-secondary: var(--text-soft);
+  --text-tertiary:  #8c8c8c;
+  --text-disabled:  #7b7b7b;
+  --text-on-accent: #171717;
+  --text-link:      var(--color-primary);
+
+  --border:         var(--stroke-soft);
+  --border-strong:  #5c5c5c;
+  --focus-ring:     var(--color-primary);
+
+  --accent:         var(--nova-accent-color);
+  --accent-hover:   var(--nova-accent-color);
+  --accent-soft:    #001f33;
+  --danger:         #ff453a;
+  --danger-soft:    #3a1d20;
+  --success:        #34c759;
+  --success-soft:   #16301f;
+  --warning:        #ff9500;
+  --warning-soft:   #38290f;
+
+  --bubble-in-bg:    #262626;
+  --bubble-in-text:  #ffffff;
+  --bubble-out-bg:   var(--c-primary-soft);
+  --bubble-out-text: #171717;
+  --bubble-meta:     var(--text-soft);
+  --unread-badge-bg: var(--c-primary);
+  --unread-badge-text:#ffffff;
+  --online:          var(--c-online);
+
+  /* Chat theme colors (dark theme) - darker variants */
+  --chat-theme-default-from: #ff521a;
+  --chat-theme-default-to: #ff3b00;
+  --chat-theme-sapphire-from: #0f2550;
+  --chat-theme-sapphire-to: #1e4db4;
+  --chat-theme-amethyst-from: #2d0f4e;
+  --chat-theme-amethyst-to: #5b2dc7;
+  --chat-theme-emerald-from: #032d1e;
+  --chat-theme-emerald-to: #086b3a;
 }

@@ -15,7 +15,14 @@ export type SignalingMessageType =
   | 'call_invite'
   | 'call_accept'
   | 'call_decline'
-  | 'call_end';
+  | 'call_end'
+  // Group mesh call signalling, relayed like any other message.
+  | 'group-call-invite'
+  | 'group-call-offer'
+  | 'group-call-answer'
+  | 'group-call-candidate'
+  | 'group-call-leave'
+  | 'group-call-end';
 
 export interface SignalingMessage {
   type: SignalingMessageType;

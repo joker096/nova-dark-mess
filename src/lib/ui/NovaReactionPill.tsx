@@ -33,8 +33,8 @@ export const NovaReactionPill = forwardRef<HTMLButtonElement, NovaReactionPillPr
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]',
           'active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed',
           selected
-            ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 font-semibold text-white'
-            : 'border-white/5 bg-[#1e2028] text-[#a6abb8] hover:bg-[#252834]',
+            ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/20 font-semibold text-[var(--text-on-accent)]'
+            : 'border-[var(--border-strong)] bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
           className,
         ]
           .filter(Boolean)

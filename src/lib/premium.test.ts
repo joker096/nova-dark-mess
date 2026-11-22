@@ -193,31 +193,31 @@ describe('checkoutPremium', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns true immediately when already premium', async () => {
+  it('returns ok immediately when already premium', async () => {
     setPremium(true, Date.now() + 60_000);
-    await expect(checkoutPremium()).resolves.toBe(true);
+    await expect(checkoutPremium()).resolves.toMatchObject({ ok: true });
   });
 
-  it('returns false when the checkout endpoint is unreachable', async () => {
+  it('returns not-ok when the checkout endpoint is unreachable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
-    await expect(checkoutPremium()).resolves.toBe(false);
+    await expect(checkoutPremium()).resolves.toMatchObject({ ok: false });
     expect(isPremium()).toBe(false);
   });
 
-  it('returns false when the server rejects the checkout request', async () => {
+  it('returns not-ok when the server rejects the checkout request', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false, status: 503, json: async () => ({ ok: false, error: 'payments disabled' }),
     }));
-    await expect(checkoutPremium()).resolves.toBe(false);
+    await expect(checkoutPremium()).resolves.toMatchObject({ ok: false });
     expect(isPremium()).toBe(false);
   });
 
-  it('returns false when the order never reaches paid status', async () => {
+  it('returns not-ok when the order never reaches paid status', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, orderId: 'ord-1', url: 'https://pay.example/x' }) })
       .mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: 'pending' }) });
     vi.stubGlobal('fetch', fetchMock);
-    await expect(checkoutPremium({ pollIntervalMs: 1, pollTimeoutMs: 5 })).resolves.toBe(false);
+    await expect(checkoutPremium({ pollIntervalMs: 1, pollTimeoutMs: 5 })).resolves.toMatchObject({ ok: false });
   });
 });
 

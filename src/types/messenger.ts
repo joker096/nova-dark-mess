@@ -49,6 +49,10 @@ export interface ChannelInfo {
   hideSubscriberCount?: boolean;
   visibility?: ChannelVisibility;
   inviteCode?: string;
+  /** Fingerprint of the channel owner (set when the owner acts on the channel). */
+  ownerFingerprint?: string;
+  /** Administrators listed in the "Manage admins" panel, owner included. */
+  admins?: { id: string; isOwner?: boolean }[];
 }
 
 export interface ChannelDraft {
@@ -159,7 +163,15 @@ export interface LocationData {
 
 export interface ChatMessage {
   id: string;
+  /** Server/peer message id, when it differs from the local `id`. */
+  messageId?: string;
   senderId: 'me' | 'other';
+  /** Display name of the sender, for threads and forwarded headers. */
+  senderName?: string;
+  /** Sender avatar URL, resolved by the caller when it is available. */
+  avatar?: string;
+  /** Attachment summary used by previews (name/size) instead of `document`. */
+  file?: { name: string; size?: number; mimeType?: string };
   text?: string;
   images?: string[];
   document?: DocumentAttachment;

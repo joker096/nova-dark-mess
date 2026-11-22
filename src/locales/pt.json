@@ -195,6 +195,11 @@
     "nameLabel": "Escolha um apelido",
     "namePlaceholder": "ex.: Mira",
     "nicknameHint": "Apelidos não são exclusivos. Confirme a identidade do contato pelo identificador criptográfico.",
+    "shortNicknameTitle": "Apelido curto",
+    "shortNicknameDesc": "Apelidos com menos de 5 caracteres são um recurso premium. Você pode comprar este nome curto por uma taxa única.",
+    "payNow": "Pagar $50",
+    "processing": "Processando...",
+    "chooseDifferentName": "Escolher outro nome",
     "continue": "Continuar",
     "back": "Voltar",
     "identityTitle": "Sua frase de recuperação",
@@ -883,8 +888,9 @@
     "idOnly": "Somente identificação",
     "idOnlyDesc": "Apenas o ID do contato é compartilhado. Nenhum telefone, e-mail ou outros dados pessoais são revelados.",
     "contactId": "ID de contato",
+    "appLink": "Link para o app",
     "consent": "Concordo em compartilhar apenas este ID de contato",
-    "share": "ID de compartilhamento"
+    "share": "Compartilhar"
   },
   "stickers": {
     "title": "Adesivos",
@@ -1047,6 +1053,8 @@
     "subscribe": "Inscrever-se",
     "subscribed": "Inscrito",
     "unsubscribe": "Cancelar inscrição",
+    "enableNotifications": "Ativar notificações",
+    "disableNotifications": "Desativar notificações",
     "channelInfo": "Informações do canal",
     "hideSubscriberCount": "Ocultar contagem de assinantes",
     "showSubscriberCount": "Mostrar contagem de assinantes",

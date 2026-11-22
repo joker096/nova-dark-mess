@@ -28,7 +28,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('qrcode', () => ({ toDataURL: mocks.toDataURL }));
 
 vi.mock('../context/LanguageContext', () => ({
-  useLanguage: () => ({ t: (key: string) => key, language: 'en' }),
+  // This screen keeps its own EN/RU copy table and switches on `language`, so
+  // the stub must report a real locale — 'en' here would fall through to RU.
+  useLanguage: () => ({ t: (key: string) => key, language: 'en-US' }),
 }));
 
 vi.mock('../hooks/useSecurity', () => ({
@@ -41,23 +43,60 @@ vi.mock('../hooks/useAccount', () => ({
 
 vi.mock('../lib/storage/db', () => ({ dbInstance: mocks.db }));
 
+// Mock privacyMode to return empty defaults for tests
+vi.mock('../lib/network/privacyMode', () => ({
+  loadPrivacyPrefs: () => ({
+    metadataMinimization: false,
+    presenceSharing: false,
+    presenceHashing: true,
+    presenceTtl: 'normal',
+    webrtcRelayOnly: false,
+    relayEndpoints: [],
+    turnServers: [],
+    torEnabled: false,
+    torSocksPort: 9050,
+    analyticsConsent: false,
+    crashReports: false,
+  }),
+  savePrivacyPrefs: vi.fn(),
+  shouldEmitCoverTraffic: () => false,
+  readBatteryStatus: async () => ({ level: 1, charging: true }),
+  probeTor: async () => ({ ok: false, error: 'not running' }),
+  createNetworkProfile: vi.fn(),
+  applyNetworkProfile: vi.fn(),
+  buildNetworkProfileLink: vi.fn(),
+  parseNetworkProfileLink: vi.fn(),
+}));
+
 vi.mock('../lib/anon/transport', () => ({
   createAnonTransport: mocks.createAnonTransport,
 }));
 
-vi.mock('../lib/anon/pairing', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/anon/pairing')>();
-  return {
-    ...actual,
-    createInvitation: mocks.createInvitation,
-    receiveInboxPackets: mocks.receiveInboxPackets,
-    ackInboxPackets: mocks.ackInboxPackets,
-    sendContactOffer: mocks.sendContactOffer,
-    sendContactMessage: mocks.sendContactMessage,
-    failoverInbox: mocks.failoverInbox,
-    migrateInbox: mocks.migrateInbox,
-  };
-});
+vi.mock('../lib/anon/pairing', () => ({
+  createInvitation: mocks.createInvitation,
+  receiveInboxPackets: mocks.receiveInboxPackets,
+  ackInboxPackets: mocks.ackInboxPackets,
+  sendContactOffer: mocks.sendContactOffer,
+  sendContactMessage: mocks.sendContactMessage,
+  failoverInbox: mocks.failoverInbox,
+  migrateInbox: mocks.migrateInbox,
+  // Blocking is keyed on the Ed25519 identity of the peer invite, so the mock
+  // must return a key-shaped value or the local block list rejects it.
+  contactIdentity: (invite: { signingKey: string }) => queueSigningPublicKey(invite.signingKey),
+  isBlockedContact: () => false,
+  inviteFromInbox: (inbox: any) => inbox,
+  standbyInvite: () => null,
+  hasStandby: () => false,
+  standbyInbox: () => null,
+  encodeContactOffer: () => 'encoded-offer',
+  decodeContactOffer: () => null,
+  acceptInvitation: vi.fn(),
+  prepareInvitationAcceptance: vi.fn(),
+  contactFromOffer: () => null,
+  receiveInboxMessages: vi.fn(),
+  receiveContactOffers: vi.fn(),
+  receiveContactMessages: vi.fn(),
+}));
 
 vi.mock('../lib/anon/tor', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/anon/tor')>();
@@ -67,7 +106,9 @@ vi.mock('../lib/anon/tor', async (importOriginal) => {
   };
 });
 
-vi.mock('../lib/premium', () => ({
+vi.mock('../lib/premium', async (importOriginal) => ({
+  // Keep the pure helpers real so `isPremium()` and friends keep working.
+  ...(await importOriginal<typeof import('../lib/premium')>()),
   purchasePremiumGiftCode: mocks.purchasePremiumGiftCode,
   clearPendingPremiumGiftOrder: mocks.clearPendingPremiumGiftOrder,
 }));
@@ -136,6 +177,8 @@ describe('AnonymousMessengerScreen', () => {
       giftCode: `NOVA-GIFT-${'A'.repeat(32)}`,
     });
     mocks.createInvitation.mockResolvedValue({
+      // `createInvitation` resolves to an Invitation (`{ inbox, invite }`), and
+      // the screen reads `invitation.inbox`; a bare inbox fails its guard.
       inbox: {
         relayUrl: 'https://relay.example',
         queueId: 'q_00000000000000000000000000000000',
@@ -154,11 +197,25 @@ describe('AnonymousMessengerScreen', () => {
   });
 
   it('shows local mode instead of invite controls without a relay', async () => {
+    // The test env ships a build-time relay, so local mode needs settings that
+    // explicitly clear it (the shape older builds stored).
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [],
+    });
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
     expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
     expect(screen.getByText('Create an invite and send the link or show the QR code. The other person opens it and confirms; they will then appear in your contacts automatically.')).toBeTruthy();
-    expect(screen.getByText('Local mode')).toBeTruthy();
+    expect(screen.getAllByText('Local mode')).toHaveLength(1);
     expect(screen.getByText('Local only')).toBeTruthy();
     expect(
       screen.getByText(
@@ -214,7 +271,7 @@ describe('AnonymousMessengerScreen', () => {
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
     expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
 
     const panel = screen.getByTestId('local-contacts-panel');
     expect(within(panel).getByText('Local Alice')).toBeTruthy();
@@ -240,7 +297,7 @@ describe('AnonymousMessengerScreen', () => {
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
     await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
     const panel = screen.getByTestId('local-contacts-panel');
 
     fireEvent.click(
@@ -368,7 +425,7 @@ describe('AnonymousMessengerScreen', () => {
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
     expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Local only · 1 + 1 pending' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
     expect(screen.getByText('1 invitation pending confirmation.')).toBeTruthy();
   });
 
@@ -396,10 +453,13 @@ describe('AnonymousMessengerScreen', () => {
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
     expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Local only · 1 + 1 pending' })).toBeTruthy();
+    // The badge re-renders on the invite clock tick only while the panel is open.
+    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
+    const badgeButton = screen.getByRole('button', { name: 'Local mode' });
+    expect(badgeButton.textContent).toBe('Local only · 1 + 1 pending');
     await waitFor(
-      () => expect(screen.getByRole('button', { name: 'Local only · 1' })).toBeTruthy(),
-      { timeout: 2000 },
+      () => expect(badgeButton.textContent).toBe('Local only · 1'),
+      { timeout: 5000 },
     );
   });
 
@@ -416,8 +476,23 @@ describe('AnonymousMessengerScreen', () => {
   });
 
   it('saves proxy-only settings encrypted and creates a shareable invite', async () => {
+    mocks.db.loadSetting.mockResolvedValue({
+      settings: {
+        relayUrl: '',
+        extraRelays: '',
+        proxyUrl: '',
+        relayId: '',
+        relayPublicKey: '',
+        pushToken: '',
+        tor: false,
+      },
+      contacts: [],
+    });
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
     await screen.findByRole('heading', { name: 'Contacts' });
+    expect(screen.getByRole('heading', { name: 'Local mode' })).toBeTruthy();
+    // The header shows the mode badge; it only opens the panel, it is not a duplicate of its title.
+    expect(screen.getByRole('button', { name: 'Local mode' }).textContent).toBe('Local only');
     fireEvent.click(screen.getByText('Advanced network settings'));
 
     fireEvent.change(screen.getByLabelText('Relay URL'), {
@@ -435,7 +510,7 @@ describe('AnonymousMessengerScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
 
     await waitFor(() => expect(mocks.db.saveSetting).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText('Local only')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Local mode' })).toBeNull());
     expect(mocks.createAnonTransport).toHaveBeenCalledWith({
       relayUrl: 'https://relay.example',
       proxy: {
@@ -458,7 +533,8 @@ describe('AnonymousMessengerScreen', () => {
       undefined,
       undefined,
       '@nova',
-      undefined,
+      // New invites carry a standby queue on the configured fallback relay.
+      expect.objectContaining({ relayUrl: 'https://p01--profound-hill--97yk4ph4sg85.code.run' }),
     );
   });
 

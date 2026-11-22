@@ -195,6 +195,11 @@
     "nameLabel": "选择昵称",
     "namePlaceholder": "例如：Mira",
     "nicknameHint": "昵称并不唯一。请通过联系人的加密 ID 验证其身份。",
+    "shortNicknameTitle": "短昵称",
+    "shortNicknameDesc": "少于 5 个字符的昵称是高级功能。您可以一次性付费购买此短名称。",
+    "payNow": "支付 $50",
+    "processing": "处理中...",
+    "chooseDifferentName": "选择其他名称",
     "continue": "继续",
     "back": "返回",
     "identityTitle": "您的恢复短语",
@@ -883,8 +888,9 @@
     "idOnly": "仅身份证件",
     "idOnlyDesc": "仅共享联系人 ID。不会透露电话、电子邮件或其他个人数据。",
     "contactId": "联系方式",
+    "appLink": "应用链接",
     "consent": "我同意仅分享此联系 ID",
-    "share": "分享ID"
+    "share": "分享"
   },
   "stickers": {
     "title": "贴纸",
@@ -1047,6 +1053,8 @@
     "subscribe": "订阅",
     "subscribed": "已订阅",
     "unsubscribe": "退订",
+    "enableNotifications": "启用通知",
+    "disableNotifications": "禁用通知",
     "channelInfo": "频道信息",
     "hideSubscriberCount": "隐藏订阅者数量",
     "showSubscriberCount": "显示订阅者数量",

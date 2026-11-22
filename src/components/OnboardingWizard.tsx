@@ -15,7 +15,12 @@ import {
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
-import { normalizeNickname } from '../lib/account/account';
+import {
+  MIN_FREE_NICKNAME_LENGTH,
+  normalizeNickname,
+  isShortNicknamePaid,
+  setShortNicknamePaid,
+} from '../lib/account/account';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { copyTextToClipboard, saveTextFile, type TextSaveOutcome } from '../lib/ui/download';
@@ -29,6 +34,7 @@ type Step =
   | 'language'
   | 'choice'
   | 'nickname'
+  | 'shortNicknamePayment'
   | 'phrase'
   | 'phraseCheck'
   | 'restoreBackup'
@@ -107,6 +113,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   const [error, setError] = useState('');
   const [afterNickname, setAfterNickname] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
+  const [shortNicknamePending, setShortNicknamePending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [phraseSaveNotice, setPhraseSaveNotice] = useState<{
     outcome: TextSaveOutcome;
@@ -160,6 +167,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
             : 'welcome',
         );
         break;
+      case 'shortNicknamePayment':
+        setStep('nickname');
+        break;
       case 'phrase':
         setStep(path === 'restore' ? 'choice' : 'nickname');
         break;
@@ -194,8 +204,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
   };
 
   const askForNickname = (option: RestoreMethod) => {
+    // `@nova` is the placeholder of a fresh local account, not a chosen name.
     const saved = (account.nickname ?? '').replace(/^@+/, '').trim();
-    setNickname(saved && saved.toLowerCase() !== 'nova' ? saved : '');
+    setNickname(saved && saved.toLowerCase() !== 'nova' && saved.toLowerCase() !== 'nova_user' ? saved : '');
     setAfterNickname('security');
     setBackupCreated(option === 'backup');
     setStep('nickname');
@@ -212,6 +223,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
         setStep('nickname');
         return;
       }
+
+      // Check if nickname is short (< 5 chars without @) and not paid
+      const nicknameWithoutAt = normalizedNickname.slice(1);
+      if (nicknameWithoutAt.length < MIN_FREE_NICKNAME_LENGTH && !isShortNicknamePaid()) {
+        setShortNicknamePending(true);
+        setStep('shortNicknamePayment');
+        return;
+      }
+
       updateAccount({
         displayName: normalizedNickname.slice(1),
         nickname: normalizedNickname,
@@ -424,6 +444,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
       aria-label={t('app.name')}
       className="fixed inset-0 z-[100] bg-[#0b0c10] text-white flex flex-col overflow-y-auto no-scrollbar"
       data-testid="onboarding-wizard"
+      data-theme-preserve="dark"
     >
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col px-5 pt-6 pb-8">
         {/* Progress */}
@@ -605,6 +626,65 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               >
                 {t('onboarding.continue')}
                 <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {step === 'shortNicknamePayment' && (
+            <div className="space-y-4" data-testid="onboarding-short-nickname-payment">
+              <h2 className="text-lg font-bold">{t('onboarding.shortNicknameTitle')}</h2>
+              <div className="bg-[#1e2029]/80 border border-white/10 rounded-xl p-4">
+                <p className="text-white/80 text-sm leading-relaxed">
+                  {t('onboarding.shortNicknameDesc')}
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-white/60">
+                  <span className="font-mono bg-[#101118] px-2 py-1 rounded border border-white/10">
+                    @{normalizedNickname.slice(1)}
+                  </span>
+                  <span className="text-[var(--nova-accent-color)]">50 USD</span>
+                </div>
+              </div>
+              {error && (
+                <p className="text-[11px] text-red-400" role="alert" aria-live="assertive">
+                  {error}
+                </p>
+              )}
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={busy || shortNicknamePending}
+                onClick={async () => {
+                  setBusy(true);
+                  setError('');
+                  try {
+                    // TODO: Implement actual payment flow (e.g., open payment URL)
+                    // For now, simulate successful payment
+                    setShortNicknamePaid(true);
+                    setShortNicknamePending(false);
+                    const next = afterNickname ?? 'phrase';
+                    setAfterNickname(null);
+                    setError('');
+                    setStep(next);
+                  } catch (e) {
+                    console.error('short nickname payment failed', e);
+                    setError(t('premium.errorGeneric') || 'Payment failed');
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {shortNicknamePending ? t('onboarding.processing') : t('onboarding.payNow')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                className={ghostBtn}
+                disabled={shortNicknamePending}
+                onClick={() => {
+                  setStep('nickname');
+                }}
+              >
+                {t('onboarding.chooseDifferentName')}
               </button>
             </div>
           )}

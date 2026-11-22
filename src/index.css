@@ -5,6 +5,7 @@
 @source "../src";
 
 @import "./theme/tokens.css";
+@import "./lib/accessibility/a11y.css";
 
 :root {
   --nova-accent-color: #ff4e18;
@@ -186,6 +187,42 @@ html[data-theme='light']
     *
   ) {
   color: var(--nova-text-primary) !important;
+}
+
+/* White opacity variants (text-white/10 through text-white/90) also need
+   remapping in light mode so they don't disappear on white backgrounds. */
+html[data-theme='light']
+  :is(
+    [class*='text-white/10'],
+    [class*='text-white/20'],
+    [class*='text-white/30'],
+    [class*='text-white/40'],
+    [class*='text-white/50'],
+    [class*='text-white/60'],
+    [class*='text-white/70'],
+    [class*='text-white/80'],
+    [class*='text-white/90']
+  ):not([data-theme-preserve='dark']):not([data-theme-preserve='dark'] *):not(
+    :is(
+      [class*='bg-[var(--nova-accent-color'],
+      [class*='from-[var(--nova-accent-color'],
+      [class*='bg-[#ff'],
+      [class*='from-[#ff'],
+      [class*='bg-red-'],
+      [class*='bg-rose-'],
+      [class*='bg-emerald-'],
+      [class*='bg-green-'],
+      [class*='bg-amber-'],
+      [class*='bg-sky-'],
+      [class*='bg-blue-'],
+      [class*='bg-violet-'],
+      [class*='bg-purple-'],
+      [class*='bg-[#10b981]']
+    )
+    *
+  ) {
+  color: var(--nova-text-primary) !important;
+  opacity: 1 !important;
 }
 
 /* Placeholders stay a hint, but a white veil disappears on a white field. */
@@ -419,6 +456,22 @@ html.native-safe-insets .safe-bottom-nav {
 :focus-visible {
   outline: 2px solid var(--nova-accent-color);
   outline-offset: 2px;
+}
+
+/* SVG icons inside buttons inherit text color from parent.
+   Lucide icons are stroke-based and must keep fill:none, otherwise the
+   shape becomes a solid block of the button colour. */
+button svg,
+[role="button"] svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Ensure lucide icons render correctly */
+.lucide {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Buttons and rows: keep taps obvious without changing layout. */

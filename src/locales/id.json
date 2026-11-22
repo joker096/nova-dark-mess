@@ -195,6 +195,11 @@
     "nameLabel": "Pilih nama panggilan",
     "namePlaceholder": "mis. Mira",
     "nicknameHint": "Nama panggilan tidak unik. Verifikasi identitas kontak menggunakan ID kriptografisnya.",
+    "shortNicknameTitle": "Nama panggilan pendek",
+    "shortNicknameDesc": "Nama panggilan kurang dari 5 karakter adalah fitur premium. Anda bisa membeli nama pendek ini dengan biaya sekali bayar.",
+    "payNow": "Bayar $50",
+    "processing": "Memproses...",
+    "chooseDifferentName": "Pilih nama lain",
     "continue": "Lanjutkan",
     "back": "Kembali",
     "identityTitle": "Frasa pemulihan Anda",
@@ -956,8 +961,9 @@
     "idOnly": "Hanya ID",
     "idOnlyDesc": "Hanya ID kontak yang dibagikan. Tidak ada telepon, email, atau data pribadi lain yang dibocorkan.",
     "contactId": "ID Kontak",
+    "appLink": "Tautan ke aplikasi",
     "consent": "Saya setuju untuk berbagi hanya ID kontak ini",
-    "share": "Bagikan ID"
+    "share": "Bagikan"
   },
   "location": {
     "shareTitle": "Bagikan Lokasi",
@@ -1055,6 +1061,8 @@
     "subscribe": "Berlangganan",
     "subscribed": "Berlangganan",
     "unsubscribe": "Berhenti berlangganan",
+    "enableNotifications": "Aktifkan notifikasi",
+    "disableNotifications": "Nonaktifkan notifikasi",
     "channelInfo": "Info saluran",
     "hideSubscriberCount": "Sembunyikan jumlah pelanggan",
     "showSubscriberCount": "Tampilkan jumlah pelanggan",

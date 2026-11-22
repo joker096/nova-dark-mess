@@ -9,3 +9,27 @@ id = "gateway-tsconfig-false-positive"
 description = "Allow normal tsconfig values flagged as high-entropy by fallback scan"
 regex = '^packages/gateway/tsconfig\.json:'
 allowlist = true
+
+[[rules]]
+id = "orders-test-data"
+description = "Allow test order tokens in orders/ directory"
+regex = '^orders/'
+allowlist = true
+
+[[rules]]
+id = "test-files-false-positive"
+description = "Allow test secret constants in test-*.cjs files"
+regex = '^test-.*\.cjs:'
+allowlist = true
+
+[[rules]]
+id = "verify-sig-false-positive"
+description = "Allow test signature verification constants"
+regex = '^verify-sig\.cjs:'
+allowlist = true
+
+[[rules]]
+id = "server-test-false-positive"
+description = "Allow PAYMENTO_SECRET test constant in server.test.ts"
+regex = '^src/server\.test\.ts:'
+allowlist = true

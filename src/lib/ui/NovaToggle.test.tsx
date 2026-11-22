@@ -22,7 +22,7 @@ describe('NovaToggle', () => {
     const toggle = screen.getByRole('switch', { name: 'Enabled' });
     expect(toggle).toHaveAttribute('aria-checked', 'true');
     const knob = toggle.querySelector('span > span');
-    expect(knob).toHaveClass('translate-x-4');
+    expect(knob).toHaveClass('translate-x-full');
   });
 
   it('calls onChange with toggled value on click', () => {

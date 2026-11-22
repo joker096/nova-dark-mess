@@ -128,6 +128,42 @@ describe('PinLockScreen visual snapshot', () => {
     expect(securityMock.unlockWithBiometric).toHaveBeenCalledTimes(1);
   });
 
+  it('places the fingerprint button in the numpad, next to 0', () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    securityMock.biometricEnabled = true;
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+
+    const numpad = screen.getByRole('button', { name: '1' }).parentElement!;
+    const keys = Array.from(numpad.children);
+    const biometric = screen.getByRole('button', { name: 'common.unlockWithBiometric' });
+    expect(numpad.contains(biometric)).toBe(true);
+    expect(keys.indexOf(biometric)).toBe(keys.indexOf(screen.getByRole('button', { name: '0' })) - 1);
+  });
+
+  it('keeps the biometric button out of the keypad while setting a new passcode', () => {
+    securityMock.biometricEnabled = true;
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'common.unlockWithBiometric' })).toBeNull();
+  });
+
+  it('hints the fingerprint sensor after a wrong passcode', async () => {
+    securityMock.pinHash = 'stored-pin-hash';
+    securityMock.biometricEnabled = true;
+    securityMock.verifyPin.mockResolvedValue(false);
+    render(<PinLockScreen onUnlock={vi.fn()} />);
+
+    expect(screen.getByText('common.passcodeEnter')).toBeTruthy();
+    const numpad = screen.getByRole('button', { name: '1' }).parentElement!;
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(within(numpad).getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toBe('common.passcodeError');
+    });
+    expect(screen.getByText('settings.biometricHint')).toBeTruthy();
+  });
+
   it('hides the fingerprint button when biometric unlock is disabled', () => {
     securityMock.pinHash = 'stored-pin-hash';
     render(<PinLockScreen onUnlock={vi.fn()} />);

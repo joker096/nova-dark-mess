@@ -23,6 +23,7 @@ import { SanctionGate } from './components/SanctionGate';
 import { EncryptedBotStorage, NOVA_BOTS } from './lib/bots/runtime';
 import { dbInstance } from './lib/storage/db';
 import { botSession } from './lib/bots/session';
+import { ThreadSidebar } from './components/ThreadSidebar';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -63,8 +64,8 @@ const CryptoCheckoutModal = lazy(() =>
 );
 
 const ScreenFallback: React.FC = () => (
-  <div className="flex h-full w-full items-center justify-center bg-[#090a0e]">
-    <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/15 border-t-[var(--nova-accent-color)]" />
+      <div className="flex h-full w-full items-center justify-center bg-[var(--bg-app)]">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--nova-accent-color)]" />
   </div>
 );
 import { useLanguage } from './context/LanguageContext';
@@ -106,7 +107,7 @@ import {
   JoinRequestRelay,
   nextJoinOutboxDelay,
 } from './lib/social/joinRequestRelay';
-import { MOCK_CHATS } from './data/mockMessengerData';
+import { MOCK_CHATS, CONTACT_PROFILES } from './data/mockMessengerData';
 import { isOnboardingComplete } from './lib/onboarding';
 import { useFocusTrap } from './lib/ui/useFocusTrap';
 const OnboardingWizard = lazy(() =>
@@ -371,6 +372,7 @@ export default function App() {
   const [pendingSiteHandoff, setPendingSiteHandoff] = useState<SiteHandoff | null>(null);
   const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
   const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
+  const [activeThreadRootId, setActiveThreadRootId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!botsEnabled) return;
@@ -564,6 +566,11 @@ export default function App() {
   const openAnalytics = () => {
     setIsSettingsOpen(false);
     navigate('analytics');
+  };
+
+  const openSites = () => {
+    setIsSettingsOpen(false);
+    navigate('sites');
   };
 
   const openChannel = (channelId?: string) => {
@@ -780,6 +787,8 @@ export default function App() {
         );
       case 'analytics':
         return <AnalyticsScreen onBack={goBack} />;
+      case 'sites':
+        return <SitesScreen onBack={goBack} />;
       case 'mesh-map':
         return (
           <div className="w-full h-full p-4">
@@ -797,12 +806,6 @@ export default function App() {
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
-      case 'sites':
-        return <SitesScreen
-            onBack={goBack}
-            siteHandoff={pendingSiteHandoff}
-            onHandoffDone={() => setPendingSiteHandoff(null)}
-          />;
       case 'chat-katie':
       case 'chats':
       default: {
@@ -824,6 +827,11 @@ export default function App() {
             sharedCallSignaling={callSignaling}
             pendingIncomingCall={pendingIncomingCall}
             onPendingIncomingCallConsumed={() => setPendingIncomingCall(null)}
+            threadRootId={activeThreadRootId}
+            onThreadRootChange={setActiveThreadRootId}
+            onScrollToThreadMessage={(msgId) => {
+              window.dispatchEvent(new CustomEvent('nova:scrollToThreadMessage', { detail: { msgId } }));
+            }}
           />
         );
       }
@@ -833,6 +841,28 @@ export default function App() {
   // Mobile Single-Pane Screen renderer
   const renderMobileScreen = () => {
     switch (currentScreen) {
+      case 'channel-kyiv':
+        if (!activeChannelId) {
+          return (
+            <ChannelListPanel
+              key="channel-list"
+              channels={channels}
+              activeChannelId={activeChannelId}
+              onSelectChannel={openChannel}
+              onCreateChannel={handleCreateChannel}
+              onTogglePopular={handleToggleChannelPopular}
+              onDeleteChannels={handleDeleteChannels}
+              onBack={goBack}
+            />
+          );
+        }
+        return (
+          <ChannelScreen
+            key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
+            {...channelScreenProps}
+            onBack={goBack}
+          />
+        );
       case 'chats':
         return (
           <ChatsScreen
@@ -879,14 +909,6 @@ export default function App() {
           />
         );
       }
-      case 'channel-kyiv':
-        return (
-          <ChannelScreen
-            key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
-            {...channelScreenProps}
-            onBack={goBack}
-          />
-        );
       case 'profile-katie':
         return (
           <ProfileScreen
@@ -898,6 +920,8 @@ export default function App() {
         );
       case 'analytics':
         return <AnalyticsScreen onBack={goBack} />;
+      case 'sites':
+        return <SitesScreen onBack={goBack} />;
       case 'mesh-map':
         return (
           <div className="flex h-full w-full flex-col bg-[#090a0e]">
@@ -912,7 +936,7 @@ export default function App() {
                 />
               </NovaTooltip>
               <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
-              <h1 className="min-w-0 truncate text-[15px] font-bold text-white">
+            <h1 className="min-w-0 truncate text-[15px] font-bold text-[var(--text-primary)]">
                 {t('meshMap.title')}
               </h1>
             </header>
@@ -932,12 +956,6 @@ export default function App() {
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
-      case 'sites':
-        return <SitesScreen
-            onBack={goBack}
-            siteHandoff={pendingSiteHandoff}
-            onHandoffDone={() => setPendingSiteHandoff(null)}
-          />;
       default:
         return null;
     }
@@ -963,13 +981,13 @@ export default function App() {
         <PinLockScreen onUnlock={unlock} />
       ) : (
         <SanctionGate>
-        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[#090a0e] text-white flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
+        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
       {/* ======================================================== */}
 
       {/* Left Navigation Rail (Desktop Only) */}
-      <aside className="hidden md:flex w-[72px] shrink-0 bg-[#0b0c11] border-r border-white/[0.06] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
+      <aside className="hidden md:flex w-[72px] shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border)] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
         {/* Primary Navigation Icons */}
         <nav className="flex flex-col items-center gap-2.5 w-full px-2">
           {/* Chats tab */}
@@ -979,11 +997,11 @@ export default function App() {
               setActiveChatId('katie');
               setCurrentScreen('chat-katie');
             }}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
-              isDesktopChatActive
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
-                : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
-            }`}
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
+                isDesktopChatActive
+                  ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
+              }`}
             title={t('common.chats')}
           >
             <MessageSquare className="w-5 h-5" />
@@ -1001,14 +1019,11 @@ export default function App() {
           {/* Kyiv Channel tab */}
           <NovaTooltip label={t('common.channels')}>
           <button
-            onClick={() => {
-              setActiveChatId('kyiv-channel');
-              setCurrentScreen('channel-kyiv');
-            }}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
+            onClick={() => openChannel()}
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               isDesktopChannelActive
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
-                : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
+                ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
             }`}
             title={t('common.channels')}
           >
@@ -1025,54 +1040,17 @@ export default function App() {
           {/* Folders tab */}
           <button
             onClick={() => foldersRef.current?.openFolderModal()}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group text-white/45 hover:text-white hover:bg-white/[0.08]`}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]`}
             title={t('folders')}
           >
             <Folder className="w-5 h-5" />
           </button>
-
-
-
-          {/* Analytics tab */}
-          <button
-            onClick={() => navigate('analytics')}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
-              currentScreen === 'analytics'
-                ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
-                : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
-            }`}
-            title={t('analytics.title')}
-          >
-            <BarChart3 className={`w-5 h-5 ${currentScreen === 'analytics' ? 'fill-[var(--nova-accent-color)]' : ''}`} />
-          {currentScreen === 'analytics' && (
-            <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
-          )}
-        </button>
-
-          
-
-      {/* Sites tab */}
-      <button
-        onClick={() => { setActiveChatId(''); setCurrentScreen('sites'); }}
-        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
-          currentScreen === 'sites'
-            ? 'bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30'
-            : 'text-white/45 hover:text-white hover:bg-white/[0.08]'
-        }`}
-        title={t('sites.title')}
-      >
-        <MessageSquare className="w-5 h-5" />
-      {currentScreen === 'sites' && (
-        <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-[var(--nova-accent-color)]" />
-      )}
-    </button>
-  </nav>
-
+      </nav>
         <div className="flex flex-col items-center gap-2">
           {/* Settings Trigger (language switch moved into Settings) */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="w-11 h-11 rounded-2xl text-white/45 hover:text-[var(--nova-accent-color)] hover:bg-white/[0.08] flex items-center justify-center transition cursor-pointer"
+            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer"
             title={t('settings.title')}
           >
             <Settings className="w-5 h-5" />
@@ -1081,7 +1059,7 @@ export default function App() {
           {/* User Avatar with Status indicator */}
           <button
             onClick={() => openProfile(account.id)}
-            className="w-10 h-10 rounded-full border border-white/15 overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
+            className="w-10 h-10 rounded-full border border-[var(--border-strong)] overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
             title={`${account.displayName} (Online)`}
           >
             {account.avatar && !avatarLoadFailed && (
@@ -1095,9 +1073,11 @@ export default function App() {
                 }}
               />
             )}
-            <div className="w-full h-full bg-[var(--nova-accent-color)] text-white font-bold text-xs flex items-center justify-center">
-              {account.displayName.slice(0, 2).toUpperCase()}
-            </div>
+            {(!account.avatar || avatarLoadFailed) && (
+              <div className="w-full h-full bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] font-bold text-xs flex items-center justify-center">
+                {account.displayName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
             {premium && (
               <span
                 data-testid="premium-crown"
@@ -1109,7 +1089,7 @@ export default function App() {
               </span>
             )}
             {/* Online Green Beacon */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0b0c11]" />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--online)] ring-2 ring-[var(--bg-surface)]" />
           </button>
         </div>
       </aside>
@@ -1159,10 +1139,26 @@ export default function App() {
         <Suspense fallback={<ScreenFallback />}>{renderDesktopMainScreen()}</Suspense>
       </main>
 
+      {/* Thread Sidebar (Desktop Only) - appears when thread is open in chat */}
+      {(currentScreen === 'chat-katie' || currentScreen === 'chats') && activeThreadRootId && (
+        <ThreadSidebar
+          threadRootId={activeThreadRootId}
+          chatId={activeChatId}
+          onClose={() => setActiveThreadRootId(null)}
+          onScrollToMessage={(msgId) => {
+            window.dispatchEvent(new CustomEvent('nova:scrollToThreadMessage', { detail: { msgId } }));
+          }}
+          profile={CONTACT_PROFILES[activeChatId]}
+          isOwnProfile={activeChatId === account.id}
+          accountDisplayName={account.displayName}
+          accountAvatar={account.avatar}
+        />
+      )}
+
       {/* ======================================================== */}
       {/* 2. MOBILE VIEW (< 768px md: breakpoint)                   */}
       {/* ======================================================== */}
-      <div className="flex-1 w-full h-full md:hidden overflow-hidden flex flex-col relative bg-[#0c0d11]">
+        <div className="flex-1 w-full h-full md:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
         <Suspense fallback={<ScreenFallback />}>{renderMobileScreen()}</Suspense>
       </div>
 
@@ -1236,6 +1232,7 @@ export default function App() {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           onOpenAnalytics={openAnalytics}
+          onOpenSites={openSites}
           getBotSession={botsEnabled ? getBotSession : undefined}
           pendingBotInstall={pendingBotInstall}
           onBotInstallHandled={() => setPendingBotInstall(null)}

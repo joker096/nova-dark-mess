@@ -13,11 +13,11 @@ interface NovaColorChipProps extends HTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  'flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none';
+  'flex flex-col items-center gap-1 py-2 px-2 rounded-xl border border-[var(--border-strong)] transition cursor-pointer relative overflow-hidden disabled:opacity-60 disabled:pointer-events-none';
 
 const VARIANT_CONFIG: Record<string, string> = {
   selected: 'bg-[var(--nova-accent-color,#ff4e18)]/10 border-[var(--nova-accent-color,#ff4e18)]/40 shadow-sm shadow-[var(--nova-accent-color,#ff4e18)]/25',
-  unselected: 'bg-white/[0.03] border-transparent hover:bg-white/[0.06]',
+  unselected: 'bg-[var(--bg-surface-2)] border-transparent hover:bg-[var(--bg-hover)]',
   disabled: 'opacity-60 pointer-events-none',
 };
 
@@ -48,19 +48,19 @@ export const NovaColorChip = forwardRef<HTMLButtonElement, NovaColorChipProps>(
         className={`${BASE} ${variantClasses} ${className ?? ''}`.trim()}
         {...props}
       >
-        <div className="relative w-6 h-6 rounded-full border border-white/20 shadow-sm overflow-hidden">
+        <div className="relative w-6 h-6 rounded-full border border-[var(--border-strong)] shadow-sm overflow-hidden">
           {gradient && (
             <div className={`absolute inset-0 bg-gradient-to-tr ${gradient}`} />
           )}
-          <div className="absolute inset-1 rounded-full bg-white/30" />
+          <div className="absolute inset-1 rounded-full bg-[var(--bg-surface-2)]" />
           {locked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-              <Lock className="w-3 h-3 text-white/90" />
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--text-primary)]/40 backdrop-blur-sm">
+              <Lock className="w-3 h-3 text-[var(--text-on-accent)]" />
             </div>
           )}
         </div>
         <span
-          className={`text-[11px] font-medium ${locked ? 'text-[#8c919d]' : ''}`}
+          className={`text-[11px] font-medium ${locked ? 'text-[var(--text-disabled)]' : ''}`}
         >
           {label}
         </span>

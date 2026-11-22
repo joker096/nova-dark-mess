@@ -34,7 +34,7 @@ describe('NovaColorChip', () => {
     );
     const btn = container.firstChild as HTMLElement;
     const labelSpan = btn.querySelector('span.text-\\[11px\\]');
-    expect(labelSpan).toHaveClass('text-[#8c919d]');
+    expect(labelSpan).toHaveClass('text-[var(--text-disabled)]');
   });
 
   it('applies disabled state', () => {
@@ -63,7 +63,7 @@ describe('NovaColorChip', () => {
       <NovaColorChip locked label="Premium" onClick={vi.fn()}>Premium</NovaColorChip>,
     );
     const btn = container.firstChild as HTMLElement;
-    expect(btn.querySelector('span.text-\\[11px\\]')).toHaveClass('text-[#8c919d]');
+    expect(btn.querySelector('span.text-\\[11px\\]')).toHaveClass('text-[var(--text-disabled)]');
   });
 
   it('forwards ref to button element', () => {

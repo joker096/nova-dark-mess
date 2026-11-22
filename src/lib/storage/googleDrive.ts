@@ -400,7 +400,8 @@ async function uploadChunk(
       'Content-Range': `bytes ${start}-${end}/${totalSize}`,
       'Content-Length': String(chunk.length),
     },
-    body: chunk,
+    // A Uint8Array is a valid BodyInit at runtime; only the TS lib is stricter.
+    body: chunk as unknown as BodyInit,
   });
 
   if (resp.status === 308) {
