@@ -22,9 +22,9 @@ describe('UI visual snapshot - NovaButton', () => {
 
   it('matches default ghost visual snapshot', () => {
     const { container } = render(<NovaButton onClick={vi.fn()}>Click</NovaButton>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]">Click</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-10 h-10 min-w-[44px] min-h-[44px] px-4 py-2 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]">Click</button>"`);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('w-7 h-7');
+    expect(btn.className).toContain('w-10 h-10');
     expect(btn.className).toContain('bg-white/5');
     expect(btn.className).toContain('rounded-full');
   });
@@ -35,15 +35,15 @@ describe('UI visual snapshot - NovaButton', () => {
         Accent
       </NovaButton>,
     );
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-10 h-10 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[#ffffff] border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95">Accent</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-12 h-12 min-w-[52px] min-h-[52px] px-5 py-2.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[#ffffff] border border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 hover:brightness-110 hover:shadow-lg active:brightness-95">Accent</button>"`);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
-    expect(btn.className).toContain('w-10 h-10');
+    expect(btn.className).toContain('w-12 h-12');
   });
 
   it('matches disabled visual snapshot', () => {
     const { container } = render(<NovaButton disabled onClick={vi.fn()}>Disabled</NovaButton>);
-    expect(container.innerHTML).toMatchInlineSnapshot(`"<button class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]" disabled="">Disabled</button>"`);
+    expect(container.innerHTML).toMatchInlineSnapshot(`"<button type="button" disabled="" aria-disabled="true" class="flex items-center justify-center cursor-pointer select-none transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color,#ff4e18)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--nova-canvas,#0c0d11)] w-10 h-10 min-w-[44px] min-h-[44px] px-4 py-2 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]">Disabled</button>"`);
     expect(screen.getByRole('button')).toBeDisabled();
     expect(screen.getByRole('button').className).toContain('disabled:opacity-50');
   });

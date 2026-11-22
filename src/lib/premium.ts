@@ -195,7 +195,7 @@ export function canUseFeature(feature: PremiumFeature): boolean {
   return isPremium();
 }
 
-const REMOTE_API_BASE = 'https://mess.cvr.name';
+const REMOTE_API_BASE = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || 'https://mess.cvr.name';
 
 /** True inside the Tauri webview, where location.origin is not a reachable API host. */
 function isDesktopShell(): boolean {

@@ -10,12 +10,13 @@ describe('NovaButton', () => {
     vi.clearAllMocks();
   });
 
-  it('renders button with default ghost variant and sm size', () => {
+  it('renders button with default ghost variant and md size', () => {
     render(<NovaButton onClick={vi.fn()}>Click me</NovaButton>);
     const btn = screen.getByRole('button');
     expect(btn).toBeInTheDocument();
     expect(btn).toHaveTextContent('Click me');
-    expect(btn.className).toContain('w-7 h-7');
+    expect(btn).toHaveAttribute('type', 'button');
+    expect(btn.className).toContain('w-10 h-10');
     expect(btn.className).toContain('bg-white/5');
     expect(btn.className).toContain('text-white/70');
   });
@@ -24,8 +25,6 @@ describe('NovaButton', () => {
     render(<NovaButton variant="accent" onClick={vi.fn()}>Accent</NovaButton>);
     const btn = screen.getByRole('button');
     expect(btn.className).toContain('bg-[var(--nova-accent-color,#ff4e18)]');
-    // Explicit white, not `text-white`: the light theme remaps `text-white` to
-    // dark ink, which would disappear on this accent fill.
     expect(btn.className).toContain('text-[#ffffff]');
   });
 
@@ -43,23 +42,42 @@ describe('NovaButton', () => {
     expect(btn.className).toContain('text-red-400');
   });
 
+  it('applies sm size', () => {
+    render(<NovaButton size="sm" onClick={vi.fn()}>Small</NovaButton>);
+    const btn = screen.getByRole('button');
+    expect(btn.className).toContain('w-10 h-10');
+    expect(btn.className).toContain('min-w-[44px]');
+  });
+
   it('applies md size', () => {
     render(<NovaButton size="md" onClick={vi.fn()}>Medium</NovaButton>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('w-8 h-8');
+    expect(btn.className).toContain('w-10 h-10');
+    expect(btn.className).toContain('px-4 py-2');
   });
 
   it('applies lg size', () => {
     render(<NovaButton size="lg" onClick={vi.fn()}>Large</NovaButton>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('w-10 h-10');
+    expect(btn.className).toContain('w-12 h-12');
+    expect(btn.className).toContain('min-w-[52px]');
   });
 
-  it('calls onClick handler', () => {
+  it('calls onClick handler once (no double-submit)', () => {
     const onClick = vi.fn();
     render(<NovaButton onClick={onClick}>Click me</NovaButton>);
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks clicks while loading', () => {
+    const onClick = vi.fn();
+    render(<NovaButton loading onClick={onClick}>Loading</NovaButton>);
+    const btn = screen.getByRole('button');
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(btn);
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it('renders badge when provided', () => {
@@ -83,5 +101,6 @@ describe('NovaButton', () => {
     const btn = screen.getByRole('button');
     expect(btn).toBeDisabled();
     expect(btn.className).toContain('disabled:opacity-50');
+    expect(btn).toHaveAttribute('aria-disabled', 'true');
   });
 });

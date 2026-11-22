@@ -1062,8 +1062,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                 setIsFolderModalOpen(true);
               }}
               className="w-8 h-8 rounded-full bg-[#181921] hover:bg-[var(--nova-accent-color)] text-[#8e93a0] hover:text-white hover:shadow-md hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
-              aria-label={t('folders.addAnother') ?? 'Create new folder'}
-              title={t('common.folders')}
+              aria-label={t('foldersObj.addAnother') ?? 'Create new folder'}
+              title={t('foldersObj.title') ?? 'Folders'}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -1302,7 +1302,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       {/* Floating Action Button (FAB) in the thumb zone for One-Handed Operation.
           The side follows the user's choice so a left-handed thumb reaches it. */}
       <div
-        className={`fixed safe-bottom-fab z-40 md:hidden flex flex-col pointer-events-auto ${
+        className={`fixed safe-bottom-fab z-25 md:hidden flex flex-col pointer-events-auto ${
           fabSide === 'right' ? 'right-4 items-end' : 'left-4 items-start'
         }`}
         data-fab-side={fabSide}
@@ -1495,19 +1495,6 @@ onClick={() => {
                   KR
                 </div>
                 <span>Katie Rogers</span>
-              </button>
-              <button
-                onClick={() => {
-                  setNewChatModalOpen(false);
-                  onOpenChannel();
-                }}
-                className="w-full p-2.5 rounded-xl bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white text-xs font-semibold flex items-center gap-2.5 transition text-left"
-                aria-label="Open Real Kyiv Life Channel"
-              >
-                <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-[10px]">
-                  CH
-                </div>
-                <span>Real Kyiv Life Channel</span>
               </button>
             </div>
             <button

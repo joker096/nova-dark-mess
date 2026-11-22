@@ -907,37 +907,32 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   onClick={() => setSearchOpen(true)}
                 />
 
-                {/* Subscribe button - icon only, colored when subscribed */}
+                {/* Subscribe/Notifications button - like Telegram */}
                 <button
                   type="button"
-                  onClick={toggleSubscription}
-                  aria-pressed={subscribed}
-                  aria-label={subscribed ? t('channel.unsubscribe') : t('channel.subscribe')}
+                  onClick={subscribed ? toggleNotifications : toggleSubscription}
+                  aria-pressed={subscribed && notificationsEnabled}
+                  aria-label={!subscribed
+                    ? t('channel.subscribe')
+                    : notificationsEnabled
+                    ? t('channel.disableNotifications')
+                    : t('channel.enableNotifications')}
                   className={`flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 transition active:scale-95 cursor-pointer ${
-                    subscribed
+                    !subscribed
+                      ? 'border-white/10 bg-white/[0.06] text-white/60 hover:bg-white/10 hover:text-white'
+                      : notificationsEnabled
                       ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
-                      : 'border-white/10 bg-white/[0.06] text-white/60 hover:bg-white/10 hover:text-white'
+                      : 'border-white/10 bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/70'
                   }`}
                 >
-                  <Bell className="h-4 w-4" />
+                  {!subscribed ? (
+                    <Bell className="h-4 w-4" />
+                  ) : notificationsEnabled ? (
+                    <Bell className="h-4 w-4 fill-current" />
+                  ) : (
+                    <BellOff className="h-4 w-4" />
+                  )}
                 </button>
-
-                {/* Notifications toggle - bell with/without slash */}
-                {subscribed && (
-                  <button
-                    type="button"
-                    onClick={toggleNotifications}
-                    aria-pressed={notificationsEnabled}
-                    aria-label={notificationsEnabled ? t('channel.disableNotifications') : t('channel.enableNotifications')}
-                    className={`flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 ml-1 transition active:scale-95 cursor-pointer ${
-                      notificationsEnabled
-                        ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
-                        : 'border-white/10 bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/70'
-                    }`}
-                  >
-                    {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                  </button>
-                )}
 
                 <NovaMenu
                   label={t('common.more')}
@@ -1133,7 +1128,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 ref={dateScrubberRef}
                 role="grid"
                 aria-label={monthLabel}
-                className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap"
+                className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap pb-2"
                 onWheel={(e) => {
                   if (e.deltaX === 0 && e.deltaY !== 0) {
                     e.preventDefault();
@@ -1792,59 +1787,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
         </div>
       )}
 
-      {/* Bottom Action Bar */}
-      <div className="relative z-20 shrink-0 p-3">
-        {!channel.isOwned && !subscribed && (
-          <button
-            type="button"
-            onClick={toggleSubscription}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
-            aria-label={t('channel.subscribe')}
-          >
-            <Bell className="h-5 w-5" />
-            <span className="text-sm font-medium">{t('channel.subscribe')}</span>
-            <span className="text-xs opacity-80">{formatCount(channel.subscribers)}</span>
-          </button>
-        )}
-        {!channel.isOwned && subscribed && (
-          <div className="flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={toggleSubscription}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/60 hover:bg-white/10 hover:text-white transition"
-              aria-label={t('channel.unsubscribe')}
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              className={`flex h-11 w-11 items-center justify-center rounded-full border ${
-                notificationsEnabled
-                  ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
-                  : 'border-white/10 bg-white/[0.06] text-white/50 hover:bg-white/10 hover:text-white/70'
-              } transition`}
-              aria-label={notificationsEnabled ? t('channel.disableNotifications') : t('channel.enableNotifications')}
-            >
-              {notificationsEnabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
-            </button>
-          </div>
-        )}
-
-        {channel.isOwned && onCreatePost && (
-          <div className="flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={() => setPostComposerOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-white shadow-lg shadow-[var(--nova-accent-color)]/30 transition hover:brightness-110 active:scale-95"
-              title={t('channel.newPost')}
-              aria-label={t('channel.newPost')}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
+      
 
       {showJumpToLatest && (
         <button

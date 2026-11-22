@@ -132,6 +132,14 @@
     "recoverWithPhrase": "Recovery phrase",
     "recoverWithBackup": "Backup file",
     "recoverResetConfirm": "Yes, erase everything",
+    "pinReset7Days": "PIN reset (7 days)",
+    "pinResetDescription": "Request a PIN reset. After 7 days you can remove the PIN and unlock the app. Local data will be erased, but your identity (key) is kept.",
+    "pinResetRequest": "Request PIN reset",
+    "pinResetRequested": "PIN reset requested. Wait 7 days, then you can remove the PIN.",
+    "pinResetNow": "Remove PIN now",
+    "pinResetCalculating": "Calculating...",
+    "pinResetNotAllowed": "PIN reset not yet allowed. Wait 7 days.",
+    "pinResetFailed": "PIN reset failed. Try again.",
     "copyFailed": "Could not copy"
   },
   "channels": "Channels",
@@ -641,6 +649,11 @@
     "deviceOne": "1 device",
     "devicesMany": "{{count}} devices",
     "safetyNumber": "Safety number",
+    "linkNewDevice": "Link a new device",
+    "thisDevice": "This device",
+    "newDevice": "New device",
+    "scanQrWithCamera": "Scan QR with camera",
+    "stopCameraScan": "Stop camera scan",
     "linkDevice": "Link device",
     "additionalPhone": "Additional phone",
     "message": "Message",
@@ -825,7 +838,19 @@
     "fabSide": "One-handed button",
     "fabSideDesc": "Side of the New Action button",
     "fabHandLeft": "Left hand",
-    "fabHandRight": "Right hand"
+    "fabHandRight": "Right hand",
+    "advancedNetwork": "Advanced network settings",
+    "advancedNetworkDesc": "Configure relay endpoints, TURN servers, and Tor routing",
+    "advancedNetworkCollapsed": "Relay, TURN & Tor settings (tap to expand)",
+    "showAdvanced": "Show advanced",
+    "hideAdvanced": "Hide advanced",
+    "networkProfileHint": "Share your network configuration so others don't need to manually set up relays, TURN servers, or Tor.",
+    "shareNetworkProfile": "Share profile",
+    "importNetworkProfile": "Import from link",
+    "pasteNetworkProfile": "Paste JSON",
+    "networkProfileCopied": "Network profile link copied",
+    "networkProfileImported": "Network profile imported",
+    "networkProfileInvalid": "Invalid profile format"
   },
   "wallpaper": {
     "title": "Chat Wallpaper",
@@ -909,7 +934,8 @@
     "timeout": "Request timed out",
     "unknownError": "An unknown error occurred"
   },
-  "folders": {
+  "folders": "Folders",
+  "foldersObj": {
     "title": "Chat Folders",
     "subtitle": "Organize chats into custom categories",
     "editTitle": "Edit Folder",

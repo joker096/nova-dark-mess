@@ -164,10 +164,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       }
       return;
     }
-    if (CONTACT_PROFILES[profileId]) {
-      saveContactOverride(profileId, { avatar: value });
-      setContactOverride((prev) => ({ ...prev, avatar: value }));
-    }
+    saveContactOverride(profileId, { avatar: value });
+    setContactOverride((prev) => ({ ...prev, avatar: value }));
   };
 
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -659,21 +657,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center shadow-lg active:scale-90 transition cursor-pointer"
+                className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/95 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[#0c0d11]"
                 title={t('profile.changeAvatar')}
                 aria-label={t('profile.changeAvatar')}
               >
-                <Edit2 className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
               </button>
               {avatar && (
                 <button
                   type="button"
                   onClick={handleRemoveAvatar}
-                  className="absolute -top-1 -right-1 w-9 h-9 rounded-full bg-black/80 border border-white/10 text-white flex items-center justify-center shadow-lg active:scale-90 transition cursor-pointer"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 border border-white/10 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer"
                   title={t('profile.removeAvatar')}
                   aria-label={t('profile.removeAvatar')}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </>
@@ -1715,7 +1713,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-white">Link a new device</h3>
+            <h3 className="font-bold text-lg text-white">{t('profile.linkNewDevice')}</h3>
             <div className="flex gap-1 p-1 bg-[#111218] border border-white/5 rounded-xl">
               <button
                 onClick={() => {
@@ -1728,7 +1726,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     : 'text-[#8c919d] hover:text-white'
                 }`}
               >
-                This device
+                {t('profile.thisDevice')}
               </button>
               <button
                 onClick={() => {
@@ -1741,7 +1739,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     : 'text-[#8c919d] hover:text-white'
                 }`}
               >
-                New device
+                {t('profile.newDevice')}
               </button>
             </div>
 
@@ -1817,7 +1815,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     data-testid="toggle-camera-scan"
                   >
                     <Camera className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)]" />
-                    <span>{isScanningCamera ? 'Stop camera scan' : 'Scan QR with camera'}</span>
+                    <span>{isScanningCamera ? t('profile.stopCameraScan') : t('profile.scanQrWithCamera')}</span>
                   </button>
 
                   {isScanningCamera && (

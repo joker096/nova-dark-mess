@@ -21,7 +21,7 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-export const LEGAL_BASE_URL = 'https://mess.cvr.name';
+export const LEGAL_BASE_URL = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || 'https://mess.cvr.name';
 
 const CONTACT_EMAIL = 'top.seo.one@gmail.com';
 
