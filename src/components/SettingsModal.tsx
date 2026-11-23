@@ -10,6 +10,7 @@ import { resetOnboarding } from '../lib/onboarding';
 import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../context/SecurityContext';
 import { createKeychain } from '../lib/storage/keychain';
 import { downloadEncryptedBackup, uploadEncryptedBackup } from '../lib/storage/cloudBackup';
+import { downloadMyDataExport } from '../lib/dataExport';
 import { localAnalytics } from '../lib/analytics/localAnalytics';
 import {
   loadPrivacyPrefs,
@@ -122,6 +123,7 @@ interface Prefs {
   notificationSound: boolean;
   vibration: boolean;
   previewMessages: boolean;
+  pushEnabled: boolean;
   autoDownload: boolean;
   fontSize: FontSize;
 }
@@ -130,6 +132,7 @@ const DEFAULT_PREFS: Prefs = {
   notificationSound: true,
   vibration: false,
   previewMessages: true,
+  pushEnabled: true,
   autoDownload: true,
   fontSize: 'medium',
 };
@@ -876,6 +879,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     void computeStorageUsage();
   };
 
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+
+  const handleExportMyData = async () => {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const fileName = await downloadMyDataExport();
+      setExportMsg(t('settings.exportDone', { fileName }));
+    } catch {
+      setExportMsg(t('settings.exportFailed'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleResetAdPrefs = () => {
     clearLocalAdPrefs();
     setAdPrefs(loadAdPreferences());
@@ -1477,6 +1496,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             enabled={prefs.previewMessages}
             onToggle={() => updatePref('previewMessages', !prefs.previewMessages)}
           />
+          <ToggleRow
+            label={t('settings.pushNotifications')}
+            enabled={prefs.pushEnabled}
+            onToggle={() => updatePref('pushEnabled', !prefs.pushEnabled)}
+          />
+          {prefs.pushEnabled && (
+            <div className="px-1 py-2 space-y-2">
+              <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
+                {t('settings.pushNotificationsDesc')}
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={async () => {
+                    const { registerForPush, unregisterFromPush, getPushToken } = await import('../lib/notifications/push');
+                    if (prefs.pushEnabled) {
+                      const token = await registerForPush();
+                      if (token) {
+                        // Token registered successfully
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 text-sm font-medium text-[var(--nova-accent-color)] hover:text-[var(--nova-accent-color)]/80 border border-[var(--nova-accent-color)]/30 rounded-xl transition"
+                >
+                  {t('settings.registerPush')}
+                </button>
+                <button
+                  onClick={async () => {
+                    const { unregisterFromPush } = await import('../lib/notifications/push');
+                    await unregisterFromPush();
+                  }}
+                  className="px-3 py-1.5 text-sm font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] border border-[var(--nova-border-subtle)] rounded-xl transition"
+                >
+                  {t('settings.unregisterPush')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Granular Notification Settings (Telegram-style) */}
           <SectionHeader icon={<Bell className="w-3.5 h-3.5" />} title={t('settings.notificationSettings')} />
@@ -2273,6 +2329,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {cacheMsg}
             </div>
           )}
+          {exportMsg && (
+            <div className="text-[11px] px-1 text-[var(--nova-accent-color)]" role="status">
+              {exportMsg}
+            </div>
+          )}
+
+          <button
+            onClick={handleExportMyData}
+            disabled={exporting}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{exporting ? t('settings.exporting') : t('settings.exportMyData')}</span>
+          </button>
 
           <SectionHeader icon={<Database className="w-3.5 h-3.5" />} title={t('settings.dataBackup')} />
           <button
@@ -2348,6 +2418,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       onClick={handleGDriveRefresh}
                       disabled={gdriveLoading}
+                      aria-label="Refresh backups"
                       className="px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition active:scale-95 disabled:opacity-50"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
