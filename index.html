@@ -19,6 +19,27 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
+      window.__novaErrs = [];
+      window.addEventListener('error', function (e) {
+        window.__novaErrs.push('ERR:' + (e.message || '') + '|' + (e.error && e.error.stack ? String(e.error.stack).slice(0, 1500) : ''));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        window.__novaErrs.push('REJ:' + String((e.reason && e.reason.stack) || e.reason).slice(0, 1500));
+      });
+      (function () {
+        var orig = console.error;
+        console.error = function () {
+          var parts = [];
+          for (var i = 0; i < arguments.length; i++) {
+            var a = arguments[i];
+            parts.push(String((a && a.stack) || a));
+          }
+          window.__novaErrs.push('CERR:' + parts.join(' ').slice(0, 1500));
+          orig.apply(console, arguments);
+        };
+      })();
+    </script>
+    <script>
       (function () {
         try {
           var mode = localStorage.getItem('nova_app_theme') || 'system';

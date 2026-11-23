@@ -59,7 +59,19 @@ const bootstrap = async () => {
   // Initialize accessibility (reduced motion, skip link, focus styles)
   initAccessibility();
 
-  createRoot(document.getElementById('root')!).render(
+  const root = createRoot(document.getElementById('root')!, {
+    onUncaughtError: (error, errorInfo) => {
+      (window as unknown as { __novaErrs?: string[] }).__novaErrs?.push(
+        'UNCAUGHT:' + String((error as Error)?.stack || error) + '|' + String(errorInfo?.componentStack || ''),
+      );
+    },
+    onCaughtError: (error, errorInfo) => {
+      (window as unknown as { __novaErrs?: string[] }).__novaErrs?.push(
+        'CAUGHT:' + String((error as Error)?.stack || error) + '|' + String(errorInfo?.componentStack || ''),
+      );
+    },
+  });
+  root.render(
     <LanguageProvider>
       <SecurityProvider>
         <NovaToastProvider>

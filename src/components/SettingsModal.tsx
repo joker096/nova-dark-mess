@@ -365,6 +365,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [totalStorageBytes, setTotalStorageBytes] = useState(0);
   const [aboutMsg, _setAboutMsg] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
   const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
   const [accountSwitcherOpen, setAccountSwitcherOpen] = useState(false);
@@ -890,9 +892,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     // Recompute storage usage after clearing
     void computeStorageUsage();
   };
-
-  const [exporting, setExporting] = useState(false);
-  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   const handleExportMyData = async () => {
     setExporting(true);

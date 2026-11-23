@@ -68,8 +68,41 @@ const ScreenFallback: React.FC = () => (
         <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--nova-accent-color)]" />
   </div>
 );
+
+/** Keeps a crashing lazy panel from unmounting the whole app. */
+class PanelErrorBoundary extends React.Component<
+  { name: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`[${this.props.name}]`, error, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          role="alert"
+          data-testid={`${this.props.name}-error`}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6 text-left"
+        >
+          <pre className="max-h-full max-w-2xl overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--nova-surface)] p-4 text-xs text-red-400">
+            {this.props.name}: {this.state.error.message}
+            {'\n'}
+            {this.state.error.stack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useLanguage } from './context/LanguageContext';
 import { useAccount } from './hooks/useAccount';
+import { ACTIVE_ACCOUNT_CHANGED_EVENT } from './lib/account/multiAccount';
 import { useSecurity } from './hooks/useSecurity';
 import { P2PManager } from './lib/p2p/p2pManager';
 import { P2PSignalingClient } from './lib/p2p/signaling';
@@ -364,6 +397,9 @@ export default function App() {
   } | null>(null);
   const [activeProfileId, setActiveProfileId] = useState<string>('katie');
   const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
+  // Mobile has a single pane, so the Channels tab needs its own level: the
+  // channel list is shown first, and a channel feed only after one is picked.
+  const [mobileChannelListOpen, setMobileChannelListOpen] = useState(true);
   // Set when a link points at one post's comments; cleared once the channel
   // screen has opened the sheet.
   const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
@@ -565,6 +601,20 @@ export default function App() {
     applyContactOverrides();
   }, []);
 
+  // Follow a switch to another local account. The active profile (history,
+  // drafts, encryption journal, folders) is read from localStorage on read, so
+  // dropping the in-memory caches leaves no room for one account's state to
+  // leak into another's; a reload then rebuilds everything from the new id.
+  useEffect(() => {
+    const onAccountChanged = () => {
+      // A full reload is the only way to guarantee no in-memory state (P2P
+      // manager, bot session, caches) survives into the other account.
+      window.location.reload();
+    };
+    window.addEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
+    return () => window.removeEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
+  }, []);
+
   const openProfile = (profileId: string) => {
     navigate('profile-katie', { profileId });
   };
@@ -582,6 +632,10 @@ export default function App() {
   const openChannel = (channelId?: string) => {
     if (typeof channelId === 'string' && channelId) {
       setActiveChannelId(channelId);
+      setMobileChannelListOpen(false);
+    } else {
+      // The Channels tab opens the list; picking a channel opens its feed.
+      setMobileChannelListOpen(true);
     }
     setPendingCommentsPostId(null);
     navigate('channel-kyiv');
@@ -675,6 +729,7 @@ export default function App() {
         channels.some((channel) => channel.id === target.id)
       ) {
         setActiveChannelId(target.id);
+        setMobileChannelListOpen(false);
         setPendingCommentsPostId(
           target.postId && target.comments ? target.postId : null,
         );
@@ -855,7 +910,7 @@ export default function App() {
   const renderMobileScreen = () => {
     switch (currentScreen) {
       case 'channel-kyiv':
-        if (!activeChannelId) {
+        if (mobileChannelListOpen || !activeChannelId) {
           return (
             <ChannelListPanel
               key="channel-list"
@@ -873,7 +928,7 @@ export default function App() {
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
-            onBack={goBack}
+            onBack={() => setMobileChannelListOpen(true)}
           />
         );
       case 'chats':
@@ -1240,22 +1295,24 @@ export default function App() {
       )}
 
       {/* App Settings Modal (language switch lives here) */}
-      <Suspense fallback={null}>
-        <SettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onOpenAnalytics={openAnalytics}
-          onOpenSites={openSites}
-          getBotSession={botsEnabled ? getBotSession : undefined}
-          pendingBotInstall={pendingBotInstall}
-          onBotInstallHandled={() => setPendingBotInstall(null)}
-          onOpenBotChat={(botId) => {
-            setPendingBotStart({ chatId: botId, payload: '' });
-            navigate('chat-katie', { chatId: botId });
-          }}
-          onOpenMeshMap={() => navigate('mesh-map')}
-        />
-      </Suspense>
+      <PanelErrorBoundary name="settings">
+        <Suspense fallback={null}>
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            onOpenAnalytics={openAnalytics}
+            onOpenSites={openSites}
+            getBotSession={botsEnabled ? getBotSession : undefined}
+            pendingBotInstall={pendingBotInstall}
+            onBotInstallHandled={() => setPendingBotInstall(null)}
+            onOpenBotChat={(botId) => {
+              setPendingBotStart({ chatId: botId, payload: '' });
+              navigate('chat-katie', { chatId: botId });
+            }}
+            onOpenMeshMap={() => navigate('mesh-map')}
+          />
+        </Suspense>
+      </PanelErrorBoundary>
 
       {/* Premium checkout, reachable from the chats header and from Settings */}
       {isPremiumOpen && (
