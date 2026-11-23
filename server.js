@@ -80,6 +80,8 @@ const CORS_ORIGINS = new Set(
       'tauri://localhost',
       'http://tauri.localhost',
       'https://tauri.localhost',
+      'https://mess.cvr.name',
+      'https://app.130.49.175.224.nip.io',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
       'http://localhost:1420',

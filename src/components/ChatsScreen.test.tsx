@@ -19,6 +19,11 @@ vi.mock('./FolderModal', () => ({
   FolderModal: vi.fn(() => <div data-testid="folder-modal">FolderModal</div>),
 }));
 
+// GroupModal depends on SecurityProvider; keep these tests focused on wiring.
+vi.mock('./GroupModal', () => ({
+  GroupModal: vi.fn(() => <div data-testid="group-modal">GroupModal</div>),
+}));
+
 const onOpenFolders = vi.fn();
 const onOpenProfile = vi.fn();
 

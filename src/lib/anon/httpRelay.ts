@@ -47,6 +47,19 @@ function normalizeBase(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '');
 }
 
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+let rateLimitedUntil = 0;
+
+/** Milliseconds left before the relay accepts requests again after a 429. */
+export function relayRateLimitRemainingMs(now: number = Date.now()): number {
+  return Math.max(0, rateLimitedUntil - now);
+}
+
+/** Test seam: clear the cooldown between cases. */
+export function resetRelayRateLimitForTests(): void {
+  rateLimitedUntil = 0;
+}
+
 async function postJson<T>(config: AnonHttpRelayConfig, path: string, body: unknown): Promise<T | null> {
   const fetchFn = config.fetchImpl || fetch;
   try {
@@ -55,6 +68,10 @@ async function postJson<T>(config: AnonHttpRelayConfig, path: string, body: unkn
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    if (res.status === 429) {
+      rateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
+      return null;
+    }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

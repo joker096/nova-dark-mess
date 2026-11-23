@@ -156,13 +156,6 @@ export default defineConfig(({ mode, command }) => {
       cssCodeSplit: true,
       modulePreload: {
         polyfill: true,
-        resolveDependencies: (url, deps, context) => {
-          // Preload critical chunks
-          const criticalChunks = ['react', 'i18n', 'ChatScreen', 'ChatsScreen'];
-          return criticalChunks
-            .filter((chunk) => deps.some((dep) => dep.includes(chunk)))
-            .map((chunk) => chunk);
-        },
       },
       rollupOptions: {
         output: {

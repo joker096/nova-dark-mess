@@ -24,7 +24,7 @@ export interface LazyMediaProps {
  * instead of re-fetching. On load failure the component renders `placeholder`.
  * Falls back to eager loading when `IntersectionObserver` is unavailable (jsdom).
  */
-export function LazyMedia({ src, alt, className, eager, onError, onClick, draggable, 'data-testid': dataTestid, imgRef, style }: LazyMediaProps) {
+export function LazyMedia({ src, alt, className, eager, placeholder, onError, onClick, draggable, 'data-testid': dataTestid, imgRef, style }: LazyMediaProps) {
   const ref = useRef<HTMLImageElement>(null);
   const [visible, setVisible] = useState(!!eager);
   const [error, setError] = useState(false);
@@ -60,6 +60,9 @@ export function LazyMedia({ src, alt, className, eager, onError, onClick, dragga
     }
     setVisible(true);
   }, [visible, error, eager]);
+
+  const hasSource = Boolean(src && src.trim());
+  if (!hasSource) return placeholder ? <>{placeholder}</> : null;
 
   const cached = mediaCache.get(src);
 
