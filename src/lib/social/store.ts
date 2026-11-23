@@ -305,6 +305,24 @@ export function toggleReactionInPost(post: ChannelPost, emoji: string): ChannelP
   };
 }
 
+/** Pin a channel post (moves to top of feed, shows in pinned carousel) */
+export function pinChannelPost(posts: ChannelPost[], postId: string): ChannelPost[] {
+  return posts.map((post) =>
+    post.id === postId
+      ? { ...post, isPinned: true }
+      : { ...post, isPinned: false } // Only one pinned post per channel
+  );
+}
+
+/** Unpin a channel post */
+export function unpinChannelPost(posts: ChannelPost[], postId: string): ChannelPost[] {
+  return posts.map((post) =>
+    post.id === postId
+      ? { ...post, isPinned: false }
+      : post
+  );
+}
+
 export function voteInPoll(poll: PollData, optionId: string): PollData {
   const options = poll.options.map((option) => {
     if (option.id === optionId) {
@@ -360,5 +378,67 @@ export function searchChannels(query: string, channels: ChannelInfo[]): ChannelI
     (channel) =>
       channel.name.toLowerCase().includes(q) ||
       channel.description?.toLowerCase().includes(q),
+  );
+}
+
+/** Add an admin to a channel (owner only) */
+export function addChannelAdmin(
+  channels: ChannelInfo[],
+  channelId: string,
+  adminId: string,
+  isOwner = false,
+): ChannelInfo[] {
+  return channels.map((channel) => {
+    if (channel.id !== channelId) return channel;
+    const currentAdmins = channel.admins ?? [];
+    if (currentAdmins.some((a) => a.id === adminId)) return channel;
+    return {
+      ...channel,
+      admins: [...currentAdmins, { id: adminId, isOwner }],
+    };
+  });
+}
+
+/** Remove an admin from a channel (owner only) */
+export function removeChannelAdmin(
+  channels: ChannelInfo[],
+  channelId: string,
+  adminId: string,
+): ChannelInfo[] {
+  return channels.map((channel) => {
+    if (channel.id !== channelId) return channel;
+    return {
+      ...channel,
+      admins: (channel.admins ?? []).filter((a) => a.id !== adminId),
+    };
+  });
+}
+
+/** Toggle admin status for a channel member */
+export function toggleChannelAdmin(
+  channels: ChannelInfo[],
+  channelId: string,
+  adminId: string,
+  makeAdmin: boolean,
+): ChannelInfo[] {
+  return channels.map((channel) => {
+    if (channel.id !== channelId) return channel;
+    const currentAdmins = channel.admins ?? [];
+    if (makeAdmin) {
+      if (currentAdmins.some((a) => a.id === adminId)) return channel;
+      return { ...channel, admins: [...currentAdmins, { id: adminId, isOwner: false }] };
+    }
+    return { ...channel, admins: currentAdmins.filter((a) => a.id !== adminId) };
+  });
+}
+
+/** Set or clear the linked discussion group for a channel */
+export function setChannelDiscussionGroup(
+  channels: ChannelInfo[],
+  channelId: string,
+  discussionGroupId: string | undefined,
+): ChannelInfo[] {
+  return channels.map((channel) =>
+    channel.id === channelId ? { ...channel, discussionGroupId } : channel
   );
 }

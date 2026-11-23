@@ -25,7 +25,9 @@ describe('AudioWaveformPlayer visual snapshot', () => {
   it('renders flex row with gap and select-none', () => {
     const { container } = render(<AudioWaveformPlayer voiceNote={voiceNote} />);
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toContain('flex items-center gap-2.5');
+    expect(wrapper.className).toContain('flex');
+    expect(wrapper.className).toContain('items-center');
+    expect(wrapper.className).toContain('gap-2.5');
     expect(wrapper.className).toContain('select-none');
   });
 

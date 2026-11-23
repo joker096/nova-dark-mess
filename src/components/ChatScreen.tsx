@@ -52,6 +52,7 @@ import {
   ZoomIn,
   ZoomOut,
   Languages,
+  Loader2,
 } from 'lucide-react';
 import {
   CONVERSATION_HISTORIES,
@@ -65,6 +66,7 @@ import {
 } from '../data/mockMessengerData';
 import { LinkPreview, useLinkPreviews } from './LinkPreview';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
+import { translateText, getUserPreferredLanguage } from '../lib/translation/translate';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
 import { identityPrivateKeys } from '../lib/crypto/identity';
@@ -1212,6 +1214,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const pickerTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
+  const [translationResult, setTranslationResult] = useState<{ msgId: string; translatedText: string } | null>(null);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
@@ -1511,13 +1515,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pixel height of the messages scroll viewport, used to size the virtualized
   // list window. Measured from the list wrapper so it follows resizes.
-  const [messagesViewportHeight, setMessagesViewportHeight] = useState(600);
+  const [messagesViewportHeight, setMessagesViewportHeight] = useState(0);
   useEffect(() => {
     const node = messagesListWrapperRef.current;
     if (!node) return;
-    setMessagesViewportHeight(node.clientHeight || 600);
+    setMessagesViewportHeight(node.clientHeight);
     const ro = new ResizeObserver(() => {
-      setMessagesViewportHeight(node.clientHeight || 600);
+      setMessagesViewportHeight(node.clientHeight);
     });
     ro.observe(node);
     return () => ro.disconnect();
@@ -1921,8 +1925,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         <mark
           className={
             isActiveMessageMatch
-              ? 'bg-gradient-to-r from-[#ff551d] to-[#ff3800] text-white font-bold rounded px-1.5 py-0.5 shadow-[0_0_14px_rgba(255,78,24,0.9)] ring-1 ring-white/90 scale-105 inline-block transition-transform duration-200'
-              : 'bg-[var(--nova-accent-color,#ff4e18)]/35 text-white font-semibold rounded px-1 py-0.5 border border-[var(--nova-accent-color,#ff4e18)]/40'
+              ? 'bg-gradient-to-r from-[var(--nova-accent-gradient-from)] to-[var(--nova-accent-gradient-to)] text-[var(--nova-on-accent)] font-bold rounded px-1.5 py-0.5 shadow-[0_0_14px_rgba(255,78,24,0.9)] ring-1 ring-[var(--nova-text-primary)] scale-105 inline-block transition-transform duration-200'
+              : 'bg-[var(--nova-accent-color,#ff4e18)]/35 text-[var(--nova-text-primary)] font-semibold rounded px-1 py-0.5 border border-[var(--nova-accent-color,#ff4e18)]/40'
           }
         >
           {match}
@@ -2802,6 +2806,28 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     setActiveReactionMsgId(null);
   };
 
+  const handleTranslateMessage = async (msg: ChatMessage) => {
+    if (!msg.text) return;
+
+    const targetLang = getUserPreferredLanguage();
+    setTranslatingMsgId(msg.id);
+
+    try {
+      const result = await translateText(msg.text, targetLang, 'auto');
+      setTranslationResult({
+        msgId: msg.id,
+        translatedText: result.translatedText,
+      });
+      triggerPinnedToast(`Translated to ${targetLang.toUpperCase()}`);
+    } catch (error) {
+      console.error('Translation failed:', error);
+      triggerPinnedToast(t('chat.translateFailed', 'Translation failed'));
+    } finally {
+      setTranslatingMsgId(null);
+      setActiveReactionMsgId(null);
+    }
+  };
+
   const handleReplyMessage = (msg: ChatMessage) => {
     setReplyingTo(msg);
     setActiveReactionMsgId(null);
@@ -3546,18 +3572,18 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <span className="text-[9px]">{t('common.retry')}</span>
           </button>
         ) : isSending ? (
-          <span className="inline-flex items-center text-[#8c919d] animate-in fade-in duration-150">
+          <span className="inline-flex items-center text-[var(--nova-text-muted)] animate-in fade-in duration-150">
             <Clock className="w-3 h-3 animate-pulse" />
             <span className="text-[9px] pl-0.5">{t('common.sending')}</span>
           </span>
         ) : (
           <>
             {isRead || isDelivered ? (
-              <span className={`inline-flex items-center animate-in zoom-in-75 duration-200 font-bold ${isRead ? 'text-sky-400/90' : 'text-white/60'}`}>
+              <span className={`inline-flex items-center animate-in zoom-in-75 duration-200 font-bold ${isRead ? 'text-sky-400/90' : 'text-[var(--nova-text-secondary)]'}`}>
                 <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
               </span>
             ) : (
-              <span className="inline-flex items-center text-white/60 animate-in fade-in duration-150">
+              <span className="inline-flex items-center text-[var(--nova-text-secondary)] animate-in fade-in duration-150">
                 <Check className="w-3.5 h-3.5 inline-block stroke-[2]" />
               </span>
             )}
@@ -3585,12 +3611,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 event.stopPropagation();
                 setMediaLightbox({ urls, index });
               }}
-              className="relative h-36 overflow-hidden rounded-[16px] border border-white/10 bg-[#232530] p-0 text-left cursor-zoom-in"
+              className="relative h-36 overflow-hidden rounded-[16px] border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] p-0 text-left cursor-zoom-in"
             >
               {isVideo ? (
                 <>
                   <video src={url} muted preload="metadata" className="h-full w-full object-cover" />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 text-[var(--nova-text-primary)]">
                     <Video className="h-7 w-7 drop-shadow" />
                   </span>
                 </>
@@ -3641,13 +3667,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         transform: edgeSwipeOffset > 0 ? `translateX(${edgeSwipeOffset}px)` : undefined,
         transition: isEdgeSwiping ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
       }}
-      className="nova-chat-surface flex flex-col h-full bg-[#0b0c10] text-white relative overflow-hidden"
+      className="nova-chat-surface flex flex-col h-full bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] relative overflow-hidden"
     >
       {/* Edge Swipe Back Gesture Indicator for One-Handed Operation */}
       {edgeSwipeOffset > 10 && (
         <div
           style={{ opacity: Math.min(1, edgeSwipeOffset / 50) }}
-          className="fixed left-3 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-2xl flex items-center justify-center pointer-events-none transition-opacity"
+          className="fixed left-3 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-2xl flex items-center justify-center pointer-events-none transition-opacity"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </div>
@@ -3657,7 +3683,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* Toast Notification */}
       {pinnedToast && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color,#ff4e18)]/50 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface-high)]/95 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
           <span>{pinnedToast}</span>
         </div>
@@ -3665,8 +3691,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* Offline Indicator */}
       {!isOnline && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-white/10 text-white text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <Clock className="w-3.5 h-3.5 text-[#717682]" />
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface-high)]/95 border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <Clock className="w-3.5 h-3.5 text-[var(--nova-text-muted)]" />
           <span>You appear to be offline — messages will send when reconnected</span>
         </div>
       )}
@@ -3676,13 +3702,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       {deletedUndo && (
         <div
           role="status"
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-white/10 bg-[#1e202a]/95 px-3.5 py-2 text-xs text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)]/95 px-3.5 py-2 text-xs text-[var(--nova-text-primary)] shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
         >
           <span>{t('chat.messageDeletedToast')}</span>
           <button
             type="button"
             onClick={handleUndoDelete}
-            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/[0.08] cursor-pointer"
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-overlay-medium)] cursor-pointer"
           >
             {t('common.undo')}
           </button>
@@ -3756,15 +3782,15 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           {/* QUICK SEARCH KEYWORD CHIPS (when search is open) */}
       {isSearchOpen && (
         <div ref={quickSearchChipsRef} className="px-3 -mt-1 mb-2 shrink-0 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 fade-in" data-testid="quick-search-chips">
-          <span className="text-[10px] text-[#868b98] shrink-0 font-medium pl-1">Suggested:</span>
+          <span className="text-[10px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-1">Suggested:</span>
           {QUICK_SEARCH_CHIPS.map((chip) => (
             <button
               key={chip}
               onClick={() => setSearchQuery(chip)}
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer shrink-0 ${
                 searchQuery.toLowerCase() === chip.toLowerCase()
-                  ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white'
-                  : 'bg-[#181922] text-[#8e93a0] hover:text-white border border-white/5'
+                  ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)]'
+                  : 'bg-[var(--nova-surface-raised)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] border border-[var(--nova-border-subtle)]'
               }`}
             >
               {chip}
@@ -3785,21 +3811,21 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-sm bg-[#151622]/95 backdrop-blur-xl border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl shadow-black/70 animate-in fade-in slide-in-from-bottom-2 duration-200"
+            className="relative w-full max-w-sm bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-border-subtle)] rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl shadow-black/70 animate-in fade-in slide-in-from-bottom-2 duration-200"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-300">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <span className="text-sm font-bold text-white tracking-tight">
+                <span className="text-sm font-bold text-[var(--nova-text-primary)] tracking-tight">
                   {t('chat.e2eeCardTitle')}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsProtectionOpen(false)}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 title={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3807,22 +3833,22 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             </div>
 
             {/* End-to-end encryption status */}
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-2">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] mb-2">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-300 shrink-0">
                 <Lock className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-white">
+                <p className="text-xs font-semibold text-[var(--nova-text-primary)]">
                   {t('chat.e2eeEncrypted')}
                 </p>
-                <p className="text-[11px] text-[#8c919d] mt-0.5">
+                <p className="text-[11px] text-[var(--nova-text-muted)] mt-0.5">
                   {t('chat.e2eeEncryptedDesc', { name: profile.name })}
                 </p>
               </div>
             </div>
 
             {/* Contact verification */}
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-2">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] mb-2">
               <div className="w-8 h-8 rounded-lg bg-[var(--nova-accent-color,#ff4e18)]/15 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                 <ShieldCheck className="w-4 h-4" />
               </div>
@@ -3832,14 +3858,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   data-testid="safety-number-row"
                   data-demo-peer={isDemoPeer(chatId) ? 'true' : 'false'}
                 >
-                  <p className="text-xs font-semibold text-white">
+                  <p className="text-xs font-semibold text-[var(--nova-text-primary)]">
                     {t('chat.e2eeVerification')}
                   </p>
                   {isDemoPeer(chatId) && (
                     <span
                       data-testid="demo-peer-badge"
                       title={t('chat.demoPeerTitle')}
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/20"
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] border border-[var(--nova-border-color)]"
                     >
                       {t('chat.demoPeer')}
                     </span>
@@ -3851,7 +3877,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     {t('chat.e2eeUnverified')}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#8c919d] mt-0.5">
+                <p className="text-[11px] text-[var(--nova-text-muted)] mt-0.5">
                   {t('chat.e2eeVerifyDesc')}
                 </p>
                 <p className="text-[10px] font-mono text-[var(--text-tertiary)] mt-1 break-all">
@@ -3896,18 +3922,18 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             )}
 
             {/* Disappearing messages / key status */}
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white/70 shrink-0">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)]">
+              <div className="w-8 h-8 rounded-lg bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] shrink-0">
                 <Clock className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-white">
+                  <p className="text-xs font-semibold text-[var(--nova-text-primary)]">
                     {t('chat.e2eeDisappearing')}
                   </p>
                   <span
                     data-testid="protection-disappearing"
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)]"
                   >
                     {disappearAfter > 0
                       ? t('chat.sendOptions.seconds', { count: disappearAfter })
@@ -3922,18 +3948,18 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {isPinnedCarouselOpen && (
         <div className="px-3 -mt-1 mb-2 shrink-0 relative z-30 animate-in slide-in-from-top-2 fade-in duration-200">
-          <div className="bg-[#151622]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl shadow-black/70">
+          <div className="bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-border-subtle)] rounded-2xl p-2.5 shadow-2xl shadow-black/70">
             {/* Header row of carousel */}
-            <div className="flex items-center justify-between pb-1.5 border-b border-white/5 px-1">
+            <div className="flex items-center justify-between pb-1.5 border-b border-[var(--nova-border-subtle)] px-1">
               <div className="flex items-center gap-1.5">
                 <div className="w-5 h-5 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)]">
                   <Pin className="w-3 h-3 fill-current" />
                 </div>
-                <span className="text-xs font-bold text-white tracking-wide">
+                <span className="text-xs font-bold text-[var(--nova-text-primary)] tracking-wide">
                   Pinned Messages
                 </span>
                 {pinnedMessages.length > 0 && (
-                  <span className="text-[10px] text-white/50 px-1.5 py-0.2 rounded-full bg-white/5 font-mono">
+                  <span className="text-[10px] text-[var(--nova-text-muted)] px-1.5 py-0.2 rounded-full bg-[var(--nova-overlay-weak)] font-mono">
                     {currentPinIndex + 1}/{pinnedMessages.length}
                   </span>
                 )}
@@ -3944,14 +3970,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <>
                     <button
                       onClick={handlePrevPin}
-                      className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                      className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                       title={t('common.previous')}
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={handleNextPin}
-                      className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                      className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                       title={t('common.next')}
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -3960,7 +3986,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 )}
                 <button
                   onClick={() => setIsPinnedCarouselOpen(false)}
-                  className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer ml-1"
+                  className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer ml-1"
                   title={t('common.close')}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -3972,12 +3998,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             {currentPinnedMsg ? (
               <div
                 onClick={() => handleJumpToMessage(currentPinnedMsg.id)}
-                className="mt-2 p-2 rounded-xl bg-[#1b1c28]/90 hover:bg-[#202232] border border-white/5 transition cursor-pointer group flex items-start justify-between gap-2.5 active:scale-[0.99]"
+                className="mt-2 p-2 rounded-xl bg-[var(--nova-surface-high)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] transition cursor-pointer group flex items-start justify-between gap-2.5 active:scale-[0.99]"
                 title={t('chat.replyingTo')}
               >
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   {currentPinnedMsg.images && currentPinnedMsg.images.length > 0 ? (
-                    <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                    <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-[var(--nova-border-subtle)]">
                       <LazyMedia
                         src={currentPinnedMsg.images[0]}
                         alt=""
@@ -3989,7 +4015,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       <Mic className="w-4 h-4" />
                     </div>
                   ) : (
-                    <div className="w-9 h-9 rounded-lg bg-[#252836] border border-white/5 flex items-center justify-center text-xs font-bold text-white/80 shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--nova-text-secondary)] shrink-0">
                       {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                     </div>
                   )}
@@ -3999,17 +4025,17 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       <span className="text-[11px] font-semibold text-[var(--nova-accent-color,#ff4e18)]">
                         {currentPinnedMsg.senderId === 'me' ? t('common.you') : profile.name}
                       </span>
-                      <span className="text-[10px] text-white/40">
+                      <span className="text-[10px] text-[var(--nova-text-muted)]">
                         {currentPinnedMsg.time}
                       </span>
                       {currentPinnedMsg.pinnedNote && (
-                        <span className="text-[10px] text-white/50 truncate hidden sm:inline">
+                        <span className="text-[10px] text-[var(--nova-text-muted)] truncate hidden sm:inline">
                           · {currentPinnedMsg.pinnedNote}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-white/90 truncate mt-0.5 font-normal">
+                    <p className="text-xs text-[var(--nova-text-primary)] truncate mt-0.5 font-normal">
                       {currentPinnedMsg.voiceNote
                         ? t('voiceMessage', { duration: currentPinnedMsg.voiceNote.duration })
                         : currentPinnedMsg.text || t('chat.photoAttachment')}
@@ -4020,7 +4046,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <div className="flex items-center gap-1 shrink-0 self-center">
                   <button
                     onClick={(e) => handleUnpinMessage(currentPinnedMsg.id, e)}
-                    className="p-1 rounded-md text-white/40 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"
+                    className="p-1 rounded-md text-[var(--nova-text-muted)] hover:text-red-400 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
                     title={t('common.unpin')}
                   >
                     <PinOff className="w-3.5 h-3.5" />
@@ -4031,7 +4057,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 </div>
               </div>
             ) : (
-              <div className="py-3 text-center text-xs text-white/40">
+              <div className="py-3 text-center text-xs text-[var(--nova-text-muted)]">
                 No pinned messages yet. Long-press any message to pin it.
               </div>
             )}
@@ -4046,7 +4072,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     className={`transition-all duration-200 cursor-pointer ${
                       idx === currentPinIndex
                         ? 'w-4 h-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)]'
-                        : 'w-1.5 h-1 rounded-full bg-white/20 hover:bg-white/40'
+                        : 'w-1.5 h-1 rounded-full bg-[var(--nova-overlay-strong)] hover:bg-[var(--nova-overlay-strong)]'
                     }`}
                     title={`Go to pinned message ${idx + 1}`}
                   />
@@ -4058,8 +4084,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       )}
 
       {/* Date Pill Divider */}
-      <div className="sticky top-0 z-20 flex justify-center my-1 shrink-0 bg-[#0b0c10]/70 backdrop-blur-sm py-1">
-        <span className="text-[11px] font-medium text-[#737887] bg-[#14151c]/80 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/5 shadow-inner">
+      <div className="sticky top-0 z-20 flex justify-center my-1 shrink-0 bg-[var(--nova-canvas)]/70 backdrop-blur-sm py-1">
+        <span className="text-[11px] font-medium text-[var(--nova-text-muted)] bg-[var(--nova-surface)]/80 backdrop-blur-md px-3.5 py-1 rounded-full border border-[var(--nova-border-subtle)] shadow-inner">
           Today, 24 June
         </span>
       </div>
@@ -4069,17 +4095,17 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         {/* Empty Search Results State */}
         {isSearchOpen && searchQuery.trim() && matchingMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in">
-            <div className="w-12 h-12 rounded-full bg-[#181922] border border-white/10 flex items-center justify-center text-white/40 mb-3 shadow-inner">
-              <Search className="w-5 h-5 text-white/30" />
+            <div className="w-12 h-12 rounded-full bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-muted)] mb-3 shadow-inner">
+              <Search className="w-5 h-5 text-[var(--nova-text-muted)]" />
             </div>
-            <p className="text-sm font-semibold text-white/90">No words found in this chat</p>
-            <p className="text-xs text-[#828795] mt-1 max-w-[240px]">
+            <p className="text-sm font-semibold text-[var(--nova-text-primary)]">No words found in this chat</p>
+            <p className="text-xs text-[var(--nova-text-muted)] mt-1 max-w-[240px]">
               No messages match &quot;{searchQuery}&quot;. Try searching for words like &quot;Harry&apos;s&quot;, &quot;hang out&quot;, or &quot;Sunday&quot;.
             </p>
             <div className="flex items-center gap-2 mt-4">
               <button
                 onClick={() => setSearchQuery('')}
-                className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] text-xs font-semibold transition cursor-pointer"
               >
                 Clear Search
               </button>
@@ -4094,7 +4120,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         )}
 
         {messages.some((m) => m.isPinned) && (
-          <div className="mb-2 px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 text-xs text-white/90 flex items-center gap-2">
+          <div className="mb-2 px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 text-xs text-[var(--nova-text-primary)] flex items-center gap-2">
             <Pin className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
             <span className="truncate flex-1">
               {messages.find((m) => m.isPinned)?.text || t('chat.messageDeleted', 'Pinned message')}
@@ -4108,7 +4134,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
               }}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer"
+              className="min-h-6 text-[10px] px-2 py-0.5 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] transition cursor-pointer"
             >
               {t('chat.messageActions.pin')}
             </button>
@@ -4134,7 +4160,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               type="button"
               onClick={handleAskToJoinAgain}
               aria-label={t('chat.joinRequestRetry')}
-              className="px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold transition cursor-pointer shrink-0"
+              className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] text-[10px] font-semibold transition cursor-pointer shrink-0"
             >
               {t('chat.joinRequestRetry')}
             </button>
@@ -4167,7 +4193,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           if (item.type === 'date') {
             return (
               <div className="flex justify-center my-3">
-                <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-[#8c919d]">
+                <span className="px-2.5 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[10px] font-semibold text-[var(--nova-text-muted)]">
                   {item.label}
                 </span>
               </div>
@@ -4211,7 +4237,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 data-testid="system-message"
                 className={`flex justify-center my-1 ${isDeleting ? 'msg-deleting' : ''}`}
               >
-                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10.5px] text-white/50 text-center max-w-[85%]">
+                <span className="px-2.5 py-1 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[10.5px] text-[var(--nova-text-muted)] text-center max-w-[85%]">
                   {msg.text}
                 </span>
               </div>
@@ -4226,9 +4252,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   isMine ? 'items-end' : 'items-start'
                 } ${isDeleting ? 'msg-deleting' : ''}`}
               >
-                <div className="px-3.5 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/45 italic text-[13px] max-w-[80%]">
+                <div className="px-3.5 py-2 rounded-2xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] italic text-[13px] max-w-[80%]">
                   {t('chat.messageDeleted', 'This message was deleted')}
-                  <span className="ml-2 text-[10px] not-italic text-white/30">{msg.time}</span>
+                  <span className="ml-2 text-[10px] not-italic text-[var(--nova-text-muted)]">{msg.time}</span>
                 </div>
               </div>
             );
@@ -4263,8 +4289,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   }}
                   className={`absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors pointer-events-none z-0 ${
                     isThresholdReached
-                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/50 ring-2 ring-white/20'
-                      : 'bg-white/10 text-white/60'
+                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/50 ring-2 ring-[var(--nova-border-color)]'
+                      : 'bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)]'
                   }`}
                 >
                   <Reply
@@ -4278,17 +4304,17 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               {/* Live Reply Preview during swipe (Telegram-style) */}
               {isThisSwiping && isThresholdReached && (
                 <div
-                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-10 w-64 bg-[#161724]/95 border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-xl p-2 text-xs z-10 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-100"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-10 w-64 bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-xl p-2 text-xs z-10 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-100"
                   style={{ opacity: Math.min(1, (currentOffset - 42) / 30) }}
                 >
                   <div className="flex items-center gap-1.5 text-[var(--nova-accent-color,#ff4e18)] font-bold mb-1">
                     <Reply className="w-3 h-3" />
                     <span>Replying to {msg.senderId === 'me' ? 'Yourself' : profile.name}</span>
                   </div>
-                  <p className="text-white/70 truncate text-[11px]">
+                  <p className="text-[var(--nova-text-secondary)] truncate text-[11px]">
                     {msg.text || (msg.voiceNote ? t('voiceMessage', { duration: msg.voiceNote.duration }) : t('chat.photoAttachment'))}
                   </p>
-                  <div className="mt-1 flex items-center gap-1 text-[10px] text-white/40">
+                  <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--nova-text-muted)]">
                     <X className="w-3 h-3" />
                     <span>Release to cancel</span>
                   </div>
@@ -4309,7 +4335,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className={`fixed z-40 flex max-w-[calc(100vw-1rem)] flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain rounded-full border border-white/20 bg-[#151621]/98 px-2 py-1.5 no-scrollbar shadow-[0_12px_36px_rgba(0,0,0,0.85)] backdrop-blur-2xl animate-in zoom-in-90 fade-in duration-150`}
+                    className={`fixed z-40 flex max-w-[calc(100vw-1rem)] flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface)]/98 px-2 py-1.5 no-scrollbar shadow-[0_12px_36px_rgba(0,0,0,0.85)] backdrop-blur-2xl animate-in zoom-in-90 fade-in duration-150`}
                     style={pickerPosition ? { ...pickerPosition, touchAction: 'pan-x' } : { touchAction: 'pan-x' }}
                   >
                     {EMOJI_OPTIONS.map((emoji) => {
@@ -4320,7 +4346,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => handleSelectReaction(msg.id, emoji)}
                           className={`shrink-0 text-xl p-1 rounded-full hover:scale-135 active:scale-95 transition-transform cursor-pointer relative group ${
-                            isSelected ? 'bg-white/20 scale-120' : 'hover:bg-white/10'
+                            isSelected ? 'bg-[var(--nova-overlay-strong)] scale-120' : 'hover:bg-[var(--nova-overlay-medium)]'
                           }`}
                           title={`React with ${emoji}`}
                         >
@@ -4332,7 +4358,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       );
                     })}
 
-                    <div className="mx-0.5 h-4 w-[1px] shrink-0 bg-white/20" />
+                    <div className="mx-0.5 h-4 w-[1px] shrink-0 bg-[var(--nova-overlay-strong)]" />
 
                     {/* Quick Action Buttons: Reply, Pin, Copy */}
                     <div className="flex shrink-0 items-center gap-0.5">
@@ -4343,7 +4369,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           e.stopPropagation();
                           handleReplyMessage(msg);
                         }}
-                        className="px-2 py-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-white flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 active:scale-95"
+                        className="px-2 py-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-[var(--nova-text-primary)] flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 active:scale-95"
                         title={t('common.reply')}
                       >
                         <Reply className="w-3.5 h-3.5" />
@@ -4359,7 +4385,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         className={`p-1.5 rounded-full transition cursor-pointer ${
                           msg.isPinned
                             ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                            : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
                         }`}
                         title={msg.isPinned ? 'Unpin message' : 'Pin message'}
                       >
@@ -4372,7 +4398,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           e.stopPropagation();
                           handleCopyMessage(msg);
                         }}
-                        className="p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                        className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                         title={t('common.copy')}
                       >
                         {copiedMsgId === msg.id ? (
@@ -4386,9 +4412,30 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleTranslateMessage(msg);
+                        }}
+                        disabled={translatingMsgId === msg.id || !msg.text}
+                        className={`p-1.5 rounded-full transition cursor-pointer ${
+                          translatingMsgId === msg.id || !msg.text
+                            ? 'text-white/20 cursor-not-allowed opacity-50'
+                            : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
+                        }`}
+                        title={t('chat.translate', 'Translate')}
+                      >
+                        {translatingMsgId === msg.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--nova-accent-color)]" />
+                        ) : (
+                          <Languages className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleStartForward(msg.id);
                         }}
-                        className="p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                        className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                         title="Forward message"
                       >
                         <Forward className="w-3.5 h-3.5" />
@@ -4405,7 +4452,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     isMine ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  <span className="bg-[var(--nova-accent-color,#ff4e18)] text-white px-2 py-0.5 rounded-full shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 flex items-center gap-1 tracking-tight font-sans">
+                  <span className="bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] px-2 py-0.5 rounded-full shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 flex items-center gap-1 tracking-tight font-sans">
                     <Search className="w-2.5 h-2.5" />
                     Match {activeMatchIndex + 1} of {matchingMessages.length}
                   </span>
@@ -4455,7 +4502,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   {/* Quick Action Pill on hover (Desktop) attached directly to the message bubble */}
                   <div
                     onPointerDown={(e) => e.stopPropagation()}
-                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[#141520]/95 border border-white/20 backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 transition-all duration-150 scale-95 select-none hidden`}
+                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[var(--nova-surface)]/95 border border-[var(--nova-border-color)] backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 transition-all duration-150 scale-95 select-none hidden`}
                   >
                     <NovaTooltip label="Add reaction (emoji popup)">
                       <NovaIconButton
@@ -4511,7 +4558,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         }}
                       />
                     </NovaTooltip>
-                    <div className="w-[1px] h-4 bg-white/15" />
+                    <div className="w-[1px] h-4 bg-[var(--nova-overlay-medium)]" />
                     <NovaMenu
                       label={t('common.more')}
                       trigger={
@@ -4576,13 +4623,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       className={`absolute top-2 ${isMine ? 'right-2' : 'left-2'} z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 ${
                         forwardSelectedIds.has(msg.id)
                           ? 'bg-[var(--nova-accent-color,#ff4e18)] scale-100'
-                          : 'bg-white/20 hover:bg-white/30 scale-95'
+                          : 'bg-[var(--nova-overlay-strong)] hover:bg-[var(--nova-overlay-strong)] scale-95'
                       }`}
                     >
                       {forwardSelectedIds.has(msg.id) ? (
-                        <Check className="w-4 h-4 text-white stroke-[3]" />
+                        <Check className="w-4 h-4 text-[var(--nova-text-primary)] stroke-[3]" />
                       ) : (
-                        <div className="w-4 h-4 rounded-full border-2 border-white/50" />
+                        <div className="w-4 h-4 rounded-full border-2 border-[var(--border-strong)]" />
                       )}
                     </div>
                   )}
@@ -4613,12 +4660,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/40 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/60 max-w-[220px]"
+                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/40 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/60 max-w-[220px]"
                           >
-                            <div className="font-bold text-[10px] text-white/95 truncate">
+                            <div className="font-bold text-[10px] text-[var(--nova-text-primary)] truncate">
                               {msg.replyTo.senderName}
                             </div>
-                            <p className="text-[11px] truncate text-white/80 font-normal">
+                            <p className="text-[11px] truncate text-[var(--nova-text-secondary)] font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -4630,17 +4677,17 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             emojiClassName="text-5xl"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/85 mt-1 border border-white/10 shadow-md">
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-[var(--nova-text-secondary)] mt-1 border border-[var(--nova-border-subtle)] shadow-md">
                           <span className="font-mono">{msg.time}</span>
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
                           ) : (
-                            <Check className="w-3.5 h-3.5 inline text-white/60 stroke-[2]" />
+                            <Check className="w-3.5 h-3.5 inline text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
                         </div>
                       </div>
                     ) : msg.poll ? (
-                      <div className={`bg-[#171824]/95 border ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl ${theme.shadow}`}>
                         {msg.replyTo && (
                           <div
                             onPointerDown={(e) => e.stopPropagation()}
@@ -4648,12 +4695,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/50"
+                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/50"
                           >
-                            <div className="font-bold text-[10.5px] text-white/95 truncate">
+                            <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] truncate">
                               {msg.replyTo.senderName}
                             </div>
-                            <p className="text-[11.5px] truncate text-white/80 font-normal">
+                            <p className="text-[11.5px] truncate text-[var(--nova-text-secondary)] font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -4663,32 +4710,32 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           onVote={handleVotePoll}
                           onRetractVote={handleRetractVote}
                         />
-                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
+                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-[var(--nova-text-secondary)] mt-2 font-mono">
                           <span>{msg.time}</span>
 
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
                           ) : (
-                            <Check className="w-3.5 h-3.5 text-white/60 stroke-[2]" />
+                            <Check className="w-3.5 h-3.5 text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
                         </div>
                       </div>
                     ) : msg.location ? (
-                      <div className={`bg-[#171824]/95 border ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
                         <LocationBubble location={msg.location} />
-                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-white/70 mt-2 font-mono">
+                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-[var(--nova-text-secondary)] mt-2 font-mono">
                           <span>{msg.time}</span>
                           {msg.isRead ? (
                             <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
                           ) : (
-                            <Check className="w-3.5 h-3.5 text-white/60 stroke-[2]" />
+                            <Check className="w-3.5 h-3.5 text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
                         </div>
                       </div>
                     ) : msg.voiceNote ? (
-                      <div className={`bg-[#1b1c26]/95 ${theme.border} text-white rounded-[22px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
                         {msg.forwardedFrom && (
-                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-white/70">
+                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[var(--nova-text-secondary)]">
                             <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
                             <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
@@ -4700,14 +4747,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/35"
+                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
                             title={t('chat.replyingTo')}
                           >
-                            <div className="font-bold text-[10.5px] text-white/95 flex items-center gap-1">
+                            <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] flex items-center gap-1">
                               <Reply className="w-2.5 h-2.5" />
                               <span>{msg.replyTo.senderName}</span>
                             </div>
-                            <p className="text-[11.5px] truncate text-white/85 mt-0.5 font-normal">
+                            <p className="text-[11.5px] truncate text-[var(--nova-text-secondary)] mt-0.5 font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -4717,7 +4764,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           isMe={true}
                           accentColor="var(--nova-accent-color,#ff4e18)"
                         />
-                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/70 mt-1.5 font-medium select-none">
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-[var(--nova-text-secondary)] mt-1.5 font-medium select-none">
                           <button
                             type="button"
                             onPointerDown={(e) => e.stopPropagation()}
@@ -4725,23 +4772,23 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleReplyMessage(msg);
                             }}
-                            className="text-white/60 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                            className="min-h-6 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-[var(--nova-overlay-medium)] cursor-pointer transition active:scale-90"
                             title={t('common.reply')}
                           >
                             <Reply className="w-2.5 h-2.5" />
                             <span className="text-[9.5px]">Reply</span>
                           </button>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] text-white/75 font-mono">{msg.time}</span>
+                              <span className="text-[10px] text-[var(--nova-text-secondary)] font-mono">{msg.time}</span>
                               {renderMessageStatus(msg)}
                             </div>
                         </div>
                       </div>
                     ) : (
-                      <div className={`bg-gradient-to-r ${theme.grad} text-white rounded-[22px] rounded-br-[4px] px-4 py-2.5 max-w-[82%] shadow-lg ${theme.shadow} text-[14px] leading-relaxed`}>
+                      <div className={`bg-gradient-to-r ${theme.grad} text-[var(--nova-on-accent)] rounded-[22px] rounded-br-[4px] px-4 py-2.5 max-w-[82%] shadow-lg ${theme.shadow} text-[14px] leading-relaxed`}>
                         {msg.forwardedFrom && (
-                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/60 text-[10px] text-white/70">
-                            <Forward className="w-2.5 h-2.5 text-white/70" />
+                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-[10px] text-[var(--nova-text-secondary)]">
+                            <Forward className="w-2.5 h-2.5 text-[var(--nova-text-secondary)]" />
                             <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
                         )}
@@ -4752,32 +4799,32 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-white/80 text-xs cursor-pointer select-none transition hover:bg-black/35"
+                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
                             title={t('chat.replyingTo')}
                           >
-                            <div className="font-bold text-[10.5px] text-white/95 flex items-center gap-1">
+                            <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] flex items-center gap-1">
                               <Reply className="w-2.5 h-2.5" />
                               <span>{msg.replyTo.senderName}</span>
                             </div>
-                            <p className="text-[11.5px] truncate text-white/85 mt-0.5 font-normal">
+                            <p className="text-[11.5px] truncate text-[var(--nova-text-secondary)] mt-0.5 font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
                         )}
                         {renderMessageMedia(msg)}
                         {msg.document && (
-                          <div className="flex items-center gap-3 p-3 bg-black/25 rounded-2xl border border-white/10 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5 text-white" />
+                          <div className="flex items-center gap-3 p-3 bg-black/25 rounded-2xl border border-[var(--nova-border-subtle)] mb-2">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--nova-overlay-medium)] flex items-center justify-center shrink-0">
+                              <FileText className="w-5 h-5 text-[var(--nova-text-primary)]" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
-                              <p className="text-[10.5px] text-white/70 mt-0.5">{msg.document.size}</p>
+                              <p className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">{msg.document.name}</p>
+                              <p className="text-[10.5px] text-[var(--nova-text-secondary)] mt-0.5">{msg.document.size}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleDownloadDocument(msg.document!.name)}
-                              className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer active:scale-95"
+                              className="p-1.5 rounded-lg bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] transition cursor-pointer active:scale-95"
                               title="Download document"
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -4797,7 +4844,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                 }
                                 if (e.key === 'Escape') handleCancelEdit();
                               }}
-                              className="w-full min-w-0 resize-none break-words rounded-lg bg-black/25 px-2 py-1.5 text-[14px] leading-relaxed text-white outline-none focus:outline-none focus:ring-0"
+                              className="w-full min-w-0 resize-none break-words rounded-lg bg-black/25 px-2 py-1.5 text-[14px] leading-relaxed text-[var(--nova-text-primary)] outline-none focus:outline-none focus:ring-0"
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
@@ -4807,7 +4854,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                   e.stopPropagation();
                                   handleSaveEdit();
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold transition active:scale-95"
+                                className="px-2.5 py-1 rounded-lg bg-[var(--nova-overlay-strong)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] text-[11px] font-semibold transition active:scale-95"
                               >
                                 {t('common.save')}
                               </button>
@@ -4817,7 +4864,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                   e.stopPropagation();
                                   handleCancelEdit();
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-[11px] font-semibold transition active:scale-95"
+                                className="px-2.5 py-1 rounded-lg bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-secondary)] text-[11px] font-semibold transition active:scale-95"
                               >
                                 {t('common.cancel')}
                               </button>
@@ -4844,9 +4891,33 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
                               : renderMarkdown({ text: msg.text })}
                             {msg.editedAt && (
-                              <span className="ml-1.5 text-[9px] italic text-white/60">
+                              <span className="ml-1.5 text-[9px] italic text-[var(--nova-text-secondary)]">
                                 {t('chat.edited')}
                               </span>
+                            )}
+
+                            {/* Translation Result */}
+                            {translationResult?.msgId === msg.id && translationResult.translatedText && (
+                              <div className="mt-2 p-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 animate-in fade-in slide-in-from-top-1">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Languages className="w-3 h-3 text-[var(--nova-accent-color,#ff4e18)]" />
+                                  <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)]">
+                                    {t('chat.translation', 'Translation')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTranslationResult(null);
+                                      triggerPinnedToast('Translation dismissed');
+                                    }}
+                                    className="ml-auto p-0.5 text-[var(--nova-text-secondary)] hover:text-white rounded transition cursor-pointer"
+                                    title={t('common.dismiss', 'Dismiss')}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <p className="text-[12px] text-[var(--nova-text-primary)]">{translationResult.translatedText}</p>
+                              </div>
                             )}
 
                             {/* Link Previews */}
@@ -4865,7 +4936,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             })()}
                           </div>
                         )}
-                        <div className="flex items-center justify-between gap-2 text-[10px] text-white/80 mt-1.5 font-medium select-none">
+                        <div className="flex items-center justify-between gap-2 text-[10px] text-[var(--nova-text-secondary)] mt-1.5 font-medium select-none">
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
@@ -4874,7 +4945,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                 e.stopPropagation();
                                 handleReplyMessage(msg);
                               }}
-                              className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                              className="min-h-6 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-[var(--nova-overlay-medium)] cursor-pointer transition active:scale-90"
                               title={t('common.reply')}
                             >
                               <Reply className="w-2.5 h-2.5" />
@@ -4887,7 +4958,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                 e.stopPropagation();
                                 handleStartEdit(msg);
                               }}
-                              className="text-white/70 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer transition active:scale-90"
+                              className="min-h-6 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-[var(--nova-overlay-medium)] cursor-pointer transition active:scale-90"
                               title={t('chat.messageActions.edit')}
                             >
                               <Pencil className="w-2.5 h-2.5" />
@@ -4895,7 +4966,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             </button>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-white/85 font-mono">{msg.time}</span>
+                            <span className="text-[10px] text-[var(--nova-text-secondary)] font-mono">{msg.time}</span>
                             {renderMessageStatus(msg)}
                           </div>
                         </div>
@@ -4911,12 +4982,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/10 border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-white/15 max-w-[220px]"
+                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-[var(--nova-overlay-medium)] border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-[var(--nova-overlay-medium)] max-w-[220px]"
                           >
                             <div className="font-bold text-[10px] text-[var(--nova-accent-color)] truncate">
                               {msg.replyTo.senderName}
                             </div>
-                            <p className="text-[11px] truncate text-white/80 font-normal">
+                            <p className="text-[11px] truncate text-[var(--nova-text-secondary)] font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -4928,12 +4999,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             emojiClassName="text-5xl"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/75 mt-1 border border-white/10 shadow-md">
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-[var(--nova-text-secondary)] mt-1 border border-[var(--nova-border-subtle)] shadow-md">
                           <span className="font-mono">{msg.time}</span>
                         </div>
                       </div>
                     ) : msg.poll ? (
-                      <div className="bg-[#171824]/95 border border-white/10 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
                         {msg.replyTo && (
                           <div
                             onPointerDown={(e) => e.stopPropagation()}
@@ -4941,12 +5012,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-white/10"
+                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] border-l-2 border-[var(--nova-accent-color)] text-xs cursor-pointer select-none transition hover:bg-[var(--nova-overlay-medium)]"
                           >
                             <div className="font-bold text-[10.5px] text-[var(--nova-accent-color)] truncate">
                               {msg.replyTo.senderName}
                             </div>
-                            <p className="text-[11.5px] truncate text-white/80 font-normal">
+                            <p className="text-[11.5px] truncate text-[var(--nova-text-secondary)] font-normal">
                               {msg.replyTo.text}
                             </p>
                           </div>
@@ -4956,22 +5027,22 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           onVote={handleVotePoll}
                           onRetractVote={handleRetractVote}
                         />
-                        <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
+                        <div className="flex items-center justify-end text-[10px] text-[var(--nova-text-muted)] mt-2 font-mono">
                           <span>{msg.time}</span>
                         </div>
                       </div>
                     ) : msg.location ? (
 
-                      <div className="bg-[#171824]/95 border border-white/10 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
                         <LocationBubble location={msg.location} />
-                        <div className="flex items-center justify-end text-[10px] text-[#717682] mt-2 font-mono">
+                        <div className="flex items-center justify-end text-[10px] text-[var(--nova-text-muted)] mt-2 font-mono">
                           <span>{msg.time}</span>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-[#181921]/95 border border-white/5 text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
                       {msg.forwardedFrom && (
-                        <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[#868b98]">
+                        <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[var(--nova-text-muted)]">
                           <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
                           <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                         </div>
@@ -4983,14 +5054,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             e.stopPropagation();
                             handleJumpToMessage(msg.replyTo!.id);
                           }}
-                          className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-white/5 border-l-2 border-[var(--nova-accent-color,#ff4e18)] text-xs cursor-pointer select-none transition hover:bg-white/10"
+                          className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] border-l-2 border-[var(--nova-accent-color,#ff4e18)] text-xs cursor-pointer select-none transition hover:bg-[var(--nova-overlay-medium)]"
                           title={t('chat.replyingTo')}
                         >
                           <div className="font-bold text-[10.5px] text-[var(--nova-accent-color,#ff4e18)] flex items-center gap-1">
                             <Reply className="w-2.5 h-2.5" />
                             <span>{msg.replyTo.senderName}</span>
                           </div>
-                          <p className="text-[11.5px] truncate text-white/80 mt-0.5 font-normal">
+                          <p className="text-[11.5px] truncate text-[var(--nova-text-secondary)] mt-0.5 font-normal">
                             {msg.replyTo.text}
                           </p>
                         </div>
@@ -5008,18 +5079,18 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       )}
 
                       {msg.document && (
-                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 mb-2">
-                          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-3 p-3 bg-[var(--nova-overlay-weak)] rounded-2xl border border-[var(--nova-border-subtle)] mb-2">
+                          <div className="w-10 h-10 rounded-xl bg-[var(--nova-overlay-medium)] flex items-center justify-center shrink-0">
                             <FileText className="w-5 h-5 text-[var(--nova-accent-color,#ff4e18)]" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-white truncate">{msg.document.name}</p>
-                            <p className="text-[10.5px] text-[#868b98] mt-0.5">{msg.document.size}</p>
+                            <p className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">{msg.document.name}</p>
+                            <p className="text-[10.5px] text-[var(--nova-text-muted)] mt-0.5">{msg.document.size}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleDownloadDocument(msg.document!.name)}
-                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer active:scale-95"
+                            className="p-1.5 rounded-lg bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-95"
                             title="Download document"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -5033,12 +5104,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             ? highlightMatchedText(msg.text, searchQuery, isCurrentSearchMatch)
                             : renderMarkdown({ text: msg.text })}
                           {msg.editedAt && (
-                            <span className="ml-1.5 text-[9px] italic text-[#717682]">{t('chat.edited')}</span>
+                            <span className="ml-1.5 text-[9px] italic text-[var(--nova-text-muted)]">{t('chat.edited')}</span>
                           )}
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between gap-1 text-[10px] text-[#717682] mt-1.5 font-medium select-none">
+                      <div className="flex items-center justify-between gap-1 text-[10px] text-[var(--nova-text-muted)] mt-1.5 font-medium select-none">
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
@@ -5047,7 +5118,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleReplyMessage(msg);
                             }}
-                            className="text-[var(--nova-accent-color,#ff4e18)] hover:text-[#ff6e38] flex items-center gap-1 py-0.5 px-1.5 rounded-md hover:bg-white/5 cursor-pointer transition active:scale-90"
+                            className="min-h-6 text-[var(--nova-accent-color,#ff4e18)] hover:text-[var(--nova-accent-text)] flex items-center gap-1 py-0.5 px-1.5 rounded-md hover:bg-[var(--nova-overlay-weak)] cursor-pointer transition active:scale-90"
                             title="Reply to this message"
                           >
                             <Reply className="w-3 h-3" />
@@ -5061,7 +5132,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
                             }}
-                            className="text-[#717682] hover:text-rose-400 p-1 rounded-md hover:bg-white/5 transition active:scale-90 cursor-pointer"
+                            className="min-w-6 min-h-6 text-[var(--nova-text-muted)] hover:text-rose-400 p-1 rounded-md hover:bg-[var(--nova-overlay-weak)] transition active:scale-90 cursor-pointer"
                             title="Add reaction"
                           >
                             <Heart className="w-3 h-3" />
@@ -5089,8 +5160,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           }}
                           className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs transition-all duration-200 cursor-pointer active:scale-90 shadow-lg ${
                             r.fromMe
-                              ? 'bg-[#20151c]/95 border border-[var(--nova-accent-color,#ff4e18)]/70 text-white font-bold ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 shadow-[var(--nova-accent-color,#ff4e18)]/25'
-                              : 'bg-[#181920]/95 border border-white/10 text-white/90 hover:bg-[#20222a]'
+                              ? 'bg-[var(--nova-surface-high)]/95 border border-[var(--nova-accent-color,#ff4e18)]/70 text-[var(--nova-text-primary)] font-bold ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 shadow-[var(--nova-accent-color,#ff4e18)]/25'
+                              : 'bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] hover:bg-[var(--nova-surface-high)]'
                           }`}
                         >
                           <span>{r.emoji}</span>
@@ -5119,7 +5190,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
         {isTyping && (
           <div className="flex items-start animate-in fade-in duration-200">
-            <div className="bg-[#181921]/95 border border-[var(--nova-accent-color,#ff4e18)]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-md shadow-black/50">
+            <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-accent-color,#ff4e18)]/25 rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-md shadow-black/50">
               {typingActivity === 'recording' ? (
                 <>
                   <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] animate-pulse" />
@@ -5153,7 +5224,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             const node = messagesScrollRef.current;
             if (node) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
           }}
-          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition hover:brightness-110 active:scale-95"
+          className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition hover:brightness-110 active:scale-95"
           aria-label={`Scroll to ${unreadCount} new message${unreadCount === 1 ? '' : 's'}`}
           title="Scroll to latest messages"
         >
@@ -5161,7 +5232,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           {unreadCount > 0 && (
             <span
               data-testid="scroll-to-bottom-count"
-              className="absolute -top-1.5 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-[var(--nova-accent-color,#ff4e18)] text-[10px] font-bold flex items-center justify-center leading-none"
+              className="absolute -top-1.5 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--nova-on-accent)] text-[var(--nova-accent-color,#ff4e18)] text-[10px] font-bold flex items-center justify-center leading-none"
               aria-hidden="true"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -5172,16 +5243,16 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* FLOATING IN-CHAT SEARCH MATCH NAVIGATOR */}
       {isSearchOpen && searchQuery.trim() && matchingMessages.length > 0 && (
-        <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[#151622]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
+        <div className="mx-4 mb-2 z-20 flex items-center justify-between bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl px-3.5 py-2 shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
               <Search className="w-3.5 h-3.5" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-white truncate">
+              <span className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">
                 Word: <span className="text-[var(--nova-accent-color,#ff4e18)]">&quot;{searchQuery}&quot;</span>
               </span>
-              <span className="text-[10px] text-[#8e93a0]">
+              <span className="text-[10px] text-[var(--nova-text-muted)]">
                 Match {activeMatchIndex + 1} of {matchingMessages.length} •{' '}
                 {searchFilterMode === 'filtered' ? 'Filtered view' : 'In conversation stream'}
               </span>
@@ -5191,7 +5262,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handlePrevMatch}
-              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
+              className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center gap-1 text-xs font-medium transition cursor-pointer active:scale-95"
               title={t('common.previous')}
             >
               <ChevronUp className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
@@ -5211,32 +5282,32 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* FORWARD SELECTION TOOLBAR */}
       {isForwardSelecting && (
-        <div className="px-4 py-2.5 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+        <div className="px-4 py-2.5 bg-[var(--nova-surface-raised)]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-full bg-[var(--nova-accent-color,#ff4e18)]/20 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0 border border-[var(--nova-accent-color,#ff4e18)]/30">
               <Forward className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <span className="text-xs font-semibold text-white">
+              <span className="text-xs font-semibold text-[var(--nova-text-primary)]">
                 {forwardSelectedIds.size} message{forwardSelectedIds.size > 1 ? 's' : ''} selected
               </span>
-              <p className="text-[10px] text-[#868b98]">Tap messages to select or deselect</p>
+              <p className="text-[10px] text-[var(--nova-text-muted)]">Tap messages to select or deselect</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleOpenForwardModal}
-              className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-[var(--nova-text-primary)] text-xs font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 active:scale-95 flex items-center gap-1.5"
             >
               <Forward className="w-3.5 h-3.5" />
               <span>Forward</span>
             </button>
             <button
               onClick={handleCancelForward}
-              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer active:scale-95"
+              className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer active:scale-95"
               title={t('common.cancel')}
             >
-              <X className="w-3.5 h-3.5 text-white/60" />
+              <X className="w-3.5 h-3.5 text-[var(--nova-text-secondary)]" />
               <span>Cancel</span>
             </button>
           </div>
@@ -5245,7 +5316,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* Reply Preview Banner */}
       {replyingTo && (
-        <div className="px-4 py-2 bg-[#161724]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
+        <div className="px-4 py-2 bg-[var(--nova-surface-raised)]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
           <div
             onClick={() => handleJumpToMessage(replyingTo.id)}
             className="flex items-center gap-2.5 truncate cursor-pointer group flex-1 mr-2"
@@ -5259,9 +5330,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <span className="text-[var(--nova-accent-color,#ff4e18)] font-bold text-[11px] group-hover:underline">
                   Replying to {replyingTo.senderId === 'me' ? 'Yourself' : profile.name}
                 </span>
-                <span className="text-[10px] text-white/40">· Click to jump</span>
+                <span className="text-[10px] text-[var(--nova-text-muted)]">· Click to jump</span>
               </div>
-              <p className="text-[#868b98] truncate text-[11px] mt-0.5 font-normal">
+              <p className="text-[var(--nova-text-muted)] truncate text-[11px] mt-0.5 font-normal">
                 {replyingTo.text || (replyingTo.voiceNote ? t('voiceMessage', { duration: replyingTo.voiceNote.duration }) : t('chat.photoAttachment'))}
               </p>
             </div>
@@ -5271,10 +5342,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               setReplyingTo(null);
               triggerPinnedToast('Reply cancelled');
             }}
-            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer shrink-0 active:scale-95"
+            className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer shrink-0 active:scale-95"
             title={t('common.cancel')}
           >
-            <X className="w-3.5 h-3.5 text-white/60" />
+            <X className="w-3.5 h-3.5 text-[var(--nova-text-secondary)]" />
             <span>Cancel</span>
           </button>
         </div>
@@ -5285,7 +5356,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         <div className="px-4 py-1.5 bg-[#181926]/95 backdrop-blur-md border-t border-[var(--nova-accent-color,#ff4e18)]/30 flex items-center justify-between text-xs z-20 animate-in fade-in slide-in-from-bottom-1">
           <div className="flex items-center gap-2 truncate">
             <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0 animate-pulse" />
-            <span className="text-white/85 truncate text-[11px]">
+            <span className="text-[var(--nova-text-secondary)] truncate text-[11px]">
               <strong className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">
                 {scheduledMessages.length}
               </strong>{' '}
@@ -5310,7 +5381,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 setMessages((msgs) => [...msgs, newMsg]);
                 triggerPinnedToast('Sent scheduled message now');
               }}
-              className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] hover:text-[#ff6e38] font-semibold hover:underline cursor-pointer"
+              className="text-[10px] text-[var(--nova-accent-color,#ff4e18)] hover:text-[var(--nova-accent-text)] font-semibold hover:underline cursor-pointer"
             >
               Send Now
             </button>
@@ -5319,7 +5390,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 setScheduledMessages([]);
                 triggerPinnedToast('Scheduled messages cancelled');
               }}
-              className="text-white/40 hover:text-white p-0.5 cursor-pointer text-xs"
+              className="text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] p-0.5 cursor-pointer text-xs"
               title={t('common.cancel')}
             >
               ✕
@@ -5333,11 +5404,11 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       <div className="chat-composer p-3 pt-1 space-y-2">
         {/* ATTACHMENT MENU DRAWER */}
         {isAttachmentMenuOpen && (
-          <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[#141520]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
+          <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
             <button
               type="button"
               onClick={() => handleAttachItem('photo')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <Camera className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
               <span>Photo</span>
@@ -5345,7 +5416,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => handleAttachItem('location')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
               <span>Location</span>
@@ -5353,7 +5424,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => handleAttachItem('document')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <FileText className="w-3.5 h-3.5 text-blue-400" />
               <span>Document</span>
@@ -5361,7 +5432,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => handleAttachItem('poll')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
               <span>{t('common.poll')}</span>
@@ -5369,7 +5440,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => handleAttachItem('stickers')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <Smile className="w-3.5 h-3.5 text-purple-400" />
               <span>{t('stickers.title', 'Stickers')}</span>
@@ -5377,7 +5448,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => handleAttachItem('voice')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)] text-white/80 hover:text-white transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-white/5"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
               <Mic className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
               <span>Voice Memo</span>
@@ -5385,7 +5456,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => setIsAttachmentMenuOpen(false)}
-              className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition ml-auto shrink-0"
+              className="p-1.5 rounded-xl text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition ml-auto shrink-0"
               title={t('common.close')}
             >
               <X className="w-3.5 h-3.5" />
@@ -5404,7 +5475,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 key={reply}
                 type="button"
                 onClick={() => handleSendSmartReply(reply)}
-                className="shrink-0 rounded-full border border-white/10 bg-[#1e2028] px-3 py-1.5 text-xs font-medium text-white/80 transition hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-white active:scale-95"
+                className="shrink-0 rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] px-3 py-1.5 text-xs font-medium text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-accent-color,#ff4e18)] hover:text-[var(--nova-text-primary)] active:scale-95"
               >
                 {reply}
               </button>
@@ -5414,8 +5485,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
         {/* EMOJI QUICK BAR */}
         {isEmojiPickerOpen && (
-          <div ref={emojiBarRef} className="flex items-center gap-1.5 p-2 bg-[#141520]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto no-scrollbar" data-testid="emoji-bar">
-            <span className="text-[10px] text-white/40 font-semibold px-1 shrink-0">Insert:</span>
+          <div ref={emojiBarRef} className="flex items-center gap-1.5 p-2 bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-border-subtle)] rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto no-scrollbar" data-testid="emoji-bar">
+            <span className="text-[10px] text-[var(--nova-text-muted)] font-semibold px-1 shrink-0">Insert:</span>
             {['😊', '❤️', '🔥', '👍', '😂', '🎉', '🏖️', '✨', '🙌', '🍹', '😍', '👏'].map((emoji) => (
               <button
                 key={emoji}
@@ -5424,7 +5495,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setInputText((prev) => prev + emoji);
                   mainInputRef.current?.focus();
                 }}
-                className="text-lg p-1 rounded-xl hover:bg-white/10 hover:scale-125 transition active:scale-90 cursor-pointer shrink-0"
+                className="text-lg p-1 rounded-xl hover:bg-[var(--nova-overlay-medium)] hover:scale-125 transition active:scale-90 cursor-pointer shrink-0"
                 title={`Insert ${emoji}`}
               >
                 {emoji}
@@ -5433,7 +5504,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => setIsEmojiPickerOpen(false)}
-              className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition ml-auto shrink-0"
+              className="p-1 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition ml-auto shrink-0"
               aria-label="Close emoji picker"
             >
               <X className="w-3.5 h-3.5" />
@@ -5468,7 +5539,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         
         {/* STAGED ATTACHMENT PREVIEW CHIP */}
         {stagedAttachment && (
-          <div className="flex items-center justify-between gap-2.5 p-2 bg-[#171825]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
+          <div className="flex items-center justify-between gap-2.5 p-2 bg-[var(--nova-surface-raised)]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/40 rounded-2xl shadow-xl animate-in slide-in-from-bottom-2 duration-150">
             {stagedAttachment.images && stagedAttachment.images.length > 0 && (
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="flex items-center -space-x-2.5 overflow-hidden py-0.5 pl-1 shrink-0">
@@ -5477,30 +5548,30 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       key={i}
                       src={url}
                       alt=""
-                      className="w-10 h-10 rounded-xl object-cover border-2 border-[#171825] shadow-md"
+                      className="w-10 h-10 rounded-xl object-cover border-2 border-[var(--nova-border-color)] shadow-md"
                     />
                   ))}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-semibold text-white truncate">
+                  <span className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">
                     {stagedAttachment.images.length}{' '}
                     {stagedAttachment.images.length === 1 ? 'photo attached' : 'photos attached'}
                   </span>
-                  <span className="text-[10.5px] text-[#868b98]">Ready to send with your message</span>
+                  <span className="text-[10.5px] text-[var(--nova-text-muted)]">Ready to send with your message</span>
                 </div>
               </div>
             )}
 
             {stagedAttachment.document && (
               <div className="flex items-center gap-2.5 pl-1 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color,#ff4e18)] shrink-0">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-semibold text-white truncate">
+                  <span className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">
                     {stagedAttachment.document.name}
                   </span>
-                  <span className="text-[10px] text-[#868b98]">{stagedAttachment.document.size}</span>
+                  <span className="text-[10px] text-[var(--nova-text-muted)]">{stagedAttachment.document.size}</span>
                 </div>
               </div>
             )}
@@ -5508,7 +5579,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <button
               type="button"
               onClick={() => setStagedAttachment(null)}
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition cursor-pointer shrink-0 ml-auto"
+              className="p-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0 ml-auto"
               title="Remove attachment"
             >
               <X className="w-3.5 h-3.5" />
@@ -5525,7 +5596,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             className={`relative w-11 h-11 shrink-0 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md ${
               disappearAfter > 0 || viewOnceMode
                 ? 'bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
+                : 'bg-[var(--nova-surface-raised)]/95 hover:bg-[var(--nova-surface-high)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('chat.sendOptions.title')}
             aria-label={t('chat.sendOptions.title')}
@@ -5547,8 +5618,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             }}
             className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               isFileModalOpen || stagedAttachment
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-[var(--nova-accent-color,#ff4e18)]/30'
-                : 'bg-[#181920]/95 hover:bg-[#20222a] border-white/10 text-white/70 hover:text-white'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-[var(--nova-accent-color,#ff4e18)]/30'
+                : 'bg-[var(--nova-surface-raised)]/95 hover:bg-[var(--nova-surface-high)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('common.attach')}
           >
@@ -5561,10 +5632,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <button
             type="button"
             onClick={() => wrapSelection('**', '**')}
-            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.bold
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('chat.format.bold', 'Bold')}
             aria-label={t('chat.format.bold', 'Bold')}
@@ -5574,10 +5645,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <button
             type="button"
             onClick={() => wrapSelection('*', '*')}
-            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.italic
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('chat.format.italic', 'Italic')}
             aria-label={t('chat.format.italic', 'Italic')}
@@ -5587,10 +5658,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <button
             type="button"
             onClick={() => wrapSelection('`', '`')}
-            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.code
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('chat.format.code', 'Code')}
             aria-label={t('chat.format.code', 'Code')}
@@ -5600,10 +5671,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           <button
             type="button"
             onClick={() => wrapSelection('~~', '~~')}
-            className={`hidden sm:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
+            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
               formatState.strike
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'
+                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
+                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
             title={t('chat.format.strike', 'Strikethrough')}
             aria-label={t('chat.format.strike', 'Strikethrough')}
@@ -5611,7 +5682,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <span className="text-xs line-through">S</span>
           </button>
 
-          <div className="flex-1 bg-[#181920]/95 border border-white/10 focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+          <div className="flex-1 bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
             <input
               ref={mainInputRef}
               type="text"
@@ -5680,8 +5751,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 }}
                 className={`p-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-90 ${
                   commandMenuOpen
-                    ? 'text-[var(--nova-accent-color,#ff4e18)] bg-white/10'
-                    : 'text-white/50 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10'
+                    ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-overlay-medium)]'
+                    : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-overlay-medium)]'
                 }`}
                 title={t('bot.commands', { defaultValue: 'Bot commands' })}
                 aria-label={t('bot.commands', { defaultValue: 'Bot commands' })}
@@ -5699,8 +5770,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               }}
               className={`p-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-90 ${
                 isEmojiPickerOpen
-                  ? 'text-[var(--nova-accent-color,#ff4e18)] bg-white/10'
-                  : 'text-white/50 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10'
+                  ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-overlay-medium)]'
+                  : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-overlay-medium)]'
               }`}
               title={t('common.react')}
             >
@@ -5712,7 +5783,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             <div className="relative shrink-0">
               {scheduledMessages.length > 0 && (
                 <span
-                  className="absolute -top-1.5 -left-1 z-10 w-4 h-4 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white text-[9px] font-bold flex items-center justify-center shadow-md"
+                  className="absolute -top-1.5 -left-1 z-10 w-4 h-4 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[9px] font-bold flex items-center justify-center shadow-md"
                   title={`${scheduledMessages.length} scheduled`}
                 >
                   {scheduledMessages.length}
@@ -5729,14 +5800,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   else openSendOptions(e.currentTarget);
                 }}
                 style={{ touchAction: 'manipulation' }}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] active:scale-90 text-white flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] active:scale-90 text-[var(--nova-text-primary)] flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
                 title={t('common.send')}
                 aria-haspopup="menu"
                 aria-expanded={isSendOptionsOpen}
               >
                 <Send className="w-4 h-4 ml-0.5" />
                 {/* Hold hint badge */}
-                <div className="absolute -top-7 right-0 bg-[#1e202a] text-white text-[9px] px-2 py-0.5 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md">
+                <div className="absolute -top-7 right-0 bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] text-[9px] px-2 py-0.5 rounded-full border border-[var(--nova-border-subtle)] opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-md">
                   {t('chat.sendOptions.hold')}
                 </div>
               </button>
@@ -5770,9 +5841,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 bottom: sendOptionsPosition?.bottom,
                 left: sendOptionsPosition?.left ?? 8,
               }}
-              className="fixed z-[75] w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#151621]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-1 duration-150"
+              className="fixed z-[75] w-64 overflow-hidden rounded-2xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)]/98 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-1 duration-150"
             >
-              <div className="border-b border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/50">
+              <div className="border-b border-[var(--nova-border-subtle)] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)]">
                 {t('chat.sendOptions.title')}
               </div>
               <button
@@ -5782,7 +5853,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   triggerPinnedToast(sendSilently ? t('chat.sendOptions.silentOff') : t('chat.sendOptions.silentOn'));
                   setIsSendOptionsOpen(false);
                 }}
-                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
                   <VolumeX className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
@@ -5796,7 +5867,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setIsSendOptionsOpen(false);
                   setIsScheduleModalOpen(true);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
               >
                 <Clock className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
                 <span>{t('chat.sendOptions.schedule')}</span>
@@ -5807,7 +5878,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setViewOnceMode((prev) => !prev);
                   setIsSendOptionsOpen(false);
                 }}
-                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/5 cursor-pointer"
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
                   <Eye className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
@@ -5815,8 +5886,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 </span>
                 {viewOnceMode && <Check className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />}
               </button>
-              <div className="my-1 h-px bg-white/10" role="separator" />
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              <div className="my-1 h-px bg-[var(--nova-overlay-medium)]" role="separator" />
+              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)]">
                 {t('chat.sendOptions.disappearing')}
               </div>
               <div className="flex flex-wrap gap-1.5 px-3 pb-2.5 pt-1">
@@ -5837,8 +5908,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     aria-pressed={disappearAfter === option.value}
                     className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
                       disappearAfter === option.value
-                        ? 'bg-[var(--nova-accent-color)] text-white'
-                        : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white'
+                        ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
+                        : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-white/[0.12] hover:text-[var(--nova-text-primary)]'
                     }`}
                   >
                     {option.label}
@@ -5865,19 +5936,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             aria-modal="true"
             aria-label={t('chat.groupMembers')}
             data-testid="group-members-dialog"
-            className="w-full max-w-sm mx-4 bg-[#151621]/98 border border-white/15 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            className="w-full max-w-sm mx-4 bg-[var(--nova-surface)]/98 border border-[var(--nova-border-color)] rounded-3xl shadow-2xl shadow-black/80 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h3 className="font-bold text-base text-white">
+            <div className="p-4 border-b border-[var(--nova-border-subtle)] flex items-center justify-between">
+              <h3 className="font-bold text-base text-[var(--nova-text-primary)]">
                 {t('chat.groupMembers')}
-                <span className="ml-1.5 text-xs font-normal text-[#8c919d]">
+                <span className="ml-1.5 text-xs font-normal text-[var(--nova-text-muted)]">
                   ({groupMembers.length})
                 </span>
               </h3>
               <button
                 onClick={() => setIsGroupMembersOpen(false)}
-                className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -5887,14 +5958,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             {currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
               <div
                 data-testid="join-requests"
-                className="border-b border-white/10 px-4 py-3 space-y-2"
+                className="border-b border-[var(--nova-border-subtle)] px-4 py-3 space-y-2"
               >
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8c919d]">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--nova-text-muted)]">
                   {t('chat.joinRequests')}
                 </span>
                 {pendingJoinRequests.map((request) => (
                   <div key={request.fingerprint} className="flex items-center gap-2">
-                    <span className="flex-1 min-w-0 truncate text-xs text-white/90 font-mono">
+                    <span className="flex-1 min-w-0 truncate text-xs text-[var(--nova-text-primary)] font-mono">
                       {request.name || request.fingerprint}
                     </span>
                     <button
@@ -5911,7 +5982,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       type="button"
                       onClick={() => handleRejectJoinRequest(request.fingerprint)}
                       aria-label={`${t('chat.rejectJoinRequest')}: ${request.fingerprint}`}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-semibold text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[10px] font-semibold text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
                     >
                       {t('chat.rejectJoinRequest')}
                     </button>
@@ -5922,16 +5993,16 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
             <div className="max-h-[260px] overflow-y-auto">
               {groupMembers.length === 0 ? (
-                <p className="px-4 py-6 text-center text-xs text-[#8c919d]">
+                <p className="px-4 py-6 text-center text-xs text-[var(--nova-text-muted)]">
                   {t('chat.noMembers')}
                 </p>
               ) : (
                 groupMembers.map((member) => (
                   <div
                     key={member}
-                    className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 last:border-0"
+                    className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--nova-border-subtle)] last:border-0"
                   >
-                    <span className="flex-1 min-w-0 truncate text-xs text-white/90 font-mono">
+                    <span className="flex-1 min-w-0 truncate text-xs text-[var(--nova-text-primary)] font-mono">
                       {member}
                     </span>
                     <span
@@ -5939,7 +6010,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide ${
                         getMemberRole(groupRoles, member) === 'admin'
                           ? 'bg-[var(--nova-accent-color,#ff4e18)]/20 text-[var(--nova-accent-color,#ff4e18)] border border-[var(--nova-accent-color,#ff4e18)]/40'
-                          : 'bg-white/5 text-white/50 border border-white/10'
+                          : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] border border-[var(--nova-border-subtle)]'
                       }`}
                     >
                       {t(
@@ -5957,7 +6028,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             ? 'chat.makeMember'
                             : 'chat.makeAdmin',
                         )}: ${member}`}
-                        className="w-7 h-7 rounded-full text-white/40 hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
+                        className="w-7 h-7 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center transition cursor-pointer"
                       >
                         <ShieldCheck
                           className={`w-3.5 h-3.5 ${
@@ -5974,7 +6045,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       disabled={!currentUserIsGroupAdmin}
                       aria-label={`${t('chat.removeMember')}: ${member}`}
                       title={currentUserIsGroupAdmin ? undefined : t('chat.adminOnly')}
-                      className="w-7 h-7 rounded-full text-white/40 hover:text-red-400 hover:bg-white/10 flex items-center justify-center transition cursor-pointer disabled:opacity-30 disabled:hover:text-white/40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      className="w-7 h-7 rounded-full text-[var(--nova-text-muted)] hover:text-red-400 hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center transition cursor-pointer disabled:opacity-30 disabled:hover:text-[var(--nova-text-muted)] disabled:hover:bg-transparent disabled:cursor-not-allowed"
                     >
                       <UserMinus className="w-3.5 h-3.5" />
                     </button>
@@ -5984,9 +6055,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             </div>
 
             {groupInvite && (
-              <div className="px-4 py-3 border-t border-white/10 space-y-2">
+              <div className="px-4 py-3 border-t border-[var(--nova-border-subtle)] space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8c919d]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--nova-text-muted)]">
                     {t('chat.inviteTitle')}
                   </span>
                   <button
@@ -5994,7 +6065,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     onClick={handleRegenerateGroupInvite}
                     disabled={!currentUserIsGroupAdmin}
                     title={currentUserIsGroupAdmin ? undefined : t('chat.adminOnly')}
-                    className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] hover:underline transition cursor-pointer disabled:text-white/30 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)] hover:underline transition cursor-pointer disabled:text-[var(--nova-text-muted)] disabled:no-underline disabled:cursor-not-allowed"
                   >
                     {t('chat.inviteRegenerate')}
                   </button>
@@ -6005,7 +6076,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     value={groupInvite.link}
                     aria-label={t('chat.inviteTitle')}
                     onFocus={(event) => event.currentTarget.select()}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white/80 font-mono outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
+                    className="flex-1 min-w-0 bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-2 text-[11px] text-[var(--nova-text-secondary)] font-mono outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
                   />
                   <button
                     type="button"
@@ -6013,16 +6084,16 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       void handleCopyGroupInvite();
                     }}
                     aria-label={t('chat.inviteCopy')}
-                    className="px-3 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition cursor-pointer shrink-0"
+                    className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] text-xs font-semibold hover:bg-[var(--nova-overlay-strong)] transition cursor-pointer shrink-0"
                   >
                     {t('chat.inviteCopy')}
                   </button>
                 </div>
-                <p className="text-[10px] leading-snug text-[#8c919d]">{t('chat.inviteHint')}</p>
+                <p className="text-[10px] leading-snug text-[var(--nova-text-muted)]">{t('chat.inviteHint')}</p>
               </div>
             )}
 
-            <div className="p-3 border-t border-white/10 flex items-center gap-2">
+            <div className="p-3 border-t border-[var(--nova-border-subtle)] flex items-center gap-2">
               {currentUserIsGroupAdmin ? (
                 <>
                   <input
@@ -6033,7 +6104,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     }}
                     placeholder={t('chat.memberFingerprint')}
                     aria-label={t('chat.memberFingerprint')}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
+                    className="flex-1 min-w-0 bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder:text-[var(--nova-text-muted)] outline-none focus:border-[var(--nova-accent-color,#ff4e18)]/60"
                   />
                   <button
                     type="button"
@@ -6041,13 +6112,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       void handleAddGroupMember();
                     }}
                     disabled={!newMemberFingerprint.trim()}
-                    className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--nova-accent-color,#ff5d2b)] transition cursor-pointer shrink-0"
+                    className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--nova-accent-color,#ff5d2b)] transition cursor-pointer shrink-0"
                   >
                     {t('chat.addMember')}
                   </button>
                 </>
               ) : (
-                <p className="text-[11px] text-[#8c919d]">{t('chat.adminOnly')}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)]">{t('chat.adminOnly')}</p>
               )}
             </div>
           </div>
@@ -6070,14 +6141,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               role="status"
               aria-live="polite"
               data-testid="file-transfer-progress"
-              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-[#151621]/97 backdrop-blur-xl px-3 py-2.5 shadow-2xl shadow-black/60"
+              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,360px)] rounded-2xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)]/97 backdrop-blur-xl px-3 py-2.5 shadow-2xl shadow-black/60"
             >
-              <div className="flex items-center justify-between gap-2 text-[11px] text-white">
+              <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--nova-text-primary)]">
                 <span className="truncate">{fileTransfer.fileName}</span>
-                <span className="tabular-nums text-[#8c919d]">{percent}%</span>
+                <span className="tabular-nums text-[var(--nova-text-muted)]">{percent}%</span>
               </div>
               <div
-                className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+                className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--nova-overlay-medium)]"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -6089,7 +6160,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   style={{ width: `${percent}%` }}
                 />
               </div>
-              <div className="mt-1 flex items-center justify-between text-[10px] text-[#8c919d]">
+              <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--nova-text-muted)]">
                 <span>{label}</span>
                 <button
                   type="button"
@@ -6131,19 +6202,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('chat.reportBot', { defaultValue: 'Report bot' })}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('chat.reportBot', { defaultValue: 'Report bot' })}</h3>
               <button
                 onClick={() => setIsReportBotOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-4">
-              <p className="text-[13px] text-white/80">
+              <p className="text-[13px] text-[var(--nova-text-secondary)]">
                 {t('chat.reportBotDesc', { defaultValue: 'Report this bot for spam, abuse, or violating terms. Your report will be reviewed.' })}
               </p>
               <div className="space-y-2">
@@ -6156,7 +6227,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       showToast(`${t('chat.reportSubmitted', { defaultValue: 'Report submitted: ' })}${reason}`);
                       setIsReportBotOpen(false);
                     }}
-                    className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/10 text-[12px] font-medium text-white/80 hover:bg-white/[0.1] transition cursor-pointer"
+                    className="w-full py-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                   >
                     {reason.charAt(0).toUpperCase() + reason.slice(1)}
                   </button>
@@ -6166,7 +6237,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <button
                   type="button"
                   onClick={() => setIsReportBotOpen(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
@@ -6182,19 +6253,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('chat.blockBot', { defaultValue: 'Block bot' })}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('chat.blockBot', { defaultValue: 'Block bot' })}</h3>
               <button
                 onClick={() => setIsBlockBotConfirm(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-4">
-              <p className="text-[13px] text-white/80">
+              <p className="text-[13px] text-[var(--nova-text-secondary)]">
                 {t('chat.blockBotConfirm', { defaultValue: 'Block this bot? You will no longer receive messages from it.' })}
               </p>
               <div className="flex gap-2">
@@ -6221,7 +6292,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <button
                   type="button"
                   onClick={() => setIsBlockBotConfirm(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
@@ -6233,29 +6304,29 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {incomingCall && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6">
-          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#111318] p-6 text-center shadow-2xl">
+          <div className="w-full max-w-sm rounded-3xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)] p-6 text-center shadow-2xl">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)]/15 text-[var(--nova-accent-color,#ff4e18)]">
               {incomingCall.mode === 'video' ? <Video className="h-7 w-7" /> : <Phone className="h-7 w-7" />}
             </div>
-            <p className="text-xs uppercase tracking-widest text-white/50">
+            <p className="text-xs uppercase tracking-widest text-[var(--nova-text-muted)]">
               {t('videoCall.incomingCall')}
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-white">{profile.name}</h3>
-            <p className="mt-1 text-xs text-white/50">
+            <h3 className="mt-1 text-lg font-semibold text-[var(--nova-text-primary)]">{profile.name}</h3>
+            <p className="mt-1 text-xs text-[var(--nova-text-muted)]">
               {incomingCall.mode === 'video' ? 'Video call' : 'Voice call'}
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
                 onClick={handleDeclineIncomingGroupCall}
-                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.08]"
+                className="flex-1 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] py-2.5 text-sm font-medium text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-medium)]"
               >
                 {t('videoCall.decline')}
               </button>
               <button
                 type="button"
                 onClick={handleAcceptIncomingCall}
-                className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
+                className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-[var(--nova-on-accent)] transition hover:bg-emerald-400"
               >
                 {t('videoCall.accept')}
               </button>
@@ -6341,14 +6412,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       {isForwardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setIsForwardModalOpen(false)}>
           <div
-            className="w-full max-w-sm mx-4 bg-[#151621]/98 border border-white/15 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+            className="w-full max-w-sm mx-4 bg-[var(--nova-surface)]/98 border border-[var(--nova-border-color)] rounded-3xl shadow-2xl shadow-black/80 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h3 className="font-bold text-lg text-white">Forward to</h3>
+            <div className="p-4 border-b border-[var(--nova-border-subtle)] flex items-center justify-between">
+              <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">Forward to</h3>
               <button
                 onClick={() => setIsForwardModalOpen(false)}
-                className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                 aria-label="Close forward dialog"
               >
                 <X className="w-4 h-4" />
@@ -6359,16 +6430,16 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <button
                   key={chat.id}
                   onClick={() => handleForwardToChat(chat.id)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition cursor-pointer"
+                  className="w-full flex items-center gap-3 p-3 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
                 >
                   <LazyMedia
                     src={chat.avatar}
                     alt=""
-                    className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
+                    className="w-10 h-10 rounded-full object-cover ring-1 ring-[var(--nova-border-subtle)]"
                   />
                   <div className="text-left min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">{chat.name}</p>
-                    <p className="text-[11px] text-[#868b98]">
+                    <p className="text-sm font-semibold text-[var(--nova-text-primary)] truncate">{chat.name}</p>
+                    <p className="text-[11px] text-[var(--nova-text-muted)]">
                       {chat.type === 'group' ? 'Group' : 'Direct'}
                     </p>
                   </div>
@@ -6387,12 +6458,12 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           aria-label="Thread"
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] overflow-y-auto">
+          <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white">Thread</h3>
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">Thread</h3>
               <button
                 onClick={() => setActiveThreadRootId(null)}
-                className="p-1.5 text-white/50 hover:text-white transition cursor-pointer"
+                className="p-1.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label="Close thread"
               >
                 <X className="w-4 h-4" />
@@ -6400,7 +6471,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             </div>
             <div className="space-y-2">
               {getThreadMessages(messages, activeThreadRootId).map((m) => (
-                  <div key={m.id} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/90">
+                  <div key={m.id} className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-xs text-[var(--nova-text-primary)]">
                     {m.text || (m.deleted ? t('chat.messageDeleted') : '…')}
                   </div>
                 ))}
@@ -6428,7 +6499,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   onOpenProfile();
                   setIsMoreMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.contactInfo')}</span>
@@ -6440,7 +6511,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     setIsGroupMembersOpen(true);
                     setIsMoreMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
                 >
                   <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                   <span>{t('chat.groupMembers')}</span>
@@ -6452,7 +6523,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setActiveHeaderTab('gallery');
                   setIsMoreMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <ImageIcon className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.mediaLinks')}</span>
@@ -6463,7 +6534,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setIsWallpaperModalOpen(true);
                   setIsMoreMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <Palette className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.appearance')}</span>
@@ -6474,7 +6545,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   handleCycleChatTheme();
                   setIsMoreMenuOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.chatTheme')}</span>
@@ -6487,8 +6558,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition cursor-pointer ${
                   chatNotificationsEnabled
-                    ? 'text-white/80 hover:bg-white/5'
-                    : 'text-[#8c919d] hover:bg-white/5'
+                    ? 'text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
+                    : 'text-[var(--nova-text-muted)] hover:bg-[var(--nova-overlay-weak)]'
                 }`}
               >
                 <Bell className="w-3.5 h-3.5" />
@@ -6505,7 +6576,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     setIsScheduleModalOpen(true);
                     setIsMoreMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
                 >
                   <Clock className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                   <span>{t('chat.scheduledCount', { count: scheduledMessages.length })}</span>
@@ -6513,7 +6584,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               )}
               {botId && (
                 <>
-                  <div className="h-px bg-white/10 my-1" />
+                  <div className="h-px bg-[var(--nova-overlay-medium)] my-1" />
                   <button
                     type="button"
                     onClick={() => {
@@ -6555,11 +6626,11 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   </button>
                 </>
               )}
-              <div className="h-px bg-white/10 my-1" />
+              <div className="h-px bg-[var(--nova-overlay-medium)] my-1" />
               <button
                 type="button"
                 onClick={() => setIsMoreMenuOpen(false)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-white/60 hover:bg-white/5 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Close</span>
@@ -6577,13 +6648,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             aria-label="Media viewer"
             data-theme-preserve="dark"
             tabIndex={-1}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 text-white backdrop-blur-md"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 text-[var(--nova-text-primary)] backdrop-blur-md"
           >
             <button
               type="button"
               aria-label="Close media viewer"
               onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
-              className="absolute right-4 top-4 z-20 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 cursor-pointer"
+              className="absolute right-4 top-4 z-20 rounded-full bg-[var(--nova-overlay-medium)] p-2 text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -6686,7 +6757,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               )}
             </div>
             {mediaLightbox.urls.length > 1 && (
-              <span className="absolute bottom-5 z-20 text-xs text-white/70">
+              <span className="absolute bottom-5 z-20 text-xs text-[var(--nova-text-secondary)]">
                 {mediaLightbox.index + 1} / {mediaLightbox.urls.length}
               </span>
             )}
@@ -6698,7 +6769,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   type="button"
                   aria-label="Zoom out"
                   onClick={() => setMediaScale((s) => Math.max(1, s - 0.5))}
-                  className="p-1.5 text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                  className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
                 >
                   <ZoomOut className="h-5 w-5" />
                 </button>
@@ -6706,7 +6777,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   type="button"
                   aria-label="Reset zoom"
                   onClick={() => { setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
-                  className="px-2 py-1.5 text-xs font-medium text-white/80 bg-white/10 rounded-full hover:bg-white/20 cursor-pointer"
+                  className="px-2 py-1.5 text-xs font-medium text-[var(--nova-text-secondary)] bg-[var(--nova-overlay-medium)] rounded-full hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
                 >
                   100%
                 </button>
@@ -6714,7 +6785,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   type="button"
                   aria-label="Zoom in"
                   onClick={() => setMediaScale((s) => Math.min(4, s + 0.5))}
-                  className="p-1.5 text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                  className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
                 >
                   <ZoomIn className="h-5 w-5" />
                 </button>
@@ -6735,7 +6806,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     triggerPinnedToast('Link copied');
                   }
                 }}
-                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
               >
                 <Share2 className="h-5 w-5" />
               </button>
@@ -6753,7 +6824,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   a.remove();
                   triggerPinnedToast('Download started');
                 }}
-                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-white hover:text-[var(--nova-accent-color)] cursor-pointer"
+                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
               >
                 <Download className="h-5 w-5" />
               </button>
@@ -6770,7 +6841,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="fixed z-[85] bg-[#181922] border border-white/10 rounded-xl p-2 shadow-[var(--shadow-2)] animate-in zoom-in-95 fade-in duration-150"
+            className="fixed z-[85] bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-xl p-2 shadow-[var(--shadow-2)] animate-in zoom-in-95 fade-in duration-150"
             style={{
               top: textSelection.position.y - 60,
               left: textSelection.position.x,
@@ -6784,7 +6855,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 closeTextSelection();
                 triggerPinnedToast('Copied');
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg cursor-pointer"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] rounded-lg cursor-pointer"
             >
               <Copy className="w-4 h-4" />
               <span>Copy</span>
@@ -6795,7 +6866,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 closeTextSelection();
                 // Future: Add translate functionality
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/10 rounded-lg cursor-pointer"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] rounded-lg cursor-pointer"
             >
               <Languages className="w-4 h-4" />
               <span>Translate</span>
@@ -6806,7 +6877,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* Mini App overlay (Phase B7) — opens on top of the chat when a `web_app` button is pressed. */}
       {openMiniApp && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0c10]/95 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex flex-col bg-[var(--nova-canvas)]/95 backdrop-blur-sm">
             <MiniAppIframe
               botId={openMiniApp.botId}
               webAppUrl={openMiniApp.webAppUrl}

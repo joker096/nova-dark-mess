@@ -227,7 +227,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-2.5 select-none ${
+      className={`flex min-w-0 max-w-full items-center gap-2.5 select-none ${
         compact ? 'py-0.5' : 'py-1'
       }`}
     >
@@ -249,7 +249,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
       </button>
 
       {/* Waveform Bars & Time Info */}
-      <div className="flex-1 flex flex-col justify-center min-w-[140px] max-w-[260px]">
+      <div className="flex min-w-0 max-w-[260px] flex-1 flex-col justify-center">
         {/* Interactive Waveform Bar Visualizer */}
         <div
           className="flex items-center gap-[2px] h-7 cursor-pointer group py-1"
@@ -289,13 +289,13 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         </div>
 
         {/* Time Progress and Total Duration */}
-        <div className="flex items-center justify-between text-[10px] text-white/50 px-0.5 mt-0.5 font-mono">
-          <span>
+        <div className="mt-0.5 flex items-center justify-between gap-2 px-0.5 font-mono text-[10px] text-white/50">
+          <span className="whitespace-nowrap">
             {isPlaying || currentTime > 0
               ? formatTime(currentTime)
               : voiceNote.duration || formatTime(duration)}
           </span>
-          <span className="text-white/35">
+          <span className="whitespace-nowrap text-white/35">
             {voiceNote.duration || formatTime(duration)}
           </span>
         </div>
@@ -305,7 +305,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
       {showSpeedButton && (
         <button
           onClick={cycleSpeed}
-          className="px-1.5 py-0.5 rounded-full bg-white/10 hover:bg-white/15 text-[10px] font-semibold text-white/75 hover:text-white transition cursor-pointer shrink-0"
+          className="min-w-6 min-h-6 px-1.5 py-0.5 rounded-full bg-white/10 hover:bg-white/15 text-[10px] font-semibold text-white/75 hover:text-white transition cursor-pointer shrink-0"
           title="Playback speed"
         >
           {playbackSpeed}x

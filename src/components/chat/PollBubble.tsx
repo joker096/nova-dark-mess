@@ -176,7 +176,7 @@ export const PollBubble: React.FC<PollBubbleProps> = ({
               e.stopPropagation();
               onRetractVote(poll.id);
             }}
-            className="flex items-center gap-1 text-[var(--nova-accent-color,#ff4e18)] hover:underline cursor-pointer active:scale-95"
+            className="flex min-h-6 items-center gap-1 text-[var(--nova-accent-color,#ff4e18)] hover:underline cursor-pointer active:scale-95"
           >
             <RotateCcw className="w-3 h-3" />
             <span>{t('poll.retractVote', 'Retract vote')}</span>

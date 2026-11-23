@@ -233,9 +233,9 @@ export function createAutoTransport(config: {
         const removable = remoteTransport as AnonInboxTransport & {
           deleteQueue?: (queueId: string, token: string) => Promise<boolean> | boolean;
         };
-        await Promise.resolve(removable.deleteQueue?.(testQueue.queueId, testQueue.recipientToken)).catch(
-          () => undefined,
-        );
+        await Promise.resolve(
+          removable.deleteQueue?.(testQueue.queueId, testQueue.recipientToken, testQueue.signingKey),
+        ).catch(() => undefined);
         if (useLocal) useLocal = false;
         return true;
       }

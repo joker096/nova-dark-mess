@@ -144,9 +144,9 @@ const THEME_OPTIONS: Array<{ value: 'light' | 'dark' | 'system'; icon: React.Rea
 
 const CHAT_COLOR_OPTIONS: Array<{ value: 'default' | 'sapphire' | 'amethyst' | 'emerald'; grad: string }> = [
   { value: 'default', grad: 'from-[var(--nova-accent-color,#ff521a)] to-[var(--nova-accent-color,#ff3b00)]' },
-  { value: 'sapphire', grad: 'from-[#1E3A8A] to-[#3B82F6]' },
-  { value: 'amethyst', grad: 'from-[#4C1D95] to-[#8B5CF6]' },
-  { value: 'emerald', grad: 'from-[#064E3B] to-[#10B981]' },
+  { value: 'sapphire', grad: 'from-[var(--chat-theme-sapphire-from)] to-[var(--chat-theme-sapphire-to)]' },
+  { value: 'amethyst', grad: 'from-[var(--chat-theme-amethyst-from)] to-[var(--chat-theme-amethyst-to)]' },
+  { value: 'emerald', grad: 'from-[var(--chat-theme-emerald-from)] to-[var(--chat-theme-emerald-to)]' },
 ];
 
 const loadPrefs = (): Prefs => {
@@ -164,7 +164,7 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ ico
     <div className="w-6 h-6 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
       {icon}
     </div>
-    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d]">{title}</span>
+    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)]">{title}</span>
   </div>
 );
 
@@ -178,16 +178,16 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
     role="switch"
     aria-checked={enabled}
     onClick={onToggle}
-    className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer"
+    className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer"
   >
-    <span className="text-[13px] text-white/90 group-hover:text-white transition">{label}</span>
+    <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{label}</span>
     <span
       className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 ${
-        enabled ? 'bg-[var(--nova-accent-color)]' : 'bg-white/10'
+        enabled ? 'bg-[var(--nova-accent-color)]' : 'bg-[var(--nova-overlay-medium)]'
       }`}
     >
       <span
-        className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 ${
+        className={`w-4 h-4 rounded-full bg-[var(--nova-on-accent)] shadow-md transition-transform duration-200 ${
           enabled ? 'translate-x-4' : 'translate-x-0'
         }`}
       />
@@ -215,7 +215,7 @@ const PrivacyScopeSelector: React.FC<{ value: PrivacyScope; onChange: (v: Privac
           className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             value === s.value
               ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm'
-              : 'bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white'
+              : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'
           }`}
         >
           {s.label}
@@ -245,7 +245,7 @@ const NotificationLevelSelector: React.FC<{ value: NotificationLevel; onChange: 
           className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             value === l.value
               ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm'
-              : 'bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white'
+              : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'
           }`}
         >
           {l.label}
@@ -1209,21 +1209,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
-        className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md text-white shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
+        className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md text-[var(--nova-text-primary)] shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
       >
-        <div className="flex items-center justify-between p-4 pb-3 border-b border-white/5 shrink-0">
+        <div className="flex items-center justify-between p-4 pb-3 border-b border-[var(--nova-border-subtle)] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]">
               <Palette className="w-4 h-4" />
             </div>
             <div>
-              <h3 id="settings-title" className="font-bold text-sm text-white leading-tight">{t('settings.title')}</h3>
-              <p className="text-[10.5px] text-[#828795]">{t('app.name')}</p>
+              <h3 id="settings-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight">{t('settings.title')}</h3>
+              <p className="text-[10.5px] text-[var(--nova-text-muted)]">{t('app.name')}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
             aria-label={t('common.close')}
             title={t('common.close')}
           >
@@ -1243,7 +1243,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             title={t('settings.appearance')}
           />
           <div className="py-1">
-            <div className="text-[13px] text-white/90 mb-1.5 px-1">{t('settings.theme')}</div>
+            <div className="text-[13px] text-[var(--nova-text-primary)] mb-1.5 px-1">{t('settings.theme')}</div>
             <div className="flex gap-1">
               {THEME_OPTIONS.map((opt) => (
                 <button
@@ -1252,7 +1252,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`flex-1 flex items-center gap-2 py-2 px-2.5 rounded-xl border transition cursor-pointer ${
                     appTheme === opt.value
                       ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/60 text-[var(--nova-accent-color)] font-semibold shadow-sm'
-                      : 'bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]'
+                      : 'bg-[var(--nova-overlay-weak)] border-transparent text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
                   }`}
                 >
                   {opt.icon}
@@ -1268,7 +1268,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
           <div className="py-1">
-            <div className="text-[13px] text-white/90 mb-1.5 px-1">{t('settings.fontSize')}</div>
+            <div className="text-[13px] text-[var(--nova-text-primary)] mb-1.5 px-1">{t('settings.fontSize')}</div>
             <div className="flex gap-1.5">
               {fontSizeOptions.map((opt) => (
                 <button
@@ -1277,7 +1277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`flex-1 flex flex-col items-center py-2 rounded-xl border transition cursor-pointer ${
                     prefs.fontSize === opt.value
                       ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/60 text-[var(--nova-accent-color)] font-semibold shadow-sm'
-                      : 'bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]'
+                      : 'bg-[var(--nova-overlay-weak)] border-transparent text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
                   }`}
                 >
                   <span
@@ -1298,10 +1298,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <div className="py-1">
             <div className="flex items-center justify-between mb-1.5 px-1">
-              <div className="text-[13px] text-white/90">
+              <div className="text-[13px] text-[var(--nova-text-primary)]">
                 {t('settings.fabSide', { defaultValue: 'One-handed button' })}
               </div>
-              <span className="text-[10px] text-[#8c919d]">
+              <span className="text-[10px] text-[var(--nova-text-muted)]">
                 {t('settings.fabSideDesc', { defaultValue: 'Side of the New Action button' })}
               </span>
             </div>
@@ -1316,7 +1316,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border transition cursor-pointer text-[12px] ${
                     fabSide === opt.value
                       ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/60 text-[var(--nova-accent-color)] font-semibold shadow-sm'
-                      : 'bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06]'
+                      : 'bg-[var(--nova-overlay-weak)] border-transparent text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
                   }`}
                 >
                   <Hand className={`w-3.5 h-3.5 ${opt.value === 'left' ? '-scale-x-100' : ''}`} />
@@ -1327,8 +1327,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <div className="py-1">
             <div className="flex items-center justify-between mb-1.5 px-1">
-              <div className="text-[13px] text-white/90">{t('settings.chatColors')}</div>
-              <span className="text-[10px] text-[#8c919d]">{t('settings.chatColorsDesc')}</span>
+              <div className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.chatColors')}</div>
+              <span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.chatColorsDesc')}</span>
             </div>
             <div className="flex gap-1">
               {CHAT_COLOR_OPTIONS.map((opt) => {
@@ -1352,22 +1352,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden ${
                       chatColorTheme === opt.value
                         ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/40 shadow-sm shadow-[var(--nova-accent-color)]/25'
-                        : 'bg-white/[0.03] border-transparent hover:bg-white/[0.06]'
+                        : 'bg-[var(--nova-overlay-weak)] border-transparent hover:bg-[var(--nova-overlay-weak)]'
                     }${opt.value !== 'default' && !canUse('chat_themes') ? ' opacity-60' : ''}`}
                   >
-                    <div className="relative w-6 h-6 rounded-full border border-white/20 shadow-sm overflow-hidden">
+                    <div className="relative w-6 h-6 rounded-full border border-[var(--nova-border-color)] shadow-sm overflow-hidden">
                       <div className={`absolute inset-0 bg-gradient-to-tr ${opt.grad}`} />
-                      <div className="absolute inset-1 rounded-full bg-white/30" />
+                      <div className="absolute inset-1 rounded-full bg-[var(--nova-overlay-strong)]" />
                       {opt.value !== 'default' && !canUse('chat_themes') && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                          <Lock className="w-3 h-3 text-white/90" />
+                          <Lock className="w-3 h-3 text-[var(--nova-text-primary)]" />
                         </div>
                       )}
                     </div>
-                    <span className={`text-[11px] font-medium ${opt.value !== 'default' && !canUse('chat_themes') ? 'text-[#8c919d]' : ''}`}>{label}</span>
+                    <span className={`text-[11px] font-medium ${opt.value !== 'default' && !canUse('chat_themes') ? 'text-[var(--nova-text-muted)]' : ''}`}>{label}</span>
                     {opt.value !== 'default' && !canUse('chat_themes') && (
                       <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] flex items-center justify-center text-[10px] font-bold">
-                        <Lock className="w-2 h-2 fill-white" />
+                        <Lock className="w-2 h-2 fill-[var(--nova-text-primary)]" />
                       </span>
                     )}
                   </button>
@@ -1382,7 +1382,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             title={t('settings.premium')}
           />
           <div className="py-1">
-            <div className="text-[13px] text-white/90 mb-1.5 px-1">
+            <div className="text-[13px] text-[var(--nova-text-primary)] mb-1.5 px-1">
               {t('settings.premiumDesc')}
             </div>
 
@@ -1402,8 +1402,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               }}
               className={`w-full py-2.5 px-4 rounded-xl border transition cursor-pointer active:scale-95 flex items-center justify-center gap-2 shadow-md ${
                 premium
-                  ? 'bg-[var(--nova-accent-color)] text-white border-[var(--nova-accent-color)] shadow-lg shadow-[var(--nova-accent-color)]/25'
-                  : 'bg-white/[0.03] border-transparent text-white/60 hover:bg-white/[0.06] hover:border-[var(--nova-accent-color)]/30'
+                  ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] border-[var(--nova-accent-color)] shadow-lg shadow-[var(--nova-accent-color)]/25'
+                  : 'bg-[var(--nova-overlay-weak)] border-transparent text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:border-[var(--nova-accent-color)]/30'
               }`}
               disabled={loading || premium}
             >
@@ -1428,7 +1428,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="button"
               onClick={() => setCryptoModalOpen(true)}
               disabled={premium}
-              className="w-full py-2 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 hover:text-white text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+              className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] text-xs font-medium transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
             >
               <DollarSign className="w-3.5 h-3.5 mr-1.5" />
               {t('premium.cryptoTitle')}
@@ -1456,8 +1456,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                   className={`px-2.5 py-1 rounded-full text-[11px] border transition cursor-pointer ${
                     soundId === id
-                      ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-white'
-                      : 'border-white/10 text-white/60 hover:bg-white/[0.06]'
+                      ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-[var(--nova-text-primary)]'
+                      : 'border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
                   }`}
                 >
                   {id === 'silent'
@@ -1481,25 +1481,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Granular Notification Settings (Telegram-style) */}
           <SectionHeader icon={<Bell className="w-3.5 h-3.5" />} title={t('settings.notificationSettings')} />
           <div className="px-1 pb-2 space-y-2">
-            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+            <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
               {t('settings.notificationSettingsDesc')}
             </p>
 
             {/* Per chat type defaults */}
             <div className="space-y-2">
-              <p className="text-[11px] font-medium text-white/70">{t('settings.defaultNotifications')}</p>
+              <p className="text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.defaultNotifications')}</p>
               {[
                 { key: 'privateChats', label: t('settings.privateChats'), icon: <MessageSquare className="w-3.5 h-3.5" /> },
                 { key: 'groups', label: t('settings.groups'), icon: <Users className="w-3.5 h-3.5" /> },
                 { key: 'channels', label: t('settings.channels'), icon: <Megaphone className="w-3.5 h-3.5" /> },
                 { key: 'bots', label: t('settings.bots'), icon: <Bot className="w-3.5 h-3.5" /> },
               ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer">
+                <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
                       {item.icon}
                     </div>
-                    <span className="text-[13px] text-white/90 group-hover:text-white transition">{item.label}</span>
+                    <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{item.label}</span>
                   </div>
                   <NotificationLevelSelector
                     value={notificationPrefs[item.key as keyof NotificationPrefs] as NotificationLevel}
@@ -1513,28 +1513,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Muted Contacts */}
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2 border-t border-[var(--nova-border-subtle)]">
               <div className="flex items-center justify-between py-2 px-1">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400">
                     <VolumeX className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[13px] text-white/90">{t('settings.mutedContacts')}</span>
+                  <span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.mutedContacts')}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
               </div>
             </div>
 
             {/* Priority Contacts */}
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2 border-t border-[var(--nova-border-subtle)]">
               <div className="flex items-center justify-between py-2 px-1">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
                     <Star className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[13px] text-white/90">{t('settings.priorityContacts')}</span>
+                  <span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.priorityContacts')}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
               </div>
             </div>
           </div>
@@ -1551,7 +1551,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onToggle={() => updatePresencePref({ webrtcRelayOnly: !privacyPrefs.webrtcRelayOnly })}
           />
           {privacyPrefs.webrtcRelayOnly && (
-            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
               {t('settings.webrtcRelayOnlyHint')}
             </p>
           )}
@@ -1559,7 +1559,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Social Privacy (Telegram-style) */}
           <SectionHeader icon={<ShieldCheck className="w-3.5 h-3.5" />} title={t('settings.socialPrivacy')} />
           <div className="px-1 pb-2 space-y-2">
-            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+            <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
               {t('settings.socialPrivacyDesc')}
             </p>
             {[
@@ -1569,12 +1569,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               { key: 'groupsAndChannels', label: t('settings.groupsAndChannels'), icon: <Users className="w-3.5 h-3.5" /> },
               { key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-3.5 h-3.5" /> },
             ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition group cursor-pointer">
+              <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
                     {item.icon}
                   </div>
-                  <span className="text-[13px] text-white/90 group-hover:text-white transition">{item.label}</span>
+                  <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{item.label}</span>
                 </div>
                 <PrivacyScopeSelector
                   value={socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope}
@@ -1585,19 +1585,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
               </div>
             ))}
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2 border-t border-[var(--nova-border-subtle)]">
               <button
                 type="button"
                 onClick={() => setBlockedUsersOpen(true)}
-                className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition cursor-pointer"
+                className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400">
                     <Ban className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[13px] text-white/90 hover:text-white transition">{t('settings.blockedUsers')}</span>
+                  <span className="text-[13px] text-[var(--nova-text-primary)] hover:text-[var(--nova-text-primary)] transition">{t('settings.blockedUsers')}</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
               </button>
             </div>
           </div>
@@ -1614,16 +1614,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClose();
                 onOpenMeshMap?.();
               }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
             >
               <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
                 <MapPin className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-white/90">{t('meshMap.title')}</p>
-                <p className="text-[10.5px] text-[#8c919d] truncate">{t('meshMap.subtitle', { defaultValue: 'Visual radar of nearby relay nodes' })}</p>
+                <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{t('meshMap.title')}</p>
+                <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('meshMap.subtitle', { defaultValue: 'Visual radar of nearby relay nodes' })}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
             </button>
           )}
 
@@ -1659,27 +1659,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {privacyPrefs.relayEndpoints.length > 0 && (
             <div className="px-1 pb-2 space-y-2">
-              <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
                 {t('settings.multiRelayHint')}
               </p>
               <div className="space-y-1.5">
                 {privacyPrefs.relayEndpoints.map((relay) => (
                   <div
                     key={relay.id}
-                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.02]"
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]"
                   >
-                    <span className="flex-1 text-[11px] text-white/80 truncate">
+                    <span className="flex-1 text-[11px] text-[var(--nova-text-secondary)] truncate">
                       {relay.url}
                     </span>
                     {relay.operator && (
-                      <span className="text-[10px] text-[#8c919d] truncate max-w-[120px]">
+                      <span className="text-[10px] text-[var(--nova-text-muted)] truncate max-w-[120px]">
                         {relay.operator}
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => removeRelay(relay.id)}
-                      className="w-6 h-6 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition"
+                      className="w-6 h-6 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] transition"
                       aria-label={t('settings.removeRelay')}
                     >
                       <X className="w-3 h-3" />
@@ -1693,25 +1693,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   placeholder={t('settings.relayUrl')}
                   value={newRelayUrl}
                   onChange={(e) => setNewRelayUrl(e.target.value)}
-                  className="flex-1 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="flex-1 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <input
                   type="text"
                   placeholder={t('settings.relayOperator')}
                   value={newRelayOperator}
                   onChange={(e) => setNewRelayOperator(e.target.value)}
-                  className="flex-1 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="flex-1 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <button
                   type="button"
                   onClick={addRelay}
                   disabled={!newRelayUrl.trim()}
-                  className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] font-medium text-white transition hover:bg-white/[0.06] disabled:opacity-50 disabled:pointer-events-none"
+                  className="px-2.5 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-primary)] transition hover:bg-[var(--nova-overlay-weak)] disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {t('settings.addRelay')}
                 </button>
               </div>
-              <p className="text-[10px] text-[#8c919d]">
+              <p className="text-[10px] text-[var(--nova-text-muted)]">
                 Queues rotate between relays weekly so no single operator sees a contact's full history.
               </p>
             </div>
@@ -1725,11 +1725,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {privacyPrefs.webrtcRelayOnly && (
             <div className="px-1 pb-2 space-y-2">
-              <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
                 {t('settings.turnServersHint')}
               </p>
               {privacyPrefs.turnServers.length === 0 && (
-                <p className="px-1 text-[11px] text-[#8c919d]">
+                <p className="px-1 text-[11px] text-[var(--nova-text-muted)]">
                   {t('settings.turnServersEmpty')}
                 </p>
               )}
@@ -1737,20 +1737,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {privacyPrefs.turnServers.map((server, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.02]"
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]"
                   >
-                    <span className="flex-1 text-[11px] text-white/80 truncate">
+                    <span className="flex-1 text-[11px] text-[var(--nova-text-secondary)] truncate">
                       {typeof server.urls === 'string' ? server.urls : Array.isArray(server.urls) ? server.urls.join(', ') : 'TURN'}
                     </span>
                     {server.username && (
-                      <span className="text-[10px] text-[#8c919d] truncate max-w-[100px]">
+                      <span className="text-[10px] text-[var(--nova-text-muted)] truncate max-w-[100px]">
                         {server.username}
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => removeTurnServer(index)}
-                      className="w-6 h-6 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition"
+                      className="w-6 h-6 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] transition"
                       aria-label={t('settings.removeTurnServer')}
                     >
                       <X className="w-3 h-3" />
@@ -1764,39 +1764,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   placeholder={t('settings.turnServerUrlPlaceholder')}
                   value={newTurnServerUrl}
                   onChange={(e) => setNewTurnServerUrl(e.target.value)}
-                  className="flex-1 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="flex-1 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <input
                   type="text"
                   placeholder={t('settings.turnUsernameLabel')}
                   value={newTurnServerUsername}
                   onChange={(e) => setNewTurnServerUsername(e.target.value)}
-                  className="px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <input
                   type="password"
                   placeholder={t('settings.turnPasswordLabel')}
                   value={newTurnServerPassword}
                   onChange={(e) => setNewTurnServerPassword(e.target.value)}
-                  className="px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <input
                   type="text"
                   placeholder={t('settings.turnRealmLabel')}
                   value={newTurnServerRealm}
                   onChange={(e) => setNewTurnServerRealm(e.target.value)}
-                  className="px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] placeholder-[#6b7280] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <button
                   type="button"
                   onClick={addTurnServer}
                   disabled={!newTurnServerUrl.trim()}
-                  className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] font-medium text-white transition hover:bg-white/[0.06] disabled:opacity-50 disabled:pointer-events-none"
+                  className="px-2.5 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-primary)] transition hover:bg-[var(--nova-overlay-weak)] disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {t('settings.addTurnServerBtn')}
                 </button>
               </div>
-              <p className="text-[10px] text-[#8c919d]">
+              <p className="text-[10px] text-[var(--nova-text-muted)]">
                 When 'Hide my IP in calls' is enabled, media flows through these TURN relays so peers cannot see your IP address.
               </p>
             </div>
@@ -1810,11 +1810,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {privacyPrefs.torEnabled && (
             <div className="px-1 pb-2 space-y-2">
-              <p className="text-[11px] leading-relaxed text-[#8c919d]">
+              <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
                 {t('settings.torModeHint')}
               </p>
               <div className="flex items-center gap-1.5 px-1 py-1">
-                <span className="text-[11px] text-white/60">{t('settings.torSocksPort')}</span>
+                <span className="text-[11px] text-[var(--nova-text-secondary)]">{t('settings.torSocksPort')}</span>
                 <input
                   type="number"
                   min="1"
@@ -1830,7 +1830,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       });
                     }
                   }}
-                  className="w-20 px-2 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)]/50"
+                  className="w-20 px-2 py-1.5 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[11px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50"
                 />
                 <button
                   type="button"
@@ -1838,8 +1838,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   disabled={torStatus === 'checking'}
                   className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-medium transition ${
                     torStatus === 'checking'
-                      ? 'border-[#8c919d]/40 text-[#8c919d] cursor-wait'
-                      : 'border-white/10 bg-white/[0.03] text-white/90 hover:bg-white/[0.06]'
+                      ? 'border-[#8c919d]/40 text-[var(--nova-text-muted)] cursor-wait'
+                      : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)]'
                   }`}
                 >
                   {torStatus === 'checking'
@@ -1852,7 +1852,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       ? 'text-emerald-400'
                       : torStatus === 'error'
                         ? 'text-red-400'
-                        : 'text-[#8c919d]'
+                        : 'text-[var(--nova-text-muted)]'
                   }`}
                 >
                   {torStatus === 'connected'
@@ -1880,7 +1880,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }}
           />
           {privacyPrefs.analyticsConsent && (
-            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
               {t('analytics.consentHint')}
             </p>
           )}
@@ -1898,12 +1898,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }}
           />
           {privacyPrefs.crashReports && (
-            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
               {t('analytics.crashReportsHint')}
             </p>
           )}
           {privacyPrefs.metadataMinimization && (
-            <p className="px-1 -mt-1 pb-2 text-[11px] text-[#8c919d]">
+            <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
               {t('settings.metadataMinimizationHint')}
               {battery.level !== null &&
                 ' ' +
@@ -1919,7 +1919,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {privacyPrefs.presenceSharing && (
             <div className="px-1 pb-2 space-y-2">
-              <p className="text-[11px] text-[#8c919d]">{t('settings.presenceSharingHint')}</p>
+              <p className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.presenceSharingHint')}</p>
               <ToggleRow
                 label={t('settings.presenceHashing')}
                 enabled={privacyPrefs.presenceHashing}
@@ -1933,8 +1933,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={() => updatePresencePref({ presenceTtl: ttl })}
                     className={`flex-1 py-1.5 rounded-xl border text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${
                       privacyPrefs.presenceTtl === ttl
-                        ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-white'
-                        : 'border-white/10 text-white/60 hover:bg-white/[0.06]'
+                        ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-[var(--nova-text-primary)]'
+                        : 'border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'
                     }`}
                   >
                     {t(`settings.presenceTtl_${ttl}`)}
@@ -1946,12 +1946,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <SectionHeader icon={<Megaphone className="w-3.5 h-3.5" />} title={t('settings.advertising')} />
           <div className="px-1 pb-2 space-y-2" data-testid="ad-preferences">
-            <p className="text-[11px] leading-relaxed text-[#8c919d]">
+            <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">
               {t('settings.adsPrivacyHint')}
             </p>
             {canUse('ads_free') && (
               <p
-                className="flex items-start gap-1.5 rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2 py-1.5 text-[11px] font-medium text-white/80"
+                className="flex items-start gap-1.5 rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2 py-1.5 text-[11px] font-medium text-[var(--nova-text-secondary)]"
                 data-testid="ads-premium-off"
               >
                 <Check className="mt-0.5 h-3 w-3 shrink-0 text-[var(--nova-accent-color)]" />
@@ -1959,37 +1959,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </p>
             )}
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2">
-                <span className="text-[10px] text-[#8c919d]">{t('settings.adsHidden')}</span>
-                <span className="mt-0.5 block text-sm font-bold text-white" data-testid="ad-prefs-hidden">
+              <div className="rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] p-2">
+                <span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.adsHidden')}</span>
+                <span className="mt-0.5 block text-sm font-bold text-[var(--nova-text-primary)]" data-testid="ad-prefs-hidden">
                   {adPrefs.hiddenAds.length}
                 </span>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2">
-                <span className="text-[10px] text-[#8c919d]">{t('settings.adsBlocked')}</span>
-                <span className="mt-0.5 block text-sm font-bold text-white" data-testid="ad-prefs-blocked">
+              <div className="rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] p-2">
+                <span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.adsBlocked')}</span>
+                <span className="mt-0.5 block text-sm font-bold text-[var(--nova-text-primary)]" data-testid="ad-prefs-blocked">
                   {adPrefs.blockedAdvertisers.length}
                 </span>
               </div>
             </div>
             {adPrefs.hiddenAds.length > 0 && (
               <div className="space-y-1" data-testid="ad-prefs-hidden-list">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)]">
                   {t('settings.adsHidden')}
                 </p>
                 <div className="max-h-28 space-y-1 overflow-y-auto">
                   {adPrefs.hiddenAds.map((id) => (
                     <div
                       key={id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-1"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] px-2 py-1"
                     >
-                      <span className="truncate text-[10.5px] text-white/60" title={id}>
+                      <span className="truncate text-[10.5px] text-[var(--nova-text-secondary)]" title={id}>
                         {readableAdId(id)}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleRestoreAd(id)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white/45 transition hover:bg-white/5 hover:text-white"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"
                       >
                         <RotateCcw className="h-2.5 w-2.5" />
                         {t('settings.adsRestore')}
@@ -2001,22 +2001,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
             {adPrefs.blockedAdvertisers.length > 0 && (
               <div className="space-y-1" data-testid="ad-prefs-blocked-list">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)]">
                   {t('settings.adsBlocked')}
                 </p>
                 <div className="max-h-28 space-y-1 overflow-y-auto">
                   {adPrefs.blockedAdvertisers.map((id) => (
                     <div
                       key={id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-1"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] px-2 py-1"
                     >
-                      <span className="truncate text-[10.5px] text-white/60" title={id}>
+                      <span className="truncate text-[10.5px] text-[var(--nova-text-secondary)]" title={id}>
                         {readableAdId(id)}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleUnblockAdvertiser(id)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white/45 transition hover:bg-white/5 hover:text-white"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"
                       >
                         <Ban className="h-2.5 w-2.5" />
                         {t('settings.adsUnblock')}
@@ -2030,7 +2030,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="button"
               onClick={handleResetAdPrefs}
               disabled={adPrefs.hiddenAds.length === 0 && adPrefs.blockedAdvertisers.length === 0}
-              className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98] disabled:cursor-default disabled:opacity-35"
+              className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98] disabled:cursor-default disabled:opacity-35"
             >
               {t('settings.adsReset')}
             </button>
@@ -2043,7 +2043,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <SectionHeader icon={<Send className="w-3.5 h-3.5" />} title={t('settings.joinOutbox')} />
           <div className="px-1 pb-2 space-y-2" data-testid="join-outbox">
-            <p className="text-[11px] text-[#8c919d]">
+            <p className="text-[11px] text-[var(--nova-text-muted)]">
               {joinOutboxCount > 0
                 ? t('settings.joinOutboxPending', { count: joinOutboxCount })
                 : t('settings.joinOutboxEmpty')}
@@ -2052,7 +2052,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setJoinOutboxCount(retryJoinOutboxNow())}
-                className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98]"
+                className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
               >
                 {t('settings.joinOutboxRetry')}
               </button>
@@ -2084,11 +2084,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {(pinEnabled || isCreatingPin || isRemovingPin) && (
             <form onSubmit={(e) => { e.preventDefault(); handleConfirmPin(); }} className="space-y-2 px-1 py-2">
-              <p className="text-[11px] text-[#8c919d]">
+              <p className="text-[11px] text-[var(--nova-text-muted)]">
                 {isRemovingPin ? t('settings.passcodeConfirmRemove') : t('common.passcodeEnter')}
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono text-[#8c919d] select-all">{'*'.repeat(pinInput.length)}</span>
+                <span className="text-[11px] font-mono text-[var(--nova-text-muted)] select-all">{'*'.repeat(pinInput.length)}</span>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -2096,14 +2096,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   maxLength={6}
-                  className="w-[70px] bg-white/[0.03] border border-white/10 rounded-xl px-2 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  className="w-[70px] bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-2 py-1.5 text-[12px] text-[var(--nova-text-primary)] text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="0000"
                 />
               </div>
               <button
                 type="submit"
                 disabled={pinInput.length < pinLength}
-                className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
               >
                 {isRemovingPin
                   ? t('settings.removePasscode')
@@ -2114,7 +2114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="button"
                 onClick={handleCancelPin}
-                className="w-full py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-medium text-white/60 hover:text-white transition cursor-pointer active:scale-[0.98]"
+                className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
               >
                 {t('common.cancel')}
               </button>
@@ -2134,7 +2134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   enabled={biometricEnabled}
                   onToggle={() => void handleToggleBiometric()}
                 />
-                <p className="px-1 text-[10.5px] leading-relaxed text-[#8c919d]">
+                <p className="px-1 text-[10.5px] leading-relaxed text-[var(--nova-text-muted)]">
                   {t('settings.biometricHintWithPin') ?? 'Use fingerprint or face to unlock. PIN is always required as fallback.'}
                 </p>
               </>
@@ -2148,7 +2148,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
                 <div className="space-y-2 px-1 py-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[13px] text-white/90">{t('settings.pinLength')}</span>
+                    <span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.pinLength')}</span>
                   <div className="flex items-center gap-1">
                     {[4, 6].map((length) => (
                       <button
@@ -2158,8 +2158,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         aria-pressed={pinLength === length}
                         className={`h-6 w-8 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
                           pinLength === length
-                            ? 'bg-[var(--nova-accent-color)] text-white'
-                            : 'bg-white/[0.06] text-white/60 hover:text-white'
+                            ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
+                            : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                         }`}
                       >
                         {length}
@@ -2174,7 +2174,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setIsCreatingPin(true);
                     setPinInput('');
                   }}
-                  className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer active:scale-[0.98]"
+                  className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
                 >
                   {t('settings.changePin') ?? 'Change PIN'}
                 </button>
@@ -2186,10 +2186,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             onClick={handleShowSeedPhrase}
             disabled={!identity}
-            className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-white/[0.08] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <span className="text-[13px] text-white/90">{t('settings.showSeedPhrase')}</span>
-            <span className="px-2 py-1 rounded-lg bg-white/5 text-[10px] font-semibold text-[var(--nova-accent-color)]">
+            <span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.showSeedPhrase')}</span>
+            <span className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] text-[10px] font-semibold text-[var(--nova-accent-color)]">
               {t('settings.recoveryPhrase')}
             </span>
           </button>
@@ -2201,24 +2201,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
           {show2FASetup && !is2FAEnabled && (
             <div className="space-y-2 px-1 py-2">
-              <p className="text-[11px] text-[#8c919d]">
+              <p className="text-[11px] text-[var(--nova-text-muted)]">
                 Enter the 6-digit code from your authenticator app to activate 2FA.
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono text-[#8c919d] select-all">{totpSecret ?? ''}</span>
+                <span className="text-[11px] font-mono text-[var(--nova-text-muted)] select-all">{totpSecret ?? ''}</span>
                 <input
                   type="text"
                   maxLength={6}
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                  className="w-[70px] bg-white/[0.03] border border-white/10 rounded-xl px-2 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  className="w-[70px] bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-2 py-1.5 text-[12px] text-[var(--nova-text-primary)] text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="000000"
                 />
               </div>
               <button
                 onClick={handleActivate2FA}
                 disabled={!otpInput || otpInput.length !== 6}
-                className="w-full py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                className="w-full py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
               >
                 Activate
               </button>
@@ -2243,16 +2243,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Storage Usage Breakdown */}
           <div className="space-y-1 px-1 py-2">
             {storageLoading ? (
-              <div className="text-[11px] text-[#8c919d]">{t('settings.storageLoading')}</div>
+              <div className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.storageLoading')}</div>
             ) : (
               <>
-                <div className="flex justify-between text-[11px] font-medium text-white/70 mb-1">
+                <div className="flex justify-between text-[11px] font-medium text-[var(--nova-text-secondary)] mb-1">
                   <span>{t('settings.storageUsage')}</span>
                   <span>{formatBytes(totalStorageBytes)}</span>
                 </div>
                 <div className="space-y-1 mb-2">
                   {storageUsage.map((cat) => (
-                    <div key={cat.category} className="flex justify-between text-[11px] text-[#8c919d]">
+                    <div key={cat.category} className="flex justify-between text-[11px] text-[var(--nova-text-muted)]">
                       <span>{cat.category}</span>
                       <span>{formatBytes(cat.bytes)}</span>
                     </div>
@@ -2264,7 +2264,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={handleClearCache}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
           >
             <span>{t('settings.clearCache')}</span>
           </button>
@@ -2280,7 +2280,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               setCloudUrl(loadSavedCloudUrl());
               setBackupModal({ open: true, mode: 'export' });
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
           >
             <Download className="w-4 h-4" />
             <span>{t('settings.exportBackup')}</span>
@@ -2290,20 +2290,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               setCloudUrl(loadSavedCloudUrl());
               setBackupModal({ open: true, mode: 'import' });
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98]"
           >
             <Upload className="w-4 h-4" />
             <span>{t('settings.importBackup')}</span>
           </button>
 
           {/* Google Drive Backup */}
-          <div className="pt-2 border-t border-white/5">
+          <div className="pt-2 border-t border-[var(--nova-border-subtle)]">
             <SectionHeader icon={<Cloud className="w-3.5 h-3.5" />} title="Google Drive" />
             {!gdriveConnected ? (
               <button
                 onClick={handleGDriveConnect}
                 disabled={gdriveLinking}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <HardDrive className="w-4 h-4" />
                 <span>{gdriveLinking ? 'Connecting...' : 'Connect Google Drive'}</span>
@@ -2313,7 +2313,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex items-center justify-between px-1 py-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-[var(--nova-accent-color)]" />
-                    <span className="text-[11px] font-medium text-white/80">Connected</span>
+                    <span className="text-[11px] font-medium text-[var(--nova-text-secondary)]">Connected</span>
                     <span className="w-2 h-2 rounded-full bg-green-400" />
                   </div>
                   <button
@@ -2327,12 +2327,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="space-y-1 px-1">
                   {/* Passphrase input for Google Drive backup */}
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-medium text-white/50">Passphrase (min 8 chars)</label>
+                    <label className="block text-[10px] font-medium text-[var(--nova-text-muted)]">Passphrase (min 8 chars)</label>
                     <input
                       type="password"
                       value={exportPassphrase}
                       onChange={(e) => setExportPassphrase(e.target.value)}
-                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                      className="w-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-1.5 text-[11px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                       placeholder="••••••••"
                     />
                   </div>
@@ -2348,24 +2348,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       onClick={handleGDriveRefresh}
                       disabled={gdriveLoading}
-                      className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-medium text-white/70 hover:text-white transition active:scale-95 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition active:scale-95 disabled:opacity-50"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   {gdriveBackups.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto space-y-1 border-t border-white/5 pt-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8c919d] px-1">Backups</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1 border-t border-[var(--nova-border-subtle)] pt-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)] px-1">Backups</p>
                       {gdriveBackups.map((backup) => (
                         <div
                           key={backup.id}
-                          className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px]"
+                          className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/[0.02] border border-[var(--nova-border-subtle)] text-[11px]"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-4 h-4 text-white/50" />
+                            <FileText className="w-4 h-4 text-[var(--nova-text-muted)]" />
                             <div className="min-w-0">
-                              <span className="truncate block text-white/80">{backup.name}</span>
-                              <span className="text-[10px] text-white/40">
+                              <span className="truncate block text-[var(--nova-text-secondary)]">{backup.name}</span>
+                              <span className="text-[10px] text-[var(--nova-text-muted)]">
                                 {new Date(backup.createdAt).toLocaleDateString()} • {Math.round(backup.size / 1024)} KB
                               </span>
                             </div>
@@ -2374,7 +2374,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button
                               onClick={() => handleGDriveRestore(backup.id)}
                               disabled={backupBusy || importPassphrase.length < 8}
-                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 text-white/70 hover:text-white transition disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition disabled:opacity-50"
                               title="Restore"
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -2382,7 +2382,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button
                               onClick={() => handleGDriveDelete(backup.id)}
                               disabled={gdriveLoading}
-                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-red-500/20 text-[var(--nova-text-muted)] hover:text-red-400 transition disabled:opacity-50"
                               title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -2393,11 +2393,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
                   {gdriveBackups.length === 0 && (
-                    <p className="text-[11px] text-white/40 text-center py-2">No backups yet</p>
+                    <p className="text-[11px] text-[var(--nova-text-muted)] text-center py-2">No backups yet</p>
                   )}
                 </div>
                 {gdriveMsg && (
-                  <div className="rounded-xl px-3 py-2 text-[11px] text-white">
+                  <div className="rounded-xl px-3 py-2 text-[11px] text-[var(--nova-text-primary)]">
                     {gdriveMsg}
                   </div>
                 )}
@@ -2411,14 +2411,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               onClick={handleClearAllData}
               disabled={clearDataConfirm}
-              className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white/[0.03] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-red-500/5 hover:border-red-500/20 hover:text-red-400 transition active:scale-95"
+              className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-red-500/5 hover:border-red-500/20 hover:text-red-400 transition active:scale-95"
             >
               <span>{t('settings.clearAllData')}</span>
-              <span className="text-[10px] text-[#8c919d]">{t('settings.clearAllDataDesc')}</span>
+              <span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.clearAllDataDesc')}</span>
             </button>
             {clearDataConfirm && (
               <div className="space-y-2 px-1 py-2">
-                <p className="text-[11px] text-[#8c919d]">
+                <p className="text-[11px] text-[var(--nova-text-muted)]">
                   {pinEnabled ? t('settings.confirmClear') : t('settings.confirmClearNoPin')}
                 </p>
                 {pinEnabled && (
@@ -2429,7 +2429,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     value={clearDataPin}
                     onChange={(e) => setClearDataPin(e.target.value.replace(/\D/g, ''))}
                     placeholder="0000"
-                    className="w-[70px] bg-white/[0.03] border border-white/10 rounded-xl px-2 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                    className="w-[70px] bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-2 py-1.5 text-[12px] text-[var(--nova-text-primary)] text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   />
                 )}
                 <div className="flex gap-2">
@@ -2448,7 +2448,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setClearDataPin('');
                       setPinMsg(null);
                     }}
-                    className="flex-1 py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition active:scale-95"
+                    className="flex-1 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition active:scale-95"
                   >
                     {t('common.cancel')}
                   </button>
@@ -2467,16 +2467,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setBotsOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
               >
                 <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
                   <Settings className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-white/90">{t('bot.title')}</p>
-                  <p className="text-[10.5px] text-[#8c919d] truncate">{t('bot.noBots')}</p>
+                  <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{t('bot.title')}</p>
+                  <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('bot.noBots')}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
               </button>
             </>
           )}
@@ -2488,24 +2488,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClose();
               onOpenAnalytics?.();
             }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
           >
             <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-white/90">{t('analytics.usageTitle')}</p>
-              <p className="text-[10.5px] text-[#8c919d] truncate">{t('analytics.usageSubtitle')}</p>
+              <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{t('analytics.usageTitle')}</p>
+              <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('analytics.usageSubtitle')}</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-[10px] text-white/70">
+                <span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[10px] text-[var(--nova-text-secondary)]">
                   {analyticsMessageCount} · {t('analytics.totalMessages')}
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-[10px] text-white/70">
+                <span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[10px] text-[var(--nova-text-secondary)]">
                   {analyticsActiveChats} · {t('analytics.activeChats')}
                 </span>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
           </button>
 
           <SectionHeader icon={<Globe className="w-3.5 h-3.5" />} title={t('sites.title')} />
@@ -2515,49 +2515,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClose();
               onOpenSites?.();
             }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-left hover:bg-white/[0.07] transition cursor-pointer active:scale-[0.99]"
           >
             <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
               <Globe className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-white/90">{t('sites.manageWidgets')}</p>
-              <p className="text-[10.5px] text-[#8c919d] truncate">{t('sites.manageWidgetsDesc')}</p>
+              <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{t('sites.manageWidgets')}</p>
+              <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('sites.manageWidgetsDesc')}</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-white/35 shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
           </button>
 
           <SectionHeader icon={<Info className="w-3.5 h-3.5" />} title={t('settings.about')} />
           <div className="py-2 px-1 flex items-center justify-between">
-            <span className="text-[13px] text-white/90">{t('app.name')}</span>
-            <span className="text-[11px] font-mono text-[#8c9195]">v1.0.0</span>
+            <span className="text-[13px] text-[var(--nova-text-primary)]">{t('app.name')}</span>
+            <span className="text-[11px] font-mono text-[var(--nova-text-muted)]">v1.0.0</span>
           </div>
           <button
             type="button"
             onClick={() => setModerationOpen(true)}
-            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition text-[13px] text-[var(--nova-text-primary)] cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <ShieldAlert className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
               {t('settings.moderation')}
             </span>
-            <ChevronRight className="w-4 h-4 text-white/35" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)]" />
           </button>
           <button
             type="button"
             onClick={() => setLegalDoc('terms')}
-            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition text-[13px] text-[var(--nova-text-primary)] cursor-pointer"
           >
             <span>{t('settings.termsOfService')}</span>
-            <ChevronRight className="w-4 h-4 text-white/35" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)]" />
           </button>
           <button
             type="button"
             onClick={() => setLegalDoc('privacy')}
-            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition text-[13px] text-[var(--nova-text-primary)] cursor-pointer"
           >
             <span>{t('settings.privacyPolicy')}</span>
-            <ChevronRight className="w-4 h-4 text-white/35" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)]" />
           </button>
           <button
             type="button"
@@ -2565,10 +2565,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               resetOnboarding();
               window.location.reload();
             }}
-            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-white/[0.04] transition text-[13px] text-white/90 cursor-pointer"
+            className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition text-[13px] text-[var(--nova-text-primary)] cursor-pointer"
           >
             <span>{t('settings.rerunSetup')}</span>
-            <ChevronRight className="w-4 h-4 text-white/35" />
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)]" />
           </button>
           {aboutMsg && (
             <div className="text-[11px] px-1 pb-1 text-[var(--nova-accent-color)]" role="status">
@@ -2584,27 +2584,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">
                 {backupModal.mode === 'export' ? t('settings.exportBackup') : t('settings.importBackup')}
               </h3>
               <button
                 onClick={() => setBackupModal(null)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <p className="text-[11px] text-[#8c919d]">
+              <p className="text-[11px] text-[var(--nova-text-muted)]">
                 {backupModal.mode === 'export'
                   ? 'Enter a passphrase to encrypt the backup file.'
                   : 'Select a .nova-backup file and enter the restore passphrase.'}
               </p>
               <div className="space-y-2">
-                <label className="block text-[11px] font-medium text-white/70">
+                <label className="block text-[11px] font-medium text-[var(--nova-text-secondary)]">
                   Passphrase
                 </label>
                 <input
@@ -2615,19 +2615,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       ? setExportPassphrase(e.target.value)
                       : setImportPassphrase(e.target.value)
                   }
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  className="w-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-2 text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="••••••••"
                 />
               </div>
               {backupModal.mode === 'import' && (
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-medium text-white/70">Backup file</label>
+                  <label className="block text-[11px] font-medium text-[var(--nova-text-secondary)]">Backup file</label>
                   <button
                     onClick={() => {
                       const input = document.getElementById('backup-file-input') as HTMLInputElement | null;
                       input?.click();
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border border-white/10 text-[12px] font-medium text-white/80 hover:text-white transition cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                   >
                     <FileText className="w-4 h-4" />
                     <span>{importFile ? importFile.name : t('settings.importBackup')}</span>
@@ -2644,31 +2644,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }}
                   />
                   {!importFile && importCloudBlob && (
-                    <p className="text-[11px] text-[#8c919d]">
+                    <p className="text-[11px] text-[var(--nova-text-muted)]">
                       Cloud blob ready ({Math.max(1, Math.round(importCloudBlob.size / 1024))} KB)
                     </p>
                   )}
                 </div>
               )}
-              <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                <label className="block text-[11px] font-medium text-white/70">
+              <div className="space-y-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02] p-3">
+                <label className="block text-[11px] font-medium text-[var(--nova-text-secondary)]">
                   Cloud endpoint (optional)
                 </label>
                 <input
                   type="url"
                   value={cloudUrl}
                   onChange={(e) => setCloudUrl(e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  className="w-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-2 text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="https://your-webdav.example/nova-latest.nova-backup"
                 />
                 <input
                   type="password"
                   value={cloudToken}
                   onChange={(e) => setCloudToken(e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                  className="w-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-3 py-2 text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   placeholder="Bearer token (optional, kept in memory)"
                 />
-                <p className="text-[10px] text-[#8c919d]">
+                <p className="text-[10px] text-[var(--nova-text-muted)]">
                   Only the encrypted .nova-backup blob is uploaded. Keys stay on this device.
                 </p>
                 {backupModal.mode === 'import' && (
@@ -2677,8 +2677,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     disabled={backupBusy || !cloudUrl.trim()}
                     className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-[12px] font-medium transition cursor-pointer ${
                       backupBusy || !cloudUrl.trim()
-                        ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
-                        : 'bg-white/[0.05] hover:bg-[var(--nova-accent-color)]/20 border-white/10 text-white/80 hover:text-white'
+                        ? 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] cursor-not-allowed'
+                        : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                     }`}
                   >
                     <Download className="w-4 h-4" />
@@ -2692,7 +2692,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
               )}
               {backupMsg && (
-                <div className={`rounded-xl px-3 py-2 text-[11px] text-white ${
+                <div className={`rounded-xl px-3 py-2 text-[11px] text-[var(--nova-text-primary)] ${
                   backupMsg.includes('failed') || backupMsg.includes('not ready')
                     ? 'bg-red-500/10 border border-red-500/20 text-red-400'
                     : 'bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]'
@@ -2701,10 +2701,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-white/5 flex gap-2">
+            <div className="p-4 border-t border-[var(--nova-border-subtle)] flex gap-2">
               <button
                 onClick={() => setBackupModal(null)}
-                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -2716,12 +2716,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     (!importFile && !importCloudBlob || importPassphrase.length < 8)) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
                 }
-                className={`flex-1 py-2 rounded-xl text-[12px] font-medium text-white transition cursor-pointer ${
+                className={`flex-1 py-2 rounded-xl text-[12px] font-medium text-[var(--nova-text-primary)] transition cursor-pointer ${
                   backupBusy ||
                   (backupModal.mode === 'import' &&
                     (!importFile && !importCloudBlob || importPassphrase.length < 8)) ||
                   (backupModal.mode === 'export' && exportPassphrase.trim().length < 8)
-                    ? 'bg-white/[0.05] border border-white/10 text-white/40 cursor-not-allowed'
+                    ? 'bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] cursor-not-allowed'
                     : 'bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5f2e)] border border-[var(--nova-accent-color)]/30 shadow-md shadow-[var(--nova-accent-color)]/25'
                 }`}
               >
@@ -2744,24 +2744,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('settings.showSeedPhrase')}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('settings.showSeedPhrase')}</h3>
               <button
                 onClick={() => setShowSeedPhraseModal(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <p className="text-[11px] text-[#8c919d]">
+              <p className="text-[11px] text-[var(--nova-text-muted)]">
                 {t('settings.seedPhraseDesc')}
               </p>
-              <div className="bg-[#181921] border border-white/10 rounded-xl p-2 max-h-64 overflow-y-auto font-mono text-xs text-[var(--nova-accent-color)] break-all">
+              <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-xl p-2 max-h-64 overflow-y-auto font-mono text-xs text-[var(--nova-accent-color)] break-all">
                 {identity.mnemonic.split(' ').map((word, i) => (
-                  <span key={i} className="inline-block mr-1 mb-1 px-1 py-0.5 rounded bg-white/5">
+                  <span key={i} className="inline-block mr-1 mb-1 px-1 py-0.5 rounded bg-[var(--nova-overlay-weak)]">
                     {i + 1}. {word}
                   </span>
                 ))}
@@ -2776,12 +2776,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
                 <button
                   onClick={() => setShowSeedPhraseModal(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition active:scale-95"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition active:scale-95"
                 >
                   {t('common.close')}
                 </button>
               </div>
-              <p className="text-[10px] text-[#8c919d] italic">
+              <p className="text-[10px] text-[var(--nova-text-muted)] italic">
                 {t('settings.seedPhraseWarning')}
               </p>
             </div>
@@ -2809,12 +2809,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('settings.blockedUsers')}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('settings.blockedUsers')}</h3>
               <button
                 onClick={() => setBlockedUsersOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -2825,7 +2825,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 const blocked = getBlockedContactsWithProfiles();
                 if (blocked.length === 0) {
                   return (
-                    <div className="flex flex-col items-center justify-center py-8 text-[#8c919d] text-[11px]">
+                    <div className="flex flex-col items-center justify-center py-8 text-[var(--nova-text-muted)] text-[11px]">
                       {t('settings.noBlockedUsers')}
                     </div>
                   );
@@ -2835,10 +2835,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {blocked.map((contact) => (
                       <div
                         key={contact.id}
-                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full overflow-hidden bg-white/[0.05] flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--nova-overlay-weak)] flex items-center justify-center shrink-0">
                             {contact.avatar ? (
                               <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
                             ) : (
@@ -2848,7 +2848,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[12px] font-semibold text-white truncate">{contact.name}</p>
+                            <p className="text-[12px] font-semibold text-[var(--nova-text-primary)] truncate">{contact.name}</p>
                           </div>
                         </div>
                         <button
@@ -2858,7 +2858,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setSocialPrivacyState(getSocialPrivacy());
                             showToast(t('settings.unblockedUser', { name: contact.name }));
                           }}
-                          className="px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                         >
                           {t('settings.unblock')}
                         </button>
@@ -2881,12 +2881,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('bot.title')}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.title')}</h3>
               <button
                 onClick={() => setBotsOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -2894,7 +2894,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div className="p-4 space-y-2">
               {getBots().length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-[#8c919d] text-[11px]">
+                <div className="flex flex-col items-center justify-center py-8 text-[var(--nova-text-muted)] text-[11px]">
                   {t('bot.noBots')}
                   <p className="mt-1 text-[9px]">{t('bot.installDesc')}</p>
                 </div>
@@ -2905,15 +2905,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     return (
                       <div
                         key={bot.manifest.id}
-                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-[var(--nova-overlay-weak)] flex items-center justify-center shrink-0">
                             <Settings className="w-4 h-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[12px] font-semibold text-white truncate">{bot.manifest.name}</p>
-                            <p className="text-[10px] text-[#8c9198] truncate">
+                            <p className="text-[12px] font-semibold text-[var(--nova-text-primary)] truncate">{bot.manifest.name}</p>
+                            <p className="text-[10px] text-[var(--nova-text-muted)] truncate">
                               @{bot.manifest.username} · {bot.blocked
                                 ? t('bot.blocked', { defaultValue: 'Blocked' })
                                 : bot.enabled
@@ -2960,7 +2960,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => toggleBot(bot.manifest.id, !bot.enabled)}
-                                className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center transition cursor-pointer active:scale-95"
+                                className="w-7 h-7 rounded-full border border-[var(--nova-border-subtle)] flex items-center justify-center transition cursor-pointer active:scale-95"
                                 title={bot.enabled ? t('bot.disable') : t('bot.enable')}
                               >
                                 {bot.enabled ? <Ban className="w-3 h-3 text-red-400" /> : <Check className="w-3 h-3 text-emerald-400" />}
@@ -2968,7 +2968,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => uninstallBot(bot.manifest.id)}
-                                className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center transition cursor-pointer active:scale-95 text-red-400 hover:text-red-300"
+                                className="w-7 h-7 rounded-full border border-[var(--nova-border-subtle)] flex items-center justify-center transition cursor-pointer active:scale-95 text-red-400 hover:text-red-300"
                                 title={t('bot.revoke')}
                               >
                                 <X className="w-3 h-3" />
@@ -2986,15 +2986,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
 
               {/* Available built-in bots */}
-              <div className="pt-2 border-t border-white/5">
-                <h4 className="text-[10px] font-semibold text-white/60 mb-2 uppercase tracking-wide">{t('bot.availableTitle', { defaultValue: 'Available bots' })}</h4>
+              <div className="pt-2 border-t border-[var(--nova-border-subtle)]">
+                <h4 className="text-[10px] font-semibold text-[var(--nova-text-secondary)] mb-2 uppercase tracking-wide">{t('bot.availableTitle', { defaultValue: 'Available bots' })}</h4>
                 <div className="space-y-1.5">
                   {AVAILABLE_BUILTIN_BOTS
                     .filter((manifest) => !getBots().some((b) => b.manifest.id === manifest.id))
                     .map((manifest) => (
                       <div
                         key={manifest.id}
-                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-white/10 bg-white/[0.02]"
+                        className="flex items-center justify-between px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
@@ -3003,8 +3003,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             {manifest.id === 'echo' && <Settings className="w-4 h-4" />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[12px] font-semibold text-white truncate">{manifest.name}</p>
-                            <p className="text-[10px] text-[#8c9198] truncate">
+                            <p className="text-[12px] font-semibold text-[var(--nova-text-primary)] truncate">{manifest.name}</p>
+                            <p className="text-[10px] text-[var(--nova-text-muted)] truncate">
                               @{manifest.username} · {t('bot.builtin', { defaultValue: 'Built-in' })}
                             </p>
                           </div>
@@ -3021,31 +3021,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                 </div>
               </div>
-              <p className="px-1 pt-1 text-[10px] leading-relaxed text-[#8c919d]">
+              <p className="px-1 pt-1 text-[10px] leading-relaxed text-[var(--nova-text-muted)]">
                 {t('bot.openChatHint', {
                   defaultValue:
                     'Open a bot chat here. Send /start or tap the bot icon in the message field to see its commands.',
                 })}
               </p>
             </div>
-            <div className="p-4 border-t border-white/5 flex gap-2">
+            <div className="p-4 border-t border-[var(--nova-border-subtle)] flex gap-2">
               <button
                 type="button"
                 onClick={() => setDevRegistryOpen(true)}
-                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
               >
                 {t('bot.createLocal', { defaultValue: 'Create local bot' })}
               </button>
               <button
                 type="button"
                 onClick={() => setInstallFromFile(true)}
-                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
               >
                 {t('bot.installFile', { defaultValue: 'Install from file' })}
               </button>
               <button
                 onClick={() => setBotsOpen(false)}
-                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
               >
                 {t('common.close')}
               </button>
@@ -3060,12 +3060,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('bot.install')}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.install')}</h3>
               <button
                 onClick={() => setInstallOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3073,11 +3073,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <p className="text-[13px] font-semibold text-white">{installingBot.manifest.name}</p>
-                <p className="text-[10px] text-[#8c9198] mt-0.5">@{installingBot.manifest.username}</p>
+                <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{installingBot.manifest.name}</p>
+                <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">@{installingBot.manifest.username}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] font-medium text-white/70">{t('bot.permissionsRequired')}</p>
+                <p className="text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('bot.permissionsRequired')}</p>
                 {installingBot.manifest.requestedPermissions.map((perm) => (
                   <button
                     key={perm}
@@ -3096,7 +3096,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg border transition cursor-pointer ${
                       installingBot.granted.includes(perm)
                         ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)]'
-                        : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white'
+                        : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                     }`}
                   >
                     <span className="text-[11px]">{perm}</span>
@@ -3112,7 +3112,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setInstallOpen(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                 >
                   {t('bot.cancel')}
                 </button>
@@ -3120,9 +3120,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   disabled={installingBot.granted.length === 0}
                   onClick={confirmInstall}
-                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-white transition cursor-pointer ${
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-[var(--nova-text-primary)] transition cursor-pointer ${
                     installingBot.granted.length === 0
-                      ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
+                      ? 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] cursor-not-allowed'
                       : 'bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 hover:bg-[var(--nova-accent-color)]/20 active:scale-95'
                   }`}
                 >
@@ -3130,10 +3130,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               </div>
             </div>
-            <div className="p-4 border-t border-white/5 flex gap-2">
+            <div className="p-4 border-t border-[var(--nova-border-subtle)] flex gap-2">
               <button
                 onClick={() => setBotsOpen(false)}
-                className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[12px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
               >
                 {t('common.close')}
               </button>
@@ -3148,47 +3148,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('bot.devRegistryTitle', { defaultValue: 'Developer registry' })}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.devRegistryTitle', { defaultValue: 'Developer registry' })}</h3>
               <button
                 onClick={() => setDevRegistryOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-4">
-              <p className="text-[11px] text-[#8c919d] leading-relaxed">
+              <p className="text-[11px] text-[var(--nova-text-muted)] leading-relaxed">
                 {t('bot.devRegistryDesc', { defaultValue: 'Create a local L1 bot. A keypair is generated in your vault and never leaves this device.' })}
               </p>
               <div className="space-y-2">
                 <div>
-                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.name', { defaultValue: 'Name' })}</label>
+                  <label className="block text-[10px] text-[var(--nova-text-secondary)] mb-1">{t('bot.name', { defaultValue: 'Name' })}</label>
                   <input
                     value={devName}
                     onChange={(e) => setDevName(e.target.value)}
                     placeholder="My Bot"
-                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                    className="w-full py-1.5 px-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.username', { defaultValue: 'Username' })}</label>
+                  <label className="block text-[10px] text-[var(--nova-text-secondary)] mb-1">{t('bot.username', { defaultValue: 'Username' })}</label>
                   <input
                     value={devUsername}
                     onChange={(e) => setDevUsername(e.target.value)}
                     placeholder="mybot"
-                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                    className="w-full py-1.5 px-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-white/60 mb-1">{t('bot.description', { defaultValue: 'Description' })}</label>
+                  <label className="block text-[10px] text-[var(--nova-text-secondary)] mb-1">{t('bot.description', { defaultValue: 'Description' })}</label>
                   <input
                     value={devDesc}
                     onChange={(e) => setDevDesc(e.target.value)}
                     placeholder="Optional description"
-                    className="w-full py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-white focus:outline-none focus:border-[var(--nova-accent-color)] transition"
+                    className="w-full py-1.5 px-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] transition"
                   />
                 </div>
               </div>
@@ -3197,7 +3197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setDevRegistryOpen(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
@@ -3205,9 +3205,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   disabled={devCreating || !devName || !devUsername}
                   onClick={createLocalBot}
-                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-white transition cursor-pointer ${
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-medium text-[var(--nova-text-primary)] transition cursor-pointer ${
                     devCreating || !devName || !devUsername
-                      ? 'bg-white/[0.03] border-white/10 text-white/40 cursor-not-allowed'
+                      ? 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] text-[var(--nova-text-muted)] cursor-not-allowed'
                       : 'bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 hover:bg-[var(--nova-accent-color)]/20 active:scale-95'
                   }`}
                 >
@@ -3225,24 +3225,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
         >
-          <div className="bg-[#12131c] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0">
-              <h3 className="font-bold text-sm text-white">{t('bot.installFileTitle', { defaultValue: 'Install from file' })}</h3>
+          <div className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--nova-border-subtle)] shrink-0">
+              <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.installFileTitle', { defaultValue: 'Install from file' })}</h3>
               <button
                 onClick={() => setInstallFromFile(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4 space-y-4">
-              <p className="text-[11px] text-[#8c919d] leading-relaxed">
+              <p className="text-[11px] text-[var(--nova-text-muted)] leading-relaxed">
                 {t('bot.installFileDesc', { defaultValue: 'Select a bot manifest JSON file to install.' })}
               </p>
-              <label className="flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:border-[var(--nova-accent-color)]/50 transition cursor-pointer">
-                <Upload className="w-6 h-6 text-white/50" />
-                <p className="text-[11px] font-medium text-white">{t('bot.chooseFile', { defaultValue: 'Choose manifest file' })}</p>
+              <label className="flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-[var(--nova-border-subtle)] bg-white/[0.02] hover:border-[var(--nova-accent-color)]/50 transition cursor-pointer">
+                <Upload className="w-6 h-6 text-[var(--nova-text-muted)]" />
+                <p className="text-[11px] font-medium text-[var(--nova-text-primary)]">{t('bot.chooseFile', { defaultValue: 'Choose manifest file' })}</p>
                 <input
                   type="file"
                   accept=".json"
@@ -3255,9 +3255,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </label>
               {fileError && <div className="text-[10px] text-red-400">{fileError}</div>}
               {fileManifest && (
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                  <p className="text-[11px] font-semibold text-white truncate">{fileManifest.name}</p>
-                  <p className="text-[10px] text-[#8c9198] mt-0.5">@{fileManifest.username}</p>
+                <div className="p-3 rounded-lg bg-white/[0.02] border border-[var(--nova-border-subtle)]">
+                  <p className="text-[11px] font-semibold text-[var(--nova-text-primary)] truncate">{fileManifest.name}</p>
+                  <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">@{fileManifest.username}</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -3275,7 +3275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setInstallFromFile(false)}
-                  className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] font-medium text-white/60 hover:bg-white/[0.1] transition cursor-pointer"
+                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
@@ -3286,7 +3286,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       )}
     {toastMessage && (
       <div
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-white/10 text-white text-xs px-3.5 py-2 rounded-full shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface-high)]/95 border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] text-xs px-3.5 py-2 rounded-full shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2"
         role="status"
         aria-live="polite"
       >

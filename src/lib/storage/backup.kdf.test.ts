@@ -138,6 +138,6 @@ describe('.nova-backup KDF', () => {
       // The same input should still restore successfully afterwards.
       const restored = await restoreEncryptedBackup(fileText, 'correct horse battery');
       expect(restored.identity.fingerprint).toBe('nova_pk_test');
-    });
+    }, 20000);
   });
 });

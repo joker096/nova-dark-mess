@@ -1,0 +1,10 @@
+{
+  "orderId": "ord_db5617c5537120aa",
+  "plan": "premium",
+  "device": "dev_test_1234567890abcdef1234567890abcdef",
+  "amount": 3.9,
+  "currency": "USD",
+  "status": "pending",
+  "createdAt": "2026-11-22T22:40:56.126Z",
+  "token": "B62DDC7F46564F1D890A291F1574B186"
+}

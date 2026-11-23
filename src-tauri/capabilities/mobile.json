@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "mobile-specific permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "deep-link:default",
+    "push:default",
+    "notification:default",
+    "background-fetch:default",
+    "local-notification:default"
+  ]
+}

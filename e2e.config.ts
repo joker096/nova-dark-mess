@@ -1,4 +1,4 @@
-import type { E2EConfig } from 'e2e';
+﻿import type { E2EConfig } from 'e2e';
 import { web } from '@e2e-dev/web';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 
@@ -18,7 +18,7 @@ export default {
   targets: [{
     engine: web(),
     app: {
-      url: process.env.APP_URL ?? 'http://localhost:3000',
+      url: 'http://localhost:3000',
       command: {
         executable: 'node',
         args: ['node_modules/vite/bin/vite.js', '--port=3000', '--host=0.0.0.0'],
@@ -28,3 +28,4 @@ export default {
     },
   }],
 } satisfies E2EConfig;
+

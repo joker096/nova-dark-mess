@@ -45,7 +45,10 @@ describe('senderKeys', () => {
     const recipientState = processDistributionMessage(createDistributionMessage(sender));
 
     const { message } = await senderKeyEncrypt(sender, 'secret');
-    const tampered = { ...message, signature: `X${message.signature.slice(1)}` };
+    // Flip the first character to a value it is guaranteed not to already be.
+    // Replacing it with a fixed letter could leave the signature unchanged.
+    const flip = message.signature[0] === 'A' ? 'B' : 'A';
+    const tampered = { ...message, signature: `${flip}${message.signature.slice(1)}` };
 
     await expect(senderKeyDecrypt(recipientState, tampered)).rejects.toThrow();
   });

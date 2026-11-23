@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Smile,
   Film,
@@ -14,8 +14,10 @@ import {
   LayoutGrid,
   Rows3,
   Type,
+  Loader2,
+  ChevronDown,
 } from 'lucide-react';
-import { STICKER_PACKS, MOCK_GIFS } from '../../data/stickers';
+import { STICKER_PACKS } from '../../data/stickers';
 import { StickerData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePremium } from '../../hooks/usePremium';
@@ -46,6 +48,7 @@ import {
 } from '../../lib/stickers';
 import type { StickerEntry } from '../../lib/stickers';
 import { StickerMedia } from './StickerMedia';
+import { searchGifs, getTrendingGifs, GIF_CATEGORIES, type GifResult, configureGifApiKeys, getConfiguredGifApis } from '../../lib/gif/gifSearch';
 
 interface StickerPickerDrawerProps {
   isOpen: boolean;
@@ -95,7 +98,13 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
   const [recentIds, setRecentIds] = useState<string[]>(getRecentStickerIds);
   const [favoriteIds, setFavoriteIds] = useState<string[]>(getFavoriteStickerIds);
   const [gifSearch, setGifSearch] = useState('');
-  const [gifCategory, setGifCategory] = useState<string>('All');
+  const [gifCategory, setGifCategory] = useState<string>('trending');
+  const [gifResults, setGifResults] = useState<GifResult[]>([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [gifOffset, setGifOffset] = useState(0);
+  const [gifHasMore, setGifHasMore] = useState(true);
+  const gifObserverRef = useRef<IntersectionObserver | null>(null);
+  const gifListRef = useRef<HTMLDivElement>(null);
   const [importedPacks, setImportedPacks] = useState(() => loadImportedStickerPacks());
   const [importError, setImportError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -153,13 +162,80 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
     return selectedPack.stickers.map((sticker) => ({ sticker, pack: selectedPack }));
   }, [entries, filter, favoriteIds, recentIds, selectedPack, stickerSearch]);
 
-  if (!isOpen) return null;
+  // GIF Search Effect
+  const performGifSearch = useCallback(async (query: string, category: string, reset = true) => {
+    setGifLoading(true);
+    try {
+      let result;
+      if (category === 'trending' && !query.trim()) {
+        result = await getTrendingGifs({ offset: 0, limit: 20 });
+      } else {
+        const searchQuery = query.trim() || GIF_CATEGORIES.find(c => c.id === category)?.query || 'funny';
+        result = await searchGifs(searchQuery, { offset: 0, limit: 20 });
+      }
+      if (reset) {
+        setGifResults(result.gifs);
+      } else {
+        setGifResults(prev => [...prev, ...result.gifs]);
+      }
+      setGifHasMore(result.gifs.length >= 20);
+      setGifOffset(result.gifs.length);
+    } catch (error) {
+      console.error('GIF search failed:', error);
+      setGifResults([]);
+      setGifHasMore(false);
+    } finally {
+      setGifLoading(false);
+    }
+  }, []);
 
-  const filteredGifs = MOCK_GIFS.filter((gif) => {
-    const matchesCategory = gifCategory === 'All' || gif.category.toLowerCase() === gifCategory.toLowerCase();
-    const matchesSearch = !gifSearch.trim() || gif.title.toLowerCase().includes(gifSearch.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => {
+    if (activeTab === 'gifs') {
+      performGifSearch(gifSearch, gifCategory, true);
+      setGifOffset(0);
+    }
+  }, [activeTab, gifSearch, gifCategory, performGifSearch]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (!gifListRef.current) return;
+    gifObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && gifHasMore && !gifLoading) {
+          loadMoreGifs();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+    const sentinel = gifListRef.current.querySelector('[data-gif-sentinel]');
+    if (sentinel) gifObserverRef.current.observe(sentinel);
+    return () => gifObserverRef.current?.disconnect();
+  }, [gifHasMore, gifLoading]);
+
+  const loadMoreGifs = useCallback(async () => {
+    if (gifLoading || !gifHasMore) return;
+    setGifLoading(true);
+    try {
+      let result;
+      if (gifCategory === 'trending' && !gifSearch.trim()) {
+        result = await getTrendingGifs({ offset: gifOffset, limit: 20 });
+      } else {
+        const searchQuery = gifSearch.trim() || GIF_CATEGORIES.find(c => c.id === gifCategory)?.query || 'funny';
+        result = await searchGifs(searchQuery, { offset: gifOffset, limit: 20 });
+      }
+      setGifResults(prev => [...prev, ...result.gifs]);
+      setGifHasMore(result.gifs.length >= 20);
+      setGifOffset(prev => prev + result.gifs.length);
+    } catch (error) {
+      console.error('GIF load more failed:', error);
+      setGifHasMore(false);
+    } finally {
+      setGifLoading(false);
+    }
+  }, [gifLoading, gifHasMore, gifOffset, gifCategory, gifSearch]);
+
+  if (!isOpen) return null;
 
   const handlePickSticker = (entry: StickerEntry) => {
     if (isStickerLocked(entry.sticker, entry.pack, premium)) {
@@ -723,8 +799,8 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
       {/* GIFS TAB */}
       {activeTab === 'gifs' && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 bg-[#10111a] px-2.5 py-1.5 rounded-xl border border-white/5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-[150px] flex items-center gap-2 bg-[#10111a] px-2.5 py-1.5 rounded-xl border border-white/5">
               <Search className="w-3.5 h-3.5 text-white/40 shrink-0" />
               <input
                 type="text"
@@ -745,35 +821,45 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
               )}
             </div>
 
-            {/* Category Filter */}
+            {/* Category Filter Chips */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {['All', 'Cyberpunk', 'Celebration', 'Vibes'].map((cat) => (
+              {GIF_CATEGORIES.map((cat) => (
                 <button
-                  key={cat}
+                  key={cat.id}
                   type="button"
-                  onClick={() => setGifCategory(cat)}
-                  className={`text-[11px] px-2.5 py-1 rounded-xl transition cursor-pointer font-medium ${
-                    gifCategory === cat
+                  onClick={() => {
+                    setGifCategory(cat.id);
+                    setGifSearch('');
+                  }}
+                  className={`text-[11px] px-2.5 py-1 rounded-xl transition cursor-pointer font-medium flex items-center gap-1 ${
+                    gifCategory === cat.id
                       ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white'
                       : 'bg-white/5 text-white/60 hover:text-white'
                   }`}
                 >
-                  {cat}
+                  <span className="text-[12px]">{cat.emoji}</span>
+                  <span>{cat.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto no-scrollbar p-1">
-            {filteredGifs.map((gif) => (
+          <div
+            ref={gifListRef}
+            className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto no-scrollbar p-1"
+            role="list"
+            aria-label={t('stickers.gifResults', 'GIF search results')}
+          >
+            {gifResults.map((gif) => (
               <button
                 key={gif.id}
                 type="button"
                 onClick={() => onSendGif(gif.url, gif.title)}
                 className="group relative rounded-2xl overflow-hidden h-24 bg-black/40 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
+                role="listitem"
               >
                 <LazyMedia
-                  src={gif.previewUrl}
+                  src={gif.previewUrl || gif.url}
                   alt={gif.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 />
@@ -784,6 +870,24 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 </div>
               </button>
             ))}
+
+            {/* Loading sentinel for infinite scroll */}
+            {gifHasMore && (
+              <div data-gif-sentinel className="col-span-full flex items-center justify-center py-4">
+                {gifLoading && (
+                  <Loader2 className="w-5 h-5 text-[var(--nova-accent-color)] animate-spin" />
+                )}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {gifResults.length === 0 && !gifLoading && (
+              <div className="col-span-full text-center py-8 text-white/40 text-sm">
+                {gifSearch.trim()
+                  ? t('stickers.noGifsFound', 'No GIFs found for "{query}"', { query: gifSearch })
+                  : t('stickers.noGifsCategory', 'No GIFs in this category')}
+              </div>
+            )}
           </div>
         </div>
       )}

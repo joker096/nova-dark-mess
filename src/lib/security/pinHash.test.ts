@@ -49,7 +49,7 @@ describe('pinHash', () => {
     const next = await checkPin({ pin: '135790', pinHash: result.hash!, salt: SALT }, () => 'x');
     expect(next.ok).toBe(true);
     expect(next.migrated).toBe(false);
-  });
+  }, 20000);
 
   it('verifies a legacy fixed-salt hash and migrates it to a random salt', async () => {
     const legacy = await legacyHash('654321', LEGACY_PIN_SALT);

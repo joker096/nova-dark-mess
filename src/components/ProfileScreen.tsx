@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ScrollableRow, NovaSelectableButton, NovaModal, NovaMenu } from '../lib/ui';
 import {
   ArrowLeft,
@@ -29,13 +29,13 @@ import {
   Crown,
 } from 'lucide-react';
 import { CONTACT_PROFILES, CURRENT_USER, CONVERSATION_HISTORIES } from '../data/mockMessengerData';
+import type { ChatMessage, SharedMediaItem } from '../types/messenger';
 import {
   loadContactOverrides,
   saveContactOverride,
   type ContactOverride,
 } from '../lib/contacts/contactOverrides';
 import { VideoCallOverlay } from './VideoCallOverlay';
-import { SharedMediaItem } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { useSecurity } from '../hooks/useSecurity';
@@ -106,6 +106,101 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const profileTabsRef = useRef<HTMLDivElement>(null);
+
+  // Extract shared content from conversation history
+  const extractSharedContent = useCallback(() => {
+    const history = CONVERSATION_HISTORIES[profileId] ?? [];
+    const media: SharedMediaItem[] = [];
+    const files: { id: string; name: string; size: string; date: string; mimeType?: string }[] = [];
+    const links: { id: string; title: string; url: string; desc: string; date: string }[] = [];
+    const voice: { id: string; duration: string; date: string; url?: string }[] = [];
+
+    history.forEach((msg, idx) => {
+      const msgDate = msg.time;
+      const baseId = `${profileId}-${idx}`;
+
+      // Images
+      if (msg.images && msg.images.length > 0) {
+        msg.images.forEach((img, imgIdx) => {
+          media.push({
+            id: `${baseId}-img-${imgIdx}`,
+            type: 'image',
+            url: img,
+            thumbnail: img,
+            date: msgDate,
+            monthGroup: msgDate,
+            caption: msg.text,
+            messageId: msg.id,
+            senderId: msg.senderId,
+          });
+        });
+      }
+
+      // Files / Documents
+      if (msg.file) {
+        files.push({
+          id: `${baseId}-file`,
+          name: msg.file.name,
+          size: msg.file.size ? `${(msg.file.size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size',
+          date: msgDate,
+          mimeType: msg.file.mimeType,
+        });
+      }
+      if (msg.document) {
+        files.push({
+          id: `${baseId}-doc`,
+          name: msg.document.name,
+          size: msg.document.size,
+          date: msgDate,
+          mimeType: msg.document.type,
+        });
+      }
+
+      // Links (extract URLs from text)
+      if (msg.text) {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urls = msg.text.match(urlRegex);
+        if (urls) {
+          urls.forEach((url, linkIdx) => {
+            // Try to extract title from text before/after URL
+            const titleMatch = msg.text?.match(new RegExp(`[^.]*${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^.]*`));
+            const title = titleMatch?.[0]?.trim() || url;
+            links.push({
+              id: `${baseId}-link-${linkIdx}`,
+              title: title.length > 50 ? title.substring(0, 50) + '...' : title,
+              url,
+              desc: msg.text?.substring(0, 100) || '',
+              date: msgDate,
+            });
+          });
+        }
+      }
+
+      // Voice notes
+      if (msg.voiceNote) {
+        voice.push({
+          id: `${baseId}-voice`,
+          duration: msg.voiceNote.duration,
+          date: msgDate,
+          url: msg.voiceNote.audioUrl,
+        });
+      }
+    });
+
+    return { media, files, links, voice };
+  }, [profileId]);
+
+  // Get extracted content
+  const { media: extractedMedia, files: extractedFiles, links: extractedLinks, voice: extractedVoice } = extractSharedContent();
+
+  // Merge with profile.sharedMedia (for backwards compat / manual additions)
+  // Deduplicate by URL to avoid duplicates from conversation history
+  const existingUrls = new Set((profile.sharedMedia ?? []).map((item) => item.url));
+  const uniqueExtractedMedia = extractedMedia.filter((item) => !existingUrls.has(item.url));
+  const allMediaItems: SharedMediaItem[] = [
+    ...(profile.sharedMedia ?? []),
+    ...uniqueExtractedMedia,
+  ];
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState<'audio' | null>(null);
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -468,8 +563,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     triggerToast(t('profile.contactUpdated'));
   };
 
-  // Filtered Media
-  const allMediaItems: SharedMediaItem[] = profile.sharedMedia ?? [];
+  // Filtered Media (allMediaItems computed above from profile.sharedMedia + extractedMedia)
   const filteredMedia = allMediaItems.filter((item) => {
     if (mediaFilter === 'photos') return item.type === 'image';
     if (mediaFilter === 'videos') return item.type === 'video';
@@ -576,10 +670,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0b0c10] text-white relative select-none overflow-y-auto no-scrollbar pb-10">
+    <div className="flex flex-col h-full bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] relative select-none overflow-y-auto no-scrollbar pb-10">
       {/* Toast Notification */}
       {mediaToast && (
-        <div className="pointer-events-none fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[#1e202a]/95 border border-[var(--nova-accent-color)]/40 text-white text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
+        <div className="pointer-events-none fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface-high)]/95 border border-[var(--nova-accent-color)]/40 text-[var(--nova-text-primary)] text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
           <Check className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{mediaToast}</span>
         </div>
@@ -588,11 +682,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Top Header Bar */}
       <div
         data-testid="profile-header"
-        className="sticky top-0 z-30 bg-[#0b0c10]/92 backdrop-blur-md px-4 pt-3 pb-2 flex items-center justify-between shrink-0"
+        className="sticky top-0 z-30 bg-[var(--nova-canvas)]/92 backdrop-blur-md px-4 pt-3 pb-2 flex items-center justify-between shrink-0"
       >
         <button
           onClick={onBack}
-          className="w-11 h-11 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
+          className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
           title={t('common.back')}
           aria-label={t('common.back')}
         >
@@ -609,7 +703,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 openContactEdit();
               }
             }}
-            className="w-11 h-11 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
+            className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
             title={isOwnProfile ? t('profile.editProfile') : t('profile.editContact')}
             aria-label={isOwnProfile ? t('profile.editProfile') : t('profile.editContact')}
           >
@@ -617,7 +711,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </button>
           <button
             onClick={() => setShareContactOpen(true)}
-            className="w-11 h-11 rounded-full bg-[#181920]/90 hover:bg-[#22242e] border border-white/5 flex items-center justify-center text-white/90 active:scale-90 transition cursor-pointer"
+            className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
             title={t('common.share')}
             aria-label={t('common.share')}
           >
@@ -629,7 +723,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Avatar & Profile Hero */}
       <div className="flex flex-col items-center pt-2 pb-5 px-5">
         <div className="relative mb-3">
-          <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[#252834] via-[#323644] to-[var(--nova-accent-color)]/40 shadow-xl shadow-black/80">
+          <div className="w-24 h-24 rounded-full overflow-hidden p-1 bg-gradient-to-tr from-[var(--nova-surface-high)] via-[var(--nova-surface-high)] to-[var(--nova-accent-color)]/40 shadow-xl shadow-black/80">
             {avatar && !avatarLoadFailed ? (
               <button
                 type="button"
@@ -646,7 +740,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 />
               </button>
             ) : (
-              <div className="w-full h-full rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center font-bold text-2xl text-white">
+              <div className="w-full h-full rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center font-bold text-2xl text-[var(--nova-on-accent)]">
                 {initials}
               </div>
             )}
@@ -666,7 +760,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/95 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[#0c0d11]"
+                className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/95 text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[var(--nova-canvas)]"
                 title={t('profile.changeAvatar')}
                 aria-label={t('profile.changeAvatar')}
               >
@@ -676,7 +770,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={handleRemoveAvatar}
-                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 border border-white/10 text-white flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 border border-[var(--nova-border-subtle)] text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer"
                   title={t('profile.removeAvatar')}
                   aria-label={t('profile.removeAvatar')}
                 >
@@ -708,7 +802,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               }}
               autoFocus
               aria-label={t('profile.name')}
-              className="w-44 px-3 py-1.5 rounded-xl bg-[#181920] border border-[var(--nova-accent-color)]/50 text-sm font-semibold text-white text-center outline-none"
+              className="w-44 px-3 py-1.5 rounded-xl bg-[var(--nova-surface-raised)] border border-[var(--nova-accent-color)]/50 text-sm font-semibold text-[var(--nova-text-primary)] text-center outline-none"
             />
             <button
               type="button"
@@ -717,7 +811,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 if (next) updateAccount({ displayName: next });
                 setEditingName(false);
               }}
-              className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-white transition hover:opacity-90"
+              className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] transition hover:opacity-90"
               title={t('common.save')}
               aria-label={t('common.save')}
             >
@@ -726,7 +820,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <button
               type="button"
               onClick={() => setEditingName(false)}
-              className="p-1.5 rounded-lg bg-white/5 text-white/70 transition hover:bg-white/10"
+              className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-medium)]"
               title={t('common.cancel')}
               aria-label={t('common.cancel')}
             >
@@ -735,7 +829,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         ) : (
           <div className="flex items-center justify-center gap-1.5">
-            <h1 className="text-xl font-bold text-white tracking-tight">{profile.name}</h1>
+            <h1 className="text-xl font-bold text-[var(--nova-text-primary)] tracking-tight">{profile.name}</h1>
             {isOwnProfile && premium && (
               <span
                 data-testid="premium-crown"
@@ -748,7 +842,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             )}
           </div>
         )}
-        <p className="text-xs text-[#828795] mt-0.5">
+        <p className="text-xs text-[var(--nova-text-muted)] mt-0.5">
           {profile.status}
         </p>
 
@@ -760,10 +854,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
             aria-label={t('profile.message')}
           >
-            <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-              <MessageSquare className="w-5 h-5 text-white/90 group-hover:text-white" />
+            <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-raised)] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-[var(--nova-border-subtle)] flex items-center justify-center transition duration-200 active:scale-90">
+              <MessageSquare className="w-5 h-5 text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)]" />
             </div>
-            <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
+            <span className="text-xs font-medium text-[var(--nova-text-muted)] group-hover:text-[var(--nova-text-primary)] transition">
               {t('profile.message')}
             </span>
           </button>
@@ -776,10 +870,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
               aria-label={t('common.audio')}
             >
-              <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-                <Phone className="w-5 h-5 text-white/90 group-hover:text-white" />
+              <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-raised)] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-[var(--nova-border-subtle)] flex items-center justify-center transition duration-200 active:scale-90">
+                <Phone className="w-5 h-5 text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)]" />
               </div>
-              <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
+              <span className="text-xs font-medium text-[var(--nova-text-muted)] group-hover:text-[var(--nova-text-primary)] transition">
                 {t('common.audio')}
               </span>
             </button>
@@ -792,10 +886,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
               aria-label={t('common.video')}
             >
-              <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-                <Video className="w-5 h-5 text-white/90 group-hover:text-white" />
+              <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-raised)] group-hover:bg-[var(--nova-accent-color)] group-hover:shadow-lg group-hover:shadow-[var(--nova-accent-color)]/25 border border-[var(--nova-border-subtle)] flex items-center justify-center transition duration-200 active:scale-90">
+                <Video className="w-5 h-5 text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)]" />
               </div>
-              <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
+              <span className="text-xs font-medium text-[var(--nova-text-muted)] group-hover:text-[var(--nova-text-primary)] transition">
                 {t('common.video')}
               </span>
             </button>
@@ -846,10 +940,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 className="flex flex-col items-center gap-1.5 group cursor-pointer min-h-[76px]"
                 aria-label={isOwnProfile ? t('settings.title') : t('common.more')}
               >
-                <div className="w-14 h-14 rounded-full bg-[#181921] group-hover:bg-[#252834] border border-white/5 flex items-center justify-center transition duration-200 active:scale-90">
-                  <MoreHorizontal className="w-5 h-5 text-white/90" />
+                <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-raised)] group-hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center transition duration-200 active:scale-90">
+                  <MoreHorizontal className="w-5 h-5 text-[var(--nova-text-primary)]" />
                 </div>
-                <span className="text-xs font-medium text-[#868b98] group-hover:text-white transition">
+                <span className="text-xs font-medium text-[var(--nova-text-muted)] group-hover:text-[var(--nova-text-primary)] transition">
                   {isOwnProfile ? t('settings.title') : t('common.more')}
                 </span>
               </button>
@@ -860,21 +954,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Contact Details Card */}
       <div className="px-5 mb-4">
-        <div className="bg-[#171820]/95 border border-white/5 rounded-[24px] p-4 space-y-4 shadow-md shadow-black/50">
+        <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] rounded-[24px] p-4 space-y-4 shadow-md shadow-black/50">
 
-          <div className="h-[1px] bg-white/[0.04]" />
+          <div className="h-[1px] bg-[var(--nova-overlay-weak)]" />
 
           {/* Nickname row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                 @
               </div>
               <div>
-                <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight">
                   {t('profile.nickname')}
                 </p>
-                <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
+                <p className="text-[14px] font-semibold text-[var(--nova-text-primary)] tracking-wide mt-0.5">
                   {profile.nickname}
                 </p>
               </div>
@@ -886,18 +980,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     value={fieldDraft}
                     onChange={(e) => setFieldDraft(e.target.value)}
                     autoFocus
-                    className="w-32 px-2 py-1.5 rounded-lg bg-[#181920] border border-white/10 text-[11px] text-white outline-none focus:border-[var(--nova-accent-color)]"
+                    className="w-32 px-2 py-1.5 rounded-lg bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] text-[11px] text-[var(--nova-text-primary)] outline-none focus:border-[var(--nova-accent-color)]"
                   />
                   <button
                     onClick={saveField}
-                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-white hover:opacity-90 transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] hover:opacity-90 transition cursor-pointer"
                     title={t('common.save')}
                   >
                     <Check className="w-3 h-3" />
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="p-1.5 rounded-lg bg-white/[0.05] text-white/70 hover:bg-white/[0.1] transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                     title={t('common.cancel')}
                   >
                     <X className="w-3 h-3" />
@@ -910,14 +1004,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       setFieldDraft(profile.nickname);
                       setEditingField('nickname');
                     }}
-                    className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+                    className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                     title={t('common.edit')}
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={openQr}
-                    className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+                    className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                     title={t('common.contact')}
                   >
                     <QrCode className="w-4 h-4" />
@@ -930,14 +1024,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Handle row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                 @
               </div>
               <div>
-                <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight">
                   {t('profile.handle')}
                 </p>
-                <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
+                <p className="text-[14px] font-semibold text-[var(--nova-text-primary)] tracking-wide mt-0.5">
                   {isOwnProfile && ownHandle
                     ? ownHandle
                     : `nova://${(profile.nickname || profile.name).replace('@', '').toLowerCase().slice(0, 12)}`}
@@ -953,7 +1047,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   'handle'
                 )
               }
-              className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+              className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
               title={t('common.copy')}
               aria-label={t('common.copy')}
             >
@@ -969,21 +1063,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {isOwnProfile && identity && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+                <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                   <Key className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                  <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight">
                     {t('profile.cryptoId')}
                   </p>
-                  <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5 truncate max-w-[200px]">
+                  <p className="text-[14px] font-semibold text-[var(--nova-text-primary)] tracking-wide mt-0.5 truncate max-w-[200px]">
                     {`nova_pk_${identity.fingerprint.slice(0, 8)}...${identity.fingerprint.slice(-8)}`}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => copyToClipboard(identity.fingerprint, 'fingerprint')}
-                className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+                className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 title={t('common.copy')}
                 aria-label={t('common.copy')}
               >
@@ -1000,14 +1094,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {isOwnProfile && identity && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+                <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                   <Link2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight">
+                  <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight">
                     {t('profile.linkedDevices')}
                   </p>
-                  <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
+                  <p className="text-[14px] font-semibold text-[var(--nova-text-primary)] tracking-wide mt-0.5">
                     {1 + linkedDeviceCount === 1
                       ? t('profile.deviceOne')
                       : t('profile.devicesMany', { count: 1 + linkedDeviceCount })}
@@ -1029,26 +1123,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {isOwnProfile && identity && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
+                <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-accent-color)] font-semibold text-sm">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-[#787d8a] font-normal leading-tight flex items-center gap-1">
+                  <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight flex items-center gap-1">
                     {t('profile.safetyNumber')}
                     {!p2pManager && (
-                      <span className="text-[10px] font-bold text-[#ff5f2e] bg-[#ff5f2e]/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/10 px-2 py-0.5 rounded">
                         DEMO
                       </span>
                     )}
                   </p>
-                  <p className="text-[14px] font-semibold text-white tracking-wide mt-0.5">
+                  <p className="text-[14px] font-semibold text-[var(--nova-text-primary)] tracking-wide mt-0.5">
                     {safetyEmoji}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowSafetyModal(true)}
-                className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+                className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                 title={t('profile.safetyNumber')}
                 aria-label={t('profile.safetyNumber')}
               >
@@ -1056,21 +1150,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </button>
             </div>
           )}
-          <div className="h-[1px] bg-white/[0.04]" />
+          <div className="h-[1px] bg-[var(--nova-overlay-weak)]" />
 
           {/* Additional phone (optional, not used for lookup — search by ID) */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-[#20222a] border border-white/5 flex items-center justify-center text-[#6a6f7b]">
+              <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-muted)]">
                 <Phone className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[11px] text-[#6a6f7b] font-normal leading-tight">
+                <p className="text-[11px] text-[var(--nova-text-muted)] font-normal leading-tight">
                   {t('profile.additionalPhone')}
                 </p>
                 <p 
                   className={`text-[14px] font-semibold tracking-wide mt-0.5 transition-all duration-200 ${
-                    phoneRevealed ? 'text-[#cbd5e1]' : 'text-transparent bg-clip-text bg-gradient-to-r from-white/20 via-white/10 to-white/20'
+                    phoneRevealed ? 'text-[var(--nova-text-secondary)]' : 'text-transparent bg-clip-text bg-gradient-to-r from-[var(--nova-overlay-strong)] via-[var(--nova-overlay-medium)] to-[var(--nova-overlay-strong)]'
                   }`}
                   onDoubleClick={() => {
                     if (profile.phone && profile.phone !== '—') {
@@ -1091,18 +1185,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onChange={(e) => setFieldDraft(e.target.value)}
                     autoFocus
                     inputMode="numeric"
-                    className="w-32 px-2 py-1.5 rounded-lg bg-[#181920] border border-white/10 text-[11px] text-white outline-none focus:border-[var(--nova-accent-color)]"
+                    className="w-32 px-2 py-1.5 rounded-lg bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] text-[11px] text-[var(--nova-text-primary)] outline-none focus:border-[var(--nova-accent-color)]"
                   />
                   <button
                     onClick={saveField}
-                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-white hover:opacity-90 transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] hover:opacity-90 transition cursor-pointer"
                     title={t('common.save')}
                   >
                     <Check className="w-3 h-3" />
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="p-1.5 rounded-lg bg-white/[0.05] text-white/70 hover:bg-white/[0.1] transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                     title={t('common.cancel')}
                   >
                     <X className="w-3 h-3" />
@@ -1115,7 +1209,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       setFieldDraft(profile.phone || '');
                       setEditingField('phone');
                     }}
-                    className="p-2.5 text-white/50 hover:text-white transition cursor-pointer"
+                    className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                     title={t('common.edit')}
                   >
                     <Edit2 className="w-4 h-4" />
@@ -1124,7 +1218,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </div>
           </div>
-          <div className="h-[1px] bg-white/[0.04]" />
+          <div className="h-[1px] bg-[var(--nova-overlay-weak)]" />
         </div>
       </div>
 
@@ -1136,7 +1230,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setActiveTab('media')}
           >
             {t('common.media')}
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'media' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'media' ? 'bg-black/30 text-[var(--nova-text-primary)]' : 'text-[var(--nova-text-muted)]'}`}>
               {profile.mediaCount}
             </span>
           </NovaSelectableButton>
@@ -1146,7 +1240,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setActiveTab('files')}
           >
             {t('common.files')}
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'files' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'files' ? 'bg-black/30 text-[var(--nova-text-primary)]' : 'text-[var(--nova-text-muted)]'}`}>
               {profile.filesCount}
             </span>
           </NovaSelectableButton>
@@ -1156,7 +1250,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setActiveTab('links')}
           >
             {t('common.links')}
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'links' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'links' ? 'bg-black/30 text-[var(--nova-text-primary)]' : 'text-[var(--nova-text-muted)]'}`}>
               {profile.linksCount}
             </span>
           </NovaSelectableButton>
@@ -1166,7 +1260,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             onClick={() => setActiveTab('voice')}
           >
             {t('common.voice')}
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'voice' ? 'bg-black/30 text-white' : 'text-[#6a6f7b]'}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === 'voice' ? 'bg-black/30 text-[var(--nova-text-primary)]' : 'text-[var(--nova-text-muted)]'}`}>
               {profile.voiceCount}
             </span>
           </NovaSelectableButton>
@@ -1180,13 +1274,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="space-y-4">
             {/* Secondary Media Category Sub-filters (All, Photos, Videos) */}
             <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-1.5 bg-[#14151b] p-1 rounded-xl border border-white/[0.04]">
+              <div className="flex items-center gap-1.5 bg-[var(--nova-surface)] p-1 rounded-xl border border-white/[0.04]">
                 <button
                   onClick={() => setMediaFilter('all')}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
                     mediaFilter === 'all'
-                      ? 'bg-[#222430] text-white shadow-sm'
-                      : 'text-[#828795] hover:text-white'
+                      ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
+                      : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                   }`}
                 >
                   {t('common.all')} ({allMediaItems.length})
@@ -1195,8 +1289,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onClick={() => setMediaFilter('photos')}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
                     mediaFilter === 'photos'
-                      ? 'bg-[#222430] text-white shadow-sm'
-                      : 'text-[#828795] hover:text-white'
+                      ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
+                      : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                   }`}
                 >
                   {t('profile.photos')} ({photosCount})
@@ -1205,8 +1299,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onClick={() => setMediaFilter('videos')}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
                     mediaFilter === 'videos'
-                      ? 'bg-[#222430] text-white shadow-sm'
-                      : 'text-[#828795] hover:text-white'
+                      ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
+                      : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                   }`}
                 >
                   <Play className="w-2.5 h-2.5 fill-current" />
@@ -1214,13 +1308,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </button>
               </div>
 
-              <span className="text-[10px] text-[#636875]">{t('profile.fromChatHistory')}</span>
+              <span className="text-[10px] text-[var(--nova-text-muted)]">{t('profile.fromChatHistory')}</span>
             </div>
 
             {filteredMedia.length === 0 && (
               <div
                 data-testid="profile-media-empty"
-                className="py-12 text-center text-[#6a6f7b] text-xs"
+                className="py-12 text-center text-[var(--nova-text-muted)] text-xs"
               >
                 {t('profile.noSharedMedia')}
               </div>
@@ -1230,10 +1324,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {Object.keys(groupedMedia).map((month) => (
               <div key={month} className="space-y-2">
                 <div className="flex items-center justify-between px-0.5">
-                  <h3 className="text-[11px] font-bold text-[#828795] tracking-wider uppercase">
+                  <h3 className="text-[11px] font-bold text-[var(--nova-text-muted)] tracking-wider uppercase">
                     {month}
                   </h3>
-                  <span className="text-[10px] text-[#555a66]">
+                  <span className="text-[10px] text-[var(--nova-text-muted)]">
                     {t('profile.itemsCount', { count: groupedMedia[month].length })}
                   </span>
                 </div>
@@ -1250,7 +1344,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           setIsVideoPlaying(true);
                         }}
                         aria-label={item.caption || t('profile.sharedMedia')}
-                        className="aspect-square rounded-2xl overflow-hidden bg-[#181921] border border-white/5 relative group cursor-pointer active:scale-95 transition shadow-sm hover:border-white/20"
+                        className="aspect-square rounded-2xl overflow-hidden bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] relative group cursor-pointer active:scale-95 transition shadow-sm hover:border-[var(--nova-border-color)]"
                       >
                         <LazyMedia
                           src={item.type === 'video' ? item.thumbnail || item.url : item.url}
@@ -1266,21 +1360,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
                             {/* Center Play Icon circle */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 group-hover:bg-[var(--nova-accent-color)] group-hover:scale-110 transition duration-200">
-                                <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
+                              <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-[var(--nova-on-accent)] border border-[var(--nova-border-color)] group-hover:bg-[var(--nova-accent-color)] group-hover:scale-110 transition duration-200">
+                                <Play className="w-3.5 h-3.5 fill-[var(--nova-text-primary)] ml-0.5" />
                               </div>
                             </div>
 
                             {/* Duration pill in bottom left */}
-                            <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-black/75 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-white border border-white/10">
-                              <Play className="w-2.5 h-2.5 fill-white" />
+                            <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-black/75 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-[var(--nova-on-accent)] border border-[var(--nova-border-subtle)]">
+                              <Play className="w-2.5 h-2.5 fill-[var(--nova-text-primary)]" />
                               <span>{item.duration || '0:30'}</span>
                             </div>
                           </>
                         ) : (
                           /* Photo Hover Highlight */
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none">
-                            <span className="text-[10px] text-white/90 truncate font-medium">
+                            <span className="text-[10px] text-[var(--nova-text-primary)] truncate font-medium">
                               {item.date}
                             </span>
                           </div>
@@ -1297,96 +1391,104 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* FILES TAB CONTENT */}
         {activeTab === 'files' && (
           <div className="space-y-2">
-            {[
-              { name: 'Trip_Schedule_Kyiv.pdf', size: '2.4 MB', date: 'Yesterday' },
-              { name: 'Hotel_Reservation.pdf', size: '640 KB', date: '3 days ago' },
-              { name: 'Photos_Archive.zip', size: '48.1 MB', date: 'Oct 28' },
-            ].map((file, i) => (
-              <div
-                key={i}
-                className="p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] flex items-center justify-center">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white truncate max-w-[180px]">
-                      {file.name}
-                    </p>
-                    <p className="text-[10px] text-[#717682]">{file.size} · {file.date}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => triggerToast(t('profile.downloading', { name: file.name }))}
-                  className="min-h-[40px] px-3 text-xs text-[var(--nova-accent-color)] hover:underline cursor-pointer"
-                  aria-label={t('profile.download')}
+            {extractedFiles.length > 0 ? (
+              extractedFiles.map((file, i) => (
+                <div
+                  key={i}
+                  className="p-3 bg-[var(--nova-surface-raised)] rounded-2xl border border-[var(--nova-border-subtle)] flex items-center justify-between"
                 >
-                  {t('profile.download')}
-                </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] flex items-center justify-center">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--nova-text-primary)] truncate max-w-[180px]">
+                        {file.name}
+                      </p>
+                      <p className="text-[10px] text-[var(--nova-text-muted)]">{file.size} · {file.date}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => triggerToast(t('profile.downloading', { name: file.name }))}
+                    className="min-h-[40px] px-3 text-xs text-[var(--nova-accent-color)] hover:underline cursor-pointer"
+                    aria-label={t('profile.download')}
+                  >
+                    {t('profile.download')}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-[var(--nova-text-muted)]">
+                {t('profile.noFiles')}
               </div>
-            ))}
+            )}
           </div>
         )}
 
         {/* LINKS TAB CONTENT */}
         {activeTab === 'links' && (
           <div className="space-y-2">
-            {[
-              { title: 'Harry’s Bar & Kitchen', url: 'https://harrysbar.com', desc: 'Reservations and dinner menu' },
-              { title: 'Kyiv Independent Digest', url: 'https://kyivindependent.com', desc: 'Summer editorial series' },
-            ].map((link, i) => (
-              <button
-                type="button"
-                key={i}
-                onClick={() => {
-                  void copyToClipboard(link.url, `link-${i}`, t('profile.linkCopied'));
-                }}
-                className="w-full p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center gap-3 hover:border-white/20 transition cursor-pointer text-left"
-              >
-                <div className="w-9 h-9 rounded-xl bg-[#20222b] text-[var(--nova-accent-color)] flex items-center justify-center">
-                  <Link2 className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-white truncate">{link.title}</p>
-                  <p className="text-[10px] text-[#717682] truncate">{link.url}</p>
-                </div>
-              </button>
-            ))}
+            {extractedLinks.length > 0 ? (
+              extractedLinks.map((link, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => {
+                    void copyToClipboard(link.url, `link-${i}`, t('profile.linkCopied'));
+                  }}
+                  className="w-full p-3 bg-[var(--nova-surface-raised)] rounded-2xl border border-[var(--nova-border-subtle)] flex items-center gap-3 hover:border-[var(--nova-border-color)] transition cursor-pointer text-left"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[var(--nova-surface-high)] text-[var(--nova-accent-color)] flex items-center justify-center">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-[var(--nova-text-primary)] truncate">{link.title}</p>
+                    <p className="text-[10px] text-[var(--nova-text-muted)] truncate">{link.url}</p>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-6 text-center text-[var(--nova-text-muted)]">
+                {t('profile.noLinks')}
+              </div>
+            )}
           </div>
         )}
 
         {/* VOICE TAB CONTENT */}
         {activeTab === 'voice' && (
           <div className="space-y-2">
-            {[
-              { duration: '0:42', date: 'Today at 18:20' },
-              { duration: '1:15', date: 'Yesterday at 14:10' },
-            ].map((voice, i) => (
-              <div
-                key={i}
-                className="p-3 bg-[#181921] rounded-2xl border border-white/5 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center">
-                    <Mic className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white">
-                      {t('profile.voiceMessage', { duration: voice.duration })}
-                    </p>
-                    <p className="text-[10px] text-[#717682]">{voice.date}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => triggerToast(t('profile.playingVoice', { duration: voice.duration }))}
-                  className="min-h-[40px] text-xs text-white/70 hover:text-white px-3 py-2 bg-white/5 rounded-lg active:scale-95 transition cursor-pointer"
-                  aria-label={t('profile.playVoice')}
+            {extractedVoice.length > 0 ? (
+              extractedVoice.map((voice, i) => (
+                <div
+                  key={i}
+                  className="p-3 bg-[var(--nova-surface-raised)] rounded-2xl border border-[var(--nova-border-subtle)] flex items-center justify-between"
                 >
-                  {t('profile.play')}
-                </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] flex items-center justify-center">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--nova-text-primary)]">
+                        {t('profile.voiceMessage', { duration: voice.duration })}
+                      </p>
+                      <p className="text-[10px] text-[var(--nova-text-muted)]">{voice.date}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => triggerToast(t('profile.playingVoice', { duration: voice.duration }))}
+                    className="min-h-[40px] text-xs text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] px-3 py-2 bg-[var(--nova-overlay-weak)] rounded-lg active:scale-95 transition cursor-pointer"
+                    aria-label={t('profile.playVoice')}
+                  >
+                    {t('profile.play')}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-[var(--nova-text-muted)]">
+                {t('profile.noVoice')}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -1400,23 +1502,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           aria-label="QR code"
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-white">{profile.name}'s QR Code</h3>
-            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
+          <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
+            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{profile.name}'s QR Code</h3>
+            <div className="bg-[var(--nova-on-accent)] p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 rounded-lg" />
               ) : (
-                <div className="w-48 h-48 bg-black flex items-center justify-center rounded-lg p-2 text-white">
+                <div className="w-48 h-48 bg-black flex items-center justify-center rounded-lg p-2 text-[var(--nova-text-primary)]">
                   <QrCode className="w-40 h-40 text-black stroke-black fill-black" />
                 </div>
               )}
             </div>
-            <p className="text-xs text-[#8c919d]">
+            <p className="text-xs text-[var(--nova-text-muted)]">
               Scan to add {profile.nickname} to your contact list
             </p>
             <button
               onClick={() => setShowQrModal(false)}
-              className="w-full py-2.5 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+              className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
             >
               Close
             </button>
@@ -1426,7 +1528,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Audio Calling Simulation Modal */}
       {showCallModal && (
-        <div className="fixed inset-0 z-50 bg-[#0c0d12]/95 backdrop-blur-xl flex flex-col items-center justify-between py-16 px-6 animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-[var(--nova-canvas)]/95 backdrop-blur-xl flex flex-col items-center justify-between py-16 px-6 animate-in fade-in">
           <div className="flex flex-col items-center space-y-3 mt-8">
             <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[var(--nova-accent-color)] shadow-2xl p-1 animate-pulse">
               <LazyMedia
@@ -1436,7 +1538,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 eager
               />
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-2xl font-bold text-[var(--nova-text-primary)] tracking-tight">
               {profile.name}
             </h2>
             <p className="text-sm text-[var(--nova-accent-color)] font-medium">Calling...</p>
@@ -1445,7 +1547,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="flex items-center gap-6 mb-8">
             <button
               onClick={() => setShowCallModal(null)}
-              className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-xl shadow-red-900/40 active:scale-95 transition cursor-pointer"
+              className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-[var(--nova-text-primary)] flex items-center justify-center shadow-xl shadow-red-900/40 active:scale-95 transition cursor-pointer"
               title={t('common.close')}
               aria-label={t('common.close')}
             >
@@ -1489,7 +1591,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </>
                 )}
               </span>
-              <span className="text-xs text-white/60">
+              <span className="text-xs text-[var(--nova-text-secondary)]">
                 {t('profile.mediaPosition', {
                   current: selectedMediaIndex! + 1,
                   total: filteredMedia.length,
@@ -1500,7 +1602,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={shareMedia}
-                className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                className="w-11 h-11 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
                 title={t('common.share')}
                 aria-label={t('common.share')}
               >
@@ -1508,7 +1610,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </button>
               <button
                 onClick={downloadMedia}
-                className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                className="w-11 h-11 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
                 title={t('profile.download')}
                 aria-label={t('profile.download')}
               >
@@ -1519,7 +1621,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   e.stopPropagation();
                   setSelectedMediaIndex(null);
                 }}
-                className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                className="w-11 h-11 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
                 title={t('common.close')}
                 aria-label={t('common.close')}
               >
@@ -1537,7 +1639,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {filteredMedia.length > 1 && (
               <button
                 onClick={handlePrevMedia}
-                className="absolute left-1 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center active:scale-90 transition cursor-pointer"
+                className="absolute left-1 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-[var(--nova-on-accent)] border border-[var(--nova-border-color)] flex items-center justify-center active:scale-90 transition cursor-pointer"
                 title={t('common.previous')}
                 aria-label={t('common.previous')}
               >
@@ -1549,7 +1651,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {filteredMedia.length > 1 && (
               <button
                 onClick={handleNextMedia}
-                className="absolute right-1 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center active:scale-90 transition cursor-pointer"
+                className="absolute right-1 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-[var(--nova-on-accent)] border border-[var(--nova-border-color)] flex items-center justify-center active:scale-90 transition cursor-pointer"
                 title={t('common.next')}
                 aria-label={t('common.next')}
               >
@@ -1559,7 +1661,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {/* Content: Video or Image */}
             {activeMediaItem.type === 'video' ? (
-              <div className="relative w-full max-h-[65vh] rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl flex flex-col justify-center">
+              <div className="relative w-full max-h-[65vh] rounded-3xl overflow-hidden bg-black border border-[var(--nova-border-subtle)] shadow-2xl flex flex-col justify-center">
                 <video
                   ref={videoRef}
                   src={activeMediaItem.url}
@@ -1573,25 +1675,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 />
 
                 {/* Floating Video Controls Overlay */}
-                <div className="absolute inset-x-3 bottom-3 bg-[#181922]/90 backdrop-blur-md rounded-2xl p-2.5 border border-white/10 flex items-center justify-between shadow-xl">
+                <div className="absolute inset-x-3 bottom-3 bg-[var(--nova-surface-raised)]/90 backdrop-blur-md rounded-2xl p-2.5 border border-[var(--nova-border-subtle)] flex items-center justify-between shadow-xl">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={toggleVideoPlayback}
-                      className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] text-white flex items-center justify-center active:scale-95 transition cursor-pointer"
+                      className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] flex items-center justify-center active:scale-95 transition cursor-pointer"
                       title={isVideoPlaying ? t('profile.pause') : t('profile.play')}
                       aria-label={isVideoPlaying ? t('profile.pause') : t('profile.play')}
                     >
                       {isVideoPlaying ? (
-                        <Pause className="w-4 h-4 fill-white" />
+                        <Pause className="w-4 h-4 fill-[var(--nova-text-primary)]" />
                       ) : (
-                        <Play className="w-4 h-4 fill-white ml-0.5" />
+                        <Play className="w-4 h-4 fill-[var(--nova-text-primary)] ml-0.5" />
                       )}
                     </button>
                     <div>
-                      <span className="text-[11px] font-semibold text-white block">
+                      <span className="text-[11px] font-semibold text-[var(--nova-text-primary)] block">
                         {isVideoPlaying ? t('profile.playing') : t('profile.paused')}
                       </span>
-                      <span className="text-[10px] text-white/50">
+                      <span className="text-[10px] text-[var(--nova-text-muted)]">
                         {activeMediaItem.duration || '0:30'}
                       </span>
                     </div>
@@ -1603,7 +1705,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         e.stopPropagation();
                         setIsMuted(!isMuted);
                       }}
-                      className="w-11 h-11 flex items-center justify-center text-white/70 hover:text-white transition cursor-pointer"
+                      className="w-11 h-11 flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                       title={isMuted ? t('common.unmute') : t('common.mute')}
                       aria-label={isMuted ? t('common.unmute') : t('common.mute')}
                     >
@@ -1617,7 +1719,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="relative max-w-sm w-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#14151b]">
+              <div className="relative max-w-sm w-full rounded-3xl overflow-hidden border border-[var(--nova-border-subtle)] shadow-2xl bg-[var(--nova-surface)]">
                 <LazyMedia
                   src={activeMediaItem.url}
                   alt={activeMediaItem.caption || ''}
@@ -1630,14 +1732,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Lightbox Bottom Info Bar with Chat Link */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md mx-auto bg-[#171822]/95 border border-white/10 rounded-2xl p-3.5 space-y-2 shrink-0 z-10 backdrop-blur-md"
+            className="w-full max-w-md mx-auto bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] rounded-2xl p-3.5 space-y-2 shrink-0 z-10 backdrop-blur-md"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-xs font-bold text-white tracking-wide">
+                <p className="text-xs font-bold text-[var(--nova-text-primary)] tracking-wide">
                   {activeMediaItem.caption || t('profile.sharedMedia')}
                 </p>
-                <p className="text-[10px] text-[#868b98]">
+                <p className="text-[10px] text-[var(--nova-text-muted)]">
                   {activeMediaItem.date} · {t('profile.sharedWith', { name: profile.name })}
                 </p>
               </div>
@@ -1648,7 +1750,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setSelectedMediaIndex(null);
                   onOpenChat();
                 }}
-                className="px-2.5 py-1 bg-[#252834] hover:bg-[var(--nova-accent-color)] hover:text-white text-[var(--nova-accent-color)] text-[11px] font-medium rounded-lg border border-[var(--nova-accent-color)]/20 transition cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
+                className="px-2.5 py-1 bg-[var(--nova-surface-high)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--nova-on-accent)] text-[var(--nova-accent-color)] text-[11px] font-medium rounded-lg border border-[var(--nova-accent-color)]/20 transition cursor-pointer flex items-center gap-1 active:scale-95 shrink-0"
               >
                 <MessageSquare className="w-3 h-3" />
                 <span>{t('profile.showInChat')}</span>
@@ -1657,11 +1759,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {/* Chat Context Snippet */}
             {activeMediaItem.chatMessageSnippet && (
-              <div className="bg-black/30 rounded-xl p-2 border border-white/5 flex items-center gap-2">
+              <div className="bg-black/30 rounded-xl p-2 border border-[var(--nova-border-subtle)] flex items-center gap-2">
                 <span className="text-[10px] text-[var(--nova-accent-color)] font-semibold shrink-0">
                   {t('profile.chatContext')}:
                 </span>
-                <span className="text-[11px] text-white/80 italic truncate">
+                <span className="text-[11px] text-[var(--nova-text-secondary)] italic truncate">
                   "{activeMediaItem.chatMessageSnippet}"
                 </span>
               </div>
@@ -1677,9 +1779,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           aria-label={t('profile.safetyNumber')}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-white">Safety number</h3>
-            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
+          <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
+            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">Safety number</h3>
+            <div className="bg-[var(--nova-on-accent)] p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
               {safetyQrUrl ? (
                 <img src={safetyQrUrl} alt="Safety QR" className="w-44 h-44 rounded-lg" />
               ) : (
@@ -1688,7 +1790,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </div>
               )}
             </div>
-            <p className="text-xs text-[#8c919d]">
+            <p className="text-xs text-[var(--nova-text-muted)]">
               Compare this safety number with your contact: {safetyEmoji}
             </p>
             <div className="space-y-2">
@@ -1697,7 +1799,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 value={peerSafetyInput}
                 onChange={(e) => setPeerSafetyInput(e.target.value)}
                 placeholder="Paste contact safety number"
-                className="w-full rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                className="w-full rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
               />
               {peerSafetyInput.trim() && (
                 <p
@@ -1716,7 +1818,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
             <button
               onClick={() => setShowSafetyModal(false)}
-              className="w-full py-2.5 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+              className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
             >
               Close
             </button>
@@ -1731,9 +1833,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           aria-label={t('profile.linkDevice')}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
-          <div className="bg-[#181922] border border-white/10 rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-white">{t('profile.linkNewDevice')}</h3>
-            <div className="flex gap-1 p-1 bg-[#111218] border border-white/5 rounded-xl">
+          <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
+            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{t('profile.linkNewDevice')}</h3>
+            <div className="flex gap-1 p-1 bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl">
               <button
                 onClick={() => {
                   setDeviceLinkMode('primary');
@@ -1741,8 +1843,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 }}
                 className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
                   deviceLinkMode === 'primary'
-                    ? 'bg-[var(--nova-accent-color)]/20 text-white'
-                    : 'text-[#8c919d] hover:text-white'
+                    ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-primary)]'
+                    : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                 }`}
               >
                 {t('profile.thisDevice')}
@@ -1754,8 +1856,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 }}
                 className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
                   deviceLinkMode === 'join'
-                    ? 'bg-[var(--nova-accent-color)]/20 text-white'
-                    : 'text-[#8c919d] hover:text-white'
+                    ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-primary)]'
+                    : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                 }`}
               >
                 {t('profile.newDevice')}
@@ -1764,7 +1866,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {deviceLinkMode === 'primary' ? (
               <>
-                <div className="bg-white p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
+                <div className="bg-[var(--nova-on-accent)] p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
                   {deviceLinkQrUrl ? (
                     <img src={deviceLinkQrUrl} alt="Device link QR" className="w-44 h-44 rounded-lg" />
                   ) : (
@@ -1773,23 +1875,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-[#8c919d]">
+                <p className="text-xs text-[var(--nova-text-muted)]">
                   Scan this QR on your new device, or enter code: {deviceLinkCode}
                 </p>
                 {deviceLinkUrl && (
                   <div className="space-y-1 text-left">
-                    <p className="text-[11px] text-[#787d8a]">
+                    <p className="text-[11px] text-[var(--nova-text-muted)]">
                       Or send this link to the new device:
                     </p>
                     <p
-                      className="text-[10px] text-[#b8bcc6] break-all font-mono"
+                      className="text-[10px] text-[var(--nova-text-secondary)] break-all font-mono"
                       data-testid="device-link-url"
                     >
                       {deviceLinkUrl}
                     </p>
                   </div>
                 )}
-                <p className="text-[11px] text-[#787d8a]">
+                <p className="text-[11px] text-[var(--nova-text-muted)]">
                   Then paste the reply code shown on the new device.
                 </p>
                 <input
@@ -1797,11 +1899,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onChange={(e) => setDeviceLinkReplyInput(e.target.value)}
                   placeholder="nova://device-link-response?…"
                   aria-label="Device link reply"
-                  className="w-full px-3 py-2 bg-[#111218] border border-white/10 rounded-xl text-[11px] text-white placeholder:text-[#5c616d] outline-none focus:border-[var(--nova-accent-color)]/60"
+                  className="w-full px-3 py-2 bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl text-[11px] text-[var(--nova-text-primary)] placeholder:text-[var(--nova-text-muted)] outline-none focus:border-[var(--nova-accent-color)]/60"
                 />
                 <button
                   onClick={handleDeviceLinkReply}
-                  className="w-full py-2.5 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+                  className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
                 >
                   Complete linking
                 </button>
@@ -1812,7 +1914,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       {linkedDeviceCount === 1 ? '' : 's'} linked.
                     </p>
                     {historySyncStatus === 'syncing' && (
-                      <p className="text-[10.5px] text-[#8c919d] animate-pulse">
+                      <p className="text-[10.5px] text-[var(--nova-text-muted)] animate-pulse">
                         Transferring encrypted history...
                       </p>
                     )}
@@ -1830,7 +1932,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <button
                     type="button"
                     onClick={isScanningCamera ? stopCameraScan : startCameraScan}
-                    className="w-full py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer border border-white/10"
+                    className="w-full py-2 bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer border border-[var(--nova-border-subtle)]"
                     data-testid="toggle-camera-scan"
                   >
                     <Camera className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)]" />
@@ -1838,7 +1940,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </button>
 
                   {isScanningCamera && (
-                    <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-white/15 flex items-center justify-center">
+                    <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-[var(--nova-border-color)] flex items-center justify-center">
                       <video
                         ref={cameraVideoRef}
                         autoPlay
@@ -1856,7 +1958,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           }
                           stopCameraScan();
                         }}
-                        className="absolute bottom-2 px-3 py-1 bg-[var(--nova-accent-color,#ff4e18)] text-white text-[11px] font-semibold rounded-lg shadow-md cursor-pointer"
+                        className="absolute bottom-2 px-3 py-1 bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg shadow-md cursor-pointer"
                         data-testid="capture-qr-button"
                       >
                         Capture QR
@@ -1865,7 +1967,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   )}
                 </div>
 
-                <p className="text-xs text-[#8c919d]">
+                <p className="text-xs text-[var(--nova-text-muted)]">
                   Or paste the link shown on your primary device:
                 </p>
                 <textarea
@@ -1874,20 +1976,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   placeholder="nova://device-link?…"
                   aria-label="Device link offer"
                   rows={3}
-                  className="w-full px-3 py-2 bg-[#111218] border border-white/10 rounded-xl text-[11px] text-white placeholder:text-[#5c616d] outline-none focus:border-[var(--nova-accent-color)]/60 resize-none"
+                  className="w-full px-3 py-2 bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl text-[11px] text-[var(--nova-text-primary)] placeholder:text-[var(--nova-text-muted)] outline-none focus:border-[var(--nova-accent-color)]/60 resize-none"
                 />
                 <button
                   onClick={handleJoinDeviceLink}
-                  className="w-full py-2.5 bg-[var(--nova-accent-color)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+                  className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
                 >
                   Create reply code
                 </button>
                 {deviceLinkReply && (
-                  <div className="space-y-2 text-left bg-[#111218] border border-white/10 rounded-xl p-3">
-                    <p className="text-[11px] text-[#8c919d]">
+                  <div className="space-y-2 text-left bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl p-3">
+                    <p className="text-[11px] text-[var(--nova-text-muted)]">
                       Paste this reply code on the primary device to finish linking:
                     </p>
-                    <p className="text-[10px] text-white break-all font-mono" data-testid="device-link-reply">
+                    <p className="text-[10px] text-[var(--nova-text-primary)] break-all font-mono" data-testid="device-link-reply">
                       {deviceLinkReply}
                     </p>
                     <button
@@ -1899,7 +2001,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           triggerToast('Copy the reply code manually');
                         }
                       }}
-                      className="w-full py-2 bg-white/5 text-white text-[11px] font-semibold rounded-lg hover:bg-white/10 transition cursor-pointer"
+                      className="w-full py-2 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                     >
                       Copy reply code
                     </button>
@@ -1911,7 +2013,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           void handleSyncHistoryOnSecondary(offer.code, offer.publicKey);
                         }
                       }}
-                      className="w-full py-2 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-white text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40"
+                      className="w-full py-2 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40"
                       data-testid="sync-history-secondary"
                     >
                       Sync history stream
@@ -1939,7 +2041,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 setDeviceLinkError(null);
                 setDeviceLinkUrl('');
               }}
-              className="w-full py-2.5 bg-white/5 text-white/70 font-semibold text-xs rounded-xl hover:bg-white/10 transition cursor-pointer"
+              className="w-full py-2.5 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
             >
               Close
             </button>
@@ -1955,45 +2057,45 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       >
         <div className="space-y-4">
           <label htmlFor="contact-edit-name" className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#8c919d]">{t('profile.name')}</span>
+            <span className="text-xs font-medium text-[var(--nova-text-muted)]">{t('profile.name')}</span>
             <input
               id="contact-edit-name"
               value={contactDraft.name}
               onChange={(e) => setContactDraft((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full min-h-[44px] px-3 rounded-xl bg-[#101118] border border-white/10 text-sm text-white outline-none focus:border-[var(--nova-accent-color)]/60"
+              className="w-full min-h-[44px] px-3 rounded-xl bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] text-sm text-[var(--nova-text-primary)] outline-none focus:border-[var(--nova-accent-color)]/60"
             />
           </label>
           <label htmlFor="contact-edit-nickname" className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#8c919d]">{t('profile.nickname')}</span>
+            <span className="text-xs font-medium text-[var(--nova-text-muted)]">{t('profile.nickname')}</span>
             <input
               id="contact-edit-nickname"
               value={contactDraft.nickname}
               onChange={(e) => setContactDraft((prev) => ({ ...prev, nickname: e.target.value }))}
-              className="w-full min-h-[44px] px-3 rounded-xl bg-[#101118] border border-white/10 text-sm text-white outline-none focus:border-[var(--nova-accent-color)]/60"
+              className="w-full min-h-[44px] px-3 rounded-xl bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] text-sm text-[var(--nova-text-primary)] outline-none focus:border-[var(--nova-accent-color)]/60"
             />
           </label>
           <label htmlFor="contact-edit-phone" className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#8c919d]">{t('profile.phone')}</span>
+            <span className="text-xs font-medium text-[var(--nova-text-muted)]">{t('profile.phone')}</span>
             <input
               id="contact-edit-phone"
               value={contactDraft.phone}
               onChange={(e) => setContactDraft((prev) => ({ ...prev, phone: e.target.value }))}
               inputMode="tel"
-              className="w-full min-h-[44px] px-3 rounded-xl bg-[#101118] border border-white/10 text-sm text-white outline-none focus:border-[var(--nova-accent-color)]/60"
+              className="w-full min-h-[44px] px-3 rounded-xl bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] text-sm text-[var(--nova-text-primary)] outline-none focus:border-[var(--nova-accent-color)]/60"
             />
           </label>
           <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={() => setShowContactEdit(false)}
-              className="flex-1 min-h-[44px] rounded-xl bg-white/[0.05] text-white/70 text-sm font-semibold hover:bg-white/[0.1] transition cursor-pointer"
+              className="flex-1 min-h-[44px] rounded-xl bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] text-sm font-semibold hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
             >
               {t('common.cancel')}
             </button>
             <button
               type="button"
               onClick={saveContactEdit}
-              className="flex-1 min-h-[44px] rounded-xl bg-[var(--nova-accent-color)] text-white text-sm font-semibold hover:opacity-90 transition cursor-pointer"
+              className="flex-1 min-h-[44px] rounded-xl bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-sm font-semibold hover:opacity-90 transition cursor-pointer"
             >
               {t('common.save')}
             </button>
@@ -2026,7 +2128,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               e.stopPropagation();
               setAvatarLightboxOpen(false);
             }}
-            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
             aria-label={t('common.close')}
           >
             <X className="w-5 h-5" />

@@ -19,11 +19,23 @@ import {
   Sparkles,
   Heart,
   Lock,
+  Bell,
+  BellOff,
+  VolumeX,
+  Volume2,
 } from 'lucide-react';
 import { usePremium } from '../hooks/usePremium';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { ChatFolder, ChatItem } from '../types/messenger';
 import { LazyMedia } from './LazyMedia';
+import {
+  getFolderNotificationLevel,
+  setFolderNotificationLevel,
+  muteFolder,
+  getFolderMuteUntil,
+  getEffectiveFolderNotificationLevel,
+  type NotificationLevel,
+} from '../lib/notifications/notificationPrefs';
 
 interface FolderModalProps {
   isOpen: boolean;
@@ -71,7 +83,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   const { t } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, checkout } = usePremium();
-  const [activeTab, setActiveTab] = useState<'create' | 'manage'>(
+  const [activeTab, setActiveTab] = useState<'create' | 'manage' | 'notifications'>(
     editingFolder ? 'create' : 'create'
   );
   const [name, setName] = useState(editingFolder?.name || '');
@@ -126,6 +138,298 @@ export const FolderModal: React.FC<FolderModalProps> = ({
     onClose();
   };
 
+  // Render active tab content to avoid complex ternary chain in JSX
+  const tabContent = (() => {
+    // Helper to get folder icon component for a chat
+    const getChatIcon = (chat: ChatItem) => {
+      if (chat.type === 'channel') return Radio;
+      if (chat.type === 'group') return Users;
+      return User;
+    };
+
+    if (activeTab === 'create') {
+      return (
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto no-scrollbar space-y-3.5">
+          {/* Folder Name Input */}
+          <div>
+            <label className="block text-[11px] font-semibold text-[#868b98] mb-1">
+              {t('foldersObj.nameLabel')}
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setErrorMsg('');
+              }}
+              placeholder={t('foldersObj.namePlaceholder')}
+              className="w-full bg-[#1b1c28] border border-white/10 focus:border-[var(--nova-accent-color)] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition shadow-inner"
+              autoFocus
+            />
+            {errorMsg && (
+              <p className="text-[10px] text-red-400 mt-1 font-medium">{errorMsg}</p>
+            )}
+          </div>
+
+          {/* Folder Icon Selector */}
+          <div>
+            <label className="block text-[11px] font-semibold text-[#868b98] mb-1">
+              {t('foldersObj.iconLabel')}
+            </label>
+            <div data-testid="folder-icon-list" className="flex gap-2 overflow-x-auto touch-pan-x no-scrollbar pb-2">
+              {FOLDER_ICONS.map((item) => {
+                const IconComp = ICON_BY_ID[item.id];
+                const isSelected = selectedIcon === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedIcon(item.id)}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 shadow-sm shadow-[var(--nova-accent-color)]/25'
+                        : 'bg-[#1b1c28] border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    {IconComp && <IconComp className="w-5 h-5 text-[var(--nova-accent-color)]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chat Selection */}
+          {!editingFolder && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-[11px] font-semibold text-[#868b98]">
+                  {t('foldersObj.chatsLabel')}
+                </label>
+                <span className="text-[10px] text-[#717682]">{t('foldersObj.chatsIncluded', { selected: selectedChatIds.length, total: chats.length })}</span>
+              </div>
+              <div className="max-h-48 overflow-y-auto no-scrollbar space-y-1.5">
+                {chats.map((chat) => {
+                  const isChecked = selectedChatIds.includes(chat.id);
+                  const ChatIconComp = getChatIcon(chat);
+                  return (
+                    <label key={chat.id} className="flex items-center gap-3 p-2 rounded-xl bg-[#1b1c28] border border-white/5 hover:border-white/10 cursor-pointer transition">
+                      <div className="w-8 h-8 rounded-lg bg-[#252838] flex items-center justify-center shrink-0">
+                        <ChatIconComp className="w-4 h-4 text-[var(--nova-accent-color)]" />
+                      </div>
+                      <div className="truncate flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{chat.name}</p>
+                        <p className="text-[10px] text-[#717682] truncate">
+                          {chat.type === 'channel'
+                            ? t('foldersObj.chatTypeChannel')
+                            : chat.type === 'group'
+                            ? t('foldersObj.chatTypeGroup')
+                            : t('foldersObj.chatTypeDirect')}
+                        </p>
+                      </div>
+                      <div
+                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
+                          isChecked
+                            ? 'bg-[var(--nova-accent-color)] text-white shadow-sm'
+                            : 'border border-white/20 bg-black/20'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="pt-2 flex items-center gap-2">
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[var(--nova-accent-color)]/25 active:scale-95 text-center"
+            >
+              {editingFolder ? t('foldersObj.saveButton') : t('foldersObj.createButton')}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-semibold text-xs transition cursor-pointer"
+            >
+              {t('foldersObj.cancelButton')}
+            </button>
+          </div>
+        </form>
+      );
+    }
+
+    if (activeTab === 'manage') {
+      return (
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2">
+          <p className="text-[11px] text-[#868b98] px-1">
+            {t('foldersObj.manageDescription')}
+          </p>
+
+          <div className="space-y-1.5">
+            {folders.map((f) => {
+              const count = f.id === 'all' ? chats.length : f.chatIds.length;
+              const FolderIconComp = ICON_BY_ID[f.icon] || Folder;
+              return (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-3 p-2 rounded-xl bg-[#1b1c28] border border-white/5 transition hover:bg-[#222430]"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-[#252838] flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                    <FolderIconComp className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white truncate">{f.name}</p>
+                    <p className="text-[10px] text-[#717682]">{t('foldersObj.chatsIncluded', { count })}</p>
+                  </div>
+
+                  {f.isDefault ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/40 shrink-0">
+                      {t('foldersObj.defaultBadge')}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onDelete(f.id)}
+                      className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"
+                      title={t('foldersObj.deleteFolder')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={() => setActiveTab('create')}
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
+              <span>{t('foldersObj.addAnother')}</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // notifications tab
+    return (
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
+        <p className="text-[11px] text-[#868b98] px-1">
+          {t('foldersObj.notificationsDescription')}
+        </p>
+
+        <div className="space-y-3">
+          {folders.filter((f) => !f.isDefault).map((folder) => {
+            const level = getFolderNotificationLevel(folder.id);
+            const muteUntil = getFolderMuteUntil(folder.id);
+            const isMuted = muteUntil && muteUntil > Date.now();
+            const effectiveLevel = getEffectiveFolderNotificationLevel(folder.id);
+            const FolderIconComp = ICON_BY_ID[folder.icon] || Folder;
+
+            return (
+              <div
+                key={folder.id}
+                className="p-3 rounded-2xl bg-[#1b1c28] border border-white/5 space-y-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#252838] flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                    <FolderIconComp className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white truncate">{folder.name}</p>
+                    <p className="text-[10px] text-[#717682]">
+                      {isMuted
+                        ? t('foldersObj.mutedUntil', {
+                            time: new Date(muteUntil).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }),
+                          })
+                        : t('foldersObj.notificationLevel', {
+                            level: effectiveLevel,
+                          })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notification Level Selector */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-[#868b98] shrink-0">
+                    {t('foldersObj.notifyLevel')}
+                  </span>
+                  {(['all', 'mentions', 'none'] as NotificationLevel[]).map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setFolderNotificationLevel(folder.id, lvl)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                        effectiveLevel === lvl
+                          ? 'bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[var(--nova-accent-color)] shadow-sm'
+                          : 'bg-[#101118] border border-white/10 text-white/70 hover:border-white/20'
+                      }`}
+                    >
+                      {t(`foldersObj.level.${lvl}`)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mute Controls */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isMuted ? (
+                    <button
+                      type="button"
+                      onClick={() => muteFolder(folder.id, 0)}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400 transition cursor-pointer"
+                    >
+                      {t('foldersObj.unmute')}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => muteFolder(folder.id, 60 * 60 * 1000)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 transition cursor-pointer"
+                      >
+                        {t('foldersObj.mute1h')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => muteFolder(folder.id, 8 * 60 * 60 * 1000)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 transition cursor-pointer"
+                      >
+                        {t('foldersObj.mute8h')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => muteFolder(folder.id, 24 * 60 * 60 * 1000)}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 transition cursor-pointer"
+                      >
+                        {t('foldersObj.mute24h')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {folders.filter((f) => !f.isDefault).length === 0 && (
+          <div className="text-center py-12 text-[#717682]">
+            <p className="text-sm font-medium mb-1">{t('foldersObj.noCustomFolders')}</p>
+            <p className="text-[11px]">{t('foldersObj.createFolderFirst')}</p>
+          </div>
+        )}
+      </div>
+    );
+  })();
+
   return (
     <div
       onClick={onClose}
@@ -164,7 +468,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
           </button>
         </div>
 
-        {/* Tab switch: New Folder vs Manage All */}
+        {/* Tab switch: New Folder vs Manage All vs Notifications */}
         {!editingFolder && (
           <div className="flex bg-[#101118] p-1 rounded-xl border border-white/5 shrink-0">
             <button
@@ -187,253 +491,19 @@ export const FolderModal: React.FC<FolderModalProps> = ({
             >
               {t('foldersObj.manageTab', { count: folders.length })}
             </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                activeTab === 'notifications'
+                  ? 'bg-[#222430] text-white shadow'
+                  : 'text-[#828795] hover:text-white'
+              }`}
+            >
+              {t('foldersObj.notificationsTab')}
+            </button>
           </div>
         )}
-
-        {/* TAB 1: CREATE / EDIT FOLDER FORM */}
-        {activeTab === 'create' ? (
-          <form onSubmit={handleSave} className="flex-1 overflow-y-auto no-scrollbar space-y-3.5">
-            {/* Folder Name Input */}
-            <div>
-              <label className="block text-[11px] font-semibold text-[#868b98] mb-1">
-                {t('foldersObj.nameLabel')}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setErrorMsg('');
-                }}
-                placeholder={t('foldersObj.namePlaceholder')}
-                className="w-full bg-[#1b1c28] border border-white/10 focus:border-[var(--nova-accent-color)] rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition shadow-inner"
-                autoFocus
-              />
-              {errorMsg && (
-                <p className="text-[10px] text-red-400 mt-1 font-medium">{errorMsg}</p>
-              )}
-            </div>
-
-            {/* Folder Icon Selector */}
-            <div>
-              <label className="block text-[11px] font-semibold text-[#868b98] mb-1.5">
-                {t('foldersObj.iconLabel')}
-              </label>
-              <div
-                ref={iconRowRef}
-                data-testid="folder-icon-list"
-                className="w-full min-w-0 max-w-full flex flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain no-scrollbar pb-1 touch-pan-x"
-                onWheel={(e) => {
-                  if (e.deltaX === 0 && e.deltaY !== 0) {
-                    e.preventDefault();
-                    iconRowRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
-                  }
-                }}
-              >
-                {FOLDER_ICONS.map((item) => {
-                  const IconComp = item.icon;
-                  const isSelected = selectedIcon === item.id;
-                  const isLocked = item.premium && !premium;
-
-                  const handleIconClick = () => {
-                    if (isLocked) {
-                      checkout();
-                      return;
-                    }
-                    setSelectedIcon(item.id);
-                  };
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={handleIconClick}
-                      className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/30 scale-105'
-                          : isLocked
-                          ? 'bg-[#1b1c28] text-white/40 border border-white/5 opacity-60 cursor-not-allowed hover:bg-[#1b1c28]'
-                          : 'bg-[#1b1c28] text-white/60 hover:text-white border border-white/5'
-                      }`}
-                      title={
-                        isLocked ? t('premium.lockedIcon') : item.label
-                      }
-                      disabled={isLocked}
-                    >
-                      <IconComp className="w-5 h-5" />
-                      {isLocked && (
-                        <Lock className="w-[10px] h-[10px] text-white/70 absolute bottom-1 right-1" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Quick Preset Filters */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-semibold text-[#868b98]">
-                  {t('foldersObj.includedChats', { selected: selectedChatIds.length, total: chats.length })}
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={selectOnlyDirect}
-                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
-                  >
-                    {t('foldersObj.selectPersonal')}
-                  </button>
-                  <span className="text-white/20 text-[9px]">·</span>
-                  <button
-                    type="button"
-                    onClick={selectOnlyChannels}
-                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
-                  >
-                    {t('foldersObj.selectChannels')}
-                  </button>
-                  <span className="text-white/20 text-[9px]">·</span>
-                  <button
-                    type="button"
-                    onClick={selectOnlyGroups}
-                    className="text-[9px] text-[var(--nova-accent-color)] hover:underline cursor-pointer"
-                  >
-                    {t('foldersObj.selectGroups')}
-                  </button>
-                </div>
-              </div>
-
-              {/* Chats Selection List */}
-              <div className="bg-[#12131b] border border-white/5 rounded-2xl p-1.5 space-y-1 max-h-48 overflow-y-auto no-scrollbar">
-                {chats.map((chat) => {
-                  const isChecked = selectedChatIds.includes(chat.id);
-                  return (
-                    <div
-                      key={chat.id}
-                      onClick={() => toggleChatSelection(chat.id)}
-                      className={`flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
-                        isChecked
-                          ? 'bg-[#1e202c] border border-white/10'
-                          : 'hover:bg-white/5 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className="w-7 h-7 rounded-full overflow-hidden bg-[#20222a] shrink-0 border border-white/10 flex items-center justify-center text-[10px] font-bold">
-                          {chat.avatar && !chat.isChannel ? (
-                            <LazyMedia
-                              src={chat.avatar}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              eager
-                            />
-                          ) : (
-                            <span>{chat.name.slice(0, 2).toUpperCase()}</span>
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {chat.name}
-                          </p>
-                          <p className="text-[10px] text-[#717682] truncate">
-                              {chat.type === 'channel'
-                                ? t('foldersObj.chatTypeChannel')
-                                : chat.type === 'group'
-                                ? t('foldersObj.chatTypeGroup')
-                                : t('foldersObj.chatTypeDirect')}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
-                          isChecked
-                            ? 'bg-[var(--nova-accent-color)] text-white shadow-sm'
-                            : 'border border-white/20 bg-black/20'
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="pt-2 flex items-center gap-2">
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[var(--nova-accent-color)]/25 active:scale-95 text-center"
-              >
-                {editingFolder ? t('foldersObj.saveButton') : t('foldersObj.createButton')}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-semibold text-xs transition cursor-pointer"
-              >
-                {t('foldersObj.cancelButton')}
-              </button>
-            </div>
-          </form>
-        ) : (
-          /* TAB 2: MANAGE ALL FOLDERS */
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-2">
-            <p className="text-[11px] text-[#868b98] px-1">
-              {t('foldersObj.manageDescription')}
-            </p>
-
-            <div className="space-y-1.5">
-              {folders.map((f) => {
-                const count = f.id === 'all' ? chats.length : f.chatIds.length;
-                const FolderIconComp = ICON_BY_ID[f.icon] || Folder;
-                return (
-                  <div
-                    key={f.id}
-                    className="flex items-center justify-between p-2.5 rounded-2xl bg-[#1b1c28] border border-white/5"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-[#252838] flex items-center justify-center text-[var(--nova-accent-color)]">
-                        <FolderIconComp className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-white flex items-center gap-1.5">
-                          <span>{f.name}</span>
-                          {f.isDefault && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/5 text-[#828795]">
-                              {t('foldersObj.defaultBadge')}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-[10px] text-[#717682]">{t('foldersObj.chatsIncluded', { count })}</p>
-                      </div>
-                    </div>
-
-                    {!f.isDefault && (
-                      <button
-                        onClick={() => onDelete(f.id)}
-                        className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"
-                        title={t('foldersObj.deleteFolder')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={() => setActiveTab('create')}
-                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
-                <span>{t('foldersObj.addAnother')}</span>
-              </button>
-            </div>
-          </div>
-        )}
+        {tabContent}
       </div>
     </div>
   );

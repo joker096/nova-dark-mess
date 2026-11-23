@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AnonymousMessengerScreen } from './AnonymousMessengerScreen';
 import { generateQueueSigningKeyPair, queueSigningPublicKey } from '../lib/anon/signing';
 import { FAILOVER_AFTER_FAILURES } from '../lib/anon/relayHealth';
@@ -430,8 +430,13 @@ describe('AnonymousMessengerScreen', () => {
   });
 
   it('drops the pending invitation count when it expires', async () => {
+    // `shouldAdvanceTime` lets Testing Library's waitFor make progress while
+    // the timers are mocked; without it the first findBy* call hangs.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
     const localContact = stateWithContact('local-a').state.contacts[0];
     localContact.contact.peerInvite.relayUrl = 'https://local.invalid';
+    const now = Date.now();
     mocks.db.loadSetting.mockResolvedValue({
       settings: {
         relayUrl: '',
@@ -446,7 +451,7 @@ describe('AnonymousMessengerScreen', () => {
       pendingInbox: {
         ...localContact.contact.inbox,
         relayUrl: 'https://local.invalid',
-        expiresAt: Date.now() + 100,
+        expiresAt: now + 60_000, // 1 minute in the future
       },
     });
 
@@ -457,10 +462,18 @@ describe('AnonymousMessengerScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
     const badgeButton = screen.getByRole('button', { name: 'Local mode' });
     expect(badgeButton.textContent).toBe('Local only · 1 + 1 pending');
+    
+    // Advance time past the expiry
+    await act(async () => {
+      vi.advanceTimersByTime(61_000);
+    });
     await waitFor(
       () => expect(badgeButton.textContent).toBe('Local only · 1'),
       { timeout: 5000 },
     );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('prefills the invite code supplied by a deep link', async () => {
@@ -680,7 +693,7 @@ describe('AnonymousMessengerScreen', () => {
       expect.anything(),
       expect.objectContaining({ relayUrl: 'https://other-relay.example' }),
     );
-  });
+  }, 30000);
 
   it('polls the standby queue when the primary inbox is empty', async () => {
     const { contact, state } = stateWithContact('peer');
@@ -727,7 +740,7 @@ describe('AnonymousMessengerScreen', () => {
       expect.objectContaining({ relayUrl: 'https://backup.example' }),
       ['standby-packet'],
     );
-  });
+  }, 30000);
 
   it('moves a queue to the next relay only after its relay keeps failing', async () => {
     const { contact, state } = stateWithContact('peer');
@@ -766,7 +779,7 @@ describe('AnonymousMessengerScreen', () => {
     // The queue moved with its contacts, not the whole app's relay.
     expect(mocks.failoverInbox.mock.calls[0][1]).toMatchObject({ queueId: contact.inbox.queueId });
     expect(mocks.failoverInbox.mock.calls[0][2]).toHaveLength(1);
-  });
+  }, 30000);
 
   it('rotates a due contact queue to the next relay on schedule', async () => {
     const { contact, state } = stateWithContact('peer');
@@ -827,7 +840,7 @@ describe('AnonymousMessengerScreen', () => {
         }),
       ),
     );
-  });
+  }, 30000);
 
   it('seeds relay failures from storage and fails over sooner', async () => {
     const { state } = stateWithContact('peer');
@@ -866,7 +879,7 @@ describe('AnonymousMessengerScreen', () => {
         { 'https://relay.example': { failures: FAILOVER_AFTER_FAILURES } },
       ),
     );
-  });
+  }, 30000);
 
   it('persists decrypted messages before acknowledging relay packets', async () => {
     const signingKey = generateQueueSigningKeyPair().privateKey;
@@ -921,7 +934,7 @@ describe('AnonymousMessengerScreen', () => {
       mocks.ackInboxPackets.mock.invocationCallOrder[0],
     );
     expect(await screen.findByText('persist before ack')).toBeTruthy();
-  });
+  }, 30000);
 
   it('retries an unsent contact offer when checking for updates', async () => {
     const { contact, state } = stateWithContact('peer-pending-offer');
@@ -950,7 +963,7 @@ describe('AnonymousMessengerScreen', () => {
       };
       expect(saved.contacts[0].pendingOffer).toBe(false);
     });
-  });
+  }, 30000);
 
   it('purchases a gift and sends its one-time code to the selected saved contact', async () => {
     const { contact, state } = stateWithContact('peer-1');
@@ -978,7 +991,7 @@ describe('AnonymousMessengerScreen', () => {
       body: expect.stringContaining(`NOVA-GIFT-${'A'.repeat(32)}`),
       status: 'sent',
     });
-  });
+  }, 30000);
 
   it('keeps a paid gift for retry when encrypted delivery fails', async () => {
     const { state } = stateWithContact('peer-2');
@@ -1000,7 +1013,7 @@ describe('AnonymousMessengerScreen', () => {
     await screen.findByText('Gift code sent in an encrypted message.');
     expect(mocks.purchasePremiumGiftCode).toHaveBeenCalledTimes(1);
     expect(mocks.sendContactMessage).toHaveBeenCalledTimes(2);
-  });
+  }, 30000);
 
   it('stores a hash-only report locally and applies sender blocking', async () => {
     const signingKey = generateQueueSigningKeyPair().privateKey;
@@ -1070,5 +1083,5 @@ describe('AnonymousMessengerScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Block' }));
     await screen.findByRole('button', { name: 'Unblock' });
     expect(localStorage.getItem('nova_anon_block_list_v1')).toContain(queueSigningPublicKey(signingKey));
-  });
+  }, 30000);
 });

@@ -142,19 +142,19 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 <>
     {/* Floating Header Pill */}
     <div className="p-2 shrink-0 relative z-20">
-      <div className="bg-[#14151c]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
+      <div className="bg-[var(--nova-surface)]/90 backdrop-blur-xl border border-[var(--nova-border-subtle)] rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
         {isSearchOpen ? (
           /* ACTIVE SEARCH BAR HEADER WITH WORD STEPPER & CONTROLS */
           <div className="flex items-center gap-1.5 w-full animate-in fade-in duration-200">
             <button
               onClick={handleCloseSearch}
-              className="w-8 h-8 rounded-full bg-[#1f2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-full bg-[var(--nova-surface-raised)]/80 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-95 transition cursor-pointer shrink-0"
               title={t('common.back')}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex-1 bg-[#1a1b26] border border-[var(--nova-accent-color,#ff4e18)]/50 focus-within:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
+            <div className="flex-1 bg-[var(--nova-surface-raised)] border border-[var(--nova-accent-color,#ff4e18)]/50 focus-within:border-[var(--nova-accent-color,#ff4e18)] rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-inner min-w-0">
               <Search className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
               <input
                 ref={searchInputRef}
@@ -177,7 +177,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   }
                 }}
                 placeholder={t('chat.searchInChat')}
-                className="w-full bg-transparent text-xs text-white placeholder-white/40 focus:outline-none py-0.5 min-w-0"
+                className="w-full bg-transparent text-xs text-[var(--nova-text-primary)] placeholder-white/40 focus:outline-none py-0.5 min-w-0"
               />
 
               {searchQuery && (
@@ -187,7 +187,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     setActiveMatchIndex(0);
                     searchInputRef.current?.focus();
                   }}
-                  className="p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition cursor-pointer shrink-0"
+                  className="p-1 rounded-full hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
                   title={t('common.close')}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -206,17 +206,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
             {/* Stepper buttons: Jump Up / Down through matches */}
             {searchQuery.trim() && matchingMessages.length > 0 && (
-              <div className="flex items-center gap-0.5 bg-[#1a1b26] border border-white/10 rounded-xl p-0.5 shrink-0">
+              <div className="flex items-center gap-0.5 bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-xl p-0.5 shrink-0">
                 <button
                   onClick={handlePrevMatch}
-                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-lg hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                   title={t('common.previous')}
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleNextMatch}
-                  className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
+                  className="w-7 h-7 rounded-lg hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
                   title={t('common.next')}
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -234,8 +234,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 }
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0 ${
                   searchFilterMode === 'filtered'
-                    ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]'
-                    : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10'
+                    ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 border border-[var(--nova-accent-color,#ff4e18)]'
+                    : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] border border-[var(--nova-border-subtle)]'
                 }`}
                 title={
                   searchFilterMode === 'filtered'
@@ -249,7 +249,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
             <button
               onClick={handleCloseSearch}
-              className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/80 hover:text-white transition cursor-pointer active:scale-95 shrink-0"
+              className="px-2.5 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-95 shrink-0"
             >
               Done
             </button>
@@ -260,7 +260,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             {/* Mobile back button */}
             <button
               onClick={onBack}
-              className="w-9 h-9 rounded-full bg-[#1f2029]/80 hover:bg-[#282a36] border border-white/5 flex items-center justify-center text-white/90 active:scale-95 transition cursor-pointer md:hidden shrink-0"
+              className="w-9 h-9 rounded-full bg-[var(--nova-surface-raised)]/80 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-95 transition cursor-pointer lg:hidden shrink-0"
               aria-label="Back to chats"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -281,11 +281,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     className="w-full h-full object-cover"
                   />
                   {isTyping ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[var(--nova-border-color)] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-on-accent)] animate-ping" />
                     </span>
                   ) : (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[var(--nova-border-color)] shadow-sm shadow-emerald-500/50" />
                   )}
                 </button>
               )}
@@ -303,7 +303,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     }
                   }}
                 >
-                  <span className="max-w-full font-bold text-[14.5px] text-white tracking-tight group-hover:text-[var(--nova-accent-color,#ff4e18)] transition truncate">
+                  <span className="max-w-full font-bold text-[14.5px] text-[var(--nova-text-primary)] tracking-tight group-hover:text-[var(--nova-accent-color,#ff4e18)] transition truncate">
                     {profile.name}
                   </span>
 
@@ -349,7 +349,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   ) : (
                     <div className="flex items-center gap-1 mt-0.5 select-none">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
-                      <span className="max-w-[132px] truncate whitespace-nowrap text-[10px] text-[#868b98] font-normal leading-none">
+                      <span className="max-w-[132px] truncate whitespace-nowrap text-[10px] text-[var(--nova-text-muted)] font-normal leading-none">
                         {profile.status}
                       </span>
                     </div>
@@ -370,26 +370,24 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </button>
 
                 {/* Header Menu Tabs: [ Chat | Gallery ] */}
-                <div className="hidden sm:flex items-center gap-0.5 p-0.5 bg-[#181922] rounded-lg border border-white/5 select-none shrink-0">
+                <div className="hidden sm:flex items-center gap-0.5 p-0.5 bg-[var(--nova-surface-raised)] rounded-lg border border-[var(--nova-border-subtle)] select-none shrink-0">
                   <button
                     onClick={() => setActiveHeaderTab('chat')}
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                    className={`min-h-6 px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer ${
                       activeHeaderTab === 'chat'
-                        ? 'text-white shadow-sm'
-                        : 'text-white/60 hover:text-white'
+                        ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-sm'
+                        : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                     }`}
-                    style={activeHeaderTab === 'chat' ? { backgroundColor: 'var(--nova-accent-color)' } : undefined}
                   >
                     Chat
                   </button>
                   <button
                     onClick={() => setActiveHeaderTab('gallery')}
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center gap-0.5 ${
+                    className={`min-h-6 px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center gap-0.5 ${
                       activeHeaderTab === 'gallery'
-                        ? 'text-white shadow-sm'
-                        : 'text-white/60 hover:text-white'
+                        ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-sm'
+                        : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                     }`}
-                    style={activeHeaderTab === 'gallery' ? { backgroundColor: 'var(--nova-accent-color)' } : undefined}
                   >
                     <ImageIcon className="w-2.5 h-2.5" />
                     <span>Gallery</span>
@@ -404,7 +402,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   className={`relative w-8 h-8 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                     isTyping
                       ? 'border-[var(--nova-accent-color,#ff4e18)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
-                      : 'border-white/15 ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20'
+                      : 'border-[var(--nova-border-color)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20'
                   }`}
                   title={t('common.profile')}
                 >
@@ -416,11 +414,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   />
                   {/* Real-time live status beacon on avatar */}
                   {isTyping ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[var(--nova-border-color)] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-on-accent)] animate-ping" />
                     </span>
                   ) : (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[var(--nova-border-color)] shadow-sm shadow-emerald-500/50" />
                   )}
                 </button>
               )}
@@ -460,8 +458,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   onClick={handleStartVoiceCall}
                   className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                     isVideoCallOpen && callMode === 'voice'
-                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                      : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
+                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                      : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                   }`}
                   title={
                     isVideoCallOpen && callMode === 'voice'
@@ -478,8 +476,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 onClick={handleStartVideoCall}
                 className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                   isVideoCallOpen && callMode === 'video'
-                    ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                    : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
+                    ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                    : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                 }`}
                 title={
                   isVideoCallOpen && callMode === 'video'
@@ -497,8 +495,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     onClick={() => handleStartGroupCall('voice')}
                     className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ml-1 ${
                       isGroupCallOpen && callMode === 'voice'
-                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                        : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
                     title={isGroupCallOpen && callMode === 'voice' ? 'Group voice call in progress' : `Start group voice call (${groupMembers.length + 1} participants)`}
                   >
@@ -510,8 +508,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     onClick={() => handleStartGroupCall('video')}
                     className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ml-1 ${
                       isGroupCallOpen && callMode === 'video'
-                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
+                        : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
                     title={isGroupCallOpen && callMode === 'video' ? 'Group video call in progress' : `Start group video call (${groupMembers.length + 1} participants)`}
                   >
@@ -524,7 +522,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               {/* Search Messages in Chat Button */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
+                className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)] flex items-center justify-center transition cursor-pointer active:scale-95"
                 title={t('common.search')}
                 aria-label={t('common.search')}
               >
@@ -537,7 +535,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   onClick={() => setIsPinnedCarouselOpen((prev) => !prev)}
                   className={`relative w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer active:scale-95 ${
                     isPinnedCarouselOpen
-                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
+                      ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
                       : 'bg-[var(--nova-accent-color,#ff4e18)]/20 border border-[var(--nova-accent-color,#ff4e18)]/50 text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
                   }`}
                   title={isPinnedCarouselOpen ? 'Close pinned messages' : 'View pinned messages'}
@@ -547,8 +545,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   <span
                     className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
                       isPinnedCarouselOpen
-                        ? 'bg-white text-[var(--nova-accent-color,#ff4e18)]'
-                        : 'bg-[var(--nova-accent-color,#ff4e18)] text-white shadow-sm'
+                        ? 'bg-[var(--nova-on-accent)] text-[var(--nova-accent-color,#ff4e18)]'
+                        : 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-sm'
                     }`}
                   >
                     {pinnedMessages.length}
@@ -572,15 +570,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     data-pending-requests={pendingJoinRequests.length || undefined}
                     className={`w-7 h-7 rounded-full border transition cursor-pointer active:scale-95 flex items-center justify-center ${
                       isMoreMenuOpen
-                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
-                        : 'bg-white/5 hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-white/10 hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-white/70 hover:text-[var(--nova-accent-color,#ff4e18)]'
+                        ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30'
+                        : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
                   >
                     <MoreHorizontal className="w-3.5 h-3.5" />
                     {isGroupChat && currentUserIsGroupAdmin && pendingJoinRequests.length > 0 && (
                       <span
                         data-testid="join-request-badge"
-                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-white text-[8px] font-bold flex items-center justify-center"
+                        className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[8px] font-bold flex items-center justify-center"
                       >
                         {pendingJoinRequests.length}
                       </span>
@@ -589,8 +587,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </div>
               )}
 
-              {/* Secondary controls (wallpaper, theme) - hidden on narrow screens */}
-              <div className="hidden sm:flex items-center gap-1">
+              {/* Secondary controls (wallpaper, theme) - desktop only */}
+              <div className="hidden xl:flex items-center gap-1">
                 {/* Wallpaper Settings Button */}
                 <NovaButton
                   variant={isWallpaperModalOpen ? 'accent' : 'ghost'}
@@ -627,38 +625,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   title={`Chat theme: ${theme.label}${!canUse('chat_themes') && chatTheme === 'default' ? ' (Premium)' : ''}`}
                 >
                   {canUse('chat_themes') || chatTheme !== 'default' ? (
-                    <Sparkles className={`w-3 h-3 ${chatTheme === 'default' ? '' : 'fill-white'}`} />
+                    <Sparkles className={`w-3 h-3 ${chatTheme === 'default' ? '' : 'fill-[var(--nova-text-primary)]'}`} />
                   ) : (
                     <Lock className="w-3 h-3" />
                   )}
                 </NovaButton>
               </div>
 
-              {/* Profile avatar */}
-              <button
-                onClick={onOpenProfile}
-                className={`relative w-8 h-8 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
-                  isTyping
-                    ? 'border-[var(--nova-accent-color,#ff4e18)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
-                    : 'border-white/15 ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20'
-                }`}
-                title={t('common.profile')}
-              >
-                <LazyMedia
-                  src={profile.avatar}
-                  alt={profile.name}
-                  eager
-                  className="w-full h-full object-cover"
-                />
-                {/* Real-time live status beacon on avatar */}
-                {isTyping ? (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--nova-accent-color,#ff4e18)] border-2 border-[#12131b] flex items-center justify-center animate-pulse shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  </span>
-                ) : (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#12131b] shadow-sm shadow-emerald-500/50" />
-                )}
-              </button>
             </div>
           </>
         )}

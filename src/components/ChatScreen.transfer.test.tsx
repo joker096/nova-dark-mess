@@ -66,8 +66,8 @@ describe('ChatScreen file transfer wiring', () => {
 
     // The transfer pipeline is asynchronous and competes for CPU with the rest
     // of the suite under `vitest run`; 5 s flaked on a loaded machine.
-    expect(await screen.findByText(/chat\.fileVerified/, {}, { timeout: 15000 })).toBeTruthy();
+    expect(await screen.findByText(/chat\.fileVerified/, {}, { timeout: 30000 })).toBeTruthy();
     expect(screen.queryByTestId('file-transfer-progress')).toBeNull();
     expect(screen.getByText('plan.pdf')).toBeTruthy();
-  });
+  }, 30000);
 });

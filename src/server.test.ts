@@ -166,6 +166,14 @@ describe('server: CORS allowlist (F3.3)', () => {
     expect(res.headers.get('vary')).toContain('Origin');
   });
 
+  it('allows a loopback dev server on any port', async () => {
+    const res = await call('OPTIONS', '/api/presence', undefined, {
+      Origin: 'http://localhost:3002',
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3002');
+  });
+
   it('refuses preflight from an unrelated origin', async () => {
     const res = await call('OPTIONS', '/api/presence', undefined, {
       Origin: 'https://evil.example',
