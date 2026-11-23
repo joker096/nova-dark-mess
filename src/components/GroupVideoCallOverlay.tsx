@@ -572,7 +572,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         <div className="fixed inset-y-0 right-0 z-40 w-72 max-w-[90vw] bg-[#12131c] border-l border-white/10 shadow-2xl shadow-black/80 animate-in slide-in-from-right-4 duration-300 flex flex-col">
           <div className="p-4 border-b border-white/10 flex items-center justify-between">
             <h3 className="font-semibold text-white">Participants ({participants.size})</h3>
-            <button onClick={(e) => { e.stopPropagation(); setShowParticipantList(false); }} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition">
+            <button onClick={(e) => { e.stopPropagation(); setShowParticipantList(false); }} aria-label="Close participant list" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
               <UserX className="w-4 h-4" />
             </button>
           </div>
@@ -614,7 +614,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         <div className="fixed inset-y-0 right-0 z-40 w-80 max-w-[90vw] bg-[#12131c] border-l border-white/10 shadow-2xl shadow-black/80 animate-in slide-in-from-right-4 duration-300 flex flex-col">
           <div className="p-4 border-b border-white/10 flex items-center justify-between">
             <h3 className="font-semibold text-white">Call Settings</h3>
-            <button onClick={(e) => { e.stopPropagation(); setShowSettings(false); }} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center transition">
+            <button onClick={(e) => { e.stopPropagation(); setShowSettings(false); }} aria-label="Close call settings" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
               <UserX className="w-4 h-4" />
             </button>
           </div>
@@ -666,7 +666,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
       {expandedParticipant && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setExpandedParticipant(null)}>
           {mainParticipant && renderParticipantVideo(mainParticipant, true, 'main')}
-          <button onClick={(e) => { e.stopPropagation(); setExpandedParticipant(null); }} className="absolute top-4 right-4 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition">
+          <button onClick={(e) => { e.stopPropagation(); setExpandedParticipant(null); }} aria-label="Close expanded participant" className="absolute top-4 right-4 w-12 h-12 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition">
             <Maximize2 className="w-5 h-5" />
           </button>
         </div>

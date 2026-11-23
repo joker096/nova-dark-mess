@@ -64,8 +64,8 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
           onClick={() => onChange({ ...value, mode: 'now' })}
           className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition ${
             value.mode === 'now'
-              ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white'
-              : 'border-white/5 bg-[#1b1c28] text-white/65 hover:border-white/15 hover:text-white'
+              ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-text-primary)]'
+              : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)]/65 hover:border-[var(--nova-border-color)]/40 hover:text-[var(--nova-text-primary)]'
           }`}
         >
           <Send className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" />
@@ -77,8 +77,8 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
           onClick={() => onChange({ ...value, mode: 'scheduled' })}
           className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition ${
             value.mode === 'scheduled'
-              ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-white'
-              : 'border-white/5 bg-[#1b1c28] text-white/65 hover:border-white/15 hover:text-white'
+              ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-text-primary)]'
+              : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)]/65 hover:border-[var(--nova-border-color)]/40 hover:text-[var(--nova-text-primary)]'
           }`}
         >
           <CalendarClock className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" />
@@ -96,7 +96,7 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
             locale={language}
           />
 
-          <div className="rounded-2xl border border-white/5 bg-[#101118] p-2.5">
+          <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] p-2.5">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[#868b98]">
                 {t('schedule.time')}
@@ -111,7 +111,7 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
                 type="time"
                 value={timeValue}
                 onChange={handleTimeChange}
-                className="w-[92px] rounded-lg border border-white/10 bg-[#1b1c28] p-1.5 text-xs text-white focus:border-[var(--nova-accent-color)] focus:outline-none"
+                className="w-[92px] rounded-lg border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] p-1.5 text-xs text-[var(--nova-text-primary)] focus:border-[var(--nova-accent-color)] focus:outline-none"
                 aria-label={t('schedule.time')}
               />
               <div className="flex flex-1 items-center gap-1">
@@ -123,7 +123,7 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
                     className={`flex-1 rounded-lg border px-1 py-1.5 text-[10px] font-semibold transition ${
                       value.date.getHours() === hours && value.date.getMinutes() === 0
                         ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/20 text-white'
-                        : 'border-white/5 bg-white/[0.03] text-white/50 hover:text-white'
+                        : 'border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)]/50 hover:text-[var(--nova-text-primary)]'
                     }`}
                   >
                     {pad(hours)}:00

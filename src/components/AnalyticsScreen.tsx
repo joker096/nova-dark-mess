@@ -130,12 +130,12 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
     .slice(0, 3);
 
   return (
-    <div className="flex-1 bg-[#0b0c10] text-[#e8ebf0] overflow-y-auto p-6 md:p-8 custom-scrollbar">
+    <div className="flex-1 bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] overflow-y-auto p-6 md:p-8 custom-scrollbar">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="md:hidden p-1.5 rounded-lg hover:bg-white/5 text-[#868b98] hover:text-white transition cursor-pointer"
+            className="md:hidden p-1.5 rounded-lg hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -144,11 +144,11 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
             <div className="p-2 rounded-xl bg-[var(--nova-accent-color)]/10 text-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/20">
               <BarChart3 className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-[#e8ebf0]">
+            <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-[var(--nova-text-primary)]">
               {t('analytics.usageTitle')}
             </h1>
           </div>
-          <p className="text-[#868b98] text-sm mt-1">
+          <p className="text-[var(--nova-text-secondary)] text-sm mt-1">
             {t('analytics.usageSubtitle')}
           </p>
         </div>
@@ -156,7 +156,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            className={`p-2.5 rounded-xl border border-white/5 bg-[#181921] hover:bg-[#20222a] text-[#868b98] transition-all ${
+            className={`p-2.5 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)] transition-all ${
               isRefreshing ? 'animate-spin text-[var(--nova-accent-color)]' : ''
             }`}
             title={t('analytics.refresh')}
@@ -165,7 +165,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
             <RefreshCw className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center p-1 rounded-xl bg-[#181921] border border-white/5 text-xs font-medium">
+          <div className="flex items-center p-1 rounded-xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] text-xs font-medium">
             {(['week', 'month', 'year'] as const).map(tf => (
               <button
                 key={tf}
@@ -173,7 +173,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
                 className={`px-3 py-1.5 rounded-lg transition-all capitalize ${
                   timeframe === tf
                     ? 'bg-[var(--nova-accent-color)]/10 text-[var(--nova-accent-color)] shadow-md shadow-[var(--nova-accent-color)]/25 font-semibold'
-                    : 'text-[#868b98] hover:text-[#e8ebf0]'
+                    : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                 }`}
                 aria-label={t(`analytics.${tf}`)}
               >
@@ -190,10 +190,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
           return (
             <div
               key={idx}
-              className="relative p-5 rounded-2xl bg-[#181921] border border-white/5 shadow-lg hover:border-white/10 transition-all group"
+              className="relative p-5 rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] shadow-lg hover:border-[var(--nova-border-color)] transition-all group"
             >
               <div className="flex items-start justify-between">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${card.color} text-white shadow-lg`}>
+                <div className={`p-3 rounded-xl bg-gradient-to-br ${card.color} text-[var(--nova-text-primary)] shadow-lg`}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className={`flex items-center gap-0.5 text-xs font-semibold ${card.isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -202,8 +202,8 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold text-[#e8ebf0]">{card.value}</p>
-                <p className="text-xs text-[#868b98] font-medium mt-0.5">{card.title}</p>
+                <p className="text-2xl font-bold text-[var(--nova-text-primary)]">{card.value}</p>
+                <p className="text-xs text-[var(--nova-text-secondary)] font-medium mt-0.5">{card.title}</p>
               </div>
             </div>
           );
@@ -211,10 +211,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-[#181921] border border-white/5 shadow-lg">
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-[#e8ebf0] flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[var(--nova-accent-color)]" />
                 {t('analytics.activityDynamics')}
               </h2>
@@ -229,42 +229,42 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
               const heightPercent = Math.max(12, Math.round((item.messages / maxMessages) * 100));
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                  <div className="text-[11px] font-semibold text-[#868b98] opacity-0 group-hover:opacity-100 transition-opacity bg-[#20222a] px-2 py-0.5 rounded text-[var(--nova-accent-color)]">
+                  <div className="text-[11px] font-semibold text-[var(--nova-text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--nova-surface-high)] px-2 py-0.5 rounded text-[var(--nova-accent-color)]">
                     {item.messages}
                   </div>
-                  <div className="w-full bg-[#12131c] rounded-t-xl overflow-hidden h-full flex items-end p-1">
+                  <div className="w-full bg-[var(--nova-surface-high)] rounded-t-xl overflow-hidden h-full flex items-end p-1">
                     <div
                       style={{ height: `${heightPercent}%` }}
                       className="w-full rounded-t-lg bg-gradient-to-t from-[var(--nova-accent-color)] via-[var(--nova-accent-color, ff6b35)] to-[var(--nova-accent-color, ff8c42)] group-hover:from-[var(--nova-accent-color, ff6b35)] group-hover:to-[var(--nova-accent-color, ffa366)] transition-all duration-300"
                     ></div>
                   </div>
-                  <span className="text-xs font-medium text-[#868b98]">{item.day}</span>
+                  <span className="text-xs font-medium text-[var(--nova-text-secondary)]">{item.day}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-[#181920] border border-white/5 shadow-lg flex flex-col justify-between">
+        <div className="p-6 rounded-2xl bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] shadow-lg flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[#e8ebf0] flex items-center gap-2 mb-1">
+            <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] flex items-center gap-2 mb-1">
               <Activity className="w-5 h-5 text-[var(--nova-accent-color)]" />
               {t('analytics.events')}
             </h2>
-            <p className="text-xs text-[#868b98] mb-6">
+            <p className="text-xs text-[var(--nova-text-secondary)] mb-6">
               {t('analytics.eventsSubtitle')}
             </p>
             <div className="space-y-2.5">
               {Object.entries(eventCounts).map(([eventType, count]) => (
                 <div key={eventType} className="flex items-center justify-between text-xs">
-                  <span className="text-[#c4c9d4] font-medium">{eventType}</span>
+                  <span className="text-[var(--nova-text-secondary)] font-medium">{eventType}</span>
                   <span className="font-semibold text-[var(--nova-accent-color)]">{count}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-[#868b98]">
+          <div className="pt-4 border-t border-[var(--nova-border-color)] flex items-center justify-between text-xs text-[var(--nova-text-secondary)]">
             <div className="flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-amber-400" />
               <span>{t('analytics.localOnlyAnalytics')}</span>
@@ -275,7 +275,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-6 rounded-2xl bg-[#181921] border border-white/5 shadow-lg">
+        <div className="p-6 rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] shadow-lg">
           <h2 className="text-lg font-semibold text-[#e8ebf0] flex items-center gap-2 mb-4">
             <Users className="w-5 h-5 text-emerald-400" />
             {t('analytics.topContacts')}
@@ -283,51 +283,51 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
           <div className="space-y-4">
             {topContacts.length > 0 ? (
               topContacts.map((contact, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#0b0c10] border border-white/5 hover:border-white/10 transition-all">
+                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border-color)] hover:border-[var(--nova-border-color)]/40 transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]">
                       {contact.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-[#e8ebf0]">{contact.name}</p>
-                      <p className="text-xs text-[#868b98]">{t('analytics.contact')}</p>
+                      <p className="text-sm font-semibold text-[var(--nova-text-primary)]">{contact.name}</p>
+                      <p className="text-xs text-[var(--nova-text-secondary)]">{t('analytics.contact')}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-[var(--nova-accent-color)]">{contact.messages}</p>
-                    <p className="text-[11px] text-[#6a6f7b]">{t('analytics.messagesCount')}</p>
+                    <p className="text-[11px] text-[var(--nova-text-secondary)]">{t('analytics.messagesCount')}</p>
                   </div>
                 </div>
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <p className="text-xs text-[#868b98]">{t('analytics.noActivityData')}</p>
+                <p className="text-xs text-[var(--nova-text-secondary)]">{t('analytics.noActivityData')}</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-[#181920] border border-white/5 shadow-lg flex flex-col justify-between">
+        <div className="p-6 rounded-2xl bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] shadow-lg flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[#e8ebf0] flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] flex items-center gap-2 mb-4">
               <ShieldCheck className="w-5 h-5 text-emerald-400" />
               {t('analytics.securityStatus')}
             </h2>
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#0b0c10] border border-white/5">
-                <span className="text-[#c4c9d4] font-medium">{t('analytics.e2ee')}</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border-color)]">
+                <span className="text-[var(--nova-text-secondary)] font-medium">{t('analytics.e2ee')}</span>
                 <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                   {t('analytics.active')}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#0b0c10] border border-white/5">
-                <span className="text-[#c4c9d4] font-medium">{t('analytics.analyticsLocal')}</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border-color)]">
+                <span className="text-[var(--nova-text-secondary)] font-medium">{t('analytics.analyticsLocal')}</span>
                 <span className="px-2.5 py-1 rounded-lg bg-[var(--nova-accent-color)]/10 text-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/20 font-semibold">
                   {t('analytics.local')}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#0b0c10] border border-white/5">
-                <span className="text-[#c4c9d4] font-medium">{t('analytics.network')}</span>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border-color)]">
+                <span className="text-[var(--nova-text-secondary)] font-medium">{t('analytics.network')}</span>
                 <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                   {t('analytics.offline')}
                 </span>
@@ -335,7 +335,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-[#868b98]">
+          <div className="mt-4 pt-4 border-t border-[var(--nova-border-color)] flex items-center justify-between text-xs text-[var(--nova-text-secondary)]">
             <div className="flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-amber-400" />
               <span>{t('analytics.protocol')}</span>

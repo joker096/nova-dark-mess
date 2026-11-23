@@ -14,6 +14,7 @@ export interface NotificationPrefs {
   sound: boolean;
   vibration: boolean;
   previewMessages: boolean;
+  pushEnabled: boolean;
 
   // Per chat type defaults
   privateChats: NotificationLevel;
@@ -45,6 +46,7 @@ const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   sound: true,
   vibration: false,
   previewMessages: true,
+  pushEnabled: true,
   privateChats: 'all',
   groups: 'all',
   channels: 'mentions',
@@ -67,6 +69,7 @@ function readNotificationPrefs(): NotificationPrefs {
       sound: parsed.sound ?? DEFAULT_NOTIFICATION_PREFS.sound,
       vibration: parsed.vibration ?? DEFAULT_NOTIFICATION_PREFS.vibration,
       previewMessages: parsed.previewMessages ?? DEFAULT_NOTIFICATION_PREFS.previewMessages,
+      pushEnabled: parsed.pushEnabled ?? DEFAULT_NOTIFICATION_PREFS.pushEnabled,
       privateChats: parsed.privateChats ?? DEFAULT_NOTIFICATION_PREFS.privateChats,
       groups: parsed.groups ?? DEFAULT_NOTIFICATION_PREFS.groups,
       channels: parsed.channels ?? DEFAULT_NOTIFICATION_PREFS.channels,

@@ -167,54 +167,54 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                       <span className="flex items-center gap-1 text-white/35">
                         <Clock3 className="h-3 w-3" /> {t('moderation.expires')}
                       </span>
-                      <span className="mt-0.5 block font-semibold text-white/80">
-                        {format(sanction.expiresAt)}
-                      </span>
+<span className="mt-0.5 block font-semibold text-[var(--nova-text-primary)]/80">
+                      {format(sanction.expiresAt)}
+                    </span>
                     </div>
                   </div>
-                  <p className="mt-2 text-[10px] text-white/30">
+                  <p className="mt-2 text-[10px] text-[var(--nova-text-secondary)]/30">
                     {t('moderation.case')}: {sanction.caseId}
                   </p>
                 </div>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
                   <Lock className="h-4 w-4 text-amber-400" />
                   <p className="mt-1.5 text-[11.5px] font-semibold">{t('moderation.relayPausedTitle')}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/45">
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                     {t('moderation.relayPausedBody')}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
                   <KeyRound className="h-4 w-4 text-emerald-400" />
                   <p className="mt-1.5 text-[11.5px] font-semibold">{t('moderation.keysStayTitle')}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/45">
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                     {t('moderation.keysStayBody')}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
                   <FileText className="h-4 w-4 text-sky-400" />
                   <p className="mt-1.5 text-[11.5px] font-semibold">{t('moderation.noSecretTitle')}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/45">
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                     {t('moderation.noSecretBody')}
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-[#171821] p-4">
+              <div className="rounded-3xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="flex items-center gap-1.5 text-sm font-semibold">
                       <LifeBuoy className="h-4 w-4 text-[var(--nova-accent-color)]" />
                       {t('moderation.appealTitle')}
                     </h4>
-                    <p className="mt-1 text-[10.5px] leading-relaxed text-white/45">
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                       {t('moderation.appealHint')}
                     </p>
                   </div>
                   {deadline !== null && (
-                    <span className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-[9.5px] text-white/40">
+                    <span className="shrink-0 rounded-full bg-[var(--nova-overlay-weak)] px-2 py-1 text-[9.5px] text-[var(--nova-text-secondary)]/40">
                       {t('moderation.appealDeadline')}: {format(deadline)}
                     </span>
                   )}
@@ -226,10 +226,10 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                       <Check className="h-3.5 w-3.5" />
                       {t(APPEAL_STATUS_KEYS[appeal.status] ?? 'moderation.appealStatusSubmitted')}
                     </p>
-                    <p className="mt-1 text-[10.5px] leading-relaxed text-white/50">
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--nova-text-secondary)]/50">
                       {t('moderation.appealResponseHint')}
                     </p>
-                    <p className="mt-1 text-[10px] text-white/30">
+                    <p className="mt-1 text-[10px] text-[var(--nova-text-secondary)]/30">
                       {t('moderation.case')}: {appeal.id.slice(-8)} · {format(appeal.createdAt)}
                     </p>
                   </div>
@@ -244,13 +244,13 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                       rows={4}
                       placeholder={t('moderation.appealPlaceholder')}
                       aria-label={t('moderation.appealTitle')}
-                      className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[12px] text-white placeholder:text-white/25 outline-none focus:border-[var(--nova-accent-color)]/50"
+                      className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)]/40 px-3 py-2.5 text-[12px] text-[var(--nova-text-primary)] placeholder:[var(--nova-text-secondary)]/25 outline-none focus:border-[var(--nova-accent-color)]/50"
                     />
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className={error ? 'text-red-400' : 'text-white/30'}>
+                      <span className={error ? 'text-red-400' : 'text-[var(--nova-text-secondary)]/30'}>
                         {error ? t(ERROR_KEYS[error]) : t('moderation.appealMinHint')}
                       </span>
-                      <span className="tabular-nums text-white/30">{text.length}/2000</span>
+                      <span className="tabular-nums text-[var(--nova-text-secondary)]/30">{text.length}/2000</span>
                     </div>
                     <button
                       type="button"
@@ -262,7 +262,7 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/[0.03] p-3 text-[10.5px] leading-relaxed text-white/40">
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-[var(--nova-overlay-weak)] p-3 text-[10.5px] leading-relaxed text-[var(--nova-text-secondary)]/40">
                     <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     {t('moderation.appealClosedBody')}
                   </div>
@@ -281,40 +281,40 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                   <ShieldCheck className="h-8 w-8" />
                 </div>
                 <h2 className="mt-3 text-lg font-bold">{t('moderation.clearTitle')}</h2>
-                <p className="mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-white/50">
+                <p className="mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-[var(--nova-text-primary)]/50">
                   {t('moderation.clearBody')}
                 </p>
-                <div className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] text-white/45">
+                <div className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-canvas)]/20 px-3 py-1 text-[10px] text-[var(--nova-text-secondary)]/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   {t('moderation.clearStatus')}
                 </div>
               </div>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
                   <MessageSquare className="h-4 w-4 text-sky-400" />
                   <p className="mt-1.5 text-[11.5px] font-semibold">{t('moderation.reportsTitle')}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/45">
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                     {t('moderation.reportsBody', { count: reportsCount })}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-3">
+                <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
                   <CircleHelp className="h-4 w-4 text-amber-400" />
                   <p className="mt-1.5 text-[11.5px] font-semibold">{t('moderation.rulesTitle')}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-white/45">
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--nova-text-secondary)]/45">
                     {t('moderation.rulesBody')}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-2xl border border-white/5 bg-white/[0.03] p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/35">
+              <div className="mt-3 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-primary)]/35">
                   {t('moderation.howTitle')}
                 </p>
-                <ol className="mt-2 space-y-1.5 text-[10.5px] text-white/55">
+                <ol className="mt-2 space-y-1.5 text-[10.5px] text-[var(--nova-text-primary)]/55">
                   {[1, 2, 3].map((step) => (
                     <li key={step} className="flex items-start gap-2">
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/10 text-[9px] font-bold text-white/60">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--nova-overlay-weak)] text-[9px] font-bold text-[var(--nova-text-primary)]/60">
                         {step}
                       </span>
                       {t(`moderation.howStep${step}`)}
@@ -323,7 +323,7 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                 </ol>
               </div>
 
-              <div className="mt-3 flex items-start gap-2 rounded-2xl border border-white/5 bg-white/[0.02] p-3 text-[10px] leading-relaxed text-white/35">
+              <div className="mt-3 flex items-start gap-2 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)]/20 p-3 text-[10px] leading-relaxed text-[var(--nova-text-primary)]/35">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/60" />
                 {t('moderation.noIdentityNote')}
               </div>
@@ -331,18 +331,18 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/5 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--nova-border-color)] px-4 py-3">
           {!blocked && (
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-white/45 transition hover:text-white"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--nova-text-secondary)]/45 transition hover:text-[var(--nova-text-primary)]"
             >
               {t('common.back')}
               <ChevronRight className="h-3.5 w-3.5 rotate-180" />
             </button>
           )}
-          <span className="text-[9.5px] text-white/25">{t('moderation.footer')}</span>
+          <span className="text-[9.5px] text-[var(--nova-text-secondary)]/25">{t('moderation.footer')}</span>
         </div>
       </div>
     </div>

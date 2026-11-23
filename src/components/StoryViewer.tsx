@@ -132,12 +132,12 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--nova-canvas)]/95 backdrop-blur-xl animate-in fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={t('stories.viewStory')}
     >
-      <div className="relative flex h-full w-full max-w-md flex-col overflow-hidden sm:h-[92vh] sm:rounded-[28px] sm:border sm:border-white/10 sm:shadow-2xl sm:shadow-black/80">
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-hidden sm:h-[92vh] sm:rounded-[28px] sm:border sm:border-[var(--nova-border-color)] sm:shadow-2xl sm:shadow-black/80">
         <LazyMedia
           src={activeStory.coverImage}
           alt=""
@@ -154,10 +154,10 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             return (
               <div
                 key={story.id}
-                className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25"
+                className="h-[3px] flex-1 overflow-hidden rounded-full bg-[var(--nova-text-primary)]/25"
               >
                 <div
-                  className="h-full rounded-full bg-white transition-[width] duration-100 ease-linear"
+                  className="h-full rounded-full bg-[var(--nova-text-primary)] transition-[width] duration-100 ease-linear"
                   style={{ width: `${width}%` }}
                 />
               </div>
@@ -168,7 +168,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         {/* Header */}
         <div className="relative z-20 flex items-center justify-between gap-2 px-3 pt-3">
           <div className="flex min-w-0 items-center gap-2.5">
-              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/25 bg-black/40">
+              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[var(--nova-border-color)]/40 bg-[var(--nova-canvas)]/40">
                 <LazyMedia
                   src={activeStory.avatar}
                   alt=""
@@ -177,8 +177,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 />
               </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-bold text-white">{activeStory.name}</p>
-              <p className="flex items-center gap-1 text-[10px] text-white/65">
+              <p className="truncate text-xs font-bold text-[var(--nova-text-primary)]">{activeStory.name}</p>
+              <p className="flex items-center gap-1 text-[10px] text-[var(--nova-text-primary)]/65">
                 {scheduled && <Clock className="h-3 w-3 text-[var(--nova-accent-color)]" />}
                 {timeLabel}
               </p>
@@ -190,7 +190,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/75 backdrop-blur-md transition hover:bg-red-500/25 hover:text-red-300"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)]/75 backdrop-blur-md transition hover:bg-red-500/25 hover:text-red-300"
                 aria-label={t('stories.deleteStory')}
                 title={t('stories.deleteStory')}
               >
@@ -200,7 +200,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur-md transition hover:bg-white/20"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)]/80 backdrop-blur-md transition hover:bg-[var(--nova-overlay-medium)]"
               aria-label={t('common.close')}
             >
               <X className="h-4 w-4" />
@@ -238,7 +238,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           )}
 
           {activeStory.caption && (
-            <p className="mb-3 text-sm font-medium leading-relaxed text-white drop-shadow-lg">
+            <p className="mb-3 text-sm font-medium leading-relaxed text-[var(--nova-text-primary)] drop-shadow-lg">
               {activeStory.caption}
             </p>
           )}
@@ -259,8 +259,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                     aria-pressed={reacted}
                     className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-sm backdrop-blur-md transition active:scale-90 ${
                       reacted
-                        ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/25 text-white'
-                        : 'border-white/15 bg-black/35 text-white/80 hover:bg-black/50'
+                        ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/25 text-[var(--nova-text-primary)]'
+                        : 'border-[var(--nova-border-color)] bg-[var(--nova-canvas)]/35 text-[var(--nova-text-primary)]/80 hover:bg-[var(--nova-canvas)]/50'
                     }`}
                   >
                     <span>{emoji}</span>
@@ -275,11 +275,11 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-2 rounded-full border border-white/10 bg-black/35 px-3.5 py-2 backdrop-blur-md">
-            <span className="text-[11px] text-white/55">
+          <div className="flex items-center justify-between gap-2 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-canvas)]/35 px-3.5 py-2 backdrop-blur-md">
+            <span className="text-[11px] text-[var(--nova-text-primary)]/55">
               {t('stories.tapToAdvance')}
             </span>
-            <div className="flex items-center gap-1 text-white/45">
+            <div className="flex items-center gap-1 text-[var(--nova-text-primary)]/45">
               <ChevronLeft className="h-3.5 w-3.5" />
               <ChevronRight className="h-3.5 w-3.5" />
             </div>

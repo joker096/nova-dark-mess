@@ -73,7 +73,7 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]">
             <Sparkles className="h-4 w-4" />
           </div>
-          <p className="text-[11px] leading-relaxed text-white/70">
+          <p className="text-[11px] leading-relaxed text-[var(--nova-text-primary)]/70">
             {t('stories.composerSubtitle')}
           </p>
         </div>
@@ -93,7 +93,7 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
             <label htmlFor="story-caption" className="text-[11px] font-semibold text-[#868b98]">
               {t('stories.caption')}
             </label>
-            <span className="text-[10px] tabular-nums text-white/30">
+            <span className="text-[10px] tabular-nums text-[var(--nova-text-primary)]/30">
               {caption.length}/280
             </span>
           </div>
@@ -104,7 +104,7 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
             onChange={(event) => setCaption(event.target.value)}
             placeholder={t('stories.captionPlaceholder')}
             rows={2}
-            className="w-full resize-none rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-secondary)]/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
 
@@ -131,7 +131,7 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-white/5 px-4 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+            className="rounded-xl bg-[var(--nova-overlay-weak)] px-4 py-2.5 text-xs font-semibold text-[var(--nova-text-primary)]/70 transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]"
           >
             {t('common.cancel')}
           </button>

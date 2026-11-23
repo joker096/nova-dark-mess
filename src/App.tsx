@@ -937,8 +937,8 @@ export default function App() {
         return <SitesScreen onBack={goBack} />;
       case 'mesh-map':
         return (
-          <div className="flex h-full w-full flex-col bg-[#090a0e]">
-            <header className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] shrink-0">
+          <div className="flex h-full w-full flex-col bg-[var(--nova-canvas)]">
+            <header className="flex items-center gap-2 px-3 py-2 border-b border-[var(--nova-border-color)] shrink-0">
               <NovaTooltip label={t('common.back')}>
                 <NovaIconButton
                   label={t('common.back')}
@@ -1108,7 +1108,7 @@ export default function App() {
       </aside>
 
       {/* Left Column (Desktop Only) */}
-      <section className="hidden lg:flex w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden relative">
+      <section className="hidden lg:flex w-[380px] xl:w-[410px] shrink-0 border-r border-[var(--nova-border-color)] bg-[var(--nova-canvas)] h-full flex-col overflow-hidden relative">
         {/* ChatsScreen stays mounted so the Folders button in the rail always
             has a live ref (it used to go dead on the Channels screen). */}
         <ChatsScreen
@@ -1197,7 +1197,7 @@ export default function App() {
             aria-modal="true"
             aria-label={t('chat.joinTitle')}
             data-testid="join-group-dialog"
-            className="w-full max-w-sm bg-[#151621] border border-white/15 rounded-3xl shadow-2xl shadow-black/80 p-5 space-y-4"
+            className="w-full max-w-sm bg-[var(--nova-surface)] border border-[var(--nova-border-color)] rounded-3xl shadow-2xl shadow-black/80 p-5 space-y-4"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1205,20 +1205,20 @@ export default function App() {
                 <Users className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-bold text-sm text-white truncate">
+                <h3 className="font-bold text-sm text-[var(--nova-text-primary)] truncate">
                   {pendingInvite.groupName}
                 </h3>
-                <p className="text-[11px] text-[#8c919d]">{t('chat.joinTitle')}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)]">{t('chat.joinTitle')}</p>
               </div>
             </div>
-            <p className="text-xs leading-relaxed text-white/70">
+            <p className="text-xs leading-relaxed text-[var(--nova-text-secondary)]">
               {t('chat.joinPrompt', { group: pendingInvite.groupName })}
             </p>
             <div className="flex items-center gap-2 justify-end">
               <button
                 type="button"
                 onClick={() => setPendingInvite(null)}
-                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white/70 transition cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] transition cursor-pointer"
               >
                 {t('chat.joinDecline')}
               </button>
