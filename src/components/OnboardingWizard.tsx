@@ -21,6 +21,11 @@ import {
   isShortNicknamePaid,
   setShortNicknamePaid,
 } from '../lib/account/account';
+import {
+  createAccountFromOnboarding,
+  addAccount,
+  switchAccount,
+} from '../lib/account/multiAccount';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { copyTextToClipboard, saveTextFile, type TextSaveOutcome } from '../lib/ui/download';
@@ -97,7 +102,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     exportEncryptedBackup,
     importEncryptedBackup,
   } = useSecurity();
-  const { account, updateAccount } = useAccount();
+  const { account, updateAccount, addAccount, switchAccount } = useAccount();
 
   const [step, setStep] = useState<Step>('welcome');
   const [path, setPath] = useState<OnboardingPath | null>(null);
@@ -232,11 +237,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
         return;
       }
 
-      updateAccount({
-        displayName: normalizedNickname.slice(1),
-        nickname: normalizedNickname,
-        phone: '',
-      });
+      // Create new account in multi-account system
+      const newAccount = createAccountFromOnboarding(
+        normalizedNickname,
+        normalizedNickname.slice(1),
+        '',
+        '',
+        'Online'
+      );
+      addAccount(newAccount);
+      switchAccount(newAccount.id);
+      
       if (pin) {
         try {
           await setPin(pin);

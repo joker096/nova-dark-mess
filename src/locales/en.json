@@ -458,8 +458,13 @@
     "year": "Year",
     "consent": "Share local usage analytics",
     "consentHint": "Helps us improve Nova. Stored locally on your device only — nothing is sent to any server. Off by default.",
-    "crashReports": "Send crash reports",
-    "crashReportsHint": "Helps us fix bugs. Crash reports contain no message content or personal data. Off by default."
+    "crashReports": "Store local crash reports",
+    "crashReportsHint": "Crash reports stay on this device and contain no message content or personal data. Review or export them below. Off by default.",
+    "crashReportsCount": "Local crash reports: {{count}}",
+    "exportCrashReports": "Export",
+    "clearCrashReports": "Clear",
+    "crashReportsExported": "Crash reports exported",
+    "crashReportsCleared": "Crash reports cleared"
   },
   "chat": {
     "systemMemberAdded": "{{member}} joined the group",
@@ -855,6 +860,22 @@
     "passcodeVerified": "Passcode verified",
     "passcodeConfirmRemove": "Enter your current passcode to remove it",
     "changePin": "Change PIN",
+    "accounts": {
+      "title": "Accounts",
+      "manage": "Manage Accounts",
+      "manageDesc": "Add, switch, or remove accounts",
+      "addAccount": "Add Account",
+      "current": "Current Account",
+      "primary": "Primary",
+      "active": "Active",
+      "switch": "Switch",
+      "setPrimary": "Set as Primary",
+      "remove": "Remove Account",
+      "confirmDelete": "Remove Account",
+      "deleteWarning": "This will remove the account and its local data. This cannot be undone.",
+      "hint": "Each account has its own identity, nickname, and settings. Switch instantly between them.",
+      "added": "Added {{date}}"
+    },
     "chatColors": "Message Colors",
     "chatColorsDesc": "Choose outgoing message color (premium)",
     "chatColorDefault": "Orange (default)",

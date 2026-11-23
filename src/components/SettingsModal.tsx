@@ -56,6 +56,7 @@ import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import { LegalModal } from './LegalModal';
 import { SanctionScreen } from './SanctionScreen';
+import { AccountSwitcher } from './AccountSwitcher';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -327,6 +328,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [joinOutboxCount, setJoinOutboxCount] = useState<number>(() => loadJoinOutbox().length);
   const [adPrefs, setAdPrefs] = useState<LocalAdPreferences>(() => loadAdPreferences());
   const [adPrefsMsg, setAdPrefsMsg] = useState<string | null>(null);
+  const [crashCount, setCrashCount] = useState(() => localAnalytics.getCrashes().length);
+  const [crashMsg, setCrashMsg] = useState<string | null>(null);
   const [soundId, setSoundId] = useState<SoundId>(loadSoundId);
   const [fabSide, setFabSideState] = useState<FabSide>(() => readFabSide());
 
@@ -336,6 +339,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setJoinOutboxCount(loadJoinOutbox().length);
     setAdPrefs(loadAdPreferences());
     setAdPrefsMsg(null);
+    setCrashCount(localAnalytics.getCrashes().length);
+    setCrashMsg(null);
     setSocialPrivacyState(getSocialPrivacy());
     setNotificationPrefsState(getNotificationPrefs());
   }, [isOpen]);
@@ -362,6 +367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy' | null>(null);
   const [moderationOpen, setModerationOpen] = useState(false);
   const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
+  const [accountSwitcherOpen, setAccountSwitcherOpen] = useState(false);
 
   // Google Drive backup state
   const [gdriveConnected, setGdriveConnected] = useState(false);
@@ -613,6 +619,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const timer = setTimeout(() => setAdPrefsMsg(null), 2500);
     return () => clearTimeout(timer);
   }, [adPrefsMsg]);
+
+  useEffect(() => {
+    if (!crashMsg) return;
+    const timer = setTimeout(() => setCrashMsg(null), 2500);
+    return () => clearTimeout(timer);
+  }, [crashMsg]);
 
   /** Approximate byte size of localStorage, grouped by category. */
   const computeStorageUsage = useCallback(() => {
@@ -893,6 +905,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleExportCrashReports = () => {
+    const reports = localAnalytics.getCrashes();
+    if (reports.length === 0) return;
+    const payload = { generatedAt: new Date().toISOString(), reports };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nova-crash-reports-${new Date().toISOString().slice(0, 10)}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    setCrashMsg(t('analytics.crashReportsExported'));
+  };
+
+  const handleClearCrashReports = () => {
+    localAnalytics.clearCrashes();
+    setCrashCount(0);
+    setCrashMsg(t('analytics.crashReportsCleared'));
   };
 
   const handleResetAdPrefs = () => {
@@ -1951,12 +1986,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 return p;
               });
               localAnalytics.setCrashReportsConsent(next);
+              setCrashCount(localAnalytics.getCrashes().length);
             }}
           />
           {privacyPrefs.crashReports && (
-            <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
-              {t('analytics.crashReportsHint')}
-            </p>
+            <div className="px-1 -mt-1 pb-2 space-y-2">
+              <p className="text-[11px] text-[var(--nova-text-muted)]">
+                {t('analytics.crashReportsHint')}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[var(--nova-text-secondary)]">
+                  {t('analytics.crashReportsCount', { count: crashCount })}
+                </span>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={handleExportCrashReports}
+                    disabled={crashCount === 0}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[var(--nova-border-subtle)] px-2 py-1 text-[10.5px] font-medium text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] disabled:cursor-default disabled:opacity-40"
+                  >
+                    <Download className="h-3 w-3" />
+                    {t('analytics.exportCrashReports')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearCrashReports}
+                    disabled={crashCount === 0}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[var(--nova-border-subtle)] px-2 py-1 text-[10.5px] font-medium text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] disabled:cursor-default disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {t('analytics.clearCrashReports')}
+                  </button>
+                </div>
+              </div>
+              {crashMsg && (
+                <p role="status" className="text-[10.5px] text-emerald-300/80">{crashMsg}</p>
+              )}
+            </div>
           )}
           {privacyPrefs.metadataMinimization && (
             <p className="px-1 -mt-1 pb-2 text-[11px] text-[var(--nova-text-muted)]">
@@ -2285,6 +2351,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </div>
           )}
+
+          {/* Accounts */}
+          <SectionHeader
+            icon={<UserRound className="w-3.5 h-3.5" />}
+            title={t('settings.accounts.title')}
+          />
+          <button
+            onClick={() => setAccountSwitcherOpen(true)}
+            className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-subtle)] transition cursor-pointer active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                <UserRound className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--nova-text-primary)]">{t('settings.accounts.manage')}</p>
+                <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('settings.accounts.manageDesc')}</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" />
+          </button>
 
           <SectionHeader
             icon={<Database className="w-3.5 h-3.5" />}
@@ -2945,6 +3032,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       {/* Terms / Privacy */}
       {legalDoc && <LegalModal docId={legalDoc} onClose={() => setLegalDoc(null)} />}
+
+      {/* Account Switcher */}
+      <AccountSwitcher
+        isOpen={accountSwitcherOpen}
+        onClose={() => setAccountSwitcherOpen(false)}
+        onAccountAdded={() => {
+          // Refresh any state if needed
+        }}
+      />
 
       {/* Bots list (Phase B3) */}
       {botsOpen && (

@@ -7,6 +7,8 @@ import { isOnboardingComplete } from '../lib/onboarding';
 
 const mocks = vi.hoisted(() => ({
   updateAccount: vi.fn(),
+  addAccount: vi.fn((acc: any) => ({ ...acc, id: `test_${Date.now()}`, isPrimary: false, addedAt: Date.now(), lastUsedAt: Date.now() })),
+  switchAccount: vi.fn((id: string) => ({ id, displayName: 'Test', nickname: '@test', isPrimary: false, addedAt: Date.now(), lastUsedAt: Date.now() })),
 }));
 const securityMocks = vi.hoisted(() => ({
   identity: { mnemonic: 'a b c d e f g h i j k l m n o p q r s t u v w x' },
@@ -37,6 +39,8 @@ vi.mock('../hooks/useAccount', () => ({
   useAccount: () => ({
     account: { displayName: 'Nova' },
     updateAccount: mocks.updateAccount,
+    addAccount: mocks.addAccount,
+    switchAccount: mocks.switchAccount,
   }),
 }));
 
@@ -130,18 +134,19 @@ describe('OnboardingWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.startMessaging' }));
 
     await waitFor(() => {
-      expect(mocks.updateAccount).toHaveBeenCalledWith({
+      expect(mocks.addAccount).toHaveBeenCalledWith(expect.objectContaining({
         displayName: 'Мира 🌙',
         nickname: '@Мира 🌙',
         phone: '',
-      });
+      }));
+      expect(mocks.switchAccount).toHaveBeenCalled();
       expect(onDone).toHaveBeenCalledTimes(1);
     });
   });
 
   it('does not finish onboarding when profile persistence fails', async () => {
     const onDone = vi.fn();
-    mocks.updateAccount.mockImplementation(() => {
+    mocks.addAccount.mockImplementation(() => {
       throw new Error('storage is unavailable');
     });
     render(<OnboardingWizard onDone={onDone} />);
