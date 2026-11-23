@@ -99,14 +99,23 @@ async function registerWebPush(): Promise<string | null> {
     return null;
   }
 
+  const vapidKey = (import.meta.env.VITE_VAPID_PUBLIC_KEY || '').trim();
+  if (!vapidKey) {
+    console.warn('[Push] Web Push disabled: VITE_VAPID_PUBLIC_KEY is not configured');
+    return null;
+  }
+
   try {
+    const applicationServerKey = urlBase64ToUint8Array(vapidKey);
+    // A VAPID public key is an uncompressed P-256 point: 65 bytes, 0x04 first.
+    if (applicationServerKey.length !== 65 || applicationServerKey[0] !== 0x04) {
+      console.warn('[Push] Web Push disabled: VITE_VAPID_PUBLIC_KEY is not a valid P-256 key');
+      return null;
+    }
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      // Cast to BufferSource: the key is copied into a plain ArrayBuffer below.
-      applicationServerKey: urlBase64ToUint8Array(
-        import.meta.env.VITE_VAPID_PUBLIC_KEY || '',
-      ) as unknown as BufferSource,
+      applicationServerKey: applicationServerKey as unknown as BufferSource,
     });
 
     const token = JSON.stringify(subscription.toJSON());

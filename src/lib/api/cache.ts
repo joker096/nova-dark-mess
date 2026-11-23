@@ -53,9 +53,13 @@ export async function cachedFetch<T>(
           cache.set(key, { data, timestamp: Date.now() });
           return data;
         })
-        .catch((err) => {
+        .catch(() => {
+          // This refresh has no caller to receive the rejection. Keep the
+          // stale value instead, otherwise an aborted background refetch
+          // (for example when a LinkPreview unmounts) becomes an unhandled
+          // promise rejection.
           entry.promise = undefined;
-          throw err;
+          return entry.data;
         });
     }
     return entry.data;
