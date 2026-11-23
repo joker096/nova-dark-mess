@@ -265,7 +265,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
         {/* Top Info */}
         <div className="relative z-10 p-2 flex items-center justify-between">
-          <span className="text-[9.5px] font-mono text-white/90 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+          <span className="text-[9.5px] font-mono text-[var(--nova-text-primary)]/90 bg-[var(--nova-canvas)]/60 backdrop-blur-md px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             {formatTime(callDuration)}
           </span>
@@ -275,7 +275,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               e.stopPropagation();
               if (onMaximize) onMaximize();
             }}
-            className="w-5 h-5 rounded-full bg-black/60 hover:bg-white/20 text-white flex items-center justify-center transition"
+            className="w-5 h-5 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition"
             title="Expand to full screen"
           >
             <Maximize2 className="w-2.5 h-2.5" />
@@ -285,10 +285,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         {/* Bottom Contact Name and Quick Hangup */}
         <div className="absolute bottom-2 inset-x-2 z-10 flex items-center justify-between">
           <div className="truncate pr-1">
-            <p className="text-[10px] font-bold text-white truncate leading-tight">
+            <p className="text-[10px] font-bold text-[var(--nova-text-primary)] truncate leading-tight">
               {name.split(' ')[0]}
             </p>
-            <p className="text-[8px] text-white/60 leading-none">
+            <p className="text-[8px] text-[var(--nova-text-primary)]/60 leading-none">
               {isVoiceCall ? 'HD Audio' : 'HD 1080p'}
             </p>
           </div>
@@ -298,7 +298,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               e.stopPropagation();
               handleHangUp();
             }}
-            className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md active:scale-90 transition shrink-0"
+            className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-[var(--nova-text-primary)] flex items-center justify-center shadow-md active:scale-90 transition shrink-0"
             title="End call"
           >
             <PhoneOff className="w-3 h-3" />
@@ -313,7 +313,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
     <div
       onClick={resetControlsTimeout}
       data-theme-preserve="dark"
-      className="absolute inset-0 z-50 bg-[#08090d] text-white flex flex-col justify-between overflow-hidden select-none animate-in fade-in zoom-in-95 duration-300"
+      className="absolute inset-0 z-50 bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] flex flex-col justify-between overflow-hidden select-none animate-in fade-in zoom-in-95 duration-300"
     >
       {/* BACKGROUND / MAIN REMOTE VIDEO FEED */}
       <div className="absolute inset-0 overflow-hidden">
@@ -346,9 +346,9 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
         {/* Live Audio Reaction Wave Indicator on remote video */}
         {callStatus === 'connected' && (
-          <div className="absolute bottom-28 left-4 z-20 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          <div className="absolute bottom-28 left-4 z-20 flex items-center gap-2 bg-[var(--nova-canvas)]/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-[var(--nova-border-color)]">
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-white/90">{name}</span>
+            <span className="text-xs font-semibold text-[var(--nova-text-primary)]/90">{name}</span>
             <div className="flex items-end gap-0.5 h-3 ml-1">
               {[1, 2, 3, 4].map((bar) => {
                 const height =
@@ -382,7 +382,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                 e.stopPropagation();
                 onMinimize();
               }}
-              className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer"
+              className="w-9 h-9 rounded-full bg-[var(--nova-canvas)]/40 hover:bg-[var(--nova-canvas)]/60 backdrop-blur-md border border-[var(--nova-border-color)] text-[var(--nova-text-primary)]/80 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition active:scale-95 cursor-pointer"
               title="Minimize to Picture-in-Picture"
             >
               <Minimize2 className="w-4 h-4" />
@@ -390,7 +390,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           )}
 
           <div
-            className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80"
+            className="flex items-center gap-1.5 bg-[var(--nova-canvas)]/40 backdrop-blur-md border border-[var(--nova-border-color)] px-2.5 py-1 rounded-full text-[11px] text-[var(--nova-text-primary)]/80"
             title={hidesIp ? t('chat.ipHiddenTitle') : t('chat.ipVisibleTitle')}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -399,20 +399,20 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         </div>
 
         {/* Center: Call Duration or Connecting State */}
-        <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full shadow-lg">
+        <div className="flex items-center gap-1.5 bg-[var(--nova-canvas)]/50 backdrop-blur-md border border-[var(--nova-border-color)] px-3 py-1 rounded-full shadow-lg">
           {callStatus === 'failed' ? (
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-xs font-medium text-red-300">Connection failed</span>
+              <span className="w-2 h-2 rounded-full bg-[var(--nova-text-primary)]/90" />
+              <span className="text-xs font-medium text-[var(--nova-text-primary)]">Connection failed</span>
             </div>
           ) : callStatus === 'connecting' ? (
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span className="text-xs font-medium text-amber-200">Connecting...</span>
+              <span className="w-2 h-2 rounded-full bg-[var(--nova-accent-color,#ff4e18)] animate-ping" />
+              <span className="text-xs font-medium text-[var(--nova-accent-color,#ff4e18)]">Connecting...</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-wide text-white">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-wide text-[var(--nova-text-primary)]">
+              <span className="w-2 h-2 rounded-full bg-[var(--nova-text-primary)]/90 animate-pulse" />
               <span>{formatTime(callDuration)}</span>
             </div>
           )}
@@ -420,7 +420,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
 
         {/* Right: Call Quality Indicators */}
         {callStatus === 'connected' && qualityStats && (
-          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[10px] text-white/80 font-mono">
+          <div className="flex items-center gap-1.5 bg-[var(--nova-canvas)]/40 backdrop-blur-md border border-[var(--nova-border-color)] px-2.5 py-1 rounded-full text-[10px] text-[var(--nova-text-primary)]/80 font-mono">
             <Signal className="w-3 h-3 text-emerald-400" />
             <span className="text-emerald-300">{Math.round(qualityStats.sendBitrateBps / 1000)} kbps ↑</span>
             <span className="text-emerald-300">{Math.round(qualityStats.receiveBitrateBps / 1000)} kbps ↓</span>
@@ -435,7 +435,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
           </div>
         )}
         {callStatus === 'connected' && !qualityStats && (
-          <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[11px] text-white/80">
+          <div className="flex items-center gap-1.5 bg-[var(--nova-canvas)]/40 backdrop-blur-md border border-[var(--nova-border-color)] px-2.5 py-1 rounded-full text-[11px] text-[var(--nova-text-primary)]/80">
             <Signal className="w-3 h-3 text-emerald-400" />
             <span className="font-mono text-[10px]">{isVoiceCall ? 'HD Audio' : '1080p 60fps'}</span>
           </div>
@@ -447,7 +447,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         <div
           data-testid="self-view"
           aria-label="Your camera preview"
-          className="absolute top-16 right-4 z-30 w-28 h-40 bg-[#161722]/90 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300"
+          className="absolute top-16 right-4 z-30 w-28 h-40 bg-[var(--nova-canvas)]/90 rounded-2xl border-2 border-[var(--nova-border-color)] shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300"
         >
           {isCameraOn ? (
             <div className="w-full h-full relative group">
@@ -472,19 +472,19 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                   } ${activeFilter === 'noir' ? 'grayscale' : ''}`}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#242630] text-white text-2xl font-bold">
+                <div className="w-full h-full flex items-center justify-center bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] text-2xl font-bold">
                   {account.displayName.slice(0, 2).toUpperCase()}
                 </div>
               )}
 
               {/* Viewfinder brackets */}
-              <div className="absolute top-1.5 left-1.5 w-2 h-2 border-t-2 border-l-2 border-white/60 pointer-events-none" />
-              <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-white/60 pointer-events-none" />
-              <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-white/60 pointer-events-none" />
-              <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-b-2 border-r-2 border-white/60 pointer-events-none" />
+              <div className="absolute top-1.5 left-1.5 w-2 h-2 border-t-2 border-l-2 border-[var(--nova-border-color)]/60 pointer-events-none" />
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-[var(--nova-border-color)]/60 pointer-events-none" />
+              <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-[var(--nova-border-color)]/60 pointer-events-none" />
+              <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-b-2 border-r-2 border-[var(--nova-border-color)]/60 pointer-events-none" />
 
               {/* Camera facing label */}
-              <div className="absolute bottom-1 left-1.5 bg-black/60 px-1 py-0.5 rounded text-[8px] font-mono text-white/80">
+              <div className="absolute bottom-1 left-1.5 bg-[var(--nova-canvas)]/60 px-1 py-0.5 rounded text-[8px] font-mono text-[var(--nova-text-primary)]/80">
                 {cameraFacing === 'front' ? 'Front' : 'Back 0.5x'}
               </div>
 
@@ -494,7 +494,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                   e.stopPropagation();
                   handleFlipCamera();
                 }}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90"
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition active:scale-90"
                 title="Flip camera"
               >
                 <RefreshCw className="w-3 h-3" />
@@ -502,12 +502,12 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             </div>
           ) : (
             /* Camera Off State */
-            <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[#12131c] text-white/60 text-center">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center mb-1 text-white/40">
+            <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-[var(--nova-canvas)]/90 text-[var(--nova-text-primary)]/60 text-center">
+              <div className="w-9 h-9 rounded-full bg-[var(--nova-overlay-weak)] flex items-center justify-center mb-1 text-[var(--nova-text-primary)]/40">
                 <VideoOff className="w-4 h-4 text-[var(--nova-accent-color)]" />
               </div>
-              <span className="text-[10px] font-semibold text-white/70">Camera Off</span>
-              <span className="text-[8px] text-white/40 mt-0.5">
+              <span className="text-[10px] font-semibold text-[var(--nova-text-primary)]/70">Camera Off</span>
+              <span className="text-[8px] text-[var(--nova-text-primary)]/40 mt-0.5">
                 {isMicOn ? 'Mic on' : 'Mic muted'}
               </span>
             </div>
@@ -531,10 +531,10 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
       >
         {/* Remote Participant Info */}
         <div className="text-center">
-          <h2 className="text-lg font-bold text-white drop-shadow-md">
+          <h2 className="text-lg font-bold text-[var(--nova-text-primary)] drop-shadow-md">
             {name}
           </h2>
-          <p className="text-xs text-white/70 font-medium drop-shadow-sm">
+          <p className="text-xs text-[var(--nova-text-primary)]/70 font-medium drop-shadow-sm">
             {callStatus === 'failed'
               ? isVoiceCall
                 ? 'Voice call unavailable'
@@ -548,7 +548,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
         </div>
 
         {/* Floating Action Controls Dock */}
-        <div className="bg-[#12131c]/90 border border-white/15 backdrop-blur-xl rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/80">
+        <div className="bg-[var(--nova-canvas)]/90 border border-[var(--nova-border-color)] backdrop-blur-xl rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/80">
           {/* 1. Camera Toggle */}
           {!isVoiceCall && (
             <button
@@ -558,7 +558,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               }}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
                 isCameraOn
-                  ? 'bg-white/15 hover:bg-white/25 text-white'
+                  ? 'bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)]'
                   : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'
               }`}
               title={isCameraOn ? 'Turn camera off' : 'Turn camera on'}
@@ -579,7 +579,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             }}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
               isMicOn
-                ? 'bg-white/15 hover:bg-white/25 text-white'
+                ? 'bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)]'
                 : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'
             }`}
             title={isMicOn ? 'Mute microphone' : 'Unmute microphone'}
@@ -601,8 +601,8 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               disabled={!isCameraOn}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
                 isCameraOn
-                  ? 'bg-white/15 hover:bg-white/25 text-white'
-                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+                  ? 'bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)]'
+                  : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)]/40 cursor-not-allowed'
               }`}
               title="Switch front / rear camera"
             >
@@ -618,8 +618,8 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             }}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
               isSpeakerOn
-                ? 'bg-white/15 hover:bg-white/25 text-white'
-                : 'bg-white/5 text-white/40'
+                ? 'bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)]'
+                : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)]/40'
             }`}
             title={isSpeakerOn ? 'Mute speaker' : 'Enable speaker'}
           >
@@ -639,8 +639,8 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               }}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
                 activeFilter !== 'none'
-                  ? 'bg-[var(--nova-accent-color)] text-white shadow-md shadow-[var(--nova-accent-color)]/40'
-                  : 'bg-white/15 hover:bg-white/25 text-white'
+                  ? 'bg-[var(--nova-accent-color)] text-[var(--nova-text-primary)] shadow-md shadow-[var(--nova-accent-color)]/40'
+                  : 'bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)]'
               }`}
               title={`Video Filter (Current: ${activeFilter})`}
             >
@@ -654,7 +654,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               e.stopPropagation();
               handleHangUp();
             }}
-            className="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white flex items-center justify-center shadow-xl shadow-red-600/40 active:scale-90 transition-all cursor-pointer ml-1"
+            className="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-[var(--nova-text-primary)] flex items-center justify-center shadow-xl shadow-red-600/40 active:scale-90 transition-all cursor-pointer ml-1"
             title={isVoiceCall ? 'End Voice Call' : 'End Video Call'}
           >
             <PhoneOff className="w-6 h-6 stroke-[2.4]" />

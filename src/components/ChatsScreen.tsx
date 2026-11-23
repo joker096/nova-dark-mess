@@ -43,6 +43,7 @@ import {
 import { ChatItem, Story, MessageSearchResult, ChatFolder, ChannelInfo, StoryDraft } from '../types/messenger';
 import { parseVCF, ParsedContact } from '../lib/contacts/vcfParser';
 import { FolderModal } from './FolderModal';
+import { GroupModal } from './GroupModal';
 import { CommunitiesPanel } from './CommunitiesPanel';
 import { StoryComposerModal } from './StoryComposerModal';
 import { StoryViewer } from './StoryViewer';
@@ -162,8 +163,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   const isBotChat = (id: string) => getBotSession?.().isBot(id);
   const [readChats, setReadChats] = useState(loadReadChats);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [groupModalExisting, setGroupModalExisting] = useState<{
+    id: string;
+    name: string;
+    session: any;
+    members: any[];
+    relayUrl: string;
+  } | null>(null);
   const [groupVersion, setGroupVersion] = useState(0);
 
   // Message drafts auto-synced across views for one-handed convenience
@@ -232,6 +238,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     },
   }));
   const [folderToast, setFolderToast] = useState<string | null>(null);
+  const [swipeHintDismissed, setSwipeHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('nova_chats_swipe_hint_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Swipe actions on chat rows (archive, pin, mute, delete)
   const [swipingChatId, setSwipingChatId] = useState<string | null>(null);
@@ -1365,6 +1378,28 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
             </button>
           </div>
 
+          {/* One-time hint teaching the swipe gesture for archive/pin/mute/delete */}
+          {!swipeHintDismissed && !isSearching && currentFolder?.filterType !== 'channels' && (
+            <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-300">
+              <Clock className="w-4 h-4 text-[var(--nova-accent-color)] shrink-0" />
+              <span className="text-[11px] text-[var(--nova-text-secondary)]">
+                {t('chats.swipeHint')}
+              </span>
+              <button
+                onClick={() => {
+                  setSwipeHintDismissed(true);
+                  try {
+                    localStorage.setItem('nova_chats_swipe_hint_dismissed', 'true');
+                  } catch { void 0; }
+                }}
+                className="ml-auto p-1 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                aria-label={t('chats.swipeHintDismiss')}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           {/* Chats List Filtered by Active Folder */}
           <div className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5">
             {currentFolder?.filterType === 'channels' && !isSearching && (
@@ -1698,6 +1733,7 @@ onClick={() => {
                 type="button"
                 onClick={() => {
                   setIsFabMenuOpen(false);
+                  setGroupModalExisting(null);
                   setGroupModalOpen(true);
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-[var(--nova-text-primary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] active:scale-95 transition cursor-pointer"
@@ -1861,6 +1897,7 @@ onClick={() => {
             <button
               onClick={() => {
                 setNewChatModalOpen(false);
+                setGroupModalExisting(null);
                 setGroupModalOpen(true);
               }}
               className="w-full p-2.5 rounded-xl bg-[var(--nova-surface-high)] hover:bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold flex items-center gap-2.5 transition text-left"
@@ -1906,89 +1943,15 @@ onClick={() => {
         </div>
       )}
 
-      {/* Group Creation Modal */}
-      {groupModalOpen && (
-        <div
-          onClick={() => setGroupModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4"
-          >
-            <h3 className="font-bold text-base text-[var(--nova-text-primary)]">Create Group Chat</h3>
-            <input
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              placeholder="Group name"
-              className="w-full bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] text-xs rounded-xl px-3 py-2.5 border border-[var(--nova-border-subtle)] focus:border-[var(--nova-accent-color)] outline-none"
-            />
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {MOCK_CHATS.filter((chat) => chat.type === 'direct').map((chat) => (
-                <label key={chat.id} className="flex items-center gap-2 text-xs text-[var(--nova-text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={selectedMembers.includes(chat.id)}
-                    onChange={(e) => {
-                      setSelectedMembers((current) =>
-                        e.target.checked
-                          ? [...current, chat.id]
-                          : current.filter((id) => id !== chat.id),
-                      );
-                    }}
-                  />
-                  <span>{chat.name}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (!newGroupName.trim() || selectedMembers.length === 0) return;
-                  const members = MOCK_CHATS.filter((chat) => selectedMembers.includes(chat.id));
-                  const id = `group-${Date.now()}`;
-                  const group: ChatItem = {
-                    id,
-                    name: newGroupName.trim(),
-                    avatar: members[0]?.avatar || '',
-                    groupAvatars: members.map((member) => member.avatar),
-                    snippet: 'Group created',
-                    time: 'now',
-                    type: 'group',
-                    category: 'All',
-                    members: selectedMembers.map((memberId) => memberId),
-                  };
-                  MOCK_CHATS.push(group);
-                  CONVERSATION_HISTORIES[id] = [];
-                  const groups = [...loadCreatedGroups(), group];
-                  saveCreatedGroups(groups);
-                  const histories = loadCreatedGroupHistories();
-                  histories[id] = [];
-                  saveCreatedGroupHistories(histories);
-                  setNewGroupName('');
-                  setSelectedMembers([]);
-                  setGroupModalOpen(false);
-                  setGroupVersion((value) => value + 1);
-                  onSelectChat(id);
-                }}
-                className="flex-1 py-2 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl transition"
-              >
-                Create
-              </button>
-              <button
-                onClick={() => {
-                  setGroupModalOpen(false);
-                  setNewGroupName('');
-                  setSelectedMembers([]);
-                }}
-                className="flex-1 py-2 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] font-semibold text-xs rounded-xl transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Group Modal (Create/Manage) */}
+      <GroupModal
+        isOpen={groupModalOpen}
+        onClose={() => setGroupModalOpen(false)}
+        existingGroup={groupModalExisting}
+        onGroupCreated={(groupId) => {
+          setGroupVersion((value) => value + 1);
+        }}
+      />
 
       {/* FOLDERS MANAGEMENT / CREATION MODAL */}
       <FolderModal

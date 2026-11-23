@@ -69,9 +69,16 @@ describe('VideoCallOverlay visual snapshot', () => {
   });
 
   it('renders full-screen overlay with dark bg and animate-in', () => {
-    renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
+    renderWithLanguage(
+      <VideoCallOverlay
+        isOpen
+        onEndCall={onEndCall}
+        contactName="Katie Rogers"
+        contactAvatar="https://example.com/a.jpg"
+      />,
+    );
     const img = screen.getByAltText('Katie Rogers');
-    const overlay = findAncestor(img, ['bg-[#08090d]']);
+    const overlay = findAncestor(img, ['bg-[var(--nova-canvas)]']);
     expect(overlay).toBeTruthy();
     expect(overlay!.className).toContain('animate-in');
     expect(overlay!.className).toContain('fade-in');
@@ -83,7 +90,7 @@ describe('VideoCallOverlay visual snapshot', () => {
     const text = screen.getByText('Connecting...');
     expect(text).toBeTruthy();
     const row = text.parentElement!;
-    const dot = dotWithColor(row, 'bg-amber-400')!;
+    const dot = dotWithColor(row, 'bg-[var(--nova-accent-color,#ff4e18)]')!;
     expect(dot.className).toContain('animate-ping');
   });
 
@@ -95,7 +102,7 @@ describe('VideoCallOverlay visual snapshot', () => {
     expect(screen.getByText('Connected • HD Audio & Video')).toBeTruthy();
     const time = screen.getByText(/^\d{2}:\d{2}$/);
     const row = time.parentElement!;
-    const dot = dotWithColor(row, 'bg-emerald-400')!;
+    const dot = dotWithColor(row, 'bg-[var(--nova-text-primary)]/90')!;
     expect(dot.className).toContain('animate-pulse');
   });
 
@@ -138,7 +145,7 @@ describe('VideoCallOverlay visual snapshot', () => {
   it('renders bottom dock with camera, mic, flip, speaker, filter, end call', () => {
     renderWithLanguage(<VideoCallOverlay isOpen onEndCall={onEndCall} contactName="Katie Rogers" />);
     const endBtn = screen.getByTitle('End Video Call');
-    const dock = findAncestor(endBtn, ['bg-[#12131c]/90', 'rounded-full']);
+    const dock = findAncestor(endBtn, ['bg-[var(--nova-canvas)]/90', 'rounded-full']);
     expect(dock).toBeTruthy();
     expect(dock!.className).toContain('shadow-2xl');
     expect(screen.getByTitle('Turn camera off')).toBeTruthy();

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Gift, Paperclip, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Gift, Paperclip, Phone, Send, ShieldCheck, Trash2, Video } from 'lucide-react';
 import { toDataURL } from 'qrcode';
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeDownloadMime } from '../lib/security/safeUrl';
@@ -7,6 +7,10 @@ import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { dbInstance } from '../lib/storage/db';
 import { LazyMedia } from './LazyMedia';
+import { VideoCallOverlay } from './VideoCallOverlay';
+import { AnonCallSession, type AnonCallSnapshot } from '../lib/anon/callSession';
+import { parseAnonCallMessage } from '../lib/anon/callProtocol';
+import { resolveTurnServers } from '../lib/p2p/signalingConfig';
 import {
   ackInboxPackets,
   contactFromOffer,
@@ -39,6 +43,7 @@ import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
 import { createAutoTransport, LocalAnonTransport } from '../lib/anon/localTransport';
 import { createPushHintPoller, pushTokenForQueue, registerPush } from '../lib/anon/push';
+import { relayRateLimitRemainingMs } from '../lib/anon/httpRelay';
 import { checkTorRunning, isOnionUrl } from '../lib/anon/tor';
 import { uint8ToBase64 } from '../lib/anon/packet';
 import {
@@ -557,6 +562,8 @@ export const AnonymousMessengerScreen: React.FC<{
   const [reportCategory, setReportCategory] = useState<AbuseCategory>('spam');
   const [draft, setDraft] = useState('');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [anonCall, setAnonCall] = useState<AnonCallSnapshot | null>(null);
+  const callSessionRef = useRef<AnonCallSession | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState('');
@@ -571,7 +578,7 @@ export const AnonymousMessengerScreen: React.FC<{
   const localModePanelRef = useRef<HTMLDivElement>(null);
   const relayUrlInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef(false);
-  const checkInboxRef = useRef<(() => Promise<void>) | null>(null);
+  const checkInboxRef = useRef<((contactId?: string) => Promise<void>) | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const relayFailuresRef = useRef<RelayFailureMap>({});
   const [privacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
@@ -1057,7 +1064,44 @@ export const AnonymousMessengerScreen: React.FC<{
     return true;
   };
 
-  const checkInbox = async () => {
+  const ensureCallSession = (entry: AnonymousMessengerState['contacts'][number]) => {
+    if (callSessionRef.current) return callSessionRef.current;
+    const transport = getTransport(entry.contact.peerInvite.relayUrl);
+    if (!transport) return null;
+    const standbyRelay = entry.contact.peerInvite.standby?.relayUrl;
+    const standbyTransport = standbyRelay ? getTransport(standbyRelay) : null;
+    const name =
+      entry.contact.peerInvite.displayName?.trim() || `Contact ${entry.id.slice(-6)}`;
+    const turnServers =
+      privacyPrefs.turnServers.length > 0 ? privacyPrefs.turnServers : resolveTurnServers();
+    const session = new AnonCallSession({
+      contactId: entry.id,
+      contactName: name,
+      send: async (body) =>
+        Boolean(
+          await sendContactMessage(transport, entry.contact, body, {
+            standbyTransport,
+          }),
+        ),
+      iceServers: turnServers.length > 0 ? turnServers : undefined,
+      onState: (state) => setAnonCall(state),
+      onNotice: (message) => setStatus(message),
+    });
+    callSessionRef.current = session;
+    return session;
+  };
+
+  const startAnonCall = (mode: 'voice' | 'video') => {
+    if (!selectedContact || selectedContactBlocked) return;
+    const session = ensureCallSession(selectedContact);
+    if (!session) {
+      setError(labels.relayUnavailable);
+      return;
+    }
+    void session.start(mode);
+  };
+
+  const checkInbox = async (onlyContactId?: string) => {
     if (!configuredSettings || pollingRef.current) return;
     const current = stateRef.current;
     type InboxBatch = {
@@ -1079,13 +1123,17 @@ export const AnonymousMessengerScreen: React.FC<{
         });
       }
     };
-    if (current.pendingInbox) addBatch(current.pendingInbox);
+    if (!onlyContactId && current.pendingInbox) addBatch(current.pendingInbox);
     for (const entry of current.contacts) {
+      if (onlyContactId && entry.id !== onlyContactId) continue;
       if (!isBlocked(contactIdentity(entry.contact.peerInvite))) {
         addBatch(entry.contact.inbox, entry.id);
       }
     }
     if (batches.size === 0) return;
+    // A 429 already told us the relay is rate limiting this IP; skip polling
+    // until the advertised cooldown passes instead of burning more requests.
+    if (relayRateLimitRemainingMs() > 0) return;
 
     pollingRef.current = true;
     setIsBusy(true);
@@ -1099,6 +1147,7 @@ export const AnonymousMessengerScreen: React.FC<{
       let next = current;
       let changed = false;
       for (const entry of current.contacts) {
+        if (onlyContactId && entry.id !== onlyContactId) continue;
         if (!entry.pendingOffer) continue;
         const peerTransport = getTransport(entry.contact.peerInvite.relayUrl);
         const standbyRelay = entry.contact.peerInvite.standby?.relayUrl;
@@ -1146,6 +1195,15 @@ export const AnonymousMessengerScreen: React.FC<{
         relayErrors.delete(owner.queueId);
         for (const packet of packets) {
           if (contactId) {
+            const callMessage = parseAnonCallMessage(packet.body);
+            if (callMessage) {
+              const entry = next.contacts.find((item) => item.id === contactId);
+              if (entry) ensureCallSession(entry)?.handle(callMessage);
+              const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
+              bucket.packetIds.push(packet.packetId);
+              acknowledgements.set(inbox.queueId, bucket);
+              continue;
+            }
             if (packet.offer) {
               // A queue rotation arrives as a contact offer on our own queue.
               // Adopt the new inbox only when the offer proves the same contact
@@ -1396,15 +1454,53 @@ export const AnonymousMessengerScreen: React.FC<{
   });
 
   const pendingInboxForPolling = state.pendingInbox;
+  const contactCount = state.contacts.length;
   useEffect(() => {
     const inbox = pendingInboxForPolling;
-    if (!transport || !inbox || inbox.expiresAt <= Date.now()) return;
+    if (!transport) return;
+    const hasPendingInbox = Boolean(inbox && inbox.expiresAt > Date.now());
+    // Without a push token the hint poller never starts, so established
+    // contacts still need a local fallback poll to receive messages.
+    if (!hasPendingInbox && (pushToken || contactCount === 0)) return;
+    const intervalMs = hasPendingInbox ? 10_000 : 15_000;
     const timer = window.setInterval(() => {
       if (isBusy || pollingRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       void checkInboxRef.current?.();
-    }, 10_000);
+    }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [isBusy, pendingInboxForPolling, transport]);
+  }, [isBusy, pendingInboxForPolling, transport, pushToken, contactCount]);
+
+  // Call setup needs faster signaling than the 15s message poll.
+  const callActive =
+    anonCall?.phase === 'incoming' ||
+    anonCall?.phase === 'outgoing' ||
+    anonCall?.phase === 'active';
+  useEffect(() => {
+    if (!callActive) return;
+    const timer = window.setInterval(() => {
+      if (isBusy || pollingRef.current) return;
+      void checkInboxRef.current?.(selectedContactId ?? undefined);
+    }, 750);
+    return () => window.clearInterval(timer);
+  }, [callActive, isBusy, selectedContactId]);
+
+  // Incoming calls need to surface without waiting for the 15s all-contacts poll.
+  useEffect(() => {
+    if (callActive || !selectedContactId || pushToken) return;
+    const timer = window.setInterval(() => {
+      if (isBusy || pollingRef.current) return;
+      void checkInboxRef.current?.(selectedContactId);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [callActive, selectedContactId, pushToken, isBusy]);
+
+  useEffect(() => {
+    return () => {
+      callSessionRef.current?.destroy();
+      callSessionRef.current = null;
+    };
+  }, []);
 
   // Push split (phase F): register an opaque token per queue so the relay can
   // send an empty wake-up. Disabled with a proxy: the registration would leak
@@ -2306,6 +2402,26 @@ export const AnonymousMessengerScreen: React.FC<{
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
+                      onClick={() => startAnonCall('voice')}
+                      disabled={isBusy || selectedContactBlocked || !isConfigured}
+                      title={isRussian ? 'Аудиозвонок' : 'Voice call'}
+                      aria-label={isRussian ? 'Аудиозвонок' : 'Voice call'}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 hover:bg-white/10 disabled:opacity-40"
+                    >
+                      <Phone className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startAnonCall('video')}
+                      disabled={isBusy || selectedContactBlocked || !isConfigured}
+                      title={isRussian ? 'Видеозвонок' : 'Video call'}
+                      aria-label={isRussian ? 'Видеозвонок' : 'Video call'}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 hover:bg-white/10 disabled:opacity-40"
+                    >
+                      <Video className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void giftPremiumToSelectedContact()}
                       disabled={isBusy || selectedContactBlocked || !isConfigured}
                       className="flex items-center gap-1.5 rounded-xl border border-[var(--nova-accent-color)]/40 px-3 py-2 text-xs text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/10 disabled:opacity-40"
@@ -2422,6 +2538,70 @@ export const AnonymousMessengerScreen: React.FC<{
           </div>
         </section>
       </div>
+
+      {anonCall?.phase === 'incoming' && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isRussian ? 'Входящий звонок' : 'Incoming call'}
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#11131a] p-5 text-center">
+            <p className="text-sm font-semibold text-white">{anonCall.contactName}</p>
+            <p className="mt-1 text-xs text-white/50">
+              {anonCall.mode === 'video'
+                ? isRussian ? 'Видеозвонок' : 'Video call'
+                : isRussian ? 'Аудиозвонок' : 'Voice call'}
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void callSessionRef.current?.decline()}
+                className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/5"
+              >
+                {isRussian ? 'Отклонить' : 'Decline'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void callSessionRef.current?.accept()}
+                className="flex-1 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-400"
+              >
+                {isRussian ? 'Принять' : 'Accept'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {anonCall &&
+        (anonCall.phase === 'outgoing' ||
+          anonCall.phase === 'active' ||
+          anonCall.phase === 'ended') && (
+          <VideoCallOverlay
+            isOpen
+            onEndCall={() => void callSessionRef.current?.end()}
+            contactName={anonCall.contactName}
+            mode={anonCall.mode ?? 'voice'}
+            localStream={anonCall.localStream ?? null}
+            remoteStream={anonCall.remoteStream ?? null}
+            connectionStatus={
+              anonCall.status === 'connected'
+                ? 'connected'
+                : anonCall.status === 'failed'
+                  ? 'failed'
+                  : 'connecting'
+            }
+            isMicOn={anonCall.micEnabled}
+            isCameraOn={anonCall.cameraEnabled}
+            hidesIp
+            onToggleMic={() =>
+              void callSessionRef.current?.setMicrophoneEnabled(!anonCall.micEnabled)
+            }
+            onToggleCamera={() =>
+              void callSessionRef.current?.setCameraEnabled(!anonCall.cameraEnabled)
+            }
+          />
+        )}
 
       {contactPendingDelete && (
         <div

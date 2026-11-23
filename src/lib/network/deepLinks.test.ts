@@ -26,7 +26,7 @@ describe('parseDeepLink', () => {
     expect(link).toBe('nova://contact/eyJ2IjoxfQ');
     expect(parseDeepLink(link)).toEqual(target);
     expect(parseDeepLinkFromHash(`#${link}`)).toEqual(target);
-    expect(buildContactInviteUrl(target.code)).toBe(
+    expect(buildContactInviteUrl(target.code, 'https://mess.cvr.name')).toBe(
       'https://mess.cvr.name/#nova://contact/eyJ2IjoxfQ',
     );
     expect(parseDeepLink('nova://contact/unsafe?relay=https://example.com')).toBeNull();

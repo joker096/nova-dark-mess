@@ -47,6 +47,8 @@ import {
   Play,
   TrendingUp,
   TrendingDown,
+  DollarSign,
+  MousePointerClick,
 } from 'lucide-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker, Avatar } from '../lib/ui';
@@ -71,7 +73,7 @@ import { ChannelPostComposerModal } from './ChannelPostComposerModal';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { ReportSheet } from './ReportSheet';
 import { SponsoredPostCard } from './SponsoredPostCard';
-import { fetchAd, recordImpression } from '../lib/ads/adClient';
+import { fetchAd, recordImpression, fetchAdStats, type AdStats } from '../lib/ads/adClient';
 import { getDemoCampaign } from '../lib/ads/demoCampaign';
 import { LazyMedia } from './LazyMedia';
 import {
@@ -738,6 +740,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     : feedPosts;
 
   const [adCampaign, setAdCampaign] = useState<AdCampaign | null>(null);
+  const [adStats, setAdStats] = useState<AdStats | null>(null);
+  const [adStatsLoading, setAdStatsLoading] = useState(false);
 
   // Fetch a real ad from the ad server for this channel. Falls back to the
   // demo campaign when the server is unavailable or has no ad for the channel.
@@ -762,6 +766,36 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       clearTimeout(timer);
     };
   }, [channel, language]);
+
+  // Fetch ad stats when stats panel opens or period changes
+  useEffect(() => {
+    if (!statsPanelOpen || !channel || channel.isOwned) return;
+    let cancelled = false;
+    setAdStatsLoading(true);
+    
+    async function loadAdStats() {
+      try {
+        const now = Date.now();
+        let fromMs: number | undefined;
+        if (statsPeriod === '7d') fromMs = now - 7 * 24 * 60 * 60 * 1000;
+        else if (statsPeriod === '30d') fromMs = now - 30 * 24 * 60 * 60 * 1000;
+        
+        const stats = await fetchAdStats(channel.id, fromMs);
+        if (!cancelled) {
+          setAdStats(stats);
+          setAdStatsLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setAdStats(null);
+          setAdStatsLoading(false);
+        }
+      }
+    }
+    
+    loadAdStats();
+    return () => { cancelled = true; };
+  }, [statsPanelOpen, statsPeriod, channel]);
 
   const campaign = adCampaign ?? getDemoCampaign(language);
 
@@ -2260,7 +2294,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           <div className="w-full max-w-3xl bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.statistics', 'Statistics')}</h2>
-              <button onClick={() => setStatsPanelOpen(false)} className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition">
+              <button onClick={() => setStatsPanelOpen(false)} aria-label="Close statistics" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -2330,6 +2364,48 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               </div>
             </div>
 
+            {/* Ad Revenue Section (for channel owners) */}
+            {!channel.isOwned ? null : (
+              <div className="border-t border-[var(--border)] pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-amber-400" />
+                    {t('channel.statsAdRevenue', 'Ad Revenue')}
+                  </h3>
+                  {adStatsLoading && (
+                    <div className="w-4 h-4 border-2 border-[var(--nova-accent-color)] border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+                {adStats ? (
+                  <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <StatCard label={t('channel.statsAdImpressions', 'Impressions')} value={formatCount(adStats.impressions)} icon={<Eye className="w-5 h-5" />} color="text-blue-400" />
+                    <StatCard label={t('channel.statsAdClicks', 'Clicks')} value={formatCount(adStats.clicks)} icon={<MousePointerClick className="w-5 h-5" />} color="text-green-400" />
+                    <StatCard label={t('channel.statsAdCTR', 'CTR')} value={`${adStats.ctr}%`} icon={<TrendingUp className="w-5 h-5" />} color="text-purple-400" />
+                    <StatCard label={t('channel.statsAdRevenue', 'Revenue')} value={`${(adStats.revenueCents / 100).toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} color="text-amber-400" />
+                  </div>
+                  <div className="pt-2 border-t border-[var(--border)]">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-amber-400" />
+                        <span className="font-medium text-[var(--text-primary)]">{t('channel.statsEstimatedPayout', 'Estimated Payout (50%)')}</span>
+                      </div>
+                      <span className="text-lg font-bold text-amber-400">
+                        {(adStats.estimatedPayoutCents / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('channel.statsPayoutNote', '50% revenue share. Actual payout may vary.')}</p>
+                  </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4 text-[var(--text-tertiary)]">
+                    <p className="text-sm">{t('channel.statsNoAdData', 'No ad data available for this period')}</p>
+                    <p className="text-[11px] mt-1">{t('channel.statsAdDataNote', 'Ad revenue appears when advertisers run campaigns in your channel.')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Media Gallery Section */}
             <div className="border-t border-[var(--border)] pt-4 space-y-3">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{t('channel.statsMedia', 'Media Gallery')}</h3>
@@ -2392,7 +2468,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.manageAdmins', 'Manage admins')}</h2>
-              <button onClick={() => setAdminsPanelOpen(false)} className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition">
+              <button onClick={() => setAdminsPanelOpen(false)} aria-label="Close admins panel" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition">
                 <X className="w-4 h-4" />
               </button>
             </div>

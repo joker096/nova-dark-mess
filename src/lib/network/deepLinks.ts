@@ -45,6 +45,8 @@ const getPublicAppHostname = (): string => {
 
 export const DEEP_LINK_WEB_HOST = 'nova.app';
 export const DEFAULT_APP_WEB_HOST = getPublicAppHostname();
+// The marketing host still carries universal links and handoff pages.
+const LEGACY_APP_WEB_HOST = 'mess.cvr.name';
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const CONTACT_INVITE_PATTERN = /^[A-Za-z0-9_-]{1,4096}$/;
@@ -124,7 +126,9 @@ export function parseDeepLink(input: string): DeepLinkTarget | null {
     parsed.protocol === 'https:' &&
     (parsed.hostname === DEEP_LINK_WEB_HOST ||
       parsed.hostname === DEFAULT_APP_WEB_HOST ||
-      parsed.hostname === `www.${DEFAULT_APP_WEB_HOST}`)
+      parsed.hostname === `www.${DEFAULT_APP_WEB_HOST}` ||
+      parsed.hostname === LEGACY_APP_WEB_HOST ||
+      parsed.hostname === `www.${LEGACY_APP_WEB_HOST}`)
   ) {
     const [type, id] = parsed.pathname.split('/').filter(Boolean);
     // https://<app>/c/<token>#<key> — guest handoff; the key stays in the

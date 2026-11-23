@@ -51,8 +51,8 @@ describe('ScheduleMessageModal visual snapshot', () => {
     render(
       <ScheduleMessageModal isOpen messageText="hi" onSchedule={vi.fn()} onClose={vi.fn()} />,
     );
-    const card = findByClass(document, 'bg-[#151621]')!;
-    expect(card.className).toContain('border-white/10');
+    const card = findByClass(document, 'bg-[var(--nova-surface)]')!;
+    expect(card.className).toContain('border-[var(--nova-border-color)]');
     expect(card.className).toContain('rounded-3xl');
     expect(card.className).toContain('shadow-2xl');
     expect(card.className).toContain('animate-in');
@@ -70,16 +70,16 @@ describe('ScheduleMessageModal visual snapshot', () => {
     expect(screen.getByRole('heading', { name: 'Schedule Message' })).toBeTruthy();
     expect(screen.getByText('Send automatically at a chosen time')).toBeTruthy();
     const close = screen.getByRole('button', { name: 'common.close' });
-    expect(close.className).toContain('bg-white/5');
-    expect(close.className).toContain('hover:bg-white/15');
+    expect(close.className).toContain('bg-[var(--nova-overlay-weak)]');
+    expect(close.className).toContain('hover:bg-[var(--nova-overlay-medium)]');
   });
 
   it('renders message preview with accent label', () => {
     render(
       <ScheduleMessageModal isOpen messageText="Hello world" onSchedule={vi.fn()} onClose={vi.fn()} />,
     );
-    const preview = findByClass(document, 'bg-[#1b1c28]')!;
-    expect(preview.className).toContain('border-white/5');
+    const preview = findByClass(document, 'bg-[var(--nova-surface-high)]')!;
+    expect(preview.className).toContain('border-[var(--nova-border-color)]');
     expect(preview.className).toContain('rounded-2xl');
     expect(screen.getByText('Message Preview')).toBeTruthy();
     expect(screen.getByText('"Hello world"')).toBeTruthy();
@@ -104,11 +104,11 @@ describe('ScheduleMessageModal visual snapshot', () => {
     const selected = screen.getByRole('button', { name: /In 5 seconds/ })!;
     expect(selected.className).toContain('border-[var(--nova-accent-color)]');
     expect(selected.className).toContain('bg-[var(--nova-accent-color)]/15');
-    expect(selected.className).toContain('text-white');
+    expect(selected.className).toContain('text-[var(--nova-text-primary)]');
     expect(selected.className).toContain('shadow-sm');
     const unselected = screen.getByRole('button', { name: /In 15 minutes/ })!;
-    expect(unselected.className).toContain('border-white/5');
-    expect(unselected.className).toContain('bg-[#1b1c28]');
+    expect(unselected.className).toContain('border-[var(--nova-border-color)]');
+    expect(unselected.className).toContain('bg-[var(--nova-surface-high)]');
   });
 
   it('renders demo pill on 5s preset', () => {
@@ -126,8 +126,8 @@ describe('ScheduleMessageModal visual snapshot', () => {
       <ScheduleMessageModal isOpen messageText="hi" onSchedule={vi.fn()} onClose={vi.fn()} />,
     );
     const custom = screen.getByRole('button', { name: /Custom Date & Time/ })!;
-    expect(custom.className).toContain('border-white/5');
-    expect(custom.className).toContain('bg-[#1b1c28]');
+    expect(custom.className).toContain('border-[var(--nova-border-color)]');
+    expect(custom.className).toContain('bg-[var(--nova-surface-high)]');
     const calendar = custom.querySelector('svg')!;
     expect(calendar).toBeTruthy();
   });
@@ -138,7 +138,7 @@ describe('ScheduleMessageModal visual snapshot', () => {
     );
     const custom = screen.getByRole('button', { name: /Custom Date & Time/ })!;
     fireEvent.click(custom);
-    const customPanel = findByClass(document, 'bg-[#101118]')!;
+    const customPanel = screen.getByTestId('schedule-custom-panel');
     expect(customPanel.className).toContain('rounded-xl');
     expect(customPanel.className).toContain('animate-in');
     expect(document.querySelector('input[type="date"]')).toBeTruthy();
@@ -154,7 +154,7 @@ describe('ScheduleMessageModal visual snapshot', () => {
     expect(confirm.className).toContain('shadow-[var(--nova-accent-color)]/25');
     expect(confirm.className).toContain('active:scale-95');
     const cancel = screen.getByRole('button', { name: 'Cancel' })!;
-    expect(cancel.className).toContain('bg-white/5');
-    expect(cancel.className).toContain('hover:bg-white/10');
+    expect(cancel.className).toContain('bg-[var(--nova-overlay-weak)]');
+    expect(cancel.className).toContain('hover:bg-[var(--nova-overlay-medium)]');
   });
 });

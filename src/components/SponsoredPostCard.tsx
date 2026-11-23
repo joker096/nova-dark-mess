@@ -126,7 +126,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
         ref={cardRef}
         aria-label={`${t('ads.label')}: ${campaign.headline}`}
         data-testid="sponsored-post-card"
-        className="relative overflow-hidden rounded-[24px] border border-white/[0.07] bg-[#171820]/95 shadow-md shadow-black/50"
+        className="relative overflow-hidden rounded-[24px] border border-[var(--nova-border-color)]/40 bg-[var(--nova-surface-high)]/95 shadow-md shadow-black/50"
       >
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-px"
@@ -137,7 +137,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
 
         <div className="flex items-center gap-2.5 px-4 pt-3.5">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-inner"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-primary)] shadow-inner"
             style={{
               background: `linear-gradient(135deg, ${campaign.accent}66, ${campaign.accent}22)`,
               border: `1px solid ${campaign.accent}44`,
@@ -147,19 +147,19 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="truncate text-[12px] font-semibold text-white/90">
+              <span className="truncate text-[12px] font-semibold text-[var(--nova-text-primary)]/90">
                 {campaign.advertiserName}
               </span>
               <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/35 bg-[var(--nova-accent-color)]/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-[var(--nova-accent-color)]">
                 {t('ads.label')}
               </span>
             </div>
-            <p className="truncate text-[9.5px] text-white/35">{campaign.category}</p>
+            <p className="truncate text-[9.5px] text-[var(--nova-text-primary)]/35">{campaign.category}</p>
           </div>
           <button
             type="button"
             onClick={hide}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/30 transition hover:bg-white/5 hover:text-white/80"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-primary)]/30 transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]/80"
             aria-label={t('ads.hideAd')}
             title={t('ads.hideAd')}
           >
@@ -168,7 +168,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
         </div>
 
         <div className="px-4 pt-3">
-          <div className="relative flex h-[88px] items-center justify-between overflow-hidden rounded-2xl border border-white/[0.06] bg-[#121521] px-4">
+          <div className="relative flex h-[88px] items-center justify-between overflow-hidden rounded-2xl border border-[var(--nova-border-color)]/40 bg-[var(--nova-surface-high)] px-4">
             <div
               className="absolute -right-10 -top-16 h-44 w-44 rounded-full opacity-30 blur-2xl"
               style={{ background: campaign.accent }}
@@ -182,14 +182,14 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
               style={{ borderColor: campaign.accent }}
             />
             <div className="relative min-w-0">
-              <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--nova-text-primary)]/35">
                 <Sparkles className="h-2.5 w-2.5" style={{ color: campaign.accent }} />
                 {t('ads.nativeLabel')}
               </p>
-              <p className="mt-1 text-lg font-bold tracking-tight text-white">
+              <p className="mt-1 text-lg font-bold tracking-tight text-[var(--nova-text-primary)]">
                 {campaign.advertiserName}
               </p>
-              <p className="text-[10px] text-white/35">{campaign.headline}</p>
+              <p className="text-[10px] text-[var(--nova-text-primary)]/35">{campaign.headline}</p>
             </div>
             <AudioLines
               className="relative h-10 w-10 shrink-0 opacity-80"
@@ -197,7 +197,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
             />
           </div>
 
-          <h3 className="mt-3 text-[14.5px] font-bold leading-snug text-white">
+          <h3 className="mt-3 text-[14.5px] font-bold leading-snug text-[var(--nova-text-primary)]">
             {campaign.headline}
           </h3>
           <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-[#a0a5b2]">
@@ -207,18 +207,18 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
           <button
             type="button"
             onClick={openDestination}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-[11.5px] font-semibold text-white/90 transition hover:bg-white/10 active:scale-[0.98]"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] px-3.5 py-1.5 text-[11.5px] font-semibold text-[var(--nova-text-primary)]/90 transition hover:bg-[var(--nova-overlay-medium)] active:scale-[0.98]"
           >
             {campaign.ctaLabel}
             <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
           </button>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] px-4 py-2">
+        <div className="mt-3 flex items-center justify-between border-t border-[var(--nova-border-color)]/40 px-4 py-2">
           <button
             type="button"
             onClick={() => setWhyOpen(true)}
-            className="inline-flex items-center gap-1 rounded-full py-1 text-[10px] font-medium text-white/35 transition hover:text-white/65"
+            className="inline-flex items-center gap-1 rounded-full py-1 text-[10px] font-medium text-[var(--nova-text-primary)]/35 transition hover:text-[var(--nova-text-primary)]/65"
           >
             <Info className="h-3 w-3" />
             {t('ads.whyThisAd')}
@@ -227,7 +227,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
             <button
               type="button"
               onClick={() => setReportOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-white/35 transition hover:bg-red-500/10 hover:text-red-300"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-[var(--nova-text-primary)]/35 transition hover:bg-red-500/10 hover:text-red-300"
             >
               <Flag className="h-3 w-3" />
               {t('ads.reportAd')}
@@ -235,7 +235,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
             <button
               type="button"
               onClick={hide}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-white/35 transition hover:bg-white/5 hover:text-white/70"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-[var(--nova-text-primary)]/35 transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]/70"
             >
               <EyeOff className="h-3 w-3" />
               {t('ads.hideAd')}
@@ -255,9 +255,9 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
             aria-modal="true"
             aria-label={t('ads.whyTitle')}
             onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-md overflow-hidden rounded-[26px] border border-white/10 bg-[#151621] text-white shadow-2xl"
+            className="w-full max-w-md overflow-hidden rounded-[26px] border border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-primary)] shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-white/5 p-4">
+            <div className="flex items-center justify-between border-b border-[var(--nova-border-color)] p-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
                   <Info className="h-4 w-4" />
@@ -267,15 +267,15 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
               <button
                 type="button"
                 onClick={() => setWhyOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/60"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)]/60"
                 aria-label={t('common.close')}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
             <div className="space-y-3 p-4">
-              <p className="text-[11.5px] leading-relaxed text-white/60">{t('ads.whyBody')}</p>
-              <ul className="space-y-1.5 text-[11px] text-white/55">
+              <p className="text-[11.5px] leading-relaxed text-[var(--nova-text-primary)]/60">{t('ads.whyBody')}</p>
+              <ul className="space-y-1.5 text-[11px] text-[var(--nova-text-primary)]/55">
                 {[1, 2, 3].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
@@ -283,14 +283,14 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
                   </li>
                 ))}
               </ul>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[10px] leading-relaxed text-white/35">
+              <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] p-3 text-[10px] leading-relaxed text-[var(--nova-text-primary)]/35">
                 {t('ads.whyContext', { advertiser: campaign.advertiserName })}
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={hide}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-[11px] font-semibold text-white/80 transition hover:bg-white/10"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] px-3 py-2.5 text-[11px] font-semibold text-[var(--nova-text-primary)]/80 transition hover:bg-[var(--nova-overlay-medium)]"
                 >
                   <EyeOff className="h-3.5 w-3.5" />
                   {t('ads.hideAd')}
@@ -315,7 +315,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
                   setHidden(true);
                   onDismissed?.();
                 }}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10.5px] font-medium text-white/35 transition hover:text-white/65"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10.5px] font-medium text-[var(--nova-text-primary)]/35 transition hover:text-[var(--nova-text-primary)]/65"
               >
                 <Ban className="h-3.5 w-3.5" />
                 {t('ads.blockAdvertiser')}

@@ -5,6 +5,8 @@ import {
   deleteAnonQueue,
   enqueueAnonPacket,
   pollAnonQueue,
+  relayRateLimitRemainingMs,
+  resetRelayRateLimitForTests,
 } from './httpRelay';
 import { encodeFixedPacket, uint8ToBase64 } from './packet';
 
@@ -28,6 +30,28 @@ function mockRelay(response: unknown = { ok: true }) {
 function byteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
+
+describe('relay rate-limit cooldown', () => {
+  it('remembers a 429 and reports the remaining cooldown', async () => {
+    resetRelayRateLimitForTests();
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ ok: false, reason: 'RATE_LIMITED' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      })) as typeof fetch;
+
+    const result = await pollAnonQueue(
+      { baseUrl: 'https://relay.example', fetchImpl },
+      'q_0123456789abcdef0123456789abcdef',
+      'b'.repeat(43),
+    );
+
+    expect(result.packets).toEqual([]);
+    expect(relayRateLimitRemainingMs()).toBeGreaterThan(0);
+    resetRelayRateLimitForTests();
+    expect(relayRateLimitRemainingMs()).toBe(0);
+  });
+});
 
 describe('fixed-size relay command bodies', () => {
   it('pads queue creation, poll, ack and delete to control sizes', async () => {
