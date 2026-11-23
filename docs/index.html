@@ -1078,10 +1078,10 @@ noscript .ns{padding:14px;text-align:center;background:#2a1606;color:var(--accen
       <li class="gb rv"><b>1</b><h3>Прямой WebRTC</h3><p>Стандартный зашифрованный P2P-тоннель между двумя устройствами.</p></li>
       <li class="gb rv"><b>2</b><h3>WebSocket-тоннель</h3><p>HTTP/SOCKS5-прокси с обфускацией MTProto — если WebRTC заблокирован.</p></li>
       <li class="gb rv"><b>3</b><h3>Обфускация трафика</h3><p>Поддельные TLS-заголовки, XOR, случайный паддинг и джиттер.</p></li>
-      <li class="gb rv"><b>4</b><h3>Domain fronting</h3><p>Трафик идёт через CDN, DPI видит лишь обычный запрос к нему.</p></li>
-      <li class="gb rv"><b>5</b><h3>Автопереключение</h3><p>Приложение само выбирает WebRTC, WebSocket или fronting.</p></li>
+      <li class="gb rv"><b>4</b><h3>WebTunnel, REALITY и Tor</h3><p>Транспорты для собственных relay-серверов, если прямое соединение заблокировано.</p></li>
+      <li class="gb rv"><b>5</b><h3>Автопереключение</h3><p>Приложение само выбирает WebRTC, WebSocket или один из обходных транспортов.</p></li>
     </ol>
-    <p class="note rv">Mesh Compass — визуальный радар ближайших узлов: связь без интернета и сотовой сети, дальность заявлена до 50 км.</p>
+    <p class="note rv">Mesh Compass — радар ближайших узлов по live presence/GPS. Для связи без интернета на больших расстояниях нужно внешнее радио, например Meshtastic.</p>
   </div>
 </section>
 
