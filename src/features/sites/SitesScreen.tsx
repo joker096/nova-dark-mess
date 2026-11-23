@@ -56,22 +56,22 @@ const wizardModal = (
           <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('sites.wizard.title')}</h2>
           <form onSubmit={onSubmit} className="mt-4 space-y-3">
             <div>
-              <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.name')}</label>
-              <input value={wizardForm.name} onChange={(e) => setWizardForm({ ...wizardForm, name: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
+              <label className="text-[11px] text-[var(--nova-text-muted)] block mb-1">{t('sites.wizard.name')}</label>
+              <input value={wizardForm.name} onChange={(e) => setWizardForm({ ...wizardForm, name: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-[var(--nova-surface)] border border-[var(--nova-border-color)] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
             </div>
             <div>
-              <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.domains')}</label>
-              <input value={wizardForm.domains} onChange={(e) => setWizardForm({ ...wizardForm, domains: e.target.value })} placeholder="http://localhost:3000, https://example.com" className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
-              <p className="text-[10px] text-[#8c919d] mt-1">{t('sites.wizard.domainsHint')}</p>
+              <label className="text-[11px] text-[var(--nova-text-muted)] block mb-1">{t('sites.wizard.domains')}</label>
+              <input value={wizardForm.domains} onChange={(e) => setWizardForm({ ...wizardForm, domains: e.target.value })} placeholder="http://localhost:3000, https://example.com" className="w-full px-3 py-2 rounded-lg bg-[var(--nova-surface)] border border-[var(--nova-border-color)] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm" />
+              <p className="text-[10px] text-[var(--nova-text-muted)] mt-1">{t('sites.wizard.domainsHint')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.color')}</label>
+                <label className="text-[11px] text-[var(--nova-text-muted)] block mb-1">{t('sites.wizard.color')}</label>
                 <input type="color" value={wizardForm.color} onChange={(e) => setWizardForm({ ...wizardForm, color: e.target.value })} className="w-full h-10 rounded-lg border-none bg-transparent cursor-pointer" />
               </div>
               <div>
-                <label className="text-[11px] text-[#8c919d] block mb-1">{t('sites.wizard.language')}</label>
-                <select value={wizardForm.language} onChange={(e) => setWizardForm({ ...wizardForm, language: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm">
+                <label className="text-[11px] text-[var(--nova-text-muted)] block mb-1">{t('sites.wizard.language')}</label>
+                <select value={wizardForm.language} onChange={(e) => setWizardForm({ ...wizardForm, language: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-[var(--nova-surface)] border border-[var(--nova-border-color)] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color,#ff4e18)] text-sm">
                   <option value="en">English</option>
                   <option value="ru">Русский</option>
                 </select>
@@ -727,7 +727,7 @@ export default function SitesScreen({
               const text = m.plainText ?? (m.decryptError ? '[не удалось расшифровать]' : '…');
               return (
                 <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[var(--nova-accent-color,#ff4e18)] text-white rounded-tr-none' : 'bg-white/[0.08] text-white rounded-tl-none'}`}>
+                  <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] rounded-tr-none' : 'bg-[var(--nova-surface)] text-[var(--nova-text-primary)] rounded-tl-none'}`}>
                     {text}
                     <div className="text-[10px] opacity-60 mt-1">{fmtTime(m.created_at)} {m.delivered_at ? <CheckCheck size={10} className="ml-1 inline" /> : <Clock size={10} className="ml-1 inline text-[#8c919d]" />}</div>
                   </div>

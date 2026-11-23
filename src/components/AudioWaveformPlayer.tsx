@@ -289,13 +289,13 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         </div>
 
         {/* Time Progress and Total Duration */}
-        <div className="mt-0.5 flex items-center justify-between gap-2 px-0.5 font-mono text-[10px] text-white/50">
+        <div className="mt-0.5 flex items-center justify-between gap-2 px-0.5 font-mono text-[10px] text-[var(--nova-text-muted)]">
           <span className="whitespace-nowrap">
             {isPlaying || currentTime > 0
               ? formatTime(currentTime)
               : voiceNote.duration || formatTime(duration)}
           </span>
-          <span className="whitespace-nowrap text-white/35">
+          <span className="whitespace-nowrap text-[var(--nova-text-muted)]/70">
             {voiceNote.duration || formatTime(duration)}
           </span>
         </div>
@@ -305,7 +305,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
       {showSpeedButton && (
         <button
           onClick={cycleSpeed}
-          className="min-w-6 min-h-6 px-1.5 py-0.5 rounded-full bg-white/10 hover:bg-white/15 text-[10px] font-semibold text-white/75 hover:text-white transition cursor-pointer shrink-0"
+          className="min-w-6 min-h-6 px-1.5 py-0.5 rounded-full bg-[var(--nova-surface)] hover:bg-[var(--nova-surface-high)] text-[10px] font-semibold text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
           title="Playback speed"
         >
           {playbackSpeed}x

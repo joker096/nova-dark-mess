@@ -175,17 +175,17 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             <PenSquare className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-semibold text-white">
+            <p className="truncate text-[11px] font-semibold text-[var(--nova-text-primary)]">
               {channelName ?? t('channel.newPost')}
             </p>
-            <p className="text-[10px] leading-relaxed text-white/55">
+            <p className="text-[10px] leading-relaxed text-[var(--nova-text-muted)]">
               {t('channel.newPostSubtitle')}
             </p>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="post-title" className="px-1 text-[11px] font-semibold text-[#868b98]">
+          <label htmlFor="post-title" className="px-1 text-[11px] font-semibold text-[var(--nova-text-muted)]">
             {t('channel.postTitle')}
           </label>
           <input
@@ -197,16 +197,16 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               setError(null);
             }}
             placeholder={t('channel.postTitlePlaceholder')}
-            className="w-full rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between px-1">
-            <label htmlFor="post-text" className="text-[11px] font-semibold text-[#868b98]">
+            <label htmlFor="post-text" className="text-[11px] font-semibold text-[var(--nova-text-muted)]">
               {t('channel.postText')}
             </label>
-            <span className="text-[10px] tabular-nums text-white/30">
+            <span className="text-[10px] tabular-nums text-[var(--nova-text-muted)]">
               {text.length}/2000
             </span>
           </div>
@@ -220,7 +220,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             }}
             placeholder={t('channel.postTextPlaceholder')}
             rows={4}
-            className="w-full resize-none rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs leading-relaxed text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs leading-relaxed text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
 
@@ -234,8 +234,8 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             aria-pressed={pollOpen}
             className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
               pollOpen
-                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-white'
-                : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-[var(--nova-text-primary)]'
+                : 'border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
           >
             <BarChart2 className="h-3.5 w-3.5" />
@@ -247,8 +247,8 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             aria-pressed={stickerOpen}
             className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
               sticker
-                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-white'
-                : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+                ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/15 text-[var(--nova-text-primary)]'
+                : 'border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
           >
             <Smile className="h-3.5 w-3.5" />
@@ -257,18 +257,18 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
         </div>
 
         {sticker && !stickerOpen && (
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] p-2">
             <StickerMedia
               sticker={sticker}
               className="h-10 w-10 object-contain"
               emojiClassName="text-3xl"
             />
-            <span className="flex-1 truncate text-[11px] text-white/70">{sticker.name}</span>
+            <span className="flex-1 truncate text-[11px] text-[var(--nova-text-secondary)]">{sticker.name}</span>
             <button
               type="button"
               onClick={() => setSticker(null)}
               title={t('common.remove', 'Remove')}
-              className="rounded-lg p-1.5 text-white/40 transition hover:bg-red-500/10 hover:text-red-400"
+              className="rounded-lg p-1.5 text-[var(--nova-text-muted)] transition hover:bg-red-500/10 hover:text-red-400"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -295,9 +295,9 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
         )}
 
         {pollOpen && (
-          <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#101118] p-3">
+          <div className="space-y-2.5 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] p-3">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#868b98]">
+              <span className="text-[11px] font-semibold text-[var(--nova-text-muted)]">
                 {t('poll.questionLabel', 'Question')}
               </span>
               <button
@@ -308,7 +308,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                   setPollOptions(['', '']);
                   setError(null);
                 }}
-                className="text-[10px] font-semibold text-white/40 transition hover:text-red-400"
+                className="text-[10px] font-semibold text-[var(--nova-text-muted)] transition hover:text-red-400"
               >
                 {t('common.remove', 'Remove')}
               </button>
@@ -321,7 +321,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               }}
               maxLength={250}
               placeholder={t('poll.questionPlaceholder', 'Ask a question...')}
-              className="w-full rounded-xl border border-white/10 bg-[#14151c] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+              className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
             />
 
             <div className="space-y-2">
@@ -335,14 +335,14 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                       count: index + 1,
                       defaultValue: `Option ${index + 1}`,
                     })}
-                    className="flex-1 rounded-xl border border-white/10 bg-[#14151c] px-3 py-2 text-xs text-white placeholder-white/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                    className="flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
                   />
                   {pollOptions.length > 2 && (
                     <button
                       type="button"
                       onClick={() => removePollOption(index)}
                       title={t('common.remove', 'Remove')}
-                      className="shrink-0 rounded-lg p-1.5 text-white/40 transition hover:bg-red-500/10 hover:text-red-400"
+                      className="shrink-0 rounded-lg p-1.5 text-[var(--nova-text-muted)] transition hover:bg-red-500/10 hover:text-red-400"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -362,7 +362,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                   {t('poll.addOption', 'Add option')}
                 </button>
               )}
-              <label className="flex items-center gap-1.5 text-[11px] text-white/60">
+              <label className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)]">
                 <input
                   type="checkbox"
                   checked={pollAnonymous}
@@ -371,7 +371,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                 />
                 {t('poll.anonymousVoting', 'Anonymous voting')}
               </label>
-              <label className="flex items-center gap-1.5 text-[11px] text-white/60">
+              <label className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)]">
                 <input
                   type="checkbox"
                   checked={pollMultiple}
@@ -414,7 +414,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-white/5 px-4 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+            className="rounded-xl bg-[var(--nova-surface)] px-4 py-2.5 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)]"
           >
             {t('common.cancel')}
           </button>

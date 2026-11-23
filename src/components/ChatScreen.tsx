@@ -4119,28 +4119,6 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           </div>
         )}
 
-        {messages.some((m) => m.isPinned) && (
-          <div className="mb-2 px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 text-xs text-[var(--nova-text-primary)] flex items-center gap-2">
-            <Pin className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-            <span className="truncate flex-1">
-              {messages.find((m) => m.isPinned)?.text || t('chat.messageDeleted', 'Pinned message')}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const pinned = messages.find((m) => m.isPinned);
-                if (pinned) {
-                  const el = document.getElementById(`msg-${pinned.id}`);
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }}
-              className="min-h-6 text-[10px] px-2 py-0.5 rounded-full bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] transition cursor-pointer"
-            >
-              {t('chat.messageActions.pin')}
-            </button>
-          </div>
-        )}
-
         {isGroupChat && membershipStatus === 'pending' && (
           <div
             data-testid="join-request-status"
@@ -4417,7 +4395,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         disabled={translatingMsgId === msg.id || !msg.text}
                         className={`p-1.5 rounded-full transition cursor-pointer ${
                           translatingMsgId === msg.id || !msg.text
-                            ? 'text-white/20 cursor-not-allowed opacity-50'
+                            ? 'text-[var(--nova-text-muted)] cursor-not-allowed opacity-50'
                             : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
                         }`}
                         title={t('chat.translate', 'Translate')}
@@ -5909,7 +5887,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
                       disappearAfter === option.value
                         ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
-                        : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-white/[0.12] hover:text-[var(--nova-text-primary)]'
+                        : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'
                     }`}
                   >
                     {option.label}
@@ -6227,7 +6205,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       showToast(`${t('chat.reportSubmitted', { defaultValue: 'Report submitted: ' })}${reason}`);
                       setIsReportBotOpen(false);
                     }}
-                    className="w-full py-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
+                    className="w-full py-2 rounded-lg bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
                   >
                     {reason.charAt(0).toUpperCase() + reason.slice(1)}
                   </button>
@@ -6289,11 +6267,11 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 >
                   {t('chat.block', { defaultValue: 'Block' })}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBlockBotConfirm(false)}
-                  className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition cursor-pointer"
-                >
+                    <button
+                      type="button"
+                      onClick={() => setIsBlockBotConfirm(false)}
+                      className="flex-1 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                    >
                   {t('common.cancel')}
                 </button>
               </div>

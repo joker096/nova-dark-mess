@@ -1587,7 +1587,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                         else dayHeaderRefs.current.delete(dayKeyForPost);
                       }}
                       data-day-key={dayKeyForPost}
-                      className="sticky top-0 z-20 -mx-4 mb-2 border-b border-white/[0.06] bg-[var(--nova-canvas)]/90 px-4 py-1.5 backdrop-blur-sm"
+                      className="sticky top-0 z-20 -mx-4 mb-2 border-b border-[var(--nova-border-color)] bg-[var(--nova-canvas)]/90 px-4 py-1.5 backdrop-blur-sm"
                     >
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--nova-text-secondary)]">
                         {new Intl.DateTimeFormat(language, {

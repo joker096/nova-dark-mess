@@ -1220,7 +1220,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         role="button"
                         aria-label={`Message from ${match.chatName} by ${match.senderName}`}
                         tabIndex={0}
-                        className="group bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-raised)] active:bg-[var(--nova-surface-high)] border border-white/[0.04] rounded-2xl p-3 transition cursor-pointer flex items-start gap-3 shadow-sm"
+                        className="group bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-raised)] active:bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] rounded-2xl p-3 transition cursor-pointer flex items-start gap-3 shadow-sm"
                       >
                         <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] shrink-0 mt-0.5">
                           {match.isChannel ? (
@@ -1509,7 +1509,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-center gap-3.5 shadow-sm ${
                       isSelected
                         ? 'bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
-                        : 'bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-white/[0.04]'
+                        : 'bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]'
                     }`}
                   >
                   {/* Avatar Slot */}

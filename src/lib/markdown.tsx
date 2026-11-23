@@ -121,7 +121,7 @@ function processHtmlInText(text: string, opts: { onLinkPress?: (url: string) => 
         element = (
           <code
             key={`${keyBase}-${tagName}-${index}`}
-            className="bg-white/10 px-1 py-0.5 rounded text-[var(--nova-accent-color,#ff4e18)] text-xs font-mono"
+            className="bg-[var(--nova-surface)] px-1 py-0.5 rounded text-[var(--nova-accent-color,#ff4e18)] text-xs font-mono"
           >
             {processedInner}
           </code>
@@ -213,7 +213,7 @@ export function renderMarkdown({ text, onLinkPress }: RenderMarkdownProps): Reac
       blocks.push(
         <blockquote
           key={`bq-${i}`}
-          className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-white/70"
+          className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-[var(--nova-text-secondary)]"
         >
           {processHtmlInText(trimmed.slice(2), opts, `bq-inner-${i}`)}
         </blockquote>
@@ -306,7 +306,7 @@ function renderInline(
         return (
           <code
             key={`${keyBase}-code-${i}`}
-            className="bg-white/10 px-1 py-0.5 rounded text-[var(--nova-accent-color,#ff4e18)] text-xs font-mono"
+            className="bg-[var(--nova-surface)] px-1 py-0.5 rounded text-[var(--nova-accent-color,#ff4e18)] text-xs font-mono"
           >
             {seg.text}
           </code>
@@ -435,7 +435,7 @@ function renderBlocks(
       blocks.push(
         <blockquote
           key={`${keyBase}-bq-${i}`}
-          className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-white/70"
+          className="border-l-2 border-[var(--nova-accent-color,#ff4e18)] pl-3 py-1 my-2 italic text-[var(--nova-text-secondary)]"
         >
           {renderInline(trimmed.slice(2), opts, `${keyBase}-bq-inner-${i}`)}
         </blockquote>
