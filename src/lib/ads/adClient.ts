@@ -91,3 +91,55 @@ export async function recordImpression(campaignId: string, creativeId: string, c
     /* impression recording is best-effort */
   }
 }
+
+/**
+ * Fetch ad statistics for a channel (impressions, clicks, revenue).
+ * Returns null if the ad server is unreachable or no stats available.
+ */
+export interface AdStats {
+  impressions: number;
+  clicks: number;
+  ctr: number; // click-through rate in percent
+  revenueCents: number; // estimated revenue in cents
+  estimatedPayoutCents: number; // 50% rev share for admin
+  period: { from: number; to: number };
+}
+
+export async function fetchAdStats(channelId: string, fromMs?: number, toMs?: number): Promise<AdStats | null> {
+  try {
+    const params = new URLSearchParams({ channel_id: channelId });
+    if (fromMs) params.append('from', String(fromMs));
+    if (toMs) params.append('to', String(toMs));
+    
+    const res = await fetch(`${AD_SERVER_URL}/v1/ads/stats?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { 
+      impressions: number; 
+      clicks: number; 
+      revenue_cents: number; 
+      channel_id: string; 
+      from: number; 
+      to: number;
+    };
+    
+    const impressions = data.impressions || 0;
+    const clicks = data.clicks || 0;
+    const revenueCents = data.revenue_cents || 0;
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+    const estimatedPayoutCents = Math.floor(revenueCents * 0.5); // 50% rev share
+    
+    return {
+      impressions,
+      clicks,
+      ctr: Math.round(ctr * 100) / 100,
+      revenueCents,
+      estimatedPayoutCents,
+      period: { from: data.from, to: data.to },
+    };
+  } catch {
+    return null;
+  }
+}

@@ -4,6 +4,8 @@ import {
   encodeGroupKeyDistribution,
   sealGroupMessage,
   type GroupSession,
+  createGroupSession,
+  rotateGroupSession,
 } from './groupSession';
 
 /**
@@ -149,3 +151,6 @@ export async function distributeGroupSession(
 export function fanOutCostEstimate(memberCount: number, packetProfileBytes = 16384): number {
   return memberCount * packetProfileBytes;
 }
+
+// Re-export from groupSession for convenience
+export { createGroupSession, rotateGroupSession, sealGroupMessage, type GroupSession } from './groupSession';

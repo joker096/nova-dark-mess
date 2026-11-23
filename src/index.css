@@ -636,6 +636,14 @@ select:disabled {
   }
 }
 
+/* Selectable message text: bubbles and other readable surfaces must allow
+   text selection so users can copy without relying solely on the Copy button. */
+.select-text,
+.select-text * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* RTL: direction comes from <html dir>; mirror only directional glyphs. */
 [dir='rtl'] .rtl-flip {
   transform: scaleX(-1);

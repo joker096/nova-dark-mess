@@ -567,7 +567,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         <button
           type="button"
           onClick={() => setStagedVoiceNote(null)}
-          className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
+          className="w-11 h-11 rounded-full bg-[var(--nova-surface-high)]/95 hover:bg-red-950/60 border border-[var(--nova-border-color)] hover:border-red-500/40 text-[var(--nova-text-secondary)] hover:text-red-400 flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
           title="Discard voice recording"
         >
           <Trash2 className="w-4 h-4" />
@@ -587,7 +587,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
         <button
           type="button"
           onClick={() => startRecording(false)}
-          className="w-11 h-11 rounded-full bg-[#181920]/95 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
+          className="w-11 h-11 rounded-full bg-[var(--nova-surface-high)]/95 hover:bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-color)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
           title="Re-record voice note"
         >
           <RefreshCw className="w-4 h-4" />
@@ -650,8 +650,8 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           onClick={cancelRecording}
           className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
             isCanceling
-              ? 'bg-red-500 text-white border-red-500 scale-110'
-              : 'bg-[#181920]/95 hover:bg-red-950/60 border-white/10 hover:border-red-500/40 text-white/70 hover:text-red-400'
+              ? 'bg-red-500 text-[var(--nova-on-accent)] border-red-500 scale-110'
+              : 'bg-[var(--nova-surface-high)]/95 hover:bg-red-950/60 border-[var(--nova-border-color)] hover:border-red-500/40 text-[var(--nova-text-secondary)] hover:text-red-400'
           }`}
           title={t('voiceMemo.cancel', 'Cancel')}
         >
@@ -673,7 +673,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             <div className="relative flex items-center justify-center">
               <span className={`w-2.5 h-2.5 rounded-full relative nova-rec-pulse ${isLocked ? 'bg-emerald-400' : 'bg-[var(--nova-accent-color)]'}`} />
             </div>
-            <span className="text-xs font-mono font-semibold text-white tracking-wider">
+            <span className="text-xs font-mono font-semibold text-[var(--nova-text-primary)] tracking-wider">
               {formatTime(recordingSeconds)}
             </span>
           </div>
@@ -699,13 +699,13 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           {isPushToTalk && !isLocked ? (
             <div
               className={`text-[10px] font-medium flex items-center gap-1 transition-opacity shrink-0 ${
-                isCanceling ? 'text-red-400 font-bold' : 'text-white/60'
+                isCanceling ? 'text-red-400 font-bold' : 'text-[var(--nova-text-primary)]/60'
               }`}
             >
               <span>{isCanceling ? t('voiceMemo.releaseToCancel', 'Release to cancel') : t('voiceMemo.slideToCancelShort', '‹ cancel · lock ↑')}</span>
             </div>
           ) : (
-            <span className={`text-[10.5px] font-medium shrink-0 flex items-center gap-1 ${isLocked ? 'text-emerald-300' : 'text-white/50'}`}>
+            <span className={`text-[10.5px] font-medium shrink-0 flex items-center gap-1 ${isLocked ? 'text-emerald-300' : 'text-[var(--nova-text-primary)]/50'}`}>
               {isLocked && <Lock className="w-3 h-3" />}
               {isLocked ? t('voiceMemo.locked', 'Locked') : t('voiceMemo.recording')}
             </span>
@@ -718,10 +718,10 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             <button
               type="button"
               onClick={stopAndPreview}
-              className="w-11 h-11 rounded-full bg-[#20222e] hover:bg-[#2b2d3c] border border-white/15 text-white flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md shrink-0"
+              className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)] hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] flex items-center justify-center active:scale-90 transition cursor-pointer shadow-md shrink-0"
               title={t('voiceMemo.stopAndPreview', 'Stop and preview')}
             >
-              <Square className="w-3.5 h-3.5 fill-white text-white" />
+              <Square className="w-3.5 h-3.5 fill-[var(--nova-text-primary)] text-[var(--nova-text-primary)]" />
             </button>
 
             <button
@@ -740,8 +740,8 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
             aria-hidden="true"
             className={`flex flex-col items-center justify-center w-11 h-11 rounded-full border shrink-0 transition-all duration-150 ${
               isSlidingUp
-                ? 'bg-emerald-500 text-white border-emerald-400 scale-110 shadow-lg shadow-emerald-500/40'
-                : 'bg-[#181920]/95 text-white/60 border-white/10'
+                ? 'bg-emerald-500 text-[var(--nova-on-accent)] border-emerald-400 scale-110 shadow-lg shadow-emerald-500/40'
+                : 'bg-[var(--nova-surface-high)]/95 text-[var(--nova-text-primary)]/60 border-[var(--nova-border-color)]'
             }`}
             title={t('voiceMemo.slideUpToLock', 'Slide up to lock')}
           >

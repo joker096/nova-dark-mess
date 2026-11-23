@@ -118,7 +118,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
               className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-start gap-3.5 ${
                 isRoot
                   ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/30 ring-1 ring-[var(--nova-accent-color)]/20'
-                  : 'bg-[#17181e]/90 hover:bg-[#1e1f27] border-white/[0.04]'
+                  : 'bg-[var(--nova-surface-high)]/90 hover:bg-[var(--nova-surface-raised)] border-[var(--nova-border-color)]/20'
               }`}
               onClick={() => onScrollToMessage(msg.id)}
               role="button"
@@ -143,18 +143,18 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-white text-sm truncate">
+                  <span className="font-medium text-[var(--nova-text-primary)] text-sm truncate">
                     {senderInfo.name}
                   </span>
-                  <span className="text-[10px] text-[#717682] shrink-0">{msg.time}</span>
+                  <span className="text-[10px] text-[var(--nova-text-secondary)] shrink-0">{msg.time}</span>
                 </div>
 
-                <p className="text-[13px] text-[#a0a5b2] leading-snug line-clamp-2">
+                <p className="text-[13px] text-[var(--nova-text-secondary)] leading-snug line-clamp-2">
                   {getMessageContent(msg)}
                 </p>
 
                 {msg.replyTo && (
-                  <div className="mt-1.5 pt-1.5 border-t border-white/[0.06] text-[11px] text-[#717682]">
+                  <div className="mt-1.5 pt-1.5 border-t border-[var(--nova-border-color)] text-[11px] text-[var(--nova-text-secondary)]">
                     Replying to {msg.replyTo.senderName || 'Unknown'}
                   </div>
                 )}
@@ -167,29 +167,29 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
   };
 
   return (
-    <aside className="fixed md:relative right-0 top-0 h-full w-[360px] md:w-[360px] bg-[#0c0d11] border-l border-white/[0.06] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
+    <aside className="fixed md:relative right-0 top-0 h-full w-[360px] md:w-[360px] bg-[var(--nova-canvas)] border-l border-[var(--nova-border-color)] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
       {/* Header */}
-      <header className="flex items-center justify-between p-3 border-b border-white/[0.06] shrink-0">
+      <header className="flex items-center justify-between p-3 border-b border-[var(--nova-border-color)] shrink-0">
         <div className="flex items-center gap-2">
           <NovaIconButton
             label={t('common.back')}
             icon={<ChevronLeft />}
             size={36}
             variant="subtle"
-            className="border-white/5 bg-[#1e2029]/80"
+            className="border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80"
             onClick={onClose}
           />
           <MessageSquare className="w-5 h-5 text-[var(--nova-accent-color)]" />
-          <h2 className="font-semibold text-[15px] text-white truncate">{t('chat.thread')}</h2>
+          <h2 className="font-semibold text-[15px] text-[var(--nova-text-primary)] truncate">{t('chat.thread')}</h2>
         </div>
         <span className="text-[11px] text-[#8c919d]">{threadMessages.length} {t('chat.messages')}</span>
       </header>
 
       {/* Root Message Preview */}
       {rootMessage && (
-        <div className="p-3 border-b border-white/[0.04] bg-[#090a0e]/50 shrink-0">
+        <div className="p-3 border-b border-[var(--nova-border-color)] bg-[var(--nova-canvas)]/50 shrink-0">
           <div className="flex items-start gap-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 bg-[#20222a] shrink-0 mt-0.5">
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] shrink-0 mt-0.5">
               {rootMessage.senderId === 'me' ? (
                 <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">You</div>
               ) : (() => {
@@ -205,15 +205,15 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-white text-sm truncate">
+                <span className="font-medium text-[var(--nova-text-primary)] text-sm truncate">
                   {(() => {
                     const senderInfo = getSenderInfo(rootMessage);
                     return senderInfo.name;
                   })()}
                 </span>
-                <span className="text-[10px] text-[#717682] shrink-0">{rootMessage.time}</span>
+                <span className="text-[10px] text-[var(--nova-text-secondary)] shrink-0">{rootMessage.time}</span>
               </div>
-              <p className="text-[13px] text-[#a0a5b2] leading-snug line-clamp-2 mt-1">
+              <p className="text-[13px] text-[var(--nova-text-secondary)] leading-snug line-clamp-2 mt-1">
                 {getMessageContent(rootMessage)}
               </p>
             </div>

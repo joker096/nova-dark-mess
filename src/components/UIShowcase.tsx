@@ -30,13 +30,13 @@ export const UIShowcase = () => {
   return (
     <div className="p-8 md:p-12 space-y-8 max-w-4xl mx-auto">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-white">UI Components Showcase</h1>
-        <p className="text-[#8c919d]">Все переиспользуемые компоненты системы дизайна Nova</p>
+        <h1 className="text-2xl font-bold text-[var(--nova-text-primary)]">UI Components Showcase</h1>
+        <p className="text-[var(--nova-text-secondary)]">Все переиспользуемые компоненты системы дизайна Nova</p>
       </div>
 
       {/* NovaButton */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaButton</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaButton</h2>
         <div className="flex flex-wrap gap-3">
           <NovaButton variant="ghost" size="sm" onClick={() => {}}>
             Ghost SM
@@ -70,8 +70,8 @@ export const UIShowcase = () => {
       </section>
 
       {/* NovaInput */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaInput</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaInput</h2>
         <div className="space-y-4 max-w-md">
           <NovaInput label="Username" placeholder="Enter your username" />
           <NovaInput label="Email" placeholder="email@example.com" error="Invalid email address" />
@@ -85,8 +85,8 @@ export const UIShowcase = () => {
       </section>
 
       {/* NovaToggle */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaToggle</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaToggle</h2>
         <div className="space-y-4 max-w-md">
           <NovaToggle label="Notifications" checked={toggle1} onChange={setToggle1} />
           <NovaToggle label="Vibration" checked={toggle2} onChange={setToggle2} />
@@ -95,8 +95,8 @@ export const UIShowcase = () => {
       </section>
 
       {/* NovaCard */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaCard</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaCard</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <NovaCard variant="default" padding="md">
             <div className="text-sm text-[#8c919d]">Default</div>
@@ -114,8 +114,8 @@ export const UIShowcase = () => {
       </section>
 
       {/* Avatar */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Avatar</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">Avatar</h2>
         <div className="flex items-center gap-4">
           <Avatar name="Katie Rogers" size="xl" status="online" />
           <Avatar name="Kurt Cobain" size="l" status="away" />
@@ -136,8 +136,8 @@ export const UIShowcase = () => {
       </section>
 
       {/* NovaColorChip */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaColorChip</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaColorChip</h2>
         <div className="flex gap-2">
           <NovaColorChip gradient="from-[#1E3A8A] to-[#3B82F6]" label="Sapphire" selected onClick={() => {}}>
             Sapphire
@@ -150,8 +150,8 @@ export const UIShowcase = () => {
           </NovaColorChip>
         </div>
       </section>
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaSelectableButton</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaSelectableButton</h2>
         <div className="flex gap-2">
           <NovaSelectableButton selected icon={<Video className="w-4 h-4" />} label="Video" onClick={() => {}}>
             Video
@@ -167,8 +167,8 @@ export const UIShowcase = () => {
           </NovaSelectableButton>
         </div>
       </section>
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">NovaNavButton</h2>
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">NovaNavButton</h2>
         <div className="flex gap-4">
           <NovaNavButton active icon={<Video className="w-5 h-5" />} label="Chats" onClick={() => {}}>
             Chats
@@ -184,16 +184,16 @@ export const UIShowcase = () => {
           </NovaNavButton>
         </div>
       </section>
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">MeshRadar</h2>
-        <p className="text-[#8c919d] text-sm mb-4">
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">MeshRadar</h2>
+        <p className="text-[var(--nova-text-secondary)] text-sm mb-4">
           Визуализация меш-сети: узлы, соединения, маршрутизация, статус в реальном времени.
         </p>
         <MeshRadar className="h-[400px]" />
       </section>
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">MeshMap (real map)</h2>
-        <p className="text-[#8c919d] text-sm mb-4">
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">MeshMap (real map)</h2>
+        <p className="text-[var(--nova-text-secondary)] text-sm mb-4">
           Реальная карта меш-сети на базе OpenStreetMap: узлы, связи, статусы.
         </p>
         <div className="h-[400px] w-full">
@@ -212,7 +212,7 @@ export const UIShowcase = () => {
         maxWidth="md"
       >
         <div className="space-y-4">
-          <p className="text-white">Это демонстрационное модальное окноbuilt на основе <code className="bg-white/10 px-1 py-0.5 rounded">NovaModal</code>.</p>
+          <p className="text-[var(--nova-text-primary)]">Это демонстрационное модальное окноbuilt на основе <code className="bg-[var(--nova-overlay-weak)] px-1 py-0.5 rounded">NovaModal</code>.</p>
           <div className="flex gap-3 pt-4">
             <NovaButton variant="ghost" onClick={() => setModalOpen(false)}>
               Отмена
@@ -225,10 +225,10 @@ export const UIShowcase = () => {
       </NovaModal>
 
       {/* ScrollableRow */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">ScrollableRow</h2>
-        <p className="text-[#8c919d] text-sm mb-4">Горизонтальный скролл без видимого скроллбара:</p>
-        <ScrollableRow wheelScroll={true} gap="2" className="border border-white/10 p-2 rounded-xl">
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">ScrollableRow</h2>
+        <p className="text-[var(--nova-text-secondary)] text-sm mb-4">Горизонтальный скролл без видимого скроллбара:</p>
+        <ScrollableRow wheelScroll={true} gap="2" className="border border-[var(--nova-border-color)] p-2 rounded-xl">
           {['📷', '📍', '📄', '🎤', '❌'].map((icon, i) => (
             <NovaButton
               key={i}
@@ -244,9 +244,9 @@ export const UIShowcase = () => {
       </section>
 
       {/* TransportManager */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">TransportManager</h2>
-        <p className="text-[#8c919d] text-sm mb-4">
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">TransportManager</h2>
+        <p className="text-[var(--nova-text-secondary)] text-sm mb-4">
           Переключатель транспорта: WebRTC, WebSocket, Mesh, Tor с авто-фейловером.
         </p>
         <div className="space-y-2">
@@ -263,40 +263,40 @@ export const UIShowcase = () => {
             Tor/SOCKS5 (priority: 4)
           </NovaButton>
         </div>
-        <div className="mt-3 text-[10px] text-[#8c919d] flex gap-4">
+        <div className="mt-3 text-[10px] text-[var(--nova-text-secondary)] flex gap-4">
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+            <span className="w-2 h-2 rounded-full bg-[var(--nova-text-primary)]" />
             <span>Auto-failover: enabled</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+            <span className="w-2 h-2 rounded-full bg-[var(--nova-text-primary)]" />
             <span>Probe interval: 30s</span>
           </div>
         </div>
       </section>
 
       {/* MeshRoutingTable */}
-      <section className="rounded-2xl bg-[#181921] border border-white/5 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">MeshRoutingTable</h2>
-        <p className="text-[#8c919d] text-sm mb-4">
+      <section className="rounded-2xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--nova-text-primary)] mb-4">MeshRoutingTable</h2>
+        <p className="text-[var(--nova-text-secondary)] text-sm mb-4">
           Таблица маршрутизации меш-сети с TTL-экспирацией и метриками надёжности.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px]">
-          <div className="bg-[#14151c] p-3 rounded-xl border border-white/10">
-            <div className="text-[#8c919d] text-[9px] mb-1">Active routes</div>
-            <div className="text-white font-mono">0</div>
+          <div className="bg-[var(--nova-surface)] p-3 rounded-xl border border-[var(--nova-border-color)]">
+            <div className="text-[var(--nova-text-muted)] text-[9px] mb-1">Active routes</div>
+            <div className="text-[var(--nova-text-primary)] font-mono">0</div>
           </div>
-          <div className="bg-[#14151c] p-3 rounded-xl border border-white/10">
-            <div className="text-[#8c919d] text-[9px] mb-1">Default TTL</div>
-            <div className="text-white font-mono">300s</div>
+          <div className="bg-[var(--nova-surface)] p-3 rounded-xl border border-[var(--nova-border-color)]">
+            <div className="text-[var(--nova-text-muted)] text-[9px] mb-1">Default TTL</div>
+            <div className="text-[var(--nova-text-primary)] font-mono">300s</div>
           </div>
-          <div className="bg-[#14151c] p-3 rounded-xl border border-white/10">
-            <div className="text-[#8c919d] text-[9px] mb-1">Max routes</div>
-            <div className="text-white font-mono">1000</div>
+          <div className="bg-[var(--nova-surface)] p-3 rounded-xl border border-[var(--nova-border-color)]">
+            <div className="text-[var(--nova-text-muted)] text-[9px] mb-1">Max routes</div>
+            <div className="text-[var(--nova-text-primary)] font-mono">1000</div>
           </div>
-          <div className="bg-[#14151c] p-3 rounded-xl border border-white/10">
-            <div className="text-[#8c919d] text-[9px] mb-1">Expiry interval</div>
-            <div className="text-white font-mono">60s</div>
+          <div className="bg-[var(--nova-surface)] p-3 rounded-xl border border-[var(--nova-border-color)]">
+            <div className="text-[var(--nova-text-muted)] text-[9px] mb-1">Expiry interval</div>
+            <div className="text-[var(--nova-text-primary)] font-mono">60s</div>
           </div>
         </div>
       </section>
