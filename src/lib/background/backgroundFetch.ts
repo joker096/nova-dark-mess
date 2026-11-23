@@ -114,11 +114,18 @@ async function registerWebBackgroundFetch(): Promise<boolean> {
       return registerPeriodicSync();
     }
 
-    await bgFetch.fetch('nova-sync', [], {
-      title: 'Nova Messenger Sync',
-      icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
-      downloadTotal: 0,
-    });
+    // Background Fetch rejects an empty request list. A tiny same-origin
+    // request is enough to wake the worker; the sync itself does not depend on
+    // the response body.
+    await bgFetch.fetch(
+      'nova-sync',
+      [new Request(new URL('/favicon.ico', window.location.href), { cache: 'no-store' })],
+      {
+        title: 'Nova Messenger Sync',
+        icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+        downloadTotal: 0,
+      },
+    );
 
     // Listen for background fetch events
     // `self` may not exist outside a (dedicated) worker context.
