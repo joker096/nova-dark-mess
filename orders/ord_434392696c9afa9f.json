@@ -1,0 +1,11 @@
+{
+  "orderId": "ord_434392696c9afa9f",
+  "kind": "gift",
+  "plan": "premium",
+  "device": "dev_test_1234567890abcdef1234567890abcdef",
+  "amount": 3.9,
+  "currency": "USD",
+  "status": "pending",
+  "createdAt": "2026-11-22T04:42:48.220Z",
+  "token": "28F6C556501F478D81C68F4544AC0D7D"
+}

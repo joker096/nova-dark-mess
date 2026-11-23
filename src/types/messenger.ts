@@ -53,6 +53,8 @@ export interface ChannelInfo {
   ownerFingerprint?: string;
   /** Administrators listed in the "Manage admins" panel, owner included. */
   admins?: { id: string; isOwner?: boolean }[];
+  /** Linked discussion group ID (for comments/community). */
+  discussionGroupId?: string;
 }
 
 export interface ChannelDraft {

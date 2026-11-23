@@ -21,6 +21,12 @@ import {
   toggleReactionInPost,
   toggleReactionInStory,
   voteInChannelPoll,
+  pinChannelPost,
+  unpinChannelPost,
+  addChannelAdmin,
+  removeChannelAdmin,
+  toggleChannelAdmin,
+  setChannelDiscussionGroup,
   type SocialState,
 } from '../lib/social/store';
 
@@ -185,6 +191,20 @@ export function useSocialData() {
     }));
   }, []);
 
+  const pinChannelPostFn = useCallback((postId: string): void => {
+    setState((prev) => ({
+      ...prev,
+      posts: pinChannelPost(prev.posts, postId),
+    }));
+  }, []);
+
+  const unpinChannelPostFn = useCallback((postId: string): void => {
+    setState((prev) => ({
+      ...prev,
+      posts: unpinChannelPost(prev.posts, postId),
+    }));
+  }, []);
+
   const toggleChannelPopular = useCallback(
     (channelId: string): void => {
       setState((prev) => ({
@@ -209,6 +229,34 @@ export function useSocialData() {
     [state.channels],
   );
 
+  const addChannelAdminFn = useCallback((channelId: string, adminId: string, isOwner = false): void => {
+    setState((prev) => ({
+      ...prev,
+      channels: addChannelAdmin(prev.channels, channelId, adminId, isOwner),
+    }));
+  }, []);
+
+  const removeChannelAdminFn = useCallback((channelId: string, adminId: string): void => {
+    setState((prev) => ({
+      ...prev,
+      channels: removeChannelAdmin(prev.channels, channelId, adminId),
+    }));
+  }, []);
+
+  const toggleChannelAdminFn = useCallback((channelId: string, adminId: string, makeAdmin: boolean): void => {
+    setState((prev) => ({
+      ...prev,
+      channels: toggleChannelAdmin(prev.channels, channelId, adminId, makeAdmin),
+    }));
+  }, []);
+
+  const setChannelDiscussionGroupFn = useCallback((channelId: string, discussionGroupId: string | undefined): void => {
+    setState((prev) => ({
+      ...prev,
+      channels: setChannelDiscussionGroup(prev.channels, channelId, discussionGroupId),
+    }));
+  }, []);
+
   return {
     stories: state.stories,
     channels: state.channels,
@@ -227,6 +275,12 @@ export function useSocialData() {
     editChannelPost,
     addChannelComment,
     togglePostReaction,
+    pinChannelPost: pinChannelPostFn,
+    unpinChannelPost: unpinChannelPostFn,
+    addChannelAdmin: addChannelAdminFn,
+    removeChannelAdmin: removeChannelAdminFn,
+    toggleChannelAdmin: toggleChannelAdminFn,
+    setChannelDiscussionGroup: setChannelDiscussionGroupFn,
     toggleChannelPopular,
     toggleChannelSubscriberPrivacy,
     searchChannels: searchChannelsByQuery,

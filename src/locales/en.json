@@ -382,7 +382,13 @@
     },
     "insertMode": "Insert, don't send",
     "insertModeHint": "Tap a sticker to put it in the text field instead of sending it",
-    "packs": "Sticker packs"
+    "packs": "Sticker packs",
+    "gifResults": "GIF search results",
+    "noGifsFound": "No GIFs found for \"{query}\"",
+    "noGifsCategory": "No GIFs in this category",
+    "configureGiphy": "Configure Giphy API Key",
+    "configureTenor": "Configure Tenor API Key",
+    "apiKeyPlaceholder": "Enter API key (get from developers.giphy.com)"
   },
   "contact": {
     "shareTitle": "Share contact",
@@ -524,6 +530,10 @@
     "messageDeletedToast": "Message deleted",
     "edited": "(edited)",
     "forwardedFrom": "Forwarded from",
+    "translate": "Translate",
+    "translation": "Translation",
+    "translateFailed": "Translation failed",
+    "dismiss": "Dismiss",
     "sendOptions": {
       "title": "Send options",
       "hold": "Hold for send options",
@@ -944,6 +954,7 @@
     "editTitle": "Edit Folder",
     "newTab": "New Folder",
     "manageTab": "Manage ({{count}})",
+    "notificationsTab": "Notifications",
     "nameLabel": "Folder Name",
     "namePlaceholder": "e.g. Work, Personal, Channels, Crypto",
     "nameError": "Please enter a folder name",
@@ -962,7 +973,22 @@
     "defaultBadge": "Default",
     "chatsIncluded": "{{count}} chats included",
     "addAnother": "Add Another Folder",
-    "deleteFolder": "Delete folder"
+    "deleteFolder": "Delete folder",
+    "notificationsDescription": "Configure notification settings for each custom folder. Default folders (All, Unread, etc.) use global settings.",
+    "notifyLevel": "Notify:",
+    "notifyAll": "All messages",
+    "notifyMentions": "Mentions only",
+    "notifyNone": "None",
+    "muteFor": "Mute for:",
+    "mute1h": "1 hour",
+    "mute8h": "8 hours",
+    "mute2d": "2 days",
+    "muteForever": "Forever",
+    "unmute": "Unmute",
+    "mutedUntil": "Muted until {{time}}",
+    "notificationLevel": "Level: {{level}}",
+    "noCustomFolders": "No custom folders yet",
+    "createFolderFirst": "Create a folder first to configure its notifications"
   },
   "designTokens": {
     "title": "Design Tokens & Component Specs",

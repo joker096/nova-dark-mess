@@ -250,6 +250,8 @@ function defaultRelayUrl(): string {
 }
 
 function publicAppUrl(): string {
+  const configured = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.trim();
+  if (configured) return configured;
   if (typeof window === 'undefined') return DEFAULT_PUBLIC_APP_URL;
   const { hostname, origin, protocol } = window.location;
   if (
@@ -808,6 +810,11 @@ export const AnonymousMessengerScreen: React.FC<{
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const queue = await checkTransport.createQueue(60_000);
       if (!queue) throw new Error(labels.relayCheckFailed);
+      // The probe queue is not an invite; drop it so repeated checks do not
+      // leave garbage queues behind (and burn the relay's create rate limit).
+      void Promise.resolve(
+        checkTransport.deleteQueue?.(queue.queueId, queue.recipientToken, queue.signingKey),
+      ).catch(() => undefined);
       const elapsed =
         (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt;
       setRelayCheck({
@@ -875,12 +882,21 @@ export const AnonymousMessengerScreen: React.FC<{
       const backupEndpoint = primaryRelay === LOCAL_RELAY_URL
         ? undefined
         : relayEndpoints(configuredSettings).find((relay) => relay.url !== primaryRelay);
-      const backupTransport = backupEndpoint ? getTransport(backupEndpoint.url) : null;
+      // Never let the auto transport turn a dead relay into a "successful"
+      // local invite: the UI would offer a link/QR that can never reach another
+      // device. Local mode keeps using the local transport; remote invites use
+      // the direct transport so a connection failure is surfaced instead.
+      const inviteTransport = primaryRelay === LOCAL_RELAY_URL
+        ? transport
+        : createAnonTransport(transportConfigFor(configuredSettings, primaryRelay));
+      const backupTransport = backupEndpoint
+        ? createAnonTransport(transportConfigFor(configuredSettings, backupEndpoint.url))
+        : null;
       const standby = backupEndpoint && backupTransport
         ? { transport: backupTransport, relayUrl: backupEndpoint.url }
         : undefined;
       const invitation = await createInvitation(
-        transport,
+        inviteTransport,
         primaryRelay,
         undefined,
         undefined,
@@ -1992,7 +2008,7 @@ export const AnonymousMessengerScreen: React.FC<{
         </section>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[minmax(280px,360px)_1fr]">
+      <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 xl:grid-cols-[minmax(280px,360px)_1fr]">
         <section className="space-y-3">
           <div className="space-y-1 rounded-2xl border border-[var(--nova-accent-color)]/25 bg-[var(--nova-accent-color)]/[0.06] p-3">
             <h2 className="text-xs font-semibold text-white">{labels.setupTitle}</h2>
@@ -2130,7 +2146,7 @@ export const AnonymousMessengerScreen: React.FC<{
           >
             <summary
               ref={advancedSummaryRef}
-              className="cursor-pointer text-xs font-medium text-white/70"
+              className="min-h-6 cursor-pointer py-1 text-xs font-medium text-white/70"
             >
               {labels.advanced}
             </summary>

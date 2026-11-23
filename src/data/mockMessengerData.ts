@@ -253,6 +253,68 @@ export const CONVERSATION_HISTORIES: Record<string, ChatMessage[]> = {
   ],
 };
 
+// Test-compatible messages for katie profile (Files, Links, Voice tabs)
+export const KATIE_TEST_MESSAGES: ChatMessage[] = [
+  {
+    id: 'kt-file-1',
+    senderId: 'other',
+    text: 'Here is the trip schedule',
+    time: 'Yesterday',
+    file: { name: 'Trip_Schedule_Kyiv.pdf', size: 2516582, mimeType: 'application/pdf' },
+  },
+  {
+    id: 'kt-file-2',
+    senderId: 'other',
+    text: 'Hotel reservation confirmed',
+    time: '3 days ago',
+    file: { name: 'Hotel_Reservation.pdf', size: 655360, mimeType: 'application/pdf' },
+  },
+  {
+    id: 'kt-file-3',
+    senderId: 'me',
+    text: 'All photos from the trip',
+    time: 'Oct 28',
+    file: { name: 'Photos_Archive.zip', size: 50438144, mimeType: 'application/zip' },
+  },
+  {
+    id: 'kt-link-1',
+    senderId: 'other',
+    text: "Check out Harry's Bar & Kitchen for reservations https://harrysbar.com",
+    time: '2 days ago',
+  },
+  {
+    id: 'kt-link-2',
+    senderId: 'me',
+    text: 'Kyiv Independent Digest - summer series https://kyivindependent.com',
+    time: '3 days ago',
+  },
+  {
+    id: 'kt-voice-1',
+    senderId: 'other',
+    text: '',
+    time: 'Today at 18:20',
+    voiceNote: {
+      duration: '0:42',
+      durationSeconds: 42,
+      waveform: [25, 35, 55, 75, 90, 60, 40, 70, 85, 100, 80, 55, 45, 65, 90, 95, 70, 50, 40, 60],
+    },
+  },
+  {
+    id: 'kt-voice-2',
+    senderId: 'me',
+    text: '',
+    time: 'Yesterday at 14:10',
+    voiceNote: {
+      duration: '1:15',
+      durationSeconds: 75,
+      waveform: [30, 40, 60, 80, 95, 70, 50, 60, 75, 85, 90, 65, 55, 70, 95, 100, 80, 60, 45, 35],
+    },
+  },
+];
+
+// Merge test messages into katie's history for ProfileScreen tests
+CONVERSATION_HISTORIES.katie = [...INITIAL_KATIE_MESSAGES, ...KATIE_TEST_MESSAGES];
+
 export const MOCK_CHANNEL_POSTS: ChannelPost[] = [
   {
     id: 'p1',

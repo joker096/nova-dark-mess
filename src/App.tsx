@@ -339,6 +339,12 @@ export default function App() {
     editChannelPost,
     addChannelComment,
     togglePostReaction,
+    pinChannelPost,
+    unpinChannelPost,
+    addChannelAdmin,
+    removeChannelAdmin,
+    toggleChannelAdmin,
+    setChannelDiscussionGroup,
     toggleChannelPopular,
     toggleChannelSubscriberPrivacy,
   } = useSocialData();
@@ -759,6 +765,13 @@ export default function App() {
     onEditPost: editChannelPost,
     onAddComment: addChannelComment,
     onToggleReaction: togglePostReaction,
+    onPinPost: pinChannelPost,
+    onUnpinPost: unpinChannelPost,
+    onManageAdmins: () => {}, // Just opens the panel
+    onAddAdmin: (adminId: string, isOwner = false) => addChannelAdmin(activeChannelId, adminId, isOwner),
+    onRemoveAdmin: (adminId: string) => removeChannelAdmin(activeChannelId, adminId),
+    onToggleAdmin: (memberId: string, makeAdmin: boolean) => toggleChannelAdmin(activeChannelId, memberId, makeAdmin),
+    onSetDiscussionGroup: (discussionGroupId: string | undefined) => setChannelDiscussionGroup(activeChannelId, discussionGroupId),
     onToggleSound: setChannelSound,
     onToggleSubscriberPrivacy: toggleChannelSubscriberPrivacy,
     initialCommentsPostId: pendingCommentsPostId,
@@ -981,13 +994,13 @@ export default function App() {
         <PinLockScreen onUnlock={unlock} />
       ) : (
         <SanctionGate>
-        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col md:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
+        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col lg:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
       {/* ======================================================== */}
 
       {/* Left Navigation Rail (Desktop Only) */}
-      <aside className="hidden md:flex w-[72px] shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border)] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
+      <aside className="hidden lg:flex w-[72px] shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border)] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
         {/* Primary Navigation Icons */}
         <nav className="flex flex-col items-center gap-2.5 w-full px-2">
           {/* Chats tab */}
@@ -1095,7 +1108,7 @@ export default function App() {
       </aside>
 
       {/* Left Column (Desktop Only) */}
-      <section className="hidden md:flex w-[340px] lg:w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden relative">
+      <section className="hidden lg:flex w-[380px] xl:w-[410px] shrink-0 border-r border-white/[0.06] bg-[#0c0d11] h-full flex-col overflow-hidden relative">
         {/* ChatsScreen stays mounted so the Folders button in the rail always
             has a live ref (it used to go dead on the Channels screen). */}
         <ChatsScreen
@@ -1135,7 +1148,7 @@ export default function App() {
       </section>
 
       {/* Right Main Content Stage (Desktop Only) */}
-      <main className="hidden md:flex flex-1 min-w-0 h-full overflow-hidden bg-[#090a0e] flex-col relative">
+      <main className="hidden lg:flex flex-1 min-w-0 h-full overflow-hidden bg-[#090a0e] flex-col relative">
         <Suspense fallback={<ScreenFallback />}>{renderDesktopMainScreen()}</Suspense>
       </main>
 
@@ -1158,7 +1171,7 @@ export default function App() {
       {/* ======================================================== */}
       {/* 2. MOBILE VIEW (< 768px md: breakpoint)                   */}
       {/* ======================================================== */}
-        <div className="flex-1 w-full h-full md:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
+        <div className="flex-1 w-full h-full lg:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
         <Suspense fallback={<ScreenFallback />}>{renderMobileScreen()}</Suspense>
       </div>
 

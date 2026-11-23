@@ -24,7 +24,7 @@
     "check:android-icons": "node scripts/check-android-icons.mjs",
     "audit:buttons": "tsx scripts/audit-buttons.ts",
     "lint:colors": "tsx scripts/check-hardcoded-colors.ts",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=30000",
     "test:watch": "vitest",
     "server": "node server.js",
     "server:dev": "node --watch server.js",

@@ -39,7 +39,7 @@ const premiumMock = vi.hoisted(() => ({
   premium: false,
   canUseThemes: false,
   freeDays: 0,
-  checkout: vi.fn(),
+  checkout: vi.fn(async () => ({ ok: true, error: undefined, orderId: 'test-order', url: 'https://example.com' })),
 }));
 
 vi.mock('../context/LanguageContext', () => ({

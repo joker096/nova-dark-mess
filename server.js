@@ -91,12 +91,36 @@ const CORS_ORIGINS = new Set(
     .filter(Boolean),
 );
 
+/**
+ * Local Vite ports change (3000, 3002, 1420, ...), and a hard-coded list makes
+ * contact invites fail with an opaque CORS error. Loopback origins are safe to
+ * reflect: a remote page cannot forge `Origin: http://localhost:*`, and queue
+ * access still requires the per-queue capability tokens.
+ */
+function isLoopbackOrigin(origin) {
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    return (
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname === '[::1]'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedCorsOrigin(origin) {
+  return Boolean(origin && (CORS_ORIGINS.has(origin) || isLoopbackOrigin(origin)));
+}
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   // The response varies per request origin, so caches must key on it.
   res.setHeader('Vary', 'Origin');
   if (req.method === 'OPTIONS') {
-    if (origin && !CORS_ORIGINS.has(origin)) {
+    if (origin && !isAllowedCorsOrigin(origin)) {
       return res.status(403).json({ ok: false, reason: 'ORIGIN_NOT_ALLOWED' });
     }
     if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
@@ -105,7 +129,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Max-Age', '600');
     return res.status(204).end();
   }
-  if (origin && CORS_ORIGINS.has(origin)) {
+  if (origin && isAllowedCorsOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
   }
@@ -188,7 +212,7 @@ function resolveReturnUrl(req) {
   // so local checkouts can complete. Only production should use the configured URL.
   if (IS_PRODUCTION && PAYMENTO_RETURN_URL) return PAYMENTO_RETURN_URL;
   const origin = String(req.headers.origin || '').replace(/\/+$/, '');
-  if (origin && CORS_ORIGINS.has(origin)) return `${origin}/premium.html`;
+  if (isAllowedCorsOrigin(origin)) return `${origin}/premium.html`;
   return 'https://mess.cvr.name/premium.html';
 }
 

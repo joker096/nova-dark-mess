@@ -2,7 +2,7 @@
 /// <reference types="@testing-library/jest-dom" />
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StickerPickerDrawer } from './StickerPickerDrawer';
 import { STICKER_PACKS, MOCK_GIFS } from '../../data/stickers';
 
@@ -18,6 +18,25 @@ vi.mock('../../hooks/usePremium', () => ({
 
 vi.mock('../LazyMedia', () => ({
   LazyMedia: ({ className }: { className?: string }) => <div className={className} data-testid="lazy-media" />,
+}));
+
+// Mock GIF search to return local mock data instead of making real API calls
+vi.mock('../../lib/gif/gifSearch', () => ({
+  searchGifs: vi.fn(async (query: string) => ({
+    gifs: MOCK_GIFS.filter((gif) => gif.title.toLowerCase().includes(query.toLowerCase())),
+    pagination: { totalCount: MOCK_GIFS.length, count: MOCK_GIFS.length, offset: 0 },
+  })),
+  getTrendingGifs: vi.fn(async () => ({
+    gifs: MOCK_GIFS,
+    pagination: { totalCount: MOCK_GIFS.length, count: MOCK_GIFS.length, offset: 0 },
+  })),
+  GIF_CATEGORIES: [
+    { id: 'trending', name: 'Trending', query: '' },
+    { id: 'funny', name: 'Funny', query: 'funny' },
+    { id: 'reactions', name: 'Reactions', query: 'reaction' },
+  ],
+  configureGifApiKeys: vi.fn(),
+  getConfiguredGifApis: vi.fn(() => []),
 }));
 
 const firstSticker = STICKER_PACKS[0].stickers[0];
@@ -116,13 +135,15 @@ describe('StickerPickerDrawer', () => {
     expect(checkout).not.toHaveBeenCalled();
   });
 
-  it('filters GIFs by search query', () => {
+  it('filters GIFs by search query', async () => {
     render(<StickerPickerDrawer {...defaultProps} />);
 
     fireEvent.click(screen.getAllByText('GIFs')[0]);
     fireEvent.change(screen.getByPlaceholderText('Search GIFs...'), { target: { value: MOCK_GIFS[0].title } });
 
-    expect(screen.getAllByText(MOCK_GIFS[0].title).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText(MOCK_GIFS[0].title).length).toBeGreaterThan(0);
+    });
     const otherGif = MOCK_GIFS.find((gif) => gif.title !== MOCK_GIFS[0].title)!;
     expect(screen.queryAllByText(otherGif.title)).toHaveLength(0);
   });
