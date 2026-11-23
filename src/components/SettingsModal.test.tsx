@@ -51,6 +51,9 @@ vi.mock('../context/LanguageContext', () => ({
   }),
 }));
 vi.mock('../lib/storage/cloudBackup', () => cloudMock);
+vi.mock('../lib/dataExport', () => ({
+  downloadMyDataExport: vi.fn(async () => 'nova_my_data_export.json'),
+}));
 vi.mock('../hooks/useSecurity', () => ({
   useSecurity: () => securityMock,
 }));
@@ -237,6 +240,16 @@ describe('SettingsModal', () => {
 
     expect(localStorage.getItem('nova_messenger_chat_cache')).toBeNull();
     expect(screen.getByRole('status').textContent).toBe('settings.cacheCleared');
+  });
+
+  it('exports user data and shows feedback', async () => {
+    renderSettings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.exportMyData' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('settings.exportDone');
+    });
   });
 
   it('deletes all data without a PIN after confirmation', async () => {

@@ -13,6 +13,7 @@ import { DocumentAttachment } from '../types/messenger';
 import { LazyMedia } from './LazyMedia';
 import { mediaCache } from '../lib/media/mediaCache';
 import { createThumbnail } from '../lib/media/imageThumbnail';
+import { compressVideo } from '../lib/media/videoCompress';
 
 interface FileSelectionModalProps {
   isOpen: boolean;
@@ -158,18 +159,23 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
   };
 
   // Handle uploading real file from client filesystem
-  const handleDeviceFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeviceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type.startsWith('image/')) {
-      const blobUrl = URL.createObjectURL(file);
+    // Compress video before it enters the chat so large camera recordings
+    // actually finish uploading over slow P2P links. Other file types pass
+    // through unchanged.
+    const fileToUpload = file.type.startsWith('video/') ? await compressVideo(file) : file;
+
+    if (fileToUpload.type.startsWith('image/')) {
+      const blobUrl = URL.createObjectURL(fileToUpload);
       const customId = 'custom-' + Date.now();
       SIMULATED_IMAGES.unshift({
         id: customId,
         title: file.name,
         url: blobUrl,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        size: `${(fileToUpload.size / (1024 * 1024)).toFixed(1)} MB`,
         dimensions: 'Uploaded Image',
       });
       setActiveTab('images');
