@@ -39,7 +39,7 @@ export const ChannelAvatar: React.FC<ChannelAvatarProps> = ({
   if (isImageAvatar(avatar)) {
     return (
       <div
-        className={`${SIZE_CLASS[size]} shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#20222a] ${className ?? ''}`.trim()}
+        className={`${SIZE_CLASS[size]} shrink-0 overflow-hidden rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] ${className ?? ''}`.trim()}
       >
         <LazyMedia
   src={avatar}
@@ -54,7 +54,7 @@ export const ChannelAvatar: React.FC<ChannelAvatarProps> = ({
   if (avatar === 'ukraine_trident') {
     return (
       <div
-        className={`${SIZE_CLASS[size]} flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-gradient-to-tr from-[#e11d48] to-[var(--nova-accent-color)] shadow-lg shadow-red-950/40 ${className ?? ''}`.trim()}
+        className={`${SIZE_CLASS[size]} flex shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-color)] bg-gradient-to-tr from-[#e11d48] to-[var(--nova-accent-color)] shadow-lg ${className ?? ''}`.trim()}
         aria-label={name}
       >
         <svg className="h-[55%] w-[55%] fill-white" viewBox="0 0 24 24" aria-hidden="true">
@@ -66,7 +66,7 @@ export const ChannelAvatar: React.FC<ChannelAvatarProps> = ({
 
   return (
     <div
-      className={`${SIZE_CLASS[size]} flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-gradient-to-tr from-[var(--nova-accent-color)]/80 to-[#7c3aed]/80 font-bold text-white ${className ?? ''}`.trim()}
+      className={`${SIZE_CLASS[size]} flex shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-color)] bg-gradient-to-tr from-[var(--nova-accent-color)]/80 to-[#7c3aed]/80 font-bold text-[var(--nova-on-accent)] ${className ?? ''}`.trim()}
       aria-label={name}
     >
       {initials(name)}

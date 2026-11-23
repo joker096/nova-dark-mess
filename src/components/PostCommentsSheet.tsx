@@ -72,18 +72,18 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
             onClose();
           }
         }}
-        className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#15161f] shadow-2xl shadow-black/80 md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-y-0 md:border-r-0"
+        className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-3xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] shadow-2xl shadow-black/80 md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-y-0 md:border-r-0"
       >
-        <header className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+        <header className="flex shrink-0 items-center gap-2 border-b border-[var(--nova-border-color)] px-4 py-3">
           <MessageCircle className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" aria-hidden="true" />
-          <h2 id="post-comments-title" className="min-w-0 flex-1 truncate text-sm font-bold text-white">
+          <h2 id="post-comments-title" className="min-w-0 flex-1 truncate text-sm font-bold text-[var(--nova-text-primary)]">
             {t('channel.commentsCount', { count: comments.length })}
           </h2>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
             aria-label={t('common.close')}
             title={t('common.close')}
           >
@@ -92,33 +92,33 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
         </header>
 
         {/* Quoted post keeps the panel readable without the whole feed behind it. */}
-        <div className="shrink-0 border-b border-white/[0.06] px-4 py-2.5">
-          <p className="line-clamp-1 text-[11px] font-semibold text-white/80">{post.title}</p>
-          <p className="line-clamp-2 text-[11px] leading-relaxed text-[#8c919d]">{post.text}</p>
+        <div className="shrink-0 border-b border-[var(--nova-border-color)] px-4 py-2.5">
+          <p className="line-clamp-1 text-[11px] font-semibold text-[var(--nova-text-secondary)]">{post.title}</p>
+          <p className="line-clamp-2 text-[11px] leading-relaxed text-[var(--nova-text-muted)]">{post.text}</p>
         </div>
 
         <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
           {comments.length === 0 && (
-            <p className="py-6 text-center text-xs text-white/40">{t('channel.noComments')}</p>
+            <p className="py-6 text-center text-xs text-[var(--nova-text-muted)]">{t('channel.noComments')}</p>
           )}
           {comments.map((comment) => (
             <div key={comment.id} className="flex items-start gap-2.5">
               <span
-                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1e2029] text-[10px] font-bold uppercase text-white/70"
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--nova-surface-high)] text-[10px] font-bold uppercase text-[var(--nova-text-secondary)]"
                 aria-hidden="true"
               >
                 {comment.authorName.slice(0, 2)}
               </span>
-              <div className="min-w-0 flex-1 rounded-2xl border border-white/[0.06] bg-[#1a1b25] px-3 py-2">
+              <div className="min-w-0 flex-1 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-3 py-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="truncate text-[11px] font-semibold text-white">
+                  <span className="truncate text-[11px] font-semibold text-[var(--nova-text-primary)]">
                     {comment.authorName}
                   </span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-white/35">
+                  <span className="shrink-0 text-[10px] tabular-nums text-[var(--nova-text-muted)]">
                     {timeLabel(comment.createdAt)}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-white/85">
+                <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-[var(--nova-text-secondary)]">
                   {comment.text}
                 </p>
               </div>
@@ -126,7 +126,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.06] px-3 py-2.5 pb-[max(0.625rem,var(--nova-safe-bottom))]">
+        <div className="flex shrink-0 items-center gap-2 border-t border-[var(--nova-border-color)] px-3 py-2.5 pb-[max(0.625rem,var(--nova-safe-bottom))]">
           <input
             ref={inputRef}
             value={draft}
@@ -139,13 +139,13 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
             }}
             placeholder={t('channel.commentPlaceholder')}
             aria-label={t('channel.commentPlaceholder')}
-            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#101118] px-3 py-2 text-xs text-white placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="min-w-0 flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
           <button
             type="button"
             onClick={submit}
             disabled={!draft.trim()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-white transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label={t('channel.sendComment')}
             title={t('channel.sendComment')}
           >

@@ -83,10 +83,10 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
     >
       <div className="space-y-2">
         {canBulkDelete && (
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#101118] px-3 py-2">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2">
             {selecting ? (
               <>
-                <span className="text-[11px] font-semibold text-white/70">
+                <span className="text-[11px] font-semibold text-[var(--nova-text-secondary)]">
                   {selectedIds.length} / {ownedChannels.length}
                 </span>
                 <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                   <button
                     type="button"
                     onClick={exitSelection}
-                    className="text-[11px] font-semibold text-white/50 transition hover:text-white"
+                    className="text-[11px] font-semibold text-[var(--nova-text-muted)] transition hover:text-[var(--nova-text-primary)]"
                   >
                     {t('common.cancel')}
                   </button>
@@ -112,7 +112,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
               </>
             ) : (
               <>
-                <span className="text-[11px] text-[#828795]">
+                <span className="text-[11px] text-[var(--nova-text-muted)]">
                   {t('channel.channels')}
                 </span>
                 <button
@@ -132,9 +132,9 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
         )}
 
         {channels.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-[#101118] p-6 text-center">
-            <p className="text-sm font-semibold text-white/80">{t('channel.noChannels')}</p>
-            <p className="mt-1 text-xs text-[#828795]">{t('channel.noChannelsSubtitle')}</p>
+          <div className="rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] p-6 text-center">
+            <p className="text-sm font-semibold text-[var(--nova-text-primary)]">{t('channel.noChannels')}</p>
+            <p className="mt-1 text-xs text-[var(--nova-text-muted)]">{t('channel.noChannelsSubtitle')}</p>
           </div>
         )}
 
@@ -158,13 +158,13 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                     ? 'border-red-500/50 bg-red-500/10'
                     : isActive && !selecting
                       ? 'border-[var(--nova-accent-color)]/60 bg-[var(--nova-accent-color)]/10'
-                      : 'border-white/5 bg-[#171820] hover:border-white/10 hover:bg-[#1e1f27]'
+                      : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'
                 } ${selecting && !channel.isOwned ? 'opacity-45' : ''}`}
               >
                 <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-xs font-semibold text-white">
+                    <span className="truncate text-xs font-semibold text-[var(--nova-text-primary)]">
                       {channel.name}
                     </span>
                     {channel.isOwned && (
@@ -173,12 +173,12 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                       </span>
                     )}
                     {channel.visibility === 'private' && (
-                      <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white/55">
+                      <span className="shrink-0 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-text-muted)]">
                         {t('channel.privateBadge')}
                       </span>
                     )}
                   </div>
-                  <p className="truncate text-[10px] text-white/45">
+                  <p className="truncate text-[10px] text-[var(--nova-text-muted)]">
                     {channel.description ||
                       t('channel.subscribersCompact', {
                         value: formatSubscribers(channel.subscribers),
@@ -191,8 +191,8 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                     <span
                       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md border ${
                         isSelected
-                          ? 'border-red-400 bg-red-500 text-white'
-                          : 'border-white/25 text-transparent'
+                          ? 'border-red-400 bg-red-500 text-[var(--nova-on-accent)]'
+                          : 'border-[var(--nova-border-color)] text-transparent'
                       }`}
                     >
                       <Check className="h-3 w-3" />
@@ -219,7 +219,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                   className={`flex h-9 shrink-0 items-center justify-center rounded-full transition ${
                     confirmId === channel.id
                       ? 'w-14 border border-red-500/40 bg-red-500/15 px-1 text-[9px] font-bold text-red-300'
-                      : 'w-9 border border-white/5 bg-white/[0.03] text-white/35 hover:text-red-400'
+                      : 'w-9 border border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-muted)] hover:text-red-400'
                   }`}
                   aria-label={t('channel.deleteChannel')}
                   title={
@@ -252,7 +252,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmingBulk(false)}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10 active:scale-[0.99]"
+                  className="flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
                 >
                   {t('common.no')}
                 </button>
@@ -272,7 +272,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
               <button
                 type="button"
                 onClick={exitSelection}
-                className="flex-1 rounded-2xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 active:scale-[0.99]"
+                className="flex-1 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2.5 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
               >
                 {t('common.cancel')}
               </button>
