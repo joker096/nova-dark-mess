@@ -15,6 +15,7 @@ import {
   distributeGroupSession,
   sendEncryptedGroupMessage,
 } from './groups';
+import { sealMessageAsync, unsealMessageAsync } from '../messaging/sealedSender';
 import { receiveAnonMessages } from './session';
 
 function b64(bytes: Uint8Array): string {
@@ -192,5 +193,33 @@ describe('encrypted group fan-out', () => {
     const result = await sendEncryptedGroupMessage(relay, tooMany, session, 'hello');
     expect(result.delivered).toEqual([]);
     expect(result.failed).toHaveLength(MAX_FANOUT_MEMBERS + 1);
+  });
+
+  it('invite privateKey and recipientPublicKey form a working pair', async () => {
+    const relay = new InMemoryAnonRelay();
+    const { queueId, tokens, signingKey, inviteToken } = relay.createQueue();
+    const secret = x25519.utils.randomSecretKey();
+    const publicKey = x25519.getPublicKey(secret);
+
+    const invite = {
+      v: 1 as const,
+      relayUrl: 'http://localhost',
+      queueId,
+      senderToken: tokens.senderToken,
+      signingKey,
+      recipientPublicKey: b64(publicKey),
+      inviteToken,
+      expiresAt: Date.now() + 60_000,
+    };
+
+    // Encrypt to the invite's recipientPublicKey, decrypt with its privateKey.
+    const plaintext = 'group invite payload';
+    const sealed = await sealMessageAsync(invite.recipientPublicKey, plaintext);
+    const opened = await unsealMessageAsync(b64(secret), sealed);
+    expect(opened).toBe(plaintext);
+
+    // A mismatched private key must not open it.
+    const wrongSecret = x25519.utils.randomSecretKey();
+    await expect(unsealMessageAsync(b64(wrongSecret), sealed)).rejects.toThrow();
   });
 });
