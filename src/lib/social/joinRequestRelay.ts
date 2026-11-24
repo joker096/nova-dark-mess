@@ -73,7 +73,9 @@ function writeOutbox(jobs: JoinRelayJob[]): void {
 }
 
 function makeId(): string {
-  return `join-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `join-${Date.now()}-${hex}`;
 }
 
 export function loadJoinOutbox(): JoinRelayJob[] {
