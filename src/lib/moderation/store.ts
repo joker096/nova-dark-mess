@@ -45,12 +45,19 @@ function notifySanctionChanged(): void {
   }
 }
 
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
+}
+
 function createId(prefix: string): string {
-  const cryptoApi = typeof crypto !== 'undefined' ? crypto : undefined;
-  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
-    return `${prefix}_${cryptoApi.randomUUID()}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}_${crypto.randomUUID()}`;
   }
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${Date.now().toString(36)}_${randomHex(8)}`;
 }
 
 export interface SubmitReportInput {

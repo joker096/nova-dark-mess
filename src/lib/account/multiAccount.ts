@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { AccountProfile, loadAccount } from './account';
 
 export const MULTI_ACCOUNT_STORAGE_KEY = 'nova_multi_accounts_v1';
+
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
+}
 export const ACTIVE_ACCOUNT_KEY = 'nova_active_account_id';
 
 export interface StoredAccount extends AccountProfile {
@@ -169,7 +177,7 @@ export function createAccountFromOnboarding(
 ): StoredAccount {
   return {
     version: 1,
-    id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `user_${Date.now()}_${randomHex(4)}`,
     displayName: displayName || nickname,
     nickname: nickname.startsWith('@') ? nickname : `@${nickname}`,
     phone,

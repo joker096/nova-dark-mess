@@ -28,6 +28,10 @@ function randomId(): string {
     .join('');
 }
 
+function cryptoRandom(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff;
+}
+
 export class MeshRelay {
   public readonly localFingerprint: string;
   private readonly channel: BroadcastChannel | null;
@@ -136,7 +140,8 @@ export class MeshRelay {
       hops: [...envelope.hops, this.localFingerprint],
     };
 
-    const delay = fromBus ? 10 + Math.floor(Math.random() * 40) : 0;
+    const delay = fromBus ? 10 + Math.floor(cryptoRandom() * 40) : 0;
+
     if (delay === 0) {
       this.forward(forwarded);
     } else {

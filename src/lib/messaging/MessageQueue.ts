@@ -25,6 +25,14 @@ interface DbRecord {
   lastError: string | null;
 }
 
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
+}
+
 // In-memory store (replaces IndexedDB for simplicity)
 const store = new Map<string, DbRecord>();
 
@@ -36,7 +44,7 @@ export async function enqueueMessage(
   input: Parameters<typeof createMessageEnvelope>[0],
 ): Promise<QueuedMessage> {
   const envelope = createMessageEnvelope(input);
-  const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  const id = `msg-${Date.now()}-${randomHex(4)}`;
 
   const record: DbRecord = {
     id,

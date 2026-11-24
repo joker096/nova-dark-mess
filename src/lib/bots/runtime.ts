@@ -468,7 +468,7 @@ export class BotRuntime {
           }
         }
         const message: BotOutgoingMessage = {
-          messageId: `bot_${manifest.id}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+          messageId: `bot_${manifest.id}_${Date.now()}_${randomHex(3)}`,
           chat: { id: chatId, kind: 'direct' },
           text,
           keyboard,
@@ -627,4 +627,12 @@ export async function dispatchUpdate(
   const runtime = runtimes.get(botId);
   if (!runtime) return false;
   return runtime.deliverUpdate(update);
+}
+
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
 }

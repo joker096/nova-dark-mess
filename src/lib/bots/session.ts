@@ -298,7 +298,7 @@ export class BotSession {
     void runtime.deliverUpdate({
       type: 'callback_query',
       payload: {
-        id: `q_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+        id: `q_${Date.now()}_${randomHex(3)}`,
         chat: { id: chatId, kind: 'direct' },
         messageId,
         data: callbackData,
@@ -396,6 +396,14 @@ export class BotSession {
     };
     return this.installBot(manifest, draft.permissions);
   }
+}
+
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
 }
 
 /** App-wide bot session singleton (one per app lifetime). NovaFather and other

@@ -285,7 +285,9 @@ export function meetsContrast(hex1: string, hex2: string, level: 'AA' | 'AAA' = 
 /** Generate unique ID for ARIA relationships */
 let idCounter = 0;
 export function generateId(prefix = 'a11y'): string {
-  return `${prefix}-${++idCounter}-${Math.random().toString(36).slice(2, 7)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(2));
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${prefix}-${++idCounter}-${hex}`;
 }
 
 /** Common ARIA attributes for buttons */
