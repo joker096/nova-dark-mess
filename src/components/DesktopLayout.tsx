@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Users, MessageSquare, Settings, ChevronLeft, ChevronRight, Sparkles, FolderPlus, Folder, X, Plus, Search, MapPin, Megaphone, BarChart3, Globe, Palette, Shield, Bell, Database, Send, Archive, Clock, Check, BellOff, VolumeX, Pin as PinIcon, Trash2, UserRound, Upload, Hand, Cloud, Hand as HandIcon, Sparkles as SparklesIcon } from 'lucide-react';
+import { LayoutDashboard, Lock, Info, Users, MessageSquare, Settings, ChevronLeft, ChevronRight, Sparkles, FolderPlus, Folder, X, Plus, Search, MapPin, Megaphone, BarChart3, Globe, Palette, Shield, Bell, Database, Send, Archive, Clock, Check, BellOff, VolumeX, Pin as PinIcon, Trash2, UserRound, Upload, Hand, Cloud, Hand as HandIcon, Sparkles as SparklesIcon } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -69,6 +69,8 @@ import {
   readAppTheme,
   readFabSide,
   saveFabSide,
+  FAB_SIDE_EVENT,
+  isFabSide,
   type FabSide,
 } from '../lib/ui/appearance';
 
@@ -170,8 +172,8 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
   onOpenMeshMap,
 }) => {
   const { t, language } = useLanguage();
-  const { isInitialized, identity, clearLocalEncryptedData, verifyPinWithFeedback, pinHash, pinEnabled } = useSecurity();
-  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, setCryptoModalOpen, loading } = usePremium();
+  const { isInitialized, identity, clearLocalEncryptedData, verifyPin, pinHash, pinEnabled } = useSecurity();
+  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, loading } = usePremium();
   const { account } = (() => ({ account: { id: 'me', displayName: 'You', nickname: 'You', avatar: undefined } }))();
   const dialogRef = useRef<HTMLDivElement>(null);
   const focusTrap = useFocusTrap<HTMLDivElement>(false, () => {});
@@ -216,7 +218,7 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
 
   const handleExportMyData = async () => { try { const fn = await downloadMyDataExport(); setAboutMsg(`Exported: ${fn}`); } catch { setAboutMsg('Export failed'); } };
   const eraseAllData = async () => { await clearLocalEncryptedData(); };
-  const handleClearAllData = async () => { if (!clearDataConfirm) { setClearDataConfirm(true); setClearDataPin(''); return; } if (pinEnabled && clearDataPin.length < 4) return; const ok = await verifyPinWithFeedback(clearDataPin); if (!ok) { setClearDataPin(''); return; } await eraseAllData(); setClearDataConfirm(false); setClearDataPin(''); onGoBack(); };
+  const handleClearAllData = async () => { if (!clearDataConfirm) { setClearDataConfirm(true); setClearDataPin(''); return; } if (pinEnabled && clearDataPin.length < 4) return; const ok = await verifyPin(clearDataPin); if (!ok) { setClearDataPin(''); return; } await eraseAllData(); setClearDataConfirm(false); setClearDataPin(''); onGoBack(); };
   const handleCopySeedPhrase = async () => { const phrase = identity?.mnemonic ?? ''; if (!phrase) return; try { await navigator.clipboard.writeText(phrase); setSeedPhraseCopied(true); setTimeout(() => setSeedPhraseCopied(false), 2000); } catch {} };
   const retryJoinOutboxNow = async () => { setIsRetryingJoin(true); await import('../lib/social/joinRequestRelay').then(m => m.retryJoinOutboxNow()); setJoinOutbox(loadJoinOutbox()); setIsRetryingJoin(false); };
 

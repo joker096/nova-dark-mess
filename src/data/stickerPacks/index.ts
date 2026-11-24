@@ -1,4 +1,4 @@
-import { StickerPack } from '../types/messenger';
+import type { StickerPack } from '../stickers';
 import { ANIMALS_MEMES_PACK } from './animals-memes.js';
 import { BASIC_EMOTIONS_PACK } from './basic-emotions.js';
 import { HOLIDAYS_PACK } from './holidays.js';

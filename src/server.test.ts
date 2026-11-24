@@ -97,9 +97,9 @@ beforeAll(async () => {
   process.env.GIFTS_DIR = GIFTS_DIR;
   process.env.ANON_REPORTS_DIR = ANON_REPORTS_DIR;
   process.env.ANON_STATE_DB_PATH = ANON_STATE_DB_PATH;
-  // `.env` is loaded by server.js with `override: true`, so a developer machine
-  // with real PaymentO keys would otherwise replace every fixture below. Point
-  // the loader at a file that does not exist for the lifetime of this suite.
+  // server.js loads `.env` with `override: true`; without this a developer
+  // machine with real PaymentO keys would replace every fixture above and call
+  // the live provider. Point the loader at a path that does not exist instead.
   process.env.DOTENV_CONFIG_PATH = path.join(TMP_ROOT, 'no-such.env');
   process.env.PAYMENTO_SECRET = PAYMENTO_SECRET;
   delete process.env.PAYMENTO_SECRET_KEYS;

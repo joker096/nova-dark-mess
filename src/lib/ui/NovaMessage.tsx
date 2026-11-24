@@ -181,9 +181,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         content.push(
           <div
             key="link"
-            className="mb-2 bg-[var(--bg-quote)] border border-[var(--border-divider)] rounded-[var(--radius-media)] overflow-hidden"
+            className={`mb-2 bg-[var(--bg-quote)] border border-[var(--border-divider)] rounded-[var(--radius-media)] overflow-hidden ${onTextClick ? 'cursor-pointer' : 'cursor-default'}`}
             onClick={() => onTextClick?.()}
-            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <div className="flex">
               <div className="w-3 bg-[var(--c-primary)]" />
@@ -208,9 +207,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         content.push(
           <div
             key="image"
-            className="mb-2 rounded-[var(--radius-media)] overflow-hidden"
+            className={`mb-2 rounded-[var(--radius-media)] overflow-hidden ${onMediaClick ? 'cursor-pointer' : 'cursor-default'}`}
             onClick={() => onMediaClick?.(image)}
-            className={onMediaClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <LazyMedia
               src={image.url}
@@ -228,9 +226,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         content.push(
           <div
             key="video"
-            className="mb-2 rounded-[var(--radius-media)] overflow-hidden relative"
+            className={`mb-2 rounded-[var(--radius-media)] overflow-hidden relative ${onMediaClick ? 'cursor-pointer' : 'cursor-default'}`}
             onClick={() => onMediaClick?.(video)}
-            className={onMediaClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <LazyMedia
               src={video.thumbnail ?? video.url}
@@ -257,9 +254,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         content.push(
           <div
             key="file"
-            className="mb-2 flex items-center gap-3 p-3 bg-[var(--bg-field)] rounded-[var(--radius-media)] max-w-[280px]"
+            className={`mb-2 flex items-center gap-3 p-3 bg-[var(--bg-field)] rounded-[var(--radius-media)] max-w-[280px] ${onTextClick ? 'cursor-pointer' : 'cursor-default'}`}
             onClick={() => onTextClick?.()}
-            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <button
               type="button"
@@ -293,9 +289,8 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
         content.push(
           <p
             key="text"
-            className="text-[16px] leading-[24px] text-[var(--text-primary)] break-words"
+            className={`text-[16px] leading-[24px] text-[var(--text-primary)] break-words ${onTextClick ? 'cursor-pointer' : 'cursor-default'}`}
             onClick={() => onTextClick?.()}
-            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             {text}
           </p>

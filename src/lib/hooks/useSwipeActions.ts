@@ -24,7 +24,7 @@ interface SwipeActionState<T> {
   isLongPressing: boolean;
 }
 
-interface SwipeActionHandlers {
+interface SwipeActionHandlers<T> {
   /** Handle touch start */
   onTouchStart: (e: React.TouchEvent, itemId: T) => void;
   /** Handle touch move */
@@ -47,7 +47,7 @@ export function useSwipeActions<T = string>({
   onSwipeReset,
   maxOffset = 320,
   actionThreshold = 80,
-}: SwipeActionConfig<T>): [SwipeActionState<T>, SwipeActionHandlers] {
+}: SwipeActionConfig<T>): [SwipeActionState<T>, SwipeActionHandlers<T>] {
   const [state, setState] = useState<SwipeActionState<T>>({
     swipingId: null,
     offset: 0,

@@ -101,9 +101,8 @@ export const NovaAlphabetIndex = forwardRef<HTMLDivElement, NovaAlphabetIndexPro
                 : hoveredLetter === letter
                 ? 'text-[var(--c-primary)] bg-[var(--c-primary)]/10'
                 : 'text-[var(--text-secondary)] hover:text-[var(--c-primary)] hover:bg-[var(--c-primary)]/10'
-            }`}
+            } min-w-4`}
             aria-label={letter === '#' ? 'Numbers and symbols' : letter}
-            className="min-w-4"
           >
             {letter}
           </button>

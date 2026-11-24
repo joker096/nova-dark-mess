@@ -1,4 +1,4 @@
-import { StickerPack } from '../types/messenger';
+import type { StickerPack } from '../stickers';
 
 export const WORK_IT_PACK: StickerPack = {
   id: 'work-it',

@@ -1,4 +1,4 @@
-import { StickerPack } from '../types/messenger';
+import type { StickerPack } from '../stickers';
 
 export const SURFACE_PACK_PACK: StickerPack = {
   id: 'surface-pack',
