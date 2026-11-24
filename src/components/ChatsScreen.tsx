@@ -5,10 +5,19 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
-  useCallback,
 } from "react";
 import { LazyMedia } from "./LazyMedia";
 import { useWheelScroll } from "../lib/ui/useWheelScroll";
+import {
+  FOLDER_SELECTED_EVENT,
+  OPEN_FOLDER_MANAGER_EVENT,
+  FOLDERS_STORAGE_KEY,
+  loadActiveFolderId,
+  loadFolders,
+  notifyFoldersChanged,
+  publishFolderUnreadCounts,
+  selectFolder,
+} from "../lib/chat/folders";
 import { NovaContextMenu } from "../lib/ui/NovaContextMenu";
 import { useAccount } from "../hooks/useAccount";
 import {
@@ -28,9 +37,6 @@ import {
   Sparkles,
   Archive,
   Cloud,
-  UserPlus,
-  Upload,
-  Hand,
   Trash2,
   VolumeX,
   Check,
@@ -40,6 +46,7 @@ import {
   Loader2,
   RotateCcw,
   ArrowDown,
+  MoreVertical,
 } from "lucide-react";
 import { getAllDrafts, subscribeDraftChanges } from "../lib/messaging/drafts";
 
@@ -100,9 +107,7 @@ interface ChatsScreenProps {
   onOpenSettings?: () => void;
   onOpenPremium?: () => void;
   onOpenAnonymous?: () => void;
-  onOpenFolders?: () => void;
   activeChatId?: string;
-  activeNavTab?: "chats" | "channel" | "folders" | "settings";
   stories?: Story[];
   channels?: ChannelInfo[];
   localFingerprint?: string;
@@ -114,7 +119,6 @@ interface ChatsScreenProps {
   getBotSession?: () => { isBot: (id: string) => boolean };
 }
 
-const FOLDERS_STORAGE_KEY = "nova_messenger_chat_folders";
 const CHAT_SEARCH_CHIPS = [
   "Katie",
   "Harry's",
@@ -123,50 +127,6 @@ const CHAT_SEARCH_CHIPS = [
   "dinner",
   "photos",
   "flight",
-];
-
-export const DEFAULT_FOLDERS: ChatFolder[] = [
-  {
-    id: "all",
-    name: "All",
-    filterType: "all",
-    chatIds: [],
-    isDefault: true,
-  },
-  {
-    id: "personal",
-    name: "Personal",
-    filterType: "direct",
-    chatIds: ["katie", "kurt", "stacy", "daniel"],
-    icon: "user",
-    isDefault: true,
-  },
-  {
-    id: "work",
-    name: "Work",
-    filterType: "custom",
-    chatIds: ["kurt", "daniel"],
-    icon: "briefcase",
-    isDefault: true,
-  },
-  // Channels are their own section with their own layout, so the chat list
-  // keeps them under "All" instead of offering a redundant tab.
-  {
-    id: "favorites",
-    name: "Favorites",
-    filterType: "custom",
-    chatIds: ["katie", "thailand"],
-    icon: "star",
-    isDefault: true,
-  },
-  {
-    id: "archive",
-    name: "Archive",
-    filterType: "custom",
-    chatIds: [],
-    icon: "archive",
-    isDefault: true,
-  },
 ];
 
 registerCreatedGroups();
@@ -181,9 +141,7 @@ export const ChatsScreen = forwardRef<
     onOpenSettings,
     onOpenPremium,
     onOpenAnonymous,
-    onOpenFolders,
     activeChatId,
-    activeNavTab,
     stories = MOCK_STORIES,
     channels = [],
     localFingerprint,
@@ -220,22 +178,9 @@ export const ChatsScreen = forwardRef<
   }, []);
 
   // Folders State with localStorage persistence
-  const [folders, setFolders] = useState<ChatFolder[]>(() => {
-    try {
-      const saved = localStorage.getItem(FOLDERS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      void 0;
-    }
-    return DEFAULT_FOLDERS;
-  });
+  const [folders, setFolders] = useState<ChatFolder[]>(loadFolders);
 
-  const [activeFolderId, setActiveFolderId] = useState<string>("all");
+  const [activeFolderId, setActiveFolderId] = useState<string>(loadActiveFolderId);
   const [archivedChatIds, setArchivedChatIds] = useState<Set<string>>(
     new Set(),
   );
@@ -254,29 +199,28 @@ export const ChatsScreen = forwardRef<
       setIsFolderModalOpen(true);
     },
   }));
-  const [folderToast, setFolderToast] = useState<string | null>(null);
-  const [swipeHintDismissed, setSwipeHintDismissed] = useState(() => {
-    try {
-      return localStorage.getItem("nova_chats_swipe_hint_dismissed") === "true";
-    } catch {
-      return false;
-    }
-  });
 
-  // Swipe actions on chat rows (archive, pin, mute, delete)
-  const [swipingChatId, setSwipingChatId] = useState<string | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
+  // Folders are switched from the bottom navigation; the chat list only follows.
+  useEffect(() => {
+    const onSelect = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (typeof id === 'string') setActiveFolderId(id);
+    };
+    const onOpenManager = () => {
+      setEditingFolder(null);
+      setIsFolderModalOpen(true);
+    };
+    window.addEventListener(FOLDER_SELECTED_EVENT, onSelect);
+    window.addEventListener(OPEN_FOLDER_MANAGER_EVENT, onOpenManager);
+    return () => {
+      window.removeEventListener(FOLDER_SELECTED_EVENT, onSelect);
+      window.removeEventListener(OPEN_FOLDER_MANAGER_EVENT, onOpenManager);
+    };
+  }, []);
+  const [folderToast, setFolderToast] = useState<string | null>(null);
+
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
-  const swipeStartXRef = useRef(0);
-  const isSwipingRef = useRef(false);
-  const swipeThreshold = 80;
-
-  const resetSwipe = useCallback(() => {
-    setSwipingChatId(null);
-    setSwipeOffset(0);
-    isSwipingRef.current = false;
-  }, []);
 
   // Pull-to-refresh
   const pullStartYRef = useRef<number>(0);
@@ -320,27 +264,45 @@ export const ChatsScreen = forwardRef<
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent, chatId: string) => {
+  // Horizontal swipe on the list switches folders.
+  const folderSwipeRef = useRef({ startX: 0, startY: 0, dx: 0, active: false });
+
+  const handleListTouchStart = (e: React.TouchEvent) => {
+    handlePullStart(e);
     if (e.touches.length !== 1) return;
-    swipeStartXRef.current = e.touches[0].clientX;
-    setSwipingChatId(chatId);
-    isSwipingRef.current = true;
+    folderSwipeRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      dx: 0,
+      active: false,
+    };
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isSwipingRef.current || e.touches.length !== 1) return;
-    const dx = swipeStartXRef.current - e.touches[0].clientX;
-    if (dx > 0) {
-      setSwipeOffset(Math.min(dx, 320));
+  const handleListTouchMove = (e: React.TouchEvent) => {
+    handlePullMove(e);
+    const gesture = folderSwipeRef.current;
+    if (!gesture || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - gesture.startX;
+    const dy = e.touches[0].clientY - gesture.startY;
+    gesture.dx = dx;
+    if (!gesture.active && Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      gesture.active = true;
     }
   };
 
-  const handleTouchEnd = (chatId: string, isChannel?: boolean) => {
-    if (!isSwipingRef.current) return;
-    if (swipeOffset > swipeThreshold) {
-      handleArchiveToggle(chatId);
+  const handleListTouchEnd = () => {
+    handlePullEnd();
+    const gesture = folderSwipeRef.current;
+    if (gesture?.active && Math.abs(gesture.dx) >= 64) {
+      const index = folders.findIndex((folder) => folder.id === activeFolderId);
+      const nextFolder = index >= 0 ? folders[gesture.dx < 0 ? index + 1 : index - 1] : undefined;
+      if (nextFolder) {
+        triggerHaptic("light");
+        selectFolder(nextFolder.id);
+        triggerFolderToast(nextFolder.name);
+      }
     }
-    resetSwipe();
+    folderSwipeRef.current = { startX: 0, startY: 0, dx: 0, active: false };
   };
 
   // Long-press context menu
@@ -388,8 +350,8 @@ export const ChatsScreen = forwardRef<
   const [isStoryComposerOpen, setIsStoryComposerOpen] = useState(false);
   const storyFeed = useMemo(() => getStoryFeed(stories, now), [stories, now]);
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const folderTabsRef = useWheelScroll();
   const quickSearchChipsRef = useWheelScroll();
   const storiesRef = useWheelScroll();
 
@@ -424,7 +386,8 @@ export const ChatsScreen = forwardRef<
       }
       return updated;
     });
-    setActiveFolderId(folderToSave.id);
+    notifyFoldersChanged();
+    selectFolder(folderToSave.id);
     triggerFolderToast(`Folder "${folderToSave.name}" saved`);
   };
 
@@ -438,8 +401,9 @@ export const ChatsScreen = forwardRef<
       }
       return updated;
     });
+    notifyFoldersChanged();
     if (activeFolderId === folderId) {
-      setActiveFolderId("all");
+      selectFolder("all");
     }
     triggerFolderToast("Folder deleted");
   };
@@ -561,30 +525,30 @@ export const ChatsScreen = forwardRef<
     userContacts,
   ]);
 
-  // Calculate badge (unread or count) for each folder tab
-  const getFolderBadge = (folder: ChatFolder) => {
-    if (folder.id === "all") return null;
-    let matchedList: ChatItem[];
-    if (folder.filterType === "direct") {
-      matchedList = MOCK_CHATS.filter((c) => c.type === "direct");
-    } else if (folder.filterType === "channels") {
-      matchedList = MOCK_CHATS.filter(
-        (c) => c.isChannel || c.type === "channel",
+  // Per-folder unread totals feed the folder chips in the bottom navigation.
+  const folderUnreadCounts = useMemo(() => {
+    const matches = (folder: ChatFolder) => {
+      if (folder.filterType === "direct") return MOCK_CHATS.filter((c) => c.type === "direct");
+      if (folder.filterType === "channels") {
+        return MOCK_CHATS.filter((c) => c.isChannel || c.type === "channel");
+      }
+      if (folder.filterType === "groups") return MOCK_CHATS.filter((c) => c.type === "group");
+      if (folder.filterType === "all") return MOCK_CHATS;
+      return MOCK_CHATS.filter((c) => folder.chatIds.includes(c.id));
+    };
+    const counts: Record<string, number> = {};
+    for (const folder of folders) {
+      counts[folder.id] = matches(folder).reduce(
+        (total, chat) => total + (readChats.has(chat.id) ? 0 : chat.unreadCount || 0),
+        0,
       );
-    } else if (folder.filterType === "groups") {
-      matchedList = MOCK_CHATS.filter((c) => c.type === "group");
-    } else {
-      matchedList = MOCK_CHATS.filter((c) => folder.chatIds.includes(c.id));
     }
-    const totalUnread = matchedList.reduce(
-      (acc, c) => acc + (readChats.has(c.id) ? 0 : c.unreadCount || 0),
-      0,
-    );
-    if (totalUnread > 0) return `${totalUnread}`;
-    if (matchedList.length > 0 && folder.filterType === "custom")
-      return `${matchedList.length}`;
-    return null;
-  };
+    return counts;
+  }, [folders, readChats]);
+
+  useEffect(() => {
+    publishFolderUnreadCounts(folderUnreadCounts);
+  }, [folderUnreadCounts]);
 
   // Search through chats (by contact name OR message preview / conversation history)
   const matchedChats = useMemo(() => {
@@ -648,41 +612,6 @@ export const ChatsScreen = forwardRef<
   const totalResults = matchedChats.length + matchedMessages.length;
   const isSearching = searchQuery.trim().length > 0;
 
-  const mobileNavItems = [
-    {
-      key: "chats",
-      label: t("chats.title"),
-      icon: MessageSquare,
-      active: activeNavTab === "chats",
-      onClick: () => setActiveFolderId("all"),
-    },
-    {
-      key: "channel",
-      label: t("channels"),
-      icon: Megaphone,
-      active: activeNavTab === "channel",
-      onClick: () => onOpenChannel?.(),
-    },
-    {
-      key: "folders",
-      label: t("folders"),
-      icon: Folder,
-      active: activeNavTab === "folders",
-      onClick: onOpenFolders
-        ? onOpenFolders
-        : () => {
-            setEditingFolder(null);
-            setIsFolderModalOpen(true);
-          },
-    },
-    {
-      key: "settings",
-      label: t("settings.title"),
-      icon: Settings,
-      active: activeNavTab === "settings",
-      onClick: onOpenSettings,
-    },
-  ];
 
   const handleChatClick = (chatId: string, isChannel?: boolean) => {
     markChatRead(chatId);
@@ -879,121 +808,95 @@ export const ChatsScreen = forwardRef<
     <div className="flex flex-col h-full bg-[var(--bg-app)] text-[var(--text-primary)] relative select-none">
       {/* Toast Notification */}
       {folderToast && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[var(--bg-surface)]/[0.95] border border-[var(--nova-accent-color)]/50 text-[var(--text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-[var(--shadow-2)] backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div
+          data-testid="folder-toast"
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[var(--bg-surface)]/[0.95] border border-[var(--nova-accent-color)]/50 text-[var(--text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-[var(--shadow-2)] backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{folderToast}</span>
         </div>
       )}
 
-      {/* Top Header: Account nickname */}
-      <div className="pt-3 px-4 sm:px-5 pb-2 flex items-center justify-between shrink-0">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate text-[17px] font-bold text-[var(--text-primary)] tracking-tight leading-tight">
-              {account.nickname}
-            </h1>
-          </div>
-        </div>
+      {/* Top Header: Minimal title + Search + Menu */}
+      <div className="pt-2 px-4 pb-2 flex items-center justify-between shrink-0">
+        {/* Title - smaller, "Chats" on mobile, nickname on desktop */}
+        <h1 className="lg:hidden truncate text-[14px] font-semibold text-[var(--text-primary)] tracking-tight">
+          {t('common.chats')}
+        </h1>
+        <h1 className="hidden lg:block truncate text-[14px] font-medium text-[var(--text-secondary)] tracking-tight">
+          {account.nickname}
+        </h1>
 
-        {/* Action icons on right */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          {onOpenAnonymous && (
-            <button
-              onClick={onOpenAnonymous}
-              className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-              aria-label="Contacts"
-              title="Contacts"
-            >
-              <UserRound className="w-5 h-5" />
-            </button>
-          )}
+        {/* Action icons on right - Mobile: Search + Menu; Desktop: minimal */}
+        <div className="flex shrink-0 items-center gap-1">
+          {/* Search button (mobile only) */}
           <button
-            onClick={() => setNewChatModalOpen(true)}
-            className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-            aria-label={t("chats.newChat")}
-            title={t("chats.newChat")}
+            onClick={() => searchInputRef.current?.focus()}
+            className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
+            aria-label={t('chats.search', { defaultValue: 'Search' })}
+            title={t('chats.search', { defaultValue: 'Search' })}
           >
-            <Plus className="w-5 h-5" />
+            <Search className="w-4 h-4" />
           </button>
 
+          {/* Menu button (mobile only) - overflow for premium, select mode, etc. */}
           <button
-            onClick={onOpenPremium}
-            className="h-11 px-4 rounded-full bg-[var(--nova-accent-color)]/15 hover:bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--nova-accent-color)]/40 flex items-center gap-1.5 text-[11px] font-semibold transition cursor-pointer active:scale-95 shadow-md"
-            aria-label={t("premium.title")}
-            title={t("premium.title")}
-            data-testid="open-premium"
+            onClick={() => setHeaderMenuOpen(true)}
+            className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
+            aria-label={t('common.menu', { defaultValue: 'Menu' })}
+            title={t('common.menu', { defaultValue: 'Menu' })}
           >
-            <Sparkles className="w-4 h-4" />
+            <MoreVertical className="w-4 h-4" />
           </button>
 
-          {/* Select Mode Toggle */}
-          {!selectMode ? (
-            <button
-              onClick={toggleSelectMode}
-              className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-              aria-label="Select chats"
-              title="Select chats"
-            >
-              <Check className="w-5 h-5" />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <span className="text-[11px] font-medium text-[var(--text-secondary)] px-2">
-                {selectedChatIds.size}{" "}
-                {selectedChatIds.size === 1 ? "selected" : "selected"}
-              </span>
-              <button
-                onClick={bulkPin}
-                className="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Pin selected"
-                title="Pin selected"
-              >
-                <Pin className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={bulkMute}
-                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Mute selected"
-                title="Mute selected"
-              >
-                <BellOff className="w-4 h-4" />
-              </button>
-              <button
-                onClick={bulkArchive}
-                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Archive selected"
-                title="Archive selected"
-              >
-                <Archive className="w-4 h-4" />
-              </button>
-              <button
-                onClick={bulkDelete}
-                className="w-11 h-11 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 flex items-center justify-center text-red-400 transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Delete selected"
-                title="Delete selected"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={clearSelection}
-                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Clear selection"
-                title="Clear selection"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <button
-                onClick={toggleSelectMode}
-                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:opacity-90 text-white flex items-center justify-center transition cursor-pointer active:scale-90 shadow-md"
-                aria-label="Exit select mode"
-                title="Exit select mode"
-              >
-                <Check className="w-5 h-5 fill-current" />
-              </button>
-            </div>
-          )}
+          {/* Desktop: Settings button (avatar/settings in sidebar) */}
+          <button
+            onClick={onOpenSettings}
+            className="hidden lg:flex w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
+            aria-label={t('settings.title')}
+            title={t('settings.title')}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile Header Menu (overflow) */}
+      {headerMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={() => setHeaderMenuOpen(false)}>
+          <div className="fixed bottom-0 left-0 right-0 animate-in slide-in-from-bottom-5 duration-200 bg-[var(--nova-surface)] border-t border-[var(--nova-border-subtle)] rounded-t-2xl p-4 space-y-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">{t('common.more', { defaultValue: 'More' })}</h3>
+              <button onClick={() => setHeaderMenuOpen(false)} className="w-8 h-8 rounded-full hover:bg-[var(--nova-overlay-weak)] flex items-center justify-center text-[var(--text-secondary)] transition" aria-label={t('common.close')} title={t('common.close')}><X className="w-4 h-4" /></button>
+            </div>
+            <button onClick={() => { setHeaderMenuOpen(false); onOpenPremium(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+              <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></div>
+              <span>{t('premium.title')}</span>
+            </button>
+            <button onClick={() => { setHeaderMenuOpen(false); toggleSelectMode(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center"><Check className="w-4 h-4" /></div>
+              <span>{selectMode ? t('common.cancel', { defaultValue: 'Cancel' }) : t('common.select', { defaultValue: 'Select' })}</span>
+            </button>
+            {onOpenAnonymous && (
+              <button onClick={() => { setHeaderMenuOpen(false); onOpenAnonymous(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center"><UserRound className="w-4 h-4" /></div>
+                <span>{t('common.contacts')}</span>
+              </button>
+            )}
+            <button onClick={() => { setHeaderMenuOpen(false); setNewChatModalOpen(true); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+              <div className="w-8 h-8 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+              <span>{t('chats.newChat')}</span>
+            </button>
+            <button onClick={() => { setHeaderMenuOpen(false); setEditingFolder(null); setIsFolderModalOpen(true); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center"><Folder className="w-4 h-4" /></div>
+              <span>{t('foldersObj.title')}</span>
+            </button>
+            <button onClick={() => { setHeaderMenuOpen(false); onOpenSettings(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
+              <div className="w-8 h-8 rounded-xl bg-[var(--nova-border-color)]/20 text-[var(--text-secondary)] flex items-center justify-center"><Settings className="w-4 h-4" /></div>
+              <span>{t('settings.title')}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* PROMINENT TOP REAL-TIME CHAT SEARCH BAR */}
       <div className="px-5 pt-1 pb-2 shrink-0">
@@ -1075,7 +978,7 @@ export const ChatsScreen = forwardRef<
       {/* CONDITIONAL BODY: SEARCH RESULTS OR NORMAL FOLDER/STORIES VIEW */}
       {isSearching ? (
         /* SEARCH RESULTS VIEW */
-        <div className="flex-1 overflow-y-auto px-5 pb-24 lg:pb-6 space-y-3 safe-area-bottom-min">
+        <div className="flex-1 overflow-y-auto px-5 pb-36 lg:pb-6 space-y-3 safe-area-bottom-min">
           {/* Search Scope Filter Pills */}
           <div className="flex items-center justify-between pt-1 pb-0.5">
             <div className="flex items-center gap-1.5 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--border-strong)]">
@@ -1163,113 +1066,14 @@ export const ChatsScreen = forwardRef<
                         const matchingHistMsg = historyMessages.find((m) =>
                           m.text?.toLowerCase().includes(query),
                         );
-                        const isSwipingThis = swipingChatId === chat.id;
 
                         return (
                           <div
-                            onTouchStart={(e) => {
-                              handleTouchStart(e, chat.id);
-                              startLongPress(e, chat.id);
-                            }}
-                            onTouchMove={(e) => {
-                              handleTouchMove(e);
-                              cancelLongPress();
-                            }}
-                            onTouchEnd={() => {
-                              handleTouchEnd(chat.id, chat.isChannel);
-                              cancelLongPress();
-                            }}
-                            onTouchCancel={() => {
-                              resetSwipe();
-                              cancelLongPress();
-                            }}
-                            className="relative overflow-hidden"
-                            style={{
-                              transform: isSwipingThis
-                                ? `translateX(-${swipeOffset}px)`
-                                : undefined,
-                            }}
+                            onTouchStart={(e) => startLongPress(e, chat.id)}
+                            onTouchMove={cancelLongPress}
+                            onTouchEnd={cancelLongPress}
+                            onTouchCancel={cancelLongPress}
                           >
-                            {/* Swipe Action Buttons */}
-                            <div
-                              className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2"
-                              style={{ width: "180px" }}
-                            >
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePinToggle(chat.id);
-                                  resetSwipe();
-                                }}
-                                className="w-9 h-9 rounded-full bg-amber-500/20 hover:bg-amber-500/30 flex items-center justify-center text-amber-400 transition cursor-pointer"
-                                aria-label={
-                                  pinnedChatIds.has(chat.id)
-                                    ? t("common.unpin")
-                                    : t("common.pin")
-                                }
-                                title={
-                                  pinnedChatIds.has(chat.id) ? "Unpin" : "Pin"
-                                }
-                              >
-                                <Pin
-                                  className={`w-3.5 h-3.5 ${pinnedChatIds.has(chat.id) ? "fill-current" : ""}`}
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleArchiveToggle(chat.id);
-                                  resetSwipe();
-                                }}
-                                className="w-9 h-9 rounded-full bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 transition cursor-pointer"
-                                aria-label={
-                                  archivedChatIds.has(chat.id)
-                                    ? t("actions.unarchive")
-                                    : t("actions.archive")
-                                }
-                                title={
-                                  archivedChatIds.has(chat.id)
-                                    ? "Unarchive"
-                                    : "Archive"
-                                }
-                              >
-                                <Archive
-                                  className={`w-3.5 h-3.5 ${archivedChatIds.has(chat.id) ? "rotate-180" : ""}`}
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChat(chat.id);
-                                  resetSwipe();
-                                }}
-                                className="w-9 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center text-red-400 transition cursor-pointer"
-                                aria-label={t("common.delete", {
-                                  defaultValue: "Delete",
-                                })}
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMuteToggle(chat.id);
-                                  resetSwipe();
-                                }}
-                                className="w-9 h-9 rounded-full bg-gray-500/20 hover:bg-gray-500/30 flex items-center justify-center text-gray-400 transition cursor-pointer"
-                                aria-label={t("common.mute", {
-                                  defaultValue: "Mute",
-                                })}
-                                title="Mute"
-                              >
-                                <VolumeX className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
 
                             <div
                               key={chat.id}
@@ -1527,113 +1331,15 @@ export const ChatsScreen = forwardRef<
             </div>
           </div>
 
-          {/* DYNAMIC FOLDER TABS SYSTEM WITH CREATE/MANAGE MODAL BUTTON */}
-          <div
-            ref={folderTabsRef}
-            className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 max-w-full"
-            data-testid="folder-tabs"
-          >
-            {folders.map((folder) => {
-              const isActive = activeFolderId === folder.id;
-              const badge = getFolderBadge(folder);
-
-              return (
-                <div key={folder.id} className="relative group shrink-0">
-                  <button
-                    onClick={() => setActiveFolderId(folder.id)}
-                    className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                      isActive
-                        ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-md shadow-[var(--nova-accent-color)]/25"
-                        : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-strong)]"
-                    }`}
-                    aria-label={`Folder ${folder.name}${isActive ? ", active" : ""}`}
-                  >
-                    <span>{folder.name}</span>
-                    {badge && (
-                      <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                          isActive
-                            ? "bg-[var(--nova-accent-color)]/[0.15] text-[var(--text-on-accent)]"
-                            : "text-[var(--text-tertiary)]"
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Edit icon for custom folders */}
-                  {!folder.isDefault && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingFolder(folder);
-                        setIsFolderModalOpen(true);
-                      }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] text-[var(--text-secondary)] hover:text-[var(--text-on-accent)] flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm border border-[var(--border)] cursor-pointer"
-                      aria-label={
-                        t("common.editFolder") ?? `Edit folder ${folder.name}`
-                      }
-                      title={t("common.edit")}
-                    >
-                      <Settings className="w-2.5 h-2.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Plus button to create new folder */}
-            <button
-              onClick={() => {
-                setEditingFolder(null);
-                setIsFolderModalOpen(true);
-              }}
-              className="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] text-[var(--text-secondary)] hover:text-[var(--text-on-accent)] hover:shadow-md hover:shadow-[var(--nova-accent-color)]/25 border border-[var(--border-strong)] flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
-              aria-label={t("foldersObj.addAnother") ?? "Create new folder"}
-              title={t("foldersObj.title") ?? "Folders"}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* One-time hint teaching the swipe gesture for archive/pin/mute/delete */}
-          {!swipeHintDismissed &&
-            !isSearching &&
-            currentFolder?.filterType !== "channels" && (
-              <div className="mx-4 mb-2 px-3 py-2 rounded-xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-300">
-                <Clock className="w-4 h-4 text-[var(--nova-accent-color)] shrink-0" />
-                <span className="text-[11px] text-[var(--nova-text-secondary)]">
-                  {t("chats.swipeHint")}
-                </span>
-                <button
-                  onClick={() => {
-                    setSwipeHintDismissed(true);
-                    try {
-                      localStorage.setItem(
-                        "nova_chats_swipe_hint_dismissed",
-                        "true",
-                      );
-                    } catch {
-                      void 0;
-                    }
-                  }}
-                  className="ml-auto p-1 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
-                  aria-label={t("chats.swipeHintDismiss")}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-
           {/* Chats List Filtered by Active Folder */}
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5 safe-area-bottom-min"
-            onTouchStart={handlePullStart}
-            onTouchMove={handlePullMove}
-            onTouchEnd={handlePullEnd}
-            onTouchCancel={handlePullEnd}
+            className="flex-1 overflow-y-auto px-5 pt-2 pb-36 lg:pb-6 space-y-2.5 safe-area-bottom-min"
+            data-testid="chats-list"
+            onTouchStart={handleListTouchStart}
+            onTouchMove={handleListTouchMove}
+            onTouchEnd={handleListTouchEnd}
+            onTouchCancel={handleListTouchEnd}
           >
             {/* Pull-to-refresh indicator */}
             {pullDistance > 0 && (
@@ -1693,15 +1399,15 @@ export const ChatsScreen = forwardRef<
                     setEditingFolder(currentFolder);
                     setIsFolderModalOpen(true);
                   }}
-                  className="mt-3 px-3.5 py-1.5 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold hover:bg-[var(--nova-accent-color, ff5d2b)] transition shadow-md shadow-[var(--nova-accent-color)]/25 cursor-pointer"
+                  className="mt-3 px-3.5 py-1.5 rounded-2xl bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold hover:bg-[var(--nova-accent-color, ff5d2b)] transition shadow-md shadow-[var(--nova-accent-color)]/25 cursor-pointer active:bg-[var(--nova-overlay-strong)]"
                   aria-label={`Manage folder ${currentFolder.name} chats`}
                 >
                   Manage Folder Chats
                 </button>
                 <div className="mt-4 flex flex-col gap-2 w-full max-w-xs">
-                  <button
+<button
                     onClick={() => setNewChatModalOpen(true)}
-                    className="px-4 py-2 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                    className="px-4 py-2 rounded-2xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
                   >
                     <Plus className="w-3 h-3 mr-1.5" />
                     Create New Chat
@@ -1711,7 +1417,7 @@ export const ChatsScreen = forwardRef<
                       triggerHaptic("light");
                       onOpenAnonymous?.();
                     }}
-                    className="px-4 py-2 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                    className="px-4 py-2 rounded-2xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
                   >
                     <Users className="w-3 h-3 mr-1.5" />
                     Invite Contact
@@ -1724,105 +1430,14 @@ export const ChatsScreen = forwardRef<
                 const unreadCount = readChats.has(chat.id)
                   ? 0
                   : chat.unreadCount || 0;
-                const isSwipingThis = swipingChatId === chat.id;
                 return (
                   <div
                     key={chat.id}
-                    onTouchStart={(e) => {
-                      handleTouchStart(e, chat.id);
-                      startLongPress(e, chat.id);
-                    }}
-                    onTouchMove={(e) => {
-                      handleTouchMove(e);
-                      cancelLongPress();
-                    }}
-                    onTouchEnd={() => {
-                      handleTouchEnd(chat.id, chat.isChannel);
-                      cancelLongPress();
-                    }}
-                    onTouchCancel={() => {
-                      resetSwipe();
-                      cancelLongPress();
-                    }}
-                    className="relative overflow-hidden"
-                    style={{
-                      transform: isSwipingThis
-                        ? `translateX(-${swipeOffset}px)`
-                        : undefined,
-                    }}
+                    onTouchStart={(e) => startLongPress(e, chat.id)}
+                    onTouchMove={cancelLongPress}
+                    onTouchEnd={cancelLongPress}
+                    onTouchCancel={cancelLongPress}
                   >
-                    {/* Swipe Action Buttons (revealed from right) */}
-                    <div
-                      className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2"
-                      style={{ width: "320px" }}
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePinToggle(chat.id);
-                          resetSwipe();
-                        }}
-                        className="w-10 h-10 rounded-full bg-amber-500/20 hover:bg-amber-500/30 flex items-center justify-center text-amber-400 transition cursor-pointer"
-                        aria-label={
-                          pinnedChatIds.has(chat.id)
-                            ? t("common.unpin")
-                            : t("common.pin")
-                        }
-                        title={pinnedChatIds.has(chat.id) ? "Unpin" : "Pin"}
-                      >
-                        <Pin
-                          className={`w-4 h-4 ${pinnedChatIds.has(chat.id) ? "fill-current" : ""}`}
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleArchiveToggle(chat.id);
-                          resetSwipe();
-                        }}
-                        className="w-10 h-10 rounded-full bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 transition cursor-pointer"
-                        aria-label={
-                          archivedChatIds.has(chat.id)
-                            ? t("actions.unarchive")
-                            : t("actions.archive")
-                        }
-                        title={
-                          archivedChatIds.has(chat.id) ? "Unarchive" : "Archive"
-                        }
-                      >
-                        <Archive
-                          className={`w-4 h-4 ${archivedChatIds.has(chat.id) ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resetSwipe();
-                        }}
-                        className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center text-red-400 transition cursor-pointer"
-                        aria-label={t("common.delete", {
-                          defaultValue: "Delete",
-                        })}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resetSwipe();
-                        }}
-                        className="w-10 h-10 rounded-full bg-gray-500/20 hover:bg-gray-500/30 flex items-center justify-center text-gray-400 transition cursor-pointer"
-                        aria-label={t("common.mute", { defaultValue: "Mute" })}
-                        title="Mute"
-                      >
-                        <VolumeX className="w-4 h-4" />
-                      </button>
-                    </div>
 
                     {/* Selection Checkbox (Select Mode) */}
                     {selectMode && (
@@ -1835,7 +1450,7 @@ export const ChatsScreen = forwardRef<
                             toggleChatSelection(chat.id);
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-5 h-5 rounded border-2 border-[var(--nova-accent-color)] bg-transparent appearance-none cursor-pointer checked:bg-[var(--nova-accent-color)] checked:border-[var(--nova-accent-color)] checked:after:content-['✓'] checked:after:text-white checked:after:flex checked:after:items-center checked:after:justify-center transition-all duration-150"
+                          className="w-4 h-4 rounded border-2 border-[var(--nova-accent-color)] bg-transparent appearance-none cursor-pointer checked:bg-[var(--nova-accent-color)] checked:border-[var(--nova-accent-color)] checked:after:content-['✓'] checked:after:text-white checked:after:flex checked:after:items-center checked:after:justify-center transition-all duration-150"
                           aria-label="Select chat"
                         />
                       </div>
@@ -1984,7 +1599,7 @@ export const ChatsScreen = forwardRef<
                                 e.stopPropagation();
                                 handleArchiveToggle(chat.id);
                               }}
-                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
+                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                               aria-label={
                                 archivedChatIds.has(chat.id)
                                   ? t("actions.unarchive", {
@@ -2016,7 +1631,7 @@ export const ChatsScreen = forwardRef<
                                 e.stopPropagation();
                                 handlePinToggle(chat.id);
                               }}
-                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
+                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                               aria-label={
                                 pinnedChatIds.has(chat.id)
                                   ? t("common.unpin", { defaultValue: "Unpin" })
@@ -2067,7 +1682,7 @@ export const ChatsScreen = forwardRef<
                                       )
                                     }
                                     aria-label={`${t("chat.approveJoinRequest")}: ${request.fingerprint}`}
-                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[9px] font-semibold text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/30 transition cursor-pointer shrink-0"
+                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[9px] font-semibold text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/30 transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                                   >
                                     {t("chat.approveJoinRequest")}
                                   </button>
@@ -2081,7 +1696,7 @@ export const ChatsScreen = forwardRef<
                                       )
                                     }
                                     aria-label={`${t("chat.rejectJoinRequest")}: ${request.fingerprint}`}
-                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[9px] font-semibold text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
+                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[9px] font-semibold text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                                   >
                                     {t("chat.rejectJoinRequest")}
                                   </button>
@@ -2108,34 +1723,6 @@ export const ChatsScreen = forwardRef<
         </>
       )}
 
-      {/* Floating Bottom Navigation Bar. `absolute bottom-0` + the
-          `safe-bottom-nav` offset keeps the thumb zone off the gesture bar
-          while still tracking the screen's own layout. */}
-      <div className="absolute bottom-0 safe-bottom-nav inset-x-0 flex justify-center z-30 pointer-events-none lg:hidden px-3">
-        <nav className="pointer-events-auto grid w-full max-w-md grid-cols-4 gap-0.5 rounded-3xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-raised)]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
-          {mobileNavItems.map(({ key, label, icon: Icon, active, onClick }) => (
-            <button
-              key={key}
-              onClick={onClick}
-              title={label}
-              aria-label={label}
-              aria-current={active ? "page" : undefined}
-              className={`relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 ${
-                active
-                  ? "bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30"
-                  : "text-[var(--nova-text-muted)] hover:text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]"
-              }`}
-            >
-              <Icon
-                className={`w-[20px] h-[20px] shrink-0 ${active ? "fill-current stroke-none" : "stroke-[2]"}`}
-              />
-              <span className="max-w-full truncate px-1 text-[10px] font-semibold leading-none">
-                {label}
-              </span>
-            </button>
-          ))}
-        </nav>
-      </div>
 
       {/* Story Viewer Modal */}
       {storyViewerIndex !== null && storyFeed.length > 0 && (

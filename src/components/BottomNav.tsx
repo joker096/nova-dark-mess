@@ -1,14 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Users, Radio, Sparkles, Plus, User, X, UserPlus, Upload, Hand } from 'lucide-react';
+import { MessageSquare, Users, Radio, Sparkles, Plus, User, X, UserPlus, Upload, Hand, FolderPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { NovaIconButton } from '../lib/ui';
 import { createPortal } from 'react-dom';
+import type { BottomTab } from '../types/navigation';
+import { requestFolderManager, useChatFolders } from '../lib/chat/folders';
+import {
+  FAB_SIDE_EVENT,
+  isFabSide,
+  readFabSide,
+  saveFabSide,
+  type FabSide,
+} from '../lib/ui/appearance';
 
 interface BottomNavProps {
-  activeTab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium';
+  activeTab: BottomTab;
   onTabChange: (tab: BottomNavProps['activeTab']) => void;
-  fabSide: 'left' | 'right';
-  onFabToggle?: () => void;
+
   onNewChat?: () => void;
   unreadChats?: number;
   unreadChannels?: number;
@@ -19,8 +27,7 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onTabChange,
-  fabSide,
-  onFabToggle,
+
   onNewChat,
   unreadChats = 0,
   unreadChannels = 0,
@@ -28,8 +35,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   premium = false,
 }) => {
   const { t } = useLanguage();
+  const { folders, activeFolderId, unreadByFolder, selectFolder: selectChatFolder } = useChatFolders();
   const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+  const [fabSide, setFabSide] = useState<FabSide>(() => readFabSide());
   const fabMenuRef = useRef<HTMLDivElement>(null);
+  const folderStripRef = useRef<HTMLDivElement>(null);
+  const [folderEdges, setFolderEdges] = useState({ start: false, end: false });
 
   const tabs = [
     { id: 'chats' as const, icon: MessageSquare, label: t('common.chats'), unread: unreadChats },
@@ -55,12 +66,55 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFabMenuOpen]);
 
-  const handleFabClick = () => {
-    if (onFabToggle) {
-      onFabToggle();
-    } else {
-      setIsFabMenuOpen((prev) => !prev);
-    }
+  // Surface the folder strip's scrollable overflow with edge fades.
+  useEffect(() => {
+    if (activeTab !== 'chats') return;
+    const strip = folderStripRef.current;
+    if (!strip) return;
+    const updateEdges = () => {
+      const maxScroll = strip.scrollWidth - strip.clientWidth;
+      setFolderEdges({
+        start: strip.scrollLeft > 2,
+        end: maxScroll > 2 && strip.scrollLeft < maxScroll - 2,
+      });
+    };
+    updateEdges();
+    // Widths settle after fonts and unread badges render, so re-measure a frame later.
+    const frame = requestAnimationFrame(updateEdges);
+    strip.addEventListener('scroll', updateEdges, { passive: true });
+    window.addEventListener('resize', updateEdges);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateEdges) : null;
+    observer?.observe(strip);
+    return () => {
+      cancelAnimationFrame(frame);
+      strip.removeEventListener('scroll', updateEdges);
+      window.removeEventListener('resize', updateEdges);
+      observer?.disconnect();
+    };
+  }, [activeTab, folders, unreadByFolder]);
+
+  // Keep every mounted FAB on the persisted side, including after a change
+  // made by another component or tab (saveFabSide also fires FAB_SIDE_EVENT).
+  useEffect(() => {
+    const syncFromStorage = () => setFabSide(readFabSide());
+    const syncFromEvent = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setFabSide(isFabSide(detail) ? detail : readFabSide());
+    };
+    window.addEventListener('storage', syncFromStorage);
+    window.addEventListener(FAB_SIDE_EVENT, syncFromEvent);
+    return () => {
+      window.removeEventListener('storage', syncFromStorage);
+      window.removeEventListener(FAB_SIDE_EVENT, syncFromEvent);
+    };
+  }, []);
+
+  const handleFabClick = () => setIsFabMenuOpen((prev) => !prev);
+
+  const moveFabToOtherSide = () => {
+    const next: FabSide = fabSide === 'right' ? 'left' : 'right';
+    setFabSide(next);
+    saveFabSide(next);
   };
 
   const renderFabMenu = () => {
@@ -118,8 +172,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           type="button"
           onClick={() => {
-            onFabToggle?.();
             setIsFabMenuOpen(false);
+            moveFabToOtherSide();
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] active:scale-95 transition cursor-pointer"
           aria-label={t('chats.fabOtherSide', { defaultValue: 'Move button to the other side' })}
@@ -144,7 +198,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => setIsFabMenuOpen(false)}
         />
         <div
-          className={`flex justify-${fabSide === 'right' ? 'end' : 'start'} pb-20 px-4 pointer-events-auto`}
+          className={`flex justify-${fabSide === 'right' ? 'end' : 'start'} ${activeTab === 'chats' ? 'pb-36' : 'pb-20'} px-4 pointer-events-auto`}
         >
           {menuContent}
         </div>
@@ -160,6 +214,80 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         role="navigation"
         aria-label={t('common.navigation')}
       >
+        {activeTab === 'chats' && (
+          <div className="relative border-b border-[var(--nova-border-subtle)]">
+          <div
+            ref={folderStripRef}
+            data-testid="nav-folders"
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar px-3 pt-2 pb-1.5 scroll-smooth"
+          >
+            {folders.map((folder) => {
+              const isActive = folder.id === activeFolderId;
+              const unread = unreadByFolder[folder.id] ?? 0;
+              return (
+                <button
+                  key={folder.id}
+                  type="button"
+                  onClick={() => {
+                    selectChatFolder(folder.id);
+                    if (activeTab !== 'chats') onTabChange('chats');
+                  }}
+                  className={`shrink-0 inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold transition active:scale-95 cursor-pointer min-h-[32px] ${
+                    isActive
+                      ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/25'
+                      : 'bg-[var(--nova-surface-raised)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] border border-[var(--nova-border-subtle)]'
+                  }`}
+                  aria-pressed={isActive}
+                  aria-label={unread > 0 ? `${folder.name}: ${unread} ${t('chats.unreadCount')}` : folder.name}
+                >
+                  <span>{folder.name}</span>
+                  {unread > 0 && (
+                    <span
+                      data-testid={`folder-unread-${folder.id}`}
+                      aria-hidden="true"
+                      className={`ml-1 inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold leading-[16px] ${
+                        isActive
+                          ? 'bg-[var(--nova-on-accent)] text-[var(--nova-accent-color)]'
+                          : 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
+                      }`}
+                    >
+                      {unread > 99 ? '99+' : unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={requestFolderManager}
+              className="shrink-0 w-8 h-8 rounded-full bg-[var(--nova-surface-raised)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--nova-on-accent)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] flex items-center justify-center transition active:scale-95 cursor-pointer"
+              aria-label={t('foldersObj.addAnother', { defaultValue: 'Manage folders' })}
+              title={t('foldersObj.title', { defaultValue: 'Chat Folders' })}
+            >
+              <FolderPlus className="w-4 h-4" />
+            </button>
+          </div>
+          {folderEdges.start && (
+            <div
+              data-testid="nav-folders-edge-start"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 flex w-7 items-center bg-gradient-to-r from-[var(--nova-surface)] via-[var(--nova-surface)]/90 to-transparent pl-0.5 text-[var(--nova-text-muted)]"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </div>
+          )}
+          {folderEdges.end && (
+            <div
+              data-testid="nav-folders-edge-end"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 flex w-7 items-center justify-end bg-gradient-to-l from-[var(--nova-surface)] via-[var(--nova-surface)]/90 to-transparent pr-0.5 text-[var(--nova-text-muted)]"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </div>
+          )}
+          </div>
+        )}
+
         <div className={`flex items-center justify-around h-16 px-2 ${fabOffset}`}>
           {tabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
@@ -210,8 +338,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
       {/* Integrated FAB - positioned above the nav bar, not overlapping tabs */}
       <div
-        className={`fixed bottom-20 lg:hidden z-35 flex flex-col items-center pointer-events-auto transition-all duration-200 ${fabSide === 'right' ? 'right-4' : 'left-4'}`}
+        className={`fixed safe-bottom-fab lg:hidden z-35 flex flex-col items-center pointer-events-auto transition-all duration-200 ${fabSide === 'right' ? 'right-4' : 'left-4'}`}
         data-fab-side={fabSide}
+        style={
+          activeTab === 'chats'
+            ? { bottom: 'calc(7.75rem + var(--nova-safe-bottom, 0px))' }
+            : undefined
+        }
       >
         {renderFabMenu()}
 

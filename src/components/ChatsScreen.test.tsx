@@ -1,9 +1,12 @@
 /// <reference types="vitest/globals" />
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ChatsScreen } from './ChatsScreen';
+import { FolderModal } from './FolderModal';
 import { loadAccount } from '../lib/account/account';
+import { selectFolder } from '../lib/chat/folders';
+import { invalidateCachedItem } from '../lib/storage/localStorageCache';
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
@@ -24,40 +27,37 @@ vi.mock('./GroupModal', () => ({
   GroupModal: vi.fn(() => <div data-testid="group-modal">GroupModal</div>),
 }));
 
-const onOpenFolders = vi.fn();
-
 const renderChats = (extra: Record<string, unknown> = {}) =>
   render(
     <ChatsScreen
       onSelectChat={vi.fn()}
       onOpenChannel={vi.fn()}
-      onOpenFolders={onOpenFolders}
       activeChatId={'katie'}
-      activeNavTab={'chats'}
       {...extra}
     />,
   );
 
-describe('ChatsScreen - mobile bottom navigation (localized)', () => {
+describe('ChatsScreen - mobile header (localized)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.removeItem('nova_read_chats_v1');
   });
 
-  it('renders four bottom-nav tabs with localized keys and moves analytics to settings', () => {
+  it('renders a minimal header with search and an action menu instead of shortcut tabs', () => {
     renderChats();
-    expect(screen.getByRole('button', { name: 'chats.title' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'channels' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'folders' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'settings.title' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'chats.search' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'common.menu' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'meshMap.title' })).toBeNull();
   });
 
-  it('shows only the nickname beside the avatar, without greeting or unread text', () => {
+  it('shows "Chats" on mobile and only the nickname on desktop, without greeting or unread text', () => {
     renderChats();
 
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(loadAccount().nickname);
+    const headings = screen
+      .getAllByRole('heading', { level: 1 })
+      .map((heading) => heading.textContent);
+    expect(headings).toEqual(['common.chats', loadAccount().nickname]);
     expect(screen.queryByText('chats.greeting')).toBeNull();
     expect(screen.queryByText('chats.unreadCount')).toBeNull();
   });
@@ -74,23 +74,37 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
     expect(onSelectChat).toHaveBeenCalledWith('katie');
   });
 
-  it('calls onOpenFolders when Folders tab clicked', () => {
-    renderChats();
-    fireEvent.click(screen.getByRole('button', { name: 'folders' }));
-    expect(onOpenFolders).toHaveBeenCalledTimes(1);
-  });
-
-  it('opens the isolated anonymous messenger when the header action is clicked', () => {
+  it('opens the isolated anonymous messenger from the header menu', () => {
     const onOpenAnonymous = vi.fn();
     renderChats({ onOpenAnonymous });
-    fireEvent.click(screen.getByRole('button', { name: 'Contacts' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.contacts' }));
+
     expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the folder manager from the mobile header menu', () => {
+    renderChats();
+    const folderModal = vi.mocked(FolderModal);
+    const isFolderModalOpen = () =>
+      (folderModal.mock.calls.at(-1)?.[0] as { isOpen?: boolean } | undefined)?.isOpen;
+
+    expect(isFolderModalOpen()).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.title' }));
+
+    expect(isFolderModalOpen()).toBe(true);
+    // Opening the manager from the menu must not carry a folder being edited.
+    expect((folderModal.mock.calls.at(-1)?.[0] as { editingFolder?: unknown }).editingFolder).toBeNull();
   });
 
   it('offers an invite-based add-contact action in the new conversation dialog', () => {
     const onOpenAnonymous = vi.fn();
     renderChats({ onOpenAnonymous });
 
+    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'chats.newChat' }));
     fireEvent.click(
       screen.getByRole('button', { name: 'Add a new contact with a link or QR code' }),
@@ -98,7 +112,6 @@ describe('ChatsScreen - mobile bottom navigation (localized)', () => {
 
     expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
   });
-
 });
 
 describe('ChatsScreen - forwardRef openFolderModal', () => {
@@ -132,15 +145,100 @@ describe('ChatsScreen - forwardRef openFolderModal', () => {
   });
 });
 
-describe('ChatsScreen - default folders render', () => {
-  it('renders default folder tabs without a Channels tab', () => {
+describe('ChatsScreen - folder selection follows the bottom navigation', () => {
+  beforeEach(() => {
+    localStorage.removeItem('nova_read_chats_v1');
+    invalidateCachedItem('nova_read_chats_v1');
+  });
+
+  afterEach(() => {
+    selectFolder('all');
+    localStorage.removeItem('nova_read_chats_v1');
+    invalidateCachedItem('nova_read_chats_v1');
+  });
+
+  it('filters the chat list when the navigation selects another folder', () => {
     renderChats();
-    expect(screen.getByText('All')).toBeTruthy();
+    expect(screen.getByText('Katie Rogers')).toBeTruthy();
+
+    act(() => {
+      selectFolder('work');
+    });
+
+    expect(screen.queryByText('Katie Rogers')).toBeNull();
+    expect(screen.getByText('Kurt Williamson')).toBeTruthy();
+    expect(screen.getByText('Daniel Bowey')).toBeTruthy();
+    expect(localStorage.getItem('nova_active_folder_v1')).toBe('work');
+    localStorage.removeItem('nova_active_folder_v1');
+  });
+
+  it('switches to the next folder on a left swipe and back on a right swipe', () => {
+    selectFolder('all');
+    renderChats();
+    const list = screen.getByTestId('chats-list');
+
+    fireEvent.touchStart(list, { touches: [{ clientX: 300, clientY: 400 }] });
+    fireEvent.touchMove(list, { touches: [{ clientX: 200, clientY: 404 }] });
+    fireEvent.touchEnd(list, { changedTouches: [{ clientX: 200, clientY: 404 }] });
+
+    expect(localStorage.getItem('nova_active_folder_v1')).toBe('personal');
     expect(screen.getByText('Personal')).toBeTruthy();
-    expect(screen.getByText('Work')).toBeTruthy();
-    expect(screen.getByText('Favorites')).toBeTruthy();
-    // Channels have their own section; the list keeps them under "All".
-    expect(screen.queryByText('Channels')).toBeNull();
+
+    fireEvent.touchStart(list, { touches: [{ clientX: 120, clientY: 400 }] });
+    fireEvent.touchMove(list, { touches: [{ clientX: 240, clientY: 402 }] });
+    fireEvent.touchEnd(list, { changedTouches: [{ clientX: 240, clientY: 402 }] });
+
+    expect(localStorage.getItem('nova_active_folder_v1')).toBe('all');
+  });
+
+  it('keeps the folder when the gesture is mostly vertical or too short', () => {
+    selectFolder('work');
+    renderChats();
+    const list = screen.getByTestId('chats-list');
+
+    fireEvent.touchStart(list, { touches: [{ clientX: 200, clientY: 300 }] });
+    fireEvent.touchMove(list, { touches: [{ clientX: 160, clientY: 420 }] });
+    fireEvent.touchEnd(list, { changedTouches: [{ clientX: 160, clientY: 420 }] });
+    expect(localStorage.getItem('nova_active_folder_v1')).toBe('work');
+
+    fireEvent.touchStart(list, { touches: [{ clientX: 200, clientY: 300 }] });
+    fireEvent.touchMove(list, { touches: [{ clientX: 170, clientY: 300 }] });
+    fireEvent.touchEnd(list, { changedTouches: [{ clientX: 170, clientY: 300 }] });
+    expect(localStorage.getItem('nova_active_folder_v1')).toBe('work');
+  });
+
+  it('publishes per-folder unread totals for the navigation badges', () => {
+    const onUnread = vi.fn();
+    window.addEventListener('nova:folder-unread', onUnread);
+    renderChats();
+
+    const counts = (onUnread.mock.calls.at(-1)?.[0] as CustomEvent).detail as Record<string, number>;
+    expect(counts.all).toBe(16);
+    expect(counts.work).toBe(3);
+    expect(counts.favorites).toBe(1);
+    window.removeEventListener('nova:folder-unread', onUnread);
+  });
+
+  it('drops a chat out of the unread totals once it is read', () => {
+    localStorage.setItem('nova_read_chats_v1', JSON.stringify(['kurt']));
+    const onUnread = vi.fn();
+    window.addEventListener('nova:folder-unread', onUnread);
+    renderChats();
+
+    const counts = (onUnread.mock.calls.at(-1)?.[0] as CustomEvent).detail as Record<string, number>;
+    expect(counts.work).toBe(0);
+    expect(counts.personal).toBe(1);
+    window.removeEventListener('nova:folder-unread', onUnread);
+    localStorage.removeItem('nova_read_chats_v1');
+  });
+
+  it('opens the folder manager when the navigation asks for it', () => {
+    renderChats();
+    act(() => {
+      window.dispatchEvent(new Event('nova:open-folder-manager'));
+    });
+    const lastProps = vi.mocked(FolderModal).mock.calls.at(-1)?.[0] as { isOpen?: boolean };
+    expect(lastProps.isOpen).toBe(true);
   });
 });
 
@@ -251,57 +349,6 @@ describe('ChatsScreen - horizontal lists hide scrollbar', () => {
     expect(list.className).not.toContain('scrollbar-x');
   });
 
-  it('folder tabs use no-scrollbar (no visible slider)', () => {
-    renderChats();
-    const list = screen.getByTestId('folder-tabs');
-    expect(list.className).toContain('no-scrollbar');
-    expect(list.className).not.toContain('scrollbar-x');
-  });
 });
 
-describe('ChatsScreen - one-handed FAB side', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
 
-  const fab = () => {
-    const button = screen.getByRole('button', { name: 'chats.newAction' });
-    // The button's container carries the anchoring classes and the side marker.
-    return button.parentElement as HTMLElement;
-  };
-
-  it('anchors the FAB to the right thumb zone by default', () => {
-    renderChats();
-    const container = fab();
-    expect(container.getAttribute('data-fab-side')).toBe('right');
-    expect(container.className).toContain('right-4');
-    expect(container.className).toContain('safe-bottom-fab');
-  });
-
-  it('honours a stored left-handed preference', () => {
-    localStorage.setItem('nova_fab_side', 'left');
-    renderChats();
-    const container = fab();
-    expect(container.getAttribute('data-fab-side')).toBe('left');
-    expect(container.className).toContain('left-4');
-    expect(container.className).not.toContain('right-4');
-  });
-
-  it('moves the FAB and persists the choice from the quick-actions menu', () => {
-    renderChats();
-    fireEvent.click(screen.getByRole('button', { name: 'chats.newAction' }));
-    fireEvent.click(screen.getByRole('button', { name: 'chats.fabOtherSide' }));
-
-    expect(localStorage.getItem('nova_fab_side')).toBe('left');
-    expect(fab().className).toContain('left-4');
-  });
-
-  it('follows a change made elsewhere in the same tab', () => {
-    renderChats();
-    act(() => {
-      window.dispatchEvent(new CustomEvent('nova:fab-side', { detail: 'left' }));
-    });
-    expect(fab().getAttribute('data-fab-side')).toBe('left');
-  });
-});

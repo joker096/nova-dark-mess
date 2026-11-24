@@ -49,6 +49,16 @@ describe('FolderModal - open/close', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('opens after being rendered closed without changing the hook order', () => {
+    const props = { folders: [], chats: [], editingFolder: null, onSave: vi.fn(), onDelete: vi.fn(), onClose: vi.fn() };
+    const { rerender } = render(<FolderModal isOpen={false} {...props} />);
+
+    rerender(<FolderModal isOpen {...props} />);
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('foldersObj.title')).toBeTruthy();
+  });
+
   it('renders title and subtitle when open', () => {
     renderModal();
     expect(screen.getByText('foldersObj.title')).toBeTruthy();
@@ -106,7 +116,7 @@ describe('FolderModal - manage tab', () => {
 
   it('lists folders and shows default badge', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.manageTab' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'foldersObj.manageTab' }));
     expect(screen.getByText('Work')).toBeTruthy();
     expect(screen.getByText('Crypto')).toBeTruthy();
     expect(screen.getAllByText('foldersObj.defaultBadge').length).toBeGreaterThanOrEqual(1);
@@ -115,7 +125,7 @@ describe('FolderModal - manage tab', () => {
   it('calls onDelete for non-default folder', () => {
     const onDelete = vi.fn();
     render(<FolderModal isOpen folders={FOLDERS} chats={[]} editingFolder={null} onSave={vi.fn()} onDelete={onDelete} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.manageTab' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'foldersObj.manageTab' }));
     fireEvent.click(screen.getByTitle('foldersObj.deleteFolder'));
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith('custom');

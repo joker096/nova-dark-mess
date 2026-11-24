@@ -123,7 +123,7 @@ import {
   applyAppTheme,
   applyFontSize,
   readAppTheme,
-  readFabSide,
+
   readFontSize,
 } from './lib/ui/appearance';
 import { parseDeepLinkFromHash, parseDeepLink, type DeepLinkTarget } from './lib/network/deepLinks';
@@ -145,11 +145,15 @@ import {
 import { MOCK_CHATS, CONTACT_PROFILES } from './data/mockMessengerData';
 import { isOnboardingComplete } from './lib/onboarding';
 import { useFocusTrap } from './lib/ui/useFocusTrap';
+import {
+  screenForBottomTab,
+  type BottomTab,
+  type ScreenId,
+} from './types/navigation';
+
 const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
 );
-
-type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous' | 'sites' | 'settings' | 'premium';
 
 export default function App() {
   const { t, language } = useLanguage();
@@ -205,8 +209,8 @@ export default function App() {
           .find(([, fp]) => fp === message.senderFingerprint)?.[0];
         if (!chatId) return;
         setPendingIncomingCall({ chatId, callId, mode, from: message.senderFingerprint });
-        if (viewRef.current.chatId !== chatId || viewRef.current.screen !== 'chat-katie') {
-          navigate('chat-katie', { chatId });
+        if (viewRef.current.chatId !== chatId || viewRef.current.screen !== 'chat') {
+          navigate('chat', { chatId });
         }
       });
       relay = new MeshRelay(identity.fingerprint);
@@ -406,9 +410,9 @@ export default function App() {
   // screen has opened the sheet.
   const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
   // Bottom navigation active tab for mobile
-  const [activeBottomTab, setActiveBottomTab] = useState<'chats' | 'contacts' | 'channels' | 'settings' | 'premium'>('chats');
+  const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('chats');
   // One-handed FAB side, persisted across reloads.
-  const [fabSide, setFabSide] = useState<'left' | 'right'>(() => readFabSide());
+
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
@@ -556,7 +560,7 @@ export default function App() {
         if (applied.kind !== 'request') return;
         const view = viewRef.current;
         // Inside that very group the chat itself already shows the request.
-        if (view.screen === 'chat-katie' && view.chatId === applied.groupId) return;
+        if (view.screen === 'chat' && view.chatId === applied.groupId) return;
         playSound('notification');
         setJoinNotice({
           groupId: applied.groupId,
@@ -622,7 +626,7 @@ export default function App() {
   }, []);
 
   const openProfile = (profileId: string) => {
-    navigate('profile-katie', { profileId });
+    navigate('profile', { profileId });
   };
 
   const openAnalytics = () => {
@@ -644,7 +648,7 @@ export default function App() {
       setMobileChannelListOpen(true);
     }
     setPendingCommentsPostId(null);
-    navigate('channel-kyiv');
+    navigate('channel');
   };
 
   // Central navigation: push the current view onto the history stack, then
@@ -661,10 +665,11 @@ export default function App() {
       setCurrentScreen(screen);
 
       // Update bottom nav tab for mobile when navigating to main tabs
-      if (screen === 'chats' || screen === 'chat-katie') setActiveBottomTab('chats');
-      else if (screen === 'channel-kyiv') setActiveBottomTab('channels');
+      if (screen === 'chats' || screen === 'chat') setActiveBottomTab('chats');
+      else if (screen === 'channel') setActiveBottomTab('channels');
       else if (screen === 'anonymous') setActiveBottomTab('contacts');
-      else if (screen === 'settings') setActiveBottomTab('settings');
+      else if (screen === 'profile') setActiveBottomTab('profile');
+      else if (screen === 'premium') setActiveBottomTab('premium');
       else if (screen === 'sites' || screen === 'analytics' || screen === 'mesh-map') {
         // These open as modals/full screens, keep current tab
       }
@@ -715,11 +720,11 @@ export default function App() {
           setPendingInvite({ chatId: target.id, groupName });
           return;
         }
-        navigate('chat-katie', { chatId: target.id });
+        navigate('chat', { chatId: target.id });
         return;
       }
       if (target.type === 'profile') {
-        navigate('profile-katie', { profileId: target.id });
+        navigate('profile', { profileId: target.id });
         return;
       }
       if (target.type === 'bot') {
@@ -731,7 +736,7 @@ export default function App() {
         if (bot) {
           // Bot is installed - open chat and send /start if payload provided
           setPendingBotStart(target.startPayload ? { chatId: target.id, payload: target.startPayload } : null);
-          navigate('chat-katie', { chatId: target.id });
+          navigate('chat', { chatId: target.id });
         } else {
           // Bot not installed - open Settings → Bots with install prompt
           setPendingBotInstall({ id: target.id, startPayload: target.startPayload });
@@ -748,7 +753,7 @@ export default function App() {
         setPendingCommentsPostId(
           target.postId && target.comments ? target.postId : null,
         );
-        navigate('channel-kyiv', { channelId: target.id });
+        navigate('channel', { channelId: target.id });
       }
     },
     [botsEnabled, channels, getBotSession, navigate],
@@ -851,7 +856,7 @@ export default function App() {
   // Desktop Main Panel renderer
   const renderDesktopMainScreen = () => {
     switch (currentScreen) {
-      case 'channel-kyiv':
+      case 'channel':
         return (
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
@@ -859,12 +864,12 @@ export default function App() {
             onBack={goBack}
           />
         );
-      case 'profile-katie':
+      case 'profile':
         return (
           <ProfileScreen
             profileId={activeProfileId}
             onBack={goBack}
-            onOpenChat={() => navigate('chat-katie')}
+            onOpenChat={() => navigate('chat')}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
@@ -899,7 +904,7 @@ export default function App() {
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
-      case 'chat-katie':
+      case 'chat':
       case 'chats':
       default: {
         const botId = botsEnabled && getBotSession().isBot(activeChatId) ? activeChatId : undefined;
@@ -933,11 +938,15 @@ export default function App() {
 
   // Mobile Single-Pane Screen renderer
   const renderMobileScreen = () => {
-    // On mobile, use activeBottomTab for primary navigation
-    const mobileScreen = activeBottomTab === 'channels' ? 'channel-kyiv' : activeBottomTab;
+    // On mobile, use activeBottomTab for primary navigation; the bottom tabs map
+    // onto the screens, so a tab always renders its own screen type.
+    // Through the shared helper the type stays ScreenId: assigning the
+    // conditionals inline would narrow it to the five tab values and make the
+    // deep-link cases below unreachable for the type checker.
+    const mobileScreen = screenForBottomTab(activeBottomTab);
 
     switch (mobileScreen) {
-      case 'channel-kyiv':
+      case 'channel':
         if (mobileChannelListOpen || !activeChannelId) {
           return (
             <ChannelListPanel
@@ -966,14 +975,14 @@ export default function App() {
         return (
           <ChatsScreen
             onSelectChat={(id) => {
-              navigate('chat-katie', { chatId: id });
+              navigate('chat', { chatId: id });
             }}
             onOpenChannel={openChannel}
             onOpenAnonymous={() => navigate('anonymous')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenPremium={() => setIsPremiumOpen(true)}
             activeChatId={activeChatId}
-            activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
+
             stories={stories}
             channels={channels}
             localFingerprint={identity?.fingerprint}
@@ -1005,7 +1014,7 @@ export default function App() {
             onBotInstallHandled={() => setPendingBotInstall(null)}
             onOpenBotChat={(botId) => {
               setPendingBotStart({ chatId: botId, payload: '' });
-              navigate('chat-katie', { chatId: botId });
+              navigate('chat', { chatId: botId });
             }}
             onOpenMeshMap={() => navigate('mesh-map')}
           />
@@ -1018,7 +1027,7 @@ export default function App() {
             onSuccess={() => setActiveBottomTab('chats')}
           />
         );
-      case 'chat-katie': {
+      case 'chat': {
         const botId = botsEnabled && getBotSession().isBot(activeChatId) ? activeChatId : undefined;
         const botCommands = botId
           ? getBotSession().listBots().find((b) => b.manifest.id === botId)?.manifest.commands ?? []
@@ -1040,12 +1049,12 @@ export default function App() {
           />
         );
       }
-      case 'profile-katie':
+      case 'profile':
         return (
           <ProfileScreen
             profileId={activeProfileId}
             onBack={goBack}
-            onOpenChat={() => navigate('chat-katie')}
+            onOpenChat={() => navigate('chat')}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         );
@@ -1090,8 +1099,8 @@ export default function App() {
       default:
         return null;
     }
-  };   const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat-katie' || currentScreen === 'anonymous';
-   const isDesktopChannelActive = currentScreen === 'channel-kyiv';
+  };   const isDesktopChatActive = currentScreen === 'chats' || currentScreen === 'chat' || currentScreen === 'anonymous';
+   const isDesktopChannelActive = currentScreen === 'channel';
    const totalUnreadChats = MOCK_CHATS.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0);
    const totalUnreadChannels = channels.reduce((acc, channel) => acc + (channel.unreadCount || 0), 0);
 
@@ -1126,7 +1135,7 @@ export default function App() {
           <button
             onClick={() => {
               setActiveChatId('katie');
-              setCurrentScreen('chat-katie');
+              setCurrentScreen('chat');
             }}
               className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
                 isDesktopChatActive
@@ -1181,7 +1190,7 @@ export default function App() {
           {/* Settings Trigger (language switch moved into Settings) */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer"
+            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
             title={t('settings.title')}
           >
             <Settings className="w-5 h-5" />
@@ -1232,14 +1241,14 @@ export default function App() {
         <ChatsScreen
           ref={foldersRef}
           onSelectChat={(id) => {
-            navigate('chat-katie', { chatId: id });
+            navigate('chat', { chatId: id });
           }}
           onOpenChannel={openChannel}
           onOpenAnonymous={() => navigate('anonymous')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenPremium={() => setIsPremiumOpen(true)}
           activeChatId={activeChatId}
-          activeNavTab={currentScreen === 'chats' ? 'chats' : undefined}
+
           stories={stories}
           channels={channels}
           localFingerprint={identity?.fingerprint}
@@ -1270,7 +1279,7 @@ export default function App() {
       </main>
 
       {/* Thread Sidebar (Desktop Only) - appears when thread is open in chat */}
-      {(currentScreen === 'chat-katie' || currentScreen === 'chats') && activeThreadRootId && (
+      {(currentScreen === 'chat' || currentScreen === 'chats') && activeThreadRootId && (
         <ThreadSidebar
           threadRootId={activeThreadRootId}
           chatId={activeChatId}
@@ -1295,7 +1304,6 @@ export default function App() {
           <BottomNav
             activeTab={activeBottomTab}
             onTabChange={setActiveBottomTab}
-            fabSide={fabSide}
             onNewChat={() => void 0}
             unreadChats={totalUnreadChats}
             unreadChannels={totalUnreadChannels}
@@ -1310,7 +1318,7 @@ export default function App() {
         notice={joinNotice}
         onDismiss={() => setJoinNotice(null)}
         onOpen={(groupId) => {
-          navigate('chat-katie', { chatId: groupId });
+          navigate('chat', { chatId: groupId });
           setJoinNotice(null);
         }}
       />
@@ -1347,7 +1355,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setPendingInvite(null)}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] transition cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
               >
                 {t('chat.joinDecline')}
               </button>
@@ -1356,10 +1364,10 @@ export default function App() {
                 onClick={() => {
                   // Joining is a request, not membership: an admin has to approve it.
                   markJoinPending(pendingInvite.chatId);
-                  navigate('chat-katie', { chatId: pendingInvite.chatId });
+                  navigate('chat', { chatId: pendingInvite.chatId });
                   setPendingInvite(null);
                 }}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-xs font-semibold text-white transition cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-xs font-semibold text-white transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
               >
                 {t('chat.joinAccept')}
               </button>
@@ -1381,7 +1389,7 @@ export default function App() {
             onBotInstallHandled={() => setPendingBotInstall(null)}
             onOpenBotChat={(botId) => {
               setPendingBotStart({ chatId: botId, payload: '' });
-              navigate('chat-katie', { chatId: botId });
+              navigate('chat', { chatId: botId });
             }}
             onOpenMeshMap={() => navigate('mesh-map')}
           />

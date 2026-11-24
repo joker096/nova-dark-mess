@@ -1,5 +1,6 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import type { BottomTab } from '../types/navigation';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
 import type { BotManifest, BotPermission } from '../lib/bots/types';
@@ -58,6 +59,7 @@ import { SanctionScreen } from './SanctionScreen';
 import { AccountSwitcher } from './AccountSwitcher';
 import { BottomNav } from './BottomNav';
 import { ChatsScreen } from './ChatsScreen';
+import { ChatScreen } from './ChatScreen';
 import { AnonymousMessengerScreen } from './AnonymousMessengerScreen';
 import { ChannelListPanel } from './ChannelListPanel';
 import { ChannelScreen } from './ChannelScreen';
@@ -91,15 +93,17 @@ interface MobileLayoutProps {
   activeChatId: string | null;
   activeProfileId: string | null;
   activeChannelId: string | null;
-  activeBottomTab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium';
+  activeBottomTab: BottomTab;
   onNavigate: (screen: string, opts?: { chatId?: string; profileId?: string; channelId?: string }) => void;
   onGoBack: () => void;
-  onSetActiveBottomTab: (tab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium') => void;
+  onSetActiveBottomTab: (tab: BottomTab) => void;
   getBotSession?: () => any;
   pendingBotInstall?: { id: string; startPayload?: string } | null;
   onBotInstallHandled?: () => void;
   onOpenBotChat?: (botId: string) => void;
   onOpenMeshMap?: () => void;
+  onOpenAnalytics?: () => void;
+  onOpenSites?: () => void;
 }
 
 const ScreenFallback = () => (
@@ -122,10 +126,12 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   onBotInstallHandled,
   onOpenBotChat,
   onOpenMeshMap,
+  onOpenAnalytics,
+  onOpenSites,
 }) => {
   const { t, language } = useLanguage();
-  const { isInitialized, identity, clearLocalEncryptedData, verifyPinWithFeedback, pinHash, pinEnabled } = useSecurity();
-  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, setCryptoModalOpen, loading } = usePremium();
+  const { isInitialized, identity, clearLocalEncryptedData, pinHash, pinEnabled } = useSecurity();
+  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, loading } = usePremium();
   const { account } = (() => ({ account: { id: 'me', displayName: 'You', nickname: 'You', avatar: undefined } }))();
   const [mobileChannelListOpen, setMobileChannelListOpen] = useState(true);
   const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
@@ -134,8 +140,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   const [stories, setStories] = useState<any[]>([]);
   const [channels, setChannels] = useState<any[]>([]);
   const [now, setNow] = useState(Date.now());
-  const [activeNavTab, setActiveNavTab] = useState<string>('chats');
-  const [fabSide, setFabSide] = useState<'left' | 'right'>('right');
+
+  const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -143,7 +149,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   }, []);
 
   const onOpenChannel = (channelId: string) => {
-    onNavigate('channel-kyiv', { channelId });
+    onNavigate('channel', { channelId });
   };
   const handleCreateChannel = () => onSetActiveBottomTab('channels');
   const handleToggleChannelPopular = () => {};
@@ -154,10 +160,10 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   const toggleStoryReaction = () => {};
 
   const renderMobileScreen = () => {
-    const mobileScreen = activeBottomTab === 'channels' ? 'channel-kyiv' : activeBottomTab;
+    const mobileScreen: string = activeBottomTab === 'channels' ? 'channel' : activeBottomTab;
 
     switch (mobileScreen) {
-      case 'channel-kyiv':
+      case 'channel':
         if (mobileChannelListOpen || !activeChannelId) {
           return (
             <ChannelListPanel
@@ -175,7 +181,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
         return (
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
-            channel={channels.find(c => c.id === activeChannelId)}
+            channelId={activeChannelId}
+            channels={channels}
             onBack={() => {
               setMobileChannelListOpen(true);
               onGoBack();
@@ -186,15 +193,13 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
         return (
           <ChatsScreen
             onSelectChat={(id) => {
-              onNavigate('chat-katie', { chatId: id });
+              onNavigate('chat', { chatId: id });
             }}
             onOpenChannel={onOpenChannel}
-            onOpenProfile={() => onNavigate('profile', { profileId: account.id })}
             onOpenAnonymous={() => onNavigate('anonymous')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenPremium={() => setIsPremiumOpen(true)}
             activeChatId={activeChatId}
-            activeNavTab={activeNavTab}
             stories={stories}
             channels={channels}
             localFingerprint={identity?.fingerprint}
@@ -236,26 +241,15 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
             onSuccess={() => onSetActiveBottomTab('chats')}
           />
         );
-      case 'chat-katie': {
+      case 'chat': {
+        if (!activeChatId) return null;
         return (
           <ChatScreen
             key={activeChatId}
             chatId={activeChatId}
             onBack={onGoBack}
-            onOpenProfile={(id) => onNavigate('profile', { profileId: id })}
-            onOpenAnonymous={() => onNavigate('anonymous')}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenPremium={() => setIsPremiumOpen(true)}
-            activeNavTab={activeNavTab}
-            stories={stories}
-            channels={channels}
-            localFingerprint={identity?.fingerprint}
+            onOpenProfile={() => onNavigate('profile', { profileId: activeProfileId ?? account.id })}
             getBotSession={getBotSession}
-            now={now}
-            onCreateStory={createStory}
-            onDeleteStory={deleteStory}
-            onViewStory={viewStory}
-            onToggleStoryReaction={toggleStoryReaction}
           />
         );
       }
@@ -272,8 +266,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
       <BottomNav
         activeTab={activeBottomTab}
         onTabChange={onSetActiveBottomTab}
-        fabSide={fabSide}
-        onNewChat={() => onNavigate('chat-katie', { chatId: 'new' })}
+        onNewChat={() => onNavigate('chat', { chatId: 'new' })}
         unreadChats={0}
         unreadChannels={0}
         unreadContacts={0}
