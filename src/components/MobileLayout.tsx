@@ -91,10 +91,10 @@ interface MobileLayoutProps {
   activeChatId: string | null;
   activeProfileId: string | null;
   activeChannelId: string | null;
-  activeBottomTab: 'chats' | 'contacts' | 'channels' | 'settings' | 'premium';
+  activeBottomTab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium';
   onNavigate: (screen: string, opts?: { chatId?: string; profileId?: string; channelId?: string }) => void;
   onGoBack: () => void;
-  onSetActiveBottomTab: (tab: 'chats' | 'contacts' | 'channels' | 'settings' | 'premium') => void;
+  onSetActiveBottomTab: (tab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium') => void;
   getBotSession?: () => any;
   pendingBotInstall?: { id: string; startPayload?: string } | null;
   onBotInstallHandled?: () => void;
@@ -214,7 +214,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
             onInviteConsumed={() => setPendingContactInvite(null)}
           />
         );
-      case 'settings':
+      case 'profile':
         return (
           <SettingsModalTabbed
             isOpen={true}

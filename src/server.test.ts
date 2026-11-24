@@ -353,11 +353,11 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
 
   beforeEach(() => {
     // Clear project receipts dir between tests (only test files)
-    if (fs.existsSync(PROJECT_RECEIPTS_DIR)) {
-      const files = fs.readdirSync(PROJECT_RECEIPTS_DIR);
+    if (fs.existsSync(projectReceiptsDir())) {
+      const files = fs.readdirSync(projectReceiptsDir());
       for (const file of files) {
         if (file.startsWith('pay_test_') || file.startsWith('local-')) {
-          fs.rmSync(path.join(PROJECT_RECEIPTS_DIR, file), { force: true });
+          fs.rmSync(path.join(projectReceiptsDir(), file), { force: true });
         }
       }
     }
@@ -549,13 +549,13 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
       'X-Hmac-Sha256-Signature': sig,
     });
 
-    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR, { recursive: true } as any)
+    const receiptFiles = fs.readdirSync(projectReceiptsDir(), { recursive: true } as any)
       .map((f: any) => String(f).replace(/\\/g, '/'))
       .filter((f: string) => f.startsWith('pay_test_008'));
     expect(receiptFiles).toHaveLength(1);
     expect(receiptFiles[0]).toMatch(/^pay_test_008\.json$/);
 
-    const receiptPath = path.join(PROJECT_RECEIPTS_DIR, receiptFiles[0]);
+    const receiptPath = path.join(projectReceiptsDir(), receiptFiles[0]);
     const receiptContent = fs.readFileSync(receiptPath, 'utf8');
     const receipt = JSON.parse(receiptContent);
     // Server uses camelCase field names
@@ -598,7 +598,7 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
     });
     expect(res2.status).toBe(200);
 
-    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR, { recursive: true } as any)
+    const receiptFiles = fs.readdirSync(projectReceiptsDir(), { recursive: true } as any)
       .map((f: any) => String(f).replace(/\\/g, '/'))
       .filter((f: string) => f.startsWith('pay_test_009'));
     expect(receiptFiles).toHaveLength(1);

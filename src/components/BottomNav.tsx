@@ -1,10 +1,10 @@
 import React from 'react';
-import { MessageSquare, Users, Radio, Settings, Sparkles, Plus } from 'lucide-react';
+import { MessageSquare, Users, Radio, Settings, Sparkles, Plus, User } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { NovaIconButton } from '../lib/ui';
 
 interface BottomNavProps {
-  activeTab: 'chats' | 'contacts' | 'channels' | 'settings' | 'premium';
+  activeTab: 'chats' | 'contacts' | 'channels' | 'profile' | 'premium';
   onTabChange: (tab: BottomNavProps['activeTab']) => void;
   fabSide: 'left' | 'right';
   onFabToggle?: () => void;
@@ -32,7 +32,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'chats' as const, icon: MessageSquare, label: t('common.chats'), unread: unreadChats },
     { id: 'contacts' as const, icon: Users, label: t('common.contacts'), unread: unreadContacts },
     { id: 'channels' as const, icon: Radio, label: t('common.channels'), unread: unreadChannels },
-    { id: 'settings' as const, icon: Settings, label: t('settings.title'), unread: 0 },
+    { id: 'profile' as const, icon: User, label: t('common.profile'), unread: 0 },
     { id: 'premium' as const, icon: Sparkles, label: t('premium.title'), unread: 0 },
   ];
 

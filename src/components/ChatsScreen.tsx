@@ -75,7 +75,6 @@ interface ChatsScreenProps {
 
   onOpenContacts?: () => void;
   onOpenCalls?: () => void;
-  onOpenProfile?: () => void;
   onOpenSettings?: () => void;
   onOpenPremium?: () => void;
   onOpenAnonymous?: () => void;
@@ -146,8 +145,6 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   const {
     onSelectChat,
     onOpenChannel,
-
-    onOpenProfile,
     onOpenSettings,
     onOpenPremium,
     onOpenAnonymous,
@@ -832,24 +829,6 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       {/* Top Header: Account nickname */}
       <div className="pt-3 px-4 sm:px-5 pb-2 flex items-center justify-between shrink-0">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <button
-            onClick={onOpenProfile}
-            className="w-10 h-10 rounded-full overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-surface-2)] relative cursor-pointer active:scale-95 transition"
-            aria-label={t('profile.title')}
-            title={t('profile.title')}
-          >
-            {account.avatar ? (
-              <LazyMedia
-                src={account.avatar}
-                alt={account.displayName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-xs font-bold text-[var(--text-on-accent)]">
-                {account.displayName.slice(0, 2).toUpperCase()}
-              </div>
-            )}
-          </button>
           <div className="min-w-0">
             <h1 className="truncate text-[17px] font-bold text-[var(--text-primary)] tracking-tight leading-tight">
               {account.nickname}
@@ -862,41 +841,41 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           {onOpenAnonymous && (
             <button
               onClick={onOpenAnonymous}
-              className="w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+              className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
               aria-label="Contacts"
               title="Contacts"
             >
-              <UserRound className="w-4 h-4" />
+              <UserRound className="w-5 h-5" />
             </button>
           )}
           <button
             onClick={() => setNewChatModalOpen(true)}
-            className="w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+            className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
             aria-label={t('chats.newChat')}
             title={t('chats.newChat')}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5" />
           </button>
 
           <button
             onClick={onOpenPremium}
-            className="h-9 px-3 rounded-full bg-[var(--nova-accent-color)]/15 hover:bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--nova-accent-color)]/40 flex items-center gap-1.5 text-[11px] font-semibold transition cursor-pointer active:scale-95 shadow-md"
+            className="h-11 px-4 rounded-full bg-[var(--nova-accent-color)]/15 hover:bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--nova-accent-color)]/40 flex items-center gap-1.5 text-[11px] font-semibold transition cursor-pointer active:scale-95 shadow-md"
             aria-label={t('premium.title')}
             title={t('premium.title')}
             data-testid="open-premium"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-4 h-4" />
           </button>
 
           {/* Select Mode Toggle */}
           {!selectMode ? (
             <button
               onClick={toggleSelectMode}
-              className="w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+              className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
               aria-label="Select chats"
               title="Select chats"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-5 h-5" />
             </button>
           ) : (
             <div className="flex items-center gap-1">
@@ -913,43 +892,43 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
               </button>
               <button
                 onClick={bulkMute}
-                className="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
                 aria-label="Mute selected"
                 title="Mute selected"
               >
-                <BellOff className="w-3.5 h-3.5" />
+                <BellOff className="w-4 h-4" />
               </button>
               <button
                 onClick={bulkArchive}
-                className="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
                 aria-label="Archive selected"
                 title="Archive selected"
               >
-                <Archive className="w-3.5 h-3.5" />
+                <Archive className="w-4 h-4" />
               </button>
               <button
                 onClick={bulkDelete}
-                className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 flex items-center justify-center text-red-400 transition cursor-pointer active:scale-90 shadow-md"
+                className="w-11 h-11 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 flex items-center justify-center text-red-400 transition cursor-pointer active:scale-90 shadow-md"
                 aria-label="Delete selected"
                 title="Delete selected"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
               <button
                 onClick={clearSelection}
-                className="w-8 h-8 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
+                className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:scale-90 shadow-md"
                 aria-label="Clear selection"
                 title="Clear selection"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
               <button
                 onClick={toggleSelectMode}
-                className="w-9 h-9 rounded-full bg-[var(--nova-accent-color)] hover:opacity-90 text-white flex items-center justify-center transition cursor-pointer active:scale-90 shadow-md"
+                className="w-11 h-11 rounded-full bg-[var(--nova-accent-color)] hover:opacity-90 text-white flex items-center justify-center transition cursor-pointer active:scale-90 shadow-md"
                 aria-label="Exit select mode"
                 title="Exit select mode"
               >
-                <Check className="w-4 h-4 fill-current" />
+                <Check className="w-5 h-5 fill-current" />
               </button>
             </div>
           )}
