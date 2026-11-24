@@ -24,3 +24,10 @@ dist/
 packages/widget/dist/
 src-tauri/gen/
 node_modules
+
+# Runtime data written by server.js (receipts, payment orders, issued licenses).
+# `receipts/` above was the only one ignored; a local test run used to drop
+# hundreds of fixture orders/licenses into the worktree.
+orders/
+licenses/
+gifts/

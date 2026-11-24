@@ -25,14 +25,12 @@ vi.mock('./GroupModal', () => ({
 }));
 
 const onOpenFolders = vi.fn();
-const onOpenProfile = vi.fn();
 
 const renderChats = (extra: Record<string, unknown> = {}) =>
   render(
     <ChatsScreen
       onSelectChat={vi.fn()}
       onOpenChannel={vi.fn()}
-      onOpenProfile={onOpenProfile}
       onOpenFolders={onOpenFolders}
       activeChatId={'katie'}
       activeNavTab={'chats'}
@@ -111,7 +109,6 @@ describe('ChatsScreen - forwardRef openFolderModal', () => {
         ref={refCallback as unknown as React.Ref<{ openFolderModal: () => void }>}
         onSelectChat={vi.fn()}
         onOpenChannel={vi.fn()}
-        onOpenProfile={vi.fn()}
       />,
     );
     expect(refCallback).toHaveBeenCalledTimes(1);
@@ -127,7 +124,6 @@ describe('ChatsScreen - forwardRef openFolderModal', () => {
         ref={refCallback as unknown as React.Ref<{ openFolderModal: () => void }>}
         onSelectChat={vi.fn()}
         onOpenChannel={vi.fn()}
-        onOpenProfile={vi.fn()}
       />,
     );
     const handle = refCallback.mock.calls[0][0];

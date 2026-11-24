@@ -969,7 +969,6 @@ export default function App() {
               navigate('chat-katie', { chatId: id });
             }}
             onOpenChannel={openChannel}
-            onOpenProfile={() => openProfile(account.id)}
             onOpenAnonymous={() => navigate('anonymous')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenPremium={() => setIsPremiumOpen(true)}
@@ -1236,7 +1235,6 @@ export default function App() {
             navigate('chat-katie', { chatId: id });
           }}
           onOpenChannel={openChannel}
-          onOpenProfile={() => openProfile(account.id)}
           onOpenAnonymous={() => navigate('anonymous')}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenPremium={() => setIsPremiumOpen(true)}

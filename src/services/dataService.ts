@@ -12,35 +12,35 @@ export interface DataService {
 }
 
 class ProductionDataService implements DataService {
-  async getCurrentUser() {
+  async getCurrentUser(): Promise<{ id: string; name: string; avatar: string; unreadTotal: number }> {
     throw new Error('Production data service not implemented');
   }
 
-  async getStories() {
+  async getStories(): Promise<Story[]> {
     throw new Error('Production data service not implemented');
   }
 
-  async getChats() {
+  async getChats(): Promise<ChatItem[]> {
     throw new Error('Production data service not implemented');
   }
 
-  async getContactProfile(contactId: string) {
+  async getContactProfile(contactId: string): Promise<ContactProfile | null> {
     throw new Error('Production data service not implemented');
   }
 
-  async getConversationHistory(chatId: string) {
+  async getConversationHistory(chatId: string): Promise<ChatMessage[]> {
     throw new Error('Production data service not implemented');
   }
 
-  async getSharedMedia(chatId: string) {
+  async getSharedMedia(chatId: string): Promise<{ id: string; type: 'photo' | 'video'; url: string; thumbnail: string; timestamp: number }[]> {
     throw new Error('Production data service not implemented');
   }
 
-  async getStickerPacks() {
+  async getStickerPacks(): Promise<any[]> {
     throw new Error('Production data service not implemented');
   }
 
-  async getChannelPosts(channelId: string) {
+  async getChannelPosts(channelId: string): Promise<ChannelPost[]> {
     throw new Error('Production data service not implemented');
   }
 }
