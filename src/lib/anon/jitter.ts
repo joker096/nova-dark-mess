@@ -12,6 +12,10 @@ export interface JitterOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+function cryptoRandom(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff;
+}
+
 function between(min: number, max: number, random: () => number): number {
   if (max <= min) return min;
   return min + Math.floor(random() * (max - min + 1));
@@ -33,7 +37,7 @@ export class JitteredTransport implements AnonTransport {
       sendMaxMs: options.sendMaxMs ?? 1500,
       pollMinMs: options.pollMinMs ?? 0,
       pollMaxMs: options.pollMaxMs ?? 4000,
-      random: options.random ?? Math.random,
+      random: options.random ?? cryptoRandom,
       sleep: options.sleep ?? defaultSleep,
     };
   }
@@ -99,7 +103,7 @@ export class DummyTrafficScheduler {
   }
 
   /** Returns a random fixed-size payload (base64) suitable for cover traffic. */
-  static coverPacket(size: number, random: () => number = Math.random): Uint8Array {
+  static coverPacket(size: number, random: () => number = cryptoRandom): Uint8Array {
     const bytes = new Uint8Array(size);
     for (let i = 4; i < bytes.length; i++) bytes[i] = Math.floor(random() * 256);
     return bytes;
@@ -108,7 +112,8 @@ export class DummyTrafficScheduler {
   start(transport: AnonTransport): void {
     if (!this.options.enabled || this.timer) return;
     this.timer = setInterval(() => {
-      const queueId = this.options.queueIds[Math.floor(Math.random() * this.options.queueIds.length)];
+      const index = Math.floor(cryptoRandom() * this.options.queueIds.length);
+      const queueId = this.options.queueIds[index];
       const token = this.options.senderTokens[queueId];
       if (!queueId || !token) return;
       const bytes = DummyTrafficScheduler.coverPacket(16384);

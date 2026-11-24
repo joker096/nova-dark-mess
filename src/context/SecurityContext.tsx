@@ -181,6 +181,14 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
+}
+
 async function getOrCreateStorageCredentials(): Promise<{ passphrase: string; salt: Uint8Array }> {
   const kc = createKeychain();
   let salt = await kc.get(KEYCHAIN_SERVICE, STORAGE_SALT_KEY);
@@ -343,7 +351,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         return {
           peerFingerprint: bundle.fingerprint,
-          history: getPeerKeyChanges(chatId),
+          history: await getPeerKeyChanges(chatId),
           isDemoPeer: isDemo,
         };
       }),
@@ -447,7 +455,8 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setPinLockoutUntil(getPinLockoutUntil());
           setPinLengthState(localStorage.getItem(PIN_LENGTH_KEY) === '6' ? 6 : 4);
           setLockOnHideState(localStorage.getItem(LOCK_ON_HIDE_KEY) !== 'false');
-          setBiometricEnabled(Boolean(getBiometricCredentialId()));
+          const biometricId = await getBiometricCredentialId();
+          setBiometricEnabled(Boolean(biometricId));
         } catch (error) {
           console.error('Unable to load PIN protection state:', error);
         }
@@ -548,7 +557,7 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (storageReadyRef.current) {
           await dbInstance.saveEncryptedMessageWithSession(
             chatId,
-            options?.messageId ?? `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            options?.messageId ?? `msg_${Date.now()}_${randomHex(4)}`,
             JSON.stringify(payload),
             updatedState,
             options?.expiresAt,

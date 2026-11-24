@@ -38,7 +38,10 @@ const OUTGOING_TIMEOUT_MS = 45_000;
 const INCOMING_TIMEOUT_MS = 60_000;
 
 function newCallId(): string {
-  const random = Math.random().toString(36).slice(2, 10);
+  const bytes = crypto.getRandomValues(new Uint8Array(5));
+  const random = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
   return `call_${Date.now().toString(36)}_${random}`;
 }
 

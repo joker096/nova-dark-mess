@@ -185,24 +185,33 @@ export class EncryptedDatabase {
       const tx = this.db!.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
       const results = new Map<string, string>();
-      let pending = keys.length;
+      let settled = false;
 
+      function finish(error?: Error): void {
+        if (settled) return;
+        settled = true;
+        if (error) reject(error);
+        else resolve(results);
+      }
+
+      let pending = keys.length;
       for (const key of keys) {
         const req = store.get(key);
         req.onsuccess = async () => {
+          if (settled) return;
           const record = req.result as StoredEncryptedRecord | undefined;
           if (record) {
             try {
               results.set(key, await decryptAESGCM(record.encryptedData, this.masterKey!));
             } catch (err) {
-              reject(err);
+              finish(err instanceof Error ? err : new Error(String(err)));
               return;
             }
           }
           pending -= 1;
-          if (pending === 0) resolve(results);
+          if (pending === 0) finish();
         };
-        req.onerror = () => reject(req.error);
+        req.onerror = () => finish(req.error);
       }
     });
   }
@@ -366,6 +375,10 @@ export class EncryptedDatabase {
   public async loadSetting<T>(key: string): Promise<T | null> {
     const value = await this.getEncryptedRecord(STORE_SETTINGS, key);
     return value ? (JSON.parse(value) as T) : null;
+  }
+
+  public async deleteSetting(key: string): Promise<void> {
+    return this.deleteRecord(STORE_SETTINGS, key);
   }
 
   private getAllRecords(storeName: string): Promise<StoredEncryptedRecord[]> {

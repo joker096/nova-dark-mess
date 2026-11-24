@@ -41,7 +41,11 @@ export function unpadPayload(padded: string): string {
 }
 
 export function randomizedDelay(minMs = 50, maxMs = 500): number {
-  return minMs + Math.floor(Math.random() * (maxMs - minMs + 1));
+  return minMs + Math.floor(cryptoRandom() * (maxMs - minMs + 1));
+}
+
+function cryptoRandom(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff;
 }
 
 export interface CoverTrafficOptions {
@@ -53,7 +57,7 @@ export interface CoverTrafficOptions {
 export function generateCoverPayload(options: CoverTrafficOptions = {}): string {
   const minBytes = options.minBytes ?? 32;
   const maxBytes = options.maxBytes ?? 256;
-  const size = minBytes + Math.floor(Math.random() * (maxBytes - minBytes + 1));
+  const size = minBytes + Math.floor(cryptoRandom() * (maxBytes - minBytes + 1));
   const bytes = crypto.getRandomValues(new Uint8Array(size));
   return btoa(String.fromCharCode(...bytes));
 }

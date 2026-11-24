@@ -16,6 +16,11 @@ export interface BroadcastMessage {
   recipientIds: string[];
 }
 
+function randomId6(): string {
+  const bytes = crypto.getRandomValues(new Uint32Array(1));
+  return (bytes[0] >>> 0).toString(36).padStart(6, 'a').slice(-6);
+}
+
 export interface BroadcastManagerOptions {
   localFingerprint: string;
   sendToPeer?: (peerFingerprint: string, message: BroadcastMessage) => void | Promise<void>;
@@ -40,7 +45,7 @@ export class BroadcastManager {
     recipients: BroadcastRecipient[],
     text: string,
   ): Promise<string> {
-    const broadcastId = `bc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const broadcastId = `bc-${Date.now()}-${randomId6()}`;
     const message: BroadcastMessage = {
       broadcastId,
       senderFingerprint: this.localFingerprint,

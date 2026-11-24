@@ -46,13 +46,17 @@ export interface SenderKeyState {
   skippedMessageKeys?: Record<string, string>;
 }
 
-const MAX_SKIPPED_MESSAGE_KEYS = 2000;
+const MAX_SKIPPED_MESSAGE_KEYS = 200;
 
 export interface SenderKeyDistributionMessage {
   keyId: number;
   iteration: number;
   chainKey: string;
   signingPublicKey: string;
+  /** Fingerprint of the peer that distributed this sender key. */
+  senderFingerprint: string;
+  /** Ed25519 signature over the distribution message, made with the sender's sender-key signing private key. */
+  signature: string;
 }
 
 export interface SenderKeyEncryptedMessage {
@@ -68,7 +72,7 @@ export function createSenderKey(keyId?: number): SenderKeyState {
   const signingPrivateKey = ed25519.utils.randomSecretKey();
   const signingPublicKey = ed25519.getPublicKey(signingPrivateKey);
   return {
-    keyId: keyId ?? Math.floor(Math.random() * 0x7fffffff),
+    keyId: keyId ?? randomKeyId(),
     chainKey: bufferToBase64(randomBytes(32)),
     iteration: 0,
     signingPublicKey: bufferToBase64(signingPublicKey),
@@ -76,20 +80,60 @@ export function createSenderKey(keyId?: number): SenderKeyState {
   };
 }
 
+function randomKeyId(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] >>> 1;
+}
+
+function distributionSigningData(message: Omit<SenderKeyDistributionMessage, 'signature'>): string {
+  return `${message.keyId}|${message.iteration}|${message.chainKey}|${message.signingPublicKey}|${message.senderFingerprint}`;
+}
+
 export function createDistributionMessage(
   state: SenderKeyState,
+  senderFingerprint: string,
 ): SenderKeyDistributionMessage {
-  return {
+  if (!state.signingPrivateKey) {
+    throw new Error('Cannot create distribution message without signing private key');
+  }
+  const unsigned: Omit<SenderKeyDistributionMessage, 'signature'> = {
     keyId: state.keyId,
     iteration: state.iteration,
     chainKey: state.chainKey,
     signingPublicKey: state.signingPublicKey,
+    senderFingerprint,
+  };
+  const signature = ed25519.sign(
+    new TextEncoder().encode(distributionSigningData(unsigned)),
+    base64ToBuffer(state.signingPrivateKey),
+  );
+  return {
+    ...unsigned,
+    signature: bufferToBase64(signature),
   };
 }
 
 export function processDistributionMessage(
   message: SenderKeyDistributionMessage,
 ): SenderKeyState {
+  if (!message.signature || !message.senderFingerprint) {
+    throw new Error('Sender key distribution message is unsigned');
+  }
+  const valid = ed25519.verify(
+    base64ToBuffer(message.signature),
+    new TextEncoder().encode(
+      distributionSigningData({
+        keyId: message.keyId,
+        iteration: message.iteration,
+        chainKey: message.chainKey,
+        signingPublicKey: message.signingPublicKey,
+        senderFingerprint: message.senderFingerprint,
+      }),
+    ),
+    base64ToBuffer(message.signingPublicKey),
+  );
+  if (!valid) {
+    throw new Error('Invalid sender key distribution signature');
+  }
   return {
     keyId: message.keyId,
     chainKey: message.chainKey,

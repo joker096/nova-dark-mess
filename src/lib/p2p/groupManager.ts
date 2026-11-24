@@ -128,7 +128,7 @@ export class GroupChatManager {
     const payload: GroupPayload = {
       type: 'skdm',
       groupId: this.groupId,
-      distribution: createDistributionMessage(state),
+      distribution: createDistributionMessage(state, this.localFingerprint),
     };
     if (!this.sendToPeer) return false;
     try {

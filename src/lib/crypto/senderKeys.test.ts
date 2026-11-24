@@ -9,10 +9,14 @@ import {
   senderKeyDecrypt,
 } from './senderKeys';
 
+function distributionMessage(sender: ReturnType<typeof createSenderKey>): import('./senderKeys').SenderKeyDistributionMessage {
+  return createDistributionMessage(sender, `fpr_${sender.keyId}`);
+}
+
 describe('senderKeys', () => {
   it('encrypts and decrypts a message round trip', async () => {
     const sender = createSenderKey();
-    const recipientState = processDistributionMessage(createDistributionMessage(sender));
+    const recipientState = processDistributionMessage(distributionMessage(sender));
 
     const { message, state: senderState } = await senderKeyEncrypt(sender, 'hello group');
     const { plaintext, state: recipientState2 } = await senderKeyDecrypt(
@@ -27,7 +31,7 @@ describe('senderKeys', () => {
 
   it('handles multiple sequential messages', async () => {
     const sender = createSenderKey();
-    let recipientState = processDistributionMessage(createDistributionMessage(sender));
+    let recipientState = processDistributionMessage(distributionMessage(sender));
     let senderState = sender;
 
     const texts = ['first', 'second', 'third'];
@@ -42,7 +46,7 @@ describe('senderKeys', () => {
 
   it('rejects a tampered signature', async () => {
     const sender = createSenderKey();
-    const recipientState = processDistributionMessage(createDistributionMessage(sender));
+    const recipientState = processDistributionMessage(distributionMessage(sender));
 
     const { message } = await senderKeyEncrypt(sender, 'secret');
     // Flip the first character to a value it is guaranteed not to already be.
@@ -55,7 +59,7 @@ describe('senderKeys', () => {
 
   it('rejects a tampered ciphertext', async () => {
     const sender = createSenderKey();
-    const recipientState = processDistributionMessage(createDistributionMessage(sender));
+    const recipientState = processDistributionMessage(distributionMessage(sender));
 
     const { message } = await senderKeyEncrypt(sender, 'secret');
     const tampered = { ...message, ciphertext: message.ciphertext.slice(0, -4) + 'AAAA' };
@@ -65,7 +69,7 @@ describe('senderKeys', () => {
 
   it('rejects messages from an unknown key id', async () => {
     const sender = createSenderKey();
-    const recipientState = processDistributionMessage(createDistributionMessage(sender));
+    const recipientState = processDistributionMessage(distributionMessage(sender));
 
     const { message } = await senderKeyEncrypt(sender, 'secret');
     const bad = { ...message, keyId: message.keyId + 1 };
@@ -76,7 +80,7 @@ describe('senderKeys', () => {
   it('decrypts out-of-order messages using skipped keys', async () => {
     const sender = createSenderKey();
     let senderState = sender;
-    let recipientState = processDistributionMessage(createDistributionMessage(sender));
+    let recipientState = processDistributionMessage(distributionMessage(sender));
 
     const messages = [];
     for (const text of ['first', 'second', 'third']) {
@@ -101,7 +105,7 @@ describe('senderKeys', () => {
   it('rejects a replayed skipped message', async () => {
     const sender = createSenderKey();
     let senderState = sender;
-    let recipientState = processDistributionMessage(createDistributionMessage(sender));
+    let recipientState = processDistributionMessage(distributionMessage(sender));
 
     const first = await senderKeyEncrypt(senderState, 'first');
     senderState = first.state;
@@ -119,7 +123,7 @@ describe('senderKeys', () => {
 
   it('cannot encrypt without a signing private key (remote state)', async () => {
     const sender = createSenderKey();
-    const remote = processDistributionMessage(createDistributionMessage(sender));
+    const remote = processDistributionMessage(distributionMessage(sender));
 
     await expect(senderKeyEncrypt(remote, 'x')).rejects.toThrow();
   });

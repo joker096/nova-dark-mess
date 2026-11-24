@@ -19,8 +19,16 @@ export const CHANNEL_POSTS_STORAGE_KEY = 'nova_channel_posts_v1';
 export const STORY_TTL_MS = 24 * 60 * 60 * 1000;
 export const KYIV_CHANNEL_ID = 'kyiv-channel';
 
+function randomHex(len: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, len);
+}
+
 function createInviteCode(): string {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  return randomHex(6).toUpperCase();
 }
 
 function normalizeChannel(channel: ChannelInfo): ChannelInfo {
@@ -208,7 +216,7 @@ export function buildStory(draft: StoryDraft, now = Date.now()): Story {
   const publishAt = draft.scheduledFor ?? now;
   const account = loadAccount();
   return {
-    id: `story-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `story-${now}-${randomHex(4)}`,
     name: account.displayName,
     avatar: account.avatar,
     coverImage: draft.coverImage,
@@ -225,7 +233,7 @@ export function buildStory(draft: StoryDraft, now = Date.now()): Story {
 export function buildChannel(draft: ChannelDraft, now = Date.now()): ChannelInfo {
   const visibility = draft.visibility === 'private' ? 'private' : 'public';
   return {
-    id: `channel-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `channel-${now}-${randomHex(4)}`,
     name: draft.name.trim(),
     description: draft.description?.trim() || undefined,
     avatar: draft.avatar,
@@ -249,7 +257,7 @@ export function buildChannelPost(
   const publishDate = new Date(publishAt);
   const account = loadAccount();
   return {
-    id: `post-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `post-${now}-${randomHex(4)}`,
     channelId,
     time: formatTimeOfDay(publishDate),
     dateKey: publishDate.getDate(),
