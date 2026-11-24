@@ -244,6 +244,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState('');
   const [avatarLightboxOpen, setAvatarLightboxOpen] = useState(false);
+  const avatarLightboxRef = useFocusTrap<HTMLDivElement>(avatarLightboxOpen, () =>
+    setAvatarLightboxOpen(false),
+  );
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
@@ -770,11 +773,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   type="button"
                   onClick={handleRemoveAvatar}
-                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 border border-[var(--nova-border-subtle)] text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer"
+                  className="absolute top-1 right-1 w-11 h-11 rounded-full bg-black/70 border border-[var(--nova-border-subtle)] text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer min-w-[44px] min-h-[44px]"
                   title={t('profile.removeAvatar')}
                   aria-label={t('profile.removeAvatar')}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </>
@@ -1277,7 +1280,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <div className="flex items-center gap-1.5 bg-[var(--nova-surface)] p-1 rounded-xl border border-white/[0.04]">
                 <button
                   onClick={() => setMediaFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                  className={`px-3 py-2 rounded-lg text-[11px] font-medium transition cursor-pointer min-h-[44px] flex items-center ${
                     mediaFilter === 'all'
                       ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
                       : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
@@ -1287,7 +1290,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </button>
                 <button
                   onClick={() => setMediaFilter('photos')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                  className={`px-3 py-2 rounded-lg text-[11px] font-medium transition cursor-pointer min-h-[44px] flex items-center ${
                     mediaFilter === 'photos'
                       ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
                       : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
@@ -1297,13 +1300,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </button>
                 <button
                   onClick={() => setMediaFilter('videos')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer flex items-center gap-1 ${
+                  className={`px-3 py-2 rounded-lg text-[11px] font-medium transition cursor-pointer min-h-[44px] flex items-center gap-1 ${
                     mediaFilter === 'videos'
                       ? 'bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm'
                       : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                   }`}
                 >
-                  <Play className="w-2.5 h-2.5 fill-current" />
+                  <Play className="w-3 h-3 fill-current" />
                   {t('profile.videos')} ({videosCount})
                 </button>
               </div>
@@ -1360,8 +1363,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
                             {/* Center Play Icon circle */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-[var(--nova-on-accent)] border border-[var(--nova-border-color)] group-hover:bg-[var(--nova-accent-color)] group-hover:scale-110 transition duration-200">
-                                <Play className="w-3.5 h-3.5 fill-[var(--nova-text-primary)] ml-0.5" />
+                              <div className="w-11 h-11 rounded-full bg-black/50 backdrop-blur-xs flex items-center justify-center text-[var(--nova-on-accent)] border border-[var(--nova-border-color)] group-hover:bg-[var(--nova-accent-color)] group-hover:scale-110 transition duration-200 min-w-[44px] min-h-[44px]">
+                                <Play className="w-4 h-4 fill-[var(--nova-text-primary)] ml-0.5" />
                               </div>
                             </div>
 
@@ -1410,7 +1413,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </div>
                   <button
                     onClick={() => triggerToast(t('profile.downloading', { name: file.name }))}
-                    className="min-h-[40px] px-3 text-xs text-[var(--nova-accent-color)] hover:underline cursor-pointer"
+                    className="min-h-[44px] px-3 text-xs text-[var(--nova-accent-color)] hover:underline cursor-pointer flex items-center"
                     aria-label={t('profile.download')}
                   >
                     {t('profile.download')}
@@ -1841,7 +1844,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setDeviceLinkMode('primary');
                   setDeviceLinkError(null);
                 }}
-                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
+                className={`flex-1 py-2.5 text-[11px] font-semibold rounded-lg transition cursor-pointer min-h-[44px] flex items-center justify-center ${
                   deviceLinkMode === 'primary'
                     ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-primary)]'
                     : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
@@ -1854,7 +1857,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   setDeviceLinkMode('join');
                   setDeviceLinkError(null);
                 }}
-                className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
+                className={`flex-1 py-2.5 text-[11px] font-semibold rounded-lg transition cursor-pointer min-h-[44px] flex items-center justify-center ${
                   deviceLinkMode === 'join'
                     ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-primary)]'
                     : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
@@ -1958,7 +1961,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           }
                           stopCameraScan();
                         }}
-                        className="absolute bottom-2 px-3 py-1 bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg shadow-md cursor-pointer"
+                        className="absolute bottom-2 px-4 py-2 bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg shadow-md cursor-pointer min-h-[44px] flex items-center"
                         data-testid="capture-qr-button"
                       >
                         Capture QR
@@ -2001,7 +2004,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           triggerToast('Copy the reply code manually');
                         }
                       }}
-                      className="w-full py-2 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                      className="w-full py-3 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer min-h-[44px] flex items-center justify-center"
                     >
                       Copy reply code
                     </button>
@@ -2013,7 +2016,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           void handleSyncHistoryOnSecondary(offer.code, offer.publicKey);
                         }
                       }}
-                      className="w-full py-2 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40"
+                      className="w-full py-3 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40 min-h-[44px] flex items-center justify-center"
                       data-testid="sync-history-secondary"
                     >
                       Sync history stream
@@ -2041,7 +2044,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 setDeviceLinkError(null);
                 setDeviceLinkUrl('');
               }}
-              className="w-full py-2.5 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+              className="w-full py-3 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Close
             </button>
@@ -2116,6 +2119,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Avatar Lightbox */}
       {avatarLightboxOpen && avatar && (
         <div
+          ref={avatarLightboxRef}
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setAvatarLightboxOpen(false)}
           role="dialog"

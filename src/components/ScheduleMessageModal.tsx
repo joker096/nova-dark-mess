@@ -84,10 +84,10 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
             </div>
             <div>
               <h3 id="schedule-message-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight">
-                Schedule Message
+                {t('schedule.title')}
               </h3>
-              <p className="text-[10px] text-[#828795]">
-                Send automatically at a chosen time
+              <p className="text-[10px] text-[var(--nova-text-muted)]">
+                {t('schedule.subtitle')}
               </p>
             </div>
           </div>
@@ -104,17 +104,17 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
         {/* Message preview snippet */}
         <div className="bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] rounded-2xl p-3">
           <span className="text-[10px] font-semibold text-[var(--nova-accent-color)] uppercase tracking-wider block mb-1">
-            Message Preview
+            {t('schedule.preview')}
           </span>
           <p className="text-xs text-[var(--nova-text-primary)]/90 italic truncate">
-            "{messageText || 'Voice message'}"
+            "{messageText || t('schedule.voiceMessage')}"
           </p>
         </div>
 
         {/* Quick Presets */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-semibold text-[#868b98] px-1">
-            Choose Delivery Time
+          <label className="text-[11px] font-semibold text-[var(--nova-text-muted)] px-1">
+            {t('schedule.chooseTime')}
           </label>
 
           <div className="grid grid-cols-2 gap-2">
@@ -129,12 +129,12 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">In 5 seconds</span>
+                <span className="text-xs font-semibold">{t('schedule.in5s')}</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--nova-accent-color)] text-white font-bold">
-                  Demo
+                  {t('schedule.demo')}
                 </span>
               </div>
-              <p className="text-[10px] text-[#717682] mt-0.5">Quick delivery test</p>
+              <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">{t('schedule.quickTest')}</p>
             </button>
 
             {/* 15 Minutes */}
@@ -147,8 +147,8 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)]/70 hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-border-color)]/40'
               }`}
             >
-              <span className="text-xs font-semibold block">In 15 minutes</span>
-              <p className="text-[10px] text-[#717682] mt-0.5">Short delay</p>
+              <span className="text-xs font-semibold block">{t('schedule.in15m')}</span>
+              <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">{t('schedule.shortDelay')}</p>
             </button>
 
             {/* Tonight at 21:00 */}
@@ -161,8 +161,8 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)]/70 hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-border-color)]/40'
               }`}
             >
-              <span className="text-xs font-semibold block">Tonight 21:00</span>
-              <p className="text-[10px] text-[#717682] mt-0.5">Evening reminder</p>
+              <span className="text-xs font-semibold block">{t('schedule.tonight')}</span>
+              <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">{t('schedule.eveningReminder')}</p>
             </button>
 
             {/* Tomorrow at 09:00 */}
@@ -175,8 +175,8 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)]/70 hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-border-color)]/40'
               }`}
             >
-              <span className="text-xs font-semibold block">Tomorrow 09:00</span>
-              <p className="text-[10px] text-[#717682] mt-0.5">Morning follow-up</p>
+              <span className="text-xs font-semibold block">{t('schedule.tomorrow')}</span>
+              <p className="text-[10px] text-[var(--nova-text-muted)] mt-0.5">{t('schedule.morningFollowUp')}</p>
             </button>
           </div>
         </div>
@@ -194,7 +194,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
           >
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[var(--nova-accent-color)]" />
-              <span className="text-xs font-semibold">Custom Date & Time</span>
+              <span className="text-xs font-semibold">{t('schedule.customDateTime')}</span>
             </div>
             {selectedPreset === 'custom' && (
               <Check className="w-4 h-4 text-[var(--nova-accent-color)]" />
@@ -207,7 +207,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
               className="grid grid-cols-2 gap-2 mt-2 p-2 bg-[var(--nova-surface-high)] rounded-xl border border-[var(--nova-border-color)] animate-in fade-in"
             >
               <div>
-                <label className="text-[10px] text-[#868b98] block mb-1">Date</label>
+                <label className="text-[10px] text-[var(--nova-text-muted)] block mb-1">{t('schedule.date')}</label>
                 <input
                   type="date"
                   value={customDate}
@@ -216,7 +216,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-[#868b98] block mb-1">Time</label>
+                <label className="text-[10px] text-[var(--nova-text-muted)] block mb-1">{t('schedule.time')}</label>
                 <input
                   type="time"
                   value={customTime}
@@ -236,14 +236,14 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
             className="flex-1 py-2.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white font-semibold text-xs transition cursor-pointer shadow-lg shadow-[var(--nova-accent-color)]/25 flex items-center justify-center gap-1.5 active:scale-95"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Schedule Message</span>
+            <span>{t('schedule.confirm')}</span>
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)]/70 hover:text-[var(--nova-text-primary)] font-semibold text-xs transition cursor-pointer"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

@@ -4414,7 +4414,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           handleStartForward(msg.id);
                         }}
                         className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
-                        title="Forward message"
+                        title={t('a11y.forwardMessage')}
                       >
                         <Forward className="w-3.5 h-3.5" />
                       </button>
@@ -4496,9 +4496,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         }}
                       />
                     </NovaTooltip>
-                    <NovaTooltip label="Reply to message">
+                    <NovaTooltip label={t('a11y.replyToMessage')}>
                       <NovaIconButton
-                        label="Reply to message"
+                        label={t('a11y.replyToMessage')}
                         icon={<Reply />}
                         size={32}
                         className="text-[var(--nova-accent-color,#ff4e18)]"
@@ -4509,9 +4509,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         }}
                       />
                     </NovaTooltip>
-                    <NovaTooltip label="Forward message">
+                    <NovaTooltip label={t('a11y.forwardMessage')}>
                       <NovaIconButton
-                        label="Forward message"
+                        label={t('a11y.forwardMessage')}
                         icon={<Forward />}
                         size={32}
                         className="text-[var(--nova-accent-color,#ff4e18)]"
@@ -4803,7 +4803,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               type="button"
                               onClick={() => handleDownloadDocument(msg.document!.name)}
                               className="p-1.5 rounded-lg bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-primary)] transition cursor-pointer active:scale-95"
-                              title="Download document"
+                              title={t('a11y.downloadDocument')}
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
@@ -4903,7 +4903,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               const urls = useLinkPreviews(msg.text);
                               if (urls.length > 0) {
                                 return (
-                                  <div className="mt-2 flex flex-col gap-1.5" role="list" aria-label="Link previews">
+                                  <div className="mt-2 flex flex-col gap-1.5" role="list" aria-label={t('a11y.linkPreviews')}>
                                     {urls.slice(0, 3).map((url) => (
                                         <LinkPreview key={url} url={url} />
                                     ))}
@@ -5069,7 +5069,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             type="button"
                             onClick={() => handleDownloadDocument(msg.document!.name)}
                             className="p-1.5 rounded-lg bg-[var(--nova-overlay-medium)] hover:bg-[var(--nova-overlay-strong)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:scale-95"
-                            title="Download document"
+                            title={t('a11y.downloadDocument')}
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -5204,7 +5204,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           }}
           className="absolute bottom-20 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition hover:brightness-110 active:scale-95"
           aria-label={`Scroll to ${unreadCount} new message${unreadCount === 1 ? '' : 's'}`}
-          title="Scroll to latest messages"
+          title={t('a11y.scrollToLatest')}
         >
           <ChevronDown className="h-4 w-4" />
           {unreadCount > 0 && (
@@ -5483,7 +5483,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               type="button"
               onClick={() => setIsEmojiPickerOpen(false)}
               className="p-1 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition ml-auto shrink-0"
-              aria-label="Close emoji picker"
+              aria-label={t('a11y.closeEmojiPicker')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -5558,7 +5558,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               type="button"
               onClick={() => setStagedAttachment(null)}
               className="p-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0 ml-auto"
-              title="Remove attachment"
+              title={t('a11y.removeAttachment')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -5831,7 +5831,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   triggerPinnedToast(sendSilently ? t('chat.sendOptions.silentOff') : t('chat.sendOptions.silentOn'));
                   setIsSendOptionsOpen(false);
                 }}
-                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-3 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer min-h-[44px]"
               >
                 <span className="flex items-center gap-2.5">
                   <VolumeX className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
@@ -5845,7 +5845,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setIsSendOptionsOpen(false);
                   setIsScheduleModalOpen(true);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
+                className="flex w-full items-center gap-2.5 px-3 py-3 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer min-h-[44px]"
               >
                 <Clock className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
                 <span>{t('chat.sendOptions.schedule')}</span>
@@ -5856,7 +5856,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   setViewOnceMode((prev) => !prev);
                   setIsSendOptionsOpen(false);
                 }}
-                className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer"
+                className="flex w-full items-center justify-between gap-2.5 px-3 py-3 text-xs text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] cursor-pointer min-h-[44px]"
               >
                 <span className="flex items-center gap-2.5">
                   <Eye className="h-3.5 w-3.5 text-[var(--nova-accent-color)]" />
@@ -5884,7 +5884,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       setIsSendOptionsOpen(false);
                     }}
                     aria-pressed={disappearAfter === option.value}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer ${
+                    className={`rounded-full px-3 py-2 text-[11px] font-semibold transition cursor-pointer min-h-[44px] flex items-center ${
                       disappearAfter === option.value
                         ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
                         : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'
@@ -6398,7 +6398,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               <button
                 onClick={() => setIsForwardModalOpen(false)}
                 className="p-1.5 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
-                aria-label="Close forward dialog"
+                aria-label={t('a11y.closeForward')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -6442,7 +6442,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               <button
                 onClick={() => setActiveThreadRootId(null)}
                 className="p-1.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
-                aria-label="Close thread"
+                aria-label={t('a11y.closeThread')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -6623,14 +6623,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             ref={mediaLightboxRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Media viewer"
+            aria-label={t('a11y.mediaViewer')}
             data-theme-preserve="dark"
             tabIndex={-1}
             className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 text-[var(--nova-text-primary)] backdrop-blur-md"
           >
             <button
               type="button"
-              aria-label="Close media viewer"
+              aria-label={t('a11y.closeMediaViewer')}
               onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
               className="absolute right-4 top-4 z-20 rounded-full bg-[var(--nova-overlay-medium)] p-2 text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
             >
@@ -6641,7 +6641,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               {mediaLightbox.urls.length > 1 && (
                 <button
                   type="button"
-                  aria-label="Previous media"
+                  aria-label={t('a11y.previousMedia')}
                   onClick={() => {
                     setMediaLightbox((current) =>
                       current
@@ -6718,7 +6718,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               {mediaLightbox.urls.length > 1 && (
                 <button
                   type="button"
-                  aria-label="Next media"
+                  aria-label={t('a11y.nextMedia')}
                   onClick={() => {
                     setMediaLightbox((current) =>
                       current
@@ -6745,7 +6745,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
                 <button
                   type="button"
-                  aria-label="Zoom out"
+                  aria-label={t('a11y.zoomOut')}
                   onClick={() => setMediaScale((s) => Math.max(1, s - 0.5))}
                   className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
                 >
@@ -6753,7 +6753,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 </button>
                 <button
                   type="button"
-                  aria-label="Reset zoom"
+                  aria-label={t('a11y.resetZoom')}
                   onClick={() => { setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
                   className="px-2 py-1.5 text-xs font-medium text-[var(--nova-text-secondary)] bg-[var(--nova-overlay-medium)] rounded-full hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
                 >
@@ -6761,7 +6761,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 </button>
                 <button
                   type="button"
-                  aria-label="Zoom in"
+                  aria-label={t('a11y.zoomIn')}
                   onClick={() => setMediaScale((s) => Math.min(4, s + 0.5))}
                   className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
                 >

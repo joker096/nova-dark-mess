@@ -25,6 +25,7 @@ import {
   createAccountFromOnboarding,
   addAccount,
   switchAccount,
+  loadAllAccounts,
 } from '../lib/account/multiAccount';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -103,6 +104,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     importEncryptedBackup,
   } = useSecurity();
   const { account, updateAccount, addAccount, switchAccount } = useAccount();
+
+  // Two onboarding paths share this wizard: the first-run flow creates the
+  // primary account, while "Add account" from Settings must add and activate a
+  // new one. Detect the difference once so `finish()` can do the right thing.
+  const isAddingAccount = useMemo(() => {
+    try {
+      const existing = loadAllAccounts();
+      return existing.length > 0 && existing.some((entry) => entry.isPrimary);
+    } catch {
+      return false;
+    }
+  }, []);
 
   const [step, setStep] = useState<Step>('welcome');
   const [path, setPath] = useState<OnboardingPath | null>(null);
@@ -246,6 +259,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
         'Online'
       );
       addAccount(newAccount);
+      if (isAddingAccount) {
+        // Existing install: keep the current identity and every local vault,
+        // just activate the new profile (App reloads to rebuild account state).
+        switchAccount(newAccount.id);
+        completeOnboarding(path ?? 'create');
+        onDone();
+        return;
+      }
+
       switchAccount(newAccount.id);
       
       if (pin) {

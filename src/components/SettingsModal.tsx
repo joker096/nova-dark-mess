@@ -182,17 +182,17 @@ const ToggleRow: React.FC<{ label: string; enabled: boolean; onToggle: () => voi
     role="switch"
     aria-checked={enabled}
     onClick={onToggle}
-    className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer"
+    className="w-full flex items-center justify-between py-3 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer min-h-[44px]"
   >
     <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{label}</span>
     <span
-      className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex items-center px-0.5 ${
+      className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex items-center px-0.5 ${
         enabled ? 'bg-[var(--nova-accent-color)]' : 'bg-[var(--nova-overlay-medium)]'
       }`}
     >
       <span
-        className={`w-4 h-4 rounded-full bg-[var(--nova-on-accent)] shadow-md transition-transform duration-200 ${
-          enabled ? 'translate-x-4' : 'translate-x-0'
+        className={`w-5 h-5 rounded-full bg-[var(--nova-on-accent)] shadow-md transition-transform duration-200 ${
+          enabled ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
     </span>
@@ -1402,7 +1402,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         localStorage.setItem(CHAT_THEME_KEY, opt.value);
                       } catch { void 0; }
                     }}
-                    className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden ${
+                    className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-xl border transition cursor-pointer relative overflow-hidden min-h-[44px] ${
                       chatColorTheme === opt.value
                         ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/40 shadow-sm shadow-[var(--nova-accent-color)]/25'
                         : 'bg-[var(--nova-overlay-weak)] border-transparent hover:bg-[var(--nova-overlay-weak)]'
@@ -1507,7 +1507,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setSoundId(id);
                     if (id !== 'silent') playSound('notification', id);
                   }}
-                  className={`px-2.5 py-1 rounded-full text-[11px] border transition cursor-pointer ${
+                  className={`px-3 py-2 rounded-full text-[11px] border transition cursor-pointer min-h-[44px] flex items-center ${
                     soundId === id
                       ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-[var(--nova-text-primary)]'
                       : 'border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'

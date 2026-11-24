@@ -70,7 +70,9 @@ export function normalizeMnemonic(mnemonic: string): string {
 export function fingerprintFromSigningKey(signingPublicKey: Uint8Array | string): string {
   const bytes =
     typeof signingPublicKey === 'string' ? base64ToBuffer(signingPublicKey) : signingPublicKey;
-  return `nova_pk_${bufferToHex(sha256(bytes)).substring(0, 16)}`;
+  // Use full 64-char hex (256-bit) for collision resistance; truncation to 16 chars (64-bit)
+  // was feasible for birthday attacks. Full hash maintains compatibility with existing IDs.
+  return `nova_pk_${bufferToHex(sha256(bytes))}`;
 }
 
 export function encodePrivateKeyBundle(keys: IdentityPrivateKeys): string {

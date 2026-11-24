@@ -299,7 +299,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               handleHangUp();
             }}
             className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-[var(--nova-text-primary)] flex items-center justify-center shadow-md active:scale-90 transition shrink-0"
-            title="End call"
+            title={t('a11y.call.endCall')}
           >
             <PhoneOff className="w-3 h-3" />
           </button>
@@ -495,7 +495,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                   handleFlipCamera();
                 }}
                 className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition active:scale-90"
-                title="Flip camera"
+                title={t('a11y.call.flipCamera')}
               >
                 <RefreshCw className="w-3 h-3" />
               </button>

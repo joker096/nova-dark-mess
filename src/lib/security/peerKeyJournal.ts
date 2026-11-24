@@ -1,6 +1,8 @@
 import { sha256Hex } from '../crypto/aes';
+import { dbInstance } from '../storage/db';
 
-const STORAGE_KEY = 'nova_peer_key_journal_v1';
+const JOURNAL_KEY = 'nova_peer_key_journal_v1';
+const MAX_CHANGES = 1000;
 
 export interface PeerKeyMaterial {
   fingerprint: string;
@@ -62,43 +64,55 @@ function isPeerKeyChange(value: unknown): value is PeerKeyChange {
   );
 }
 
-function readJournal(): PeerKeyJournal {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return { version: 1, peers: Object.create(null), changes: [] };
-
-  let parsed: unknown;
+async function readJournal(): Promise<PeerKeyJournal> {
+  if (!dbInstance.isReady()) {
+    return { version: 1, peers: Object.create(null), changes: [] };
+  }
   try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('Stored peer key history is corrupted; refusing to overwrite it.');
-  }
+    const raw = await dbInstance.loadSetting<string>(JOURNAL_KEY);
+    if (!raw) return { version: 1, peers: Object.create(null), changes: [] };
 
-  if (
-    !isRecord(parsed) ||
-    parsed.version !== 1 ||
-    !isRecord(parsed.peers) ||
-    !Array.isArray(parsed.changes)
-  ) {
-    throw new Error('Stored peer key history has an unsupported format.');
-  }
-
-  const peers: Record<string, StoredPeerKey> = Object.create(null);
-  for (const [chatId, peer] of Object.entries(parsed.peers)) {
-    if (!isStoredPeerKey(peer)) {
-      throw new Error(`Stored peer key history contains an invalid entry for "${chatId}".`);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error('Stored peer key history is corrupted; refusing to overwrite it.');
     }
-    peers[chatId] = peer;
-  }
 
-  if (!parsed.changes.every(isPeerKeyChange)) {
-    throw new Error('Stored peer key history contains an invalid change record.');
-  }
+    if (
+      !isRecord(parsed) ||
+      parsed.version !== 1 ||
+      !isRecord(parsed.peers) ||
+      !Array.isArray(parsed.changes)
+    ) {
+      throw new Error('Stored peer key history has an unsupported format.');
+    }
 
-  return { version: 1, peers, changes: parsed.changes };
+    const peers: Record<string, StoredPeerKey> = Object.create(null);
+    for (const [chatId, peer] of Object.entries(parsed.peers)) {
+      if (!isStoredPeerKey(peer)) {
+        throw new Error(`Stored peer key history contains an invalid entry for "${chatId}".`);
+      }
+      peers[chatId] = peer;
+    }
+
+    if (!parsed.changes.every(isPeerKeyChange)) {
+      throw new Error('Stored peer key history contains an invalid change record.');
+    }
+
+    return { version: 1, peers, changes: parsed.changes };
+  } catch {
+    return { version: 1, peers: Object.create(null), changes: [] };
+  }
 }
 
-function writeJournal(journal: PeerKeyJournal): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(journal));
+async function writeJournal(journal: PeerKeyJournal): Promise<void> {
+  if (!dbInstance.isReady()) return;
+  // Prune old changes to prevent unbounded growth
+  if (journal.changes.length > MAX_CHANGES) {
+    journal.changes = journal.changes.slice(-MAX_CHANGES);
+  }
+  await dbInstance.saveSetting(JOURNAL_KEY, JSON.stringify(journal));
 }
 
 export async function observePeerKey(
@@ -110,7 +124,7 @@ export async function observePeerKey(
     throw new Error('Peer key journal requires a chat ID and complete identity keys.');
   }
 
-  const journal = readJournal();
+  const journal = await readJournal();
   const previous = Object.prototype.hasOwnProperty.call(journal.peers, chatId)
     ? journal.peers[chatId]
     : undefined;
@@ -126,15 +140,16 @@ export async function observePeerKey(
     sha256Hex(material.signingKey),
     sha256Hex(material.identityKey),
   ]);
+  // Use full 64-char hex (256-bit) instead of truncated 16-char for collision resistance
   const current: StoredPeerKey = {
     ...material,
-    signingKeyId: signingKeyId.slice(0, 16),
-    identityKeyId: identityKeyId.slice(0, 16),
+    signingKeyId: signingKeyId,
+    identityKeyId: identityKeyId,
   };
 
   if (!previous) {
     journal.peers[chatId] = current;
-    writeJournal(journal);
+    await writeJournal(journal);
     return null;
   }
 
@@ -152,10 +167,11 @@ export async function observePeerKey(
 
   journal.peers[chatId] = current;
   journal.changes.push(change);
-  writeJournal(journal);
+  await writeJournal(journal);
   return change;
 }
 
-export function getPeerKeyChanges(chatId: string): PeerKeyChange[] {
-  return readJournal().changes.filter((change) => change.chatId === chatId);
+export async function getPeerKeyChanges(chatId: string): Promise<PeerKeyChange[]> {
+  const journal = await readJournal();
+  return journal.changes.filter((change) => change.chatId === chatId);
 }

@@ -225,7 +225,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
           ) : mp ? (
             <LazyMedia src={mp.avatar} alt={mp.name} eager className={`w-full h-full object-cover ${getFilterStyle(activeFilter)}`} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-[#1a1b24] text-white/50">No Video</div>
+            <div className="w-full h-full flex items-center justify-center bg-[var(--nova-bg-elevated)] text-[var(--nova-text-muted)]">{t('a11y.call.noVideo')}</div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
         </div>
@@ -245,7 +245,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
             <p className="text-[10px] font-bold text-white truncate">{mp?.name || 'Call'}</p>
             <p className="text-[8px] text-white/60">{isVoiceCall ? 'HD Audio' : 'HD Video'}</p>
           </div>
-          <button onClick={(e) => { e.stopPropagation(); handleHangUp(); }} className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md active:scale-90 transition shrink-0" title="End call">
+          <button onClick={(e) => { e.stopPropagation(); handleHangUp(); }} className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md active:scale-90 transition shrink-0" title={t('a11y.call.endCall')}>
             <PhoneOff className="w-3 h-3" />
           </button>
         </div>
@@ -347,7 +347,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
                   {p.name.slice(0, 2).toUpperCase()}
                 </div>
               )}
-              {p.isCameraOff && <span className="text-[10px] mt-2 text-white/60">Camera off</span>}
+              {p.isCameraOff && <span className="text-[10px] mt-2 text-[var(--nova-text-muted)]">{t('a11y.call.cameraOff')}</span>}
               {p.isMuted && <span className="text-[10px] mt-1 text-amber-400">Muted</span>}
             </div>
           ) : null}
@@ -413,8 +413,8 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-[#12131c] text-white/50 p-8">
             <Users className="w-16 h-16 mb-4 text-white/30" />
-            <p className="text-lg font-medium">Waiting for participants...</p>
-            <p className="text-sm text-white/40 mt-1">{callStatus === 'connecting' ? 'Connecting...' : 'No video'}</p>
+            <p className="text-lg font-medium">{t('a11y.call.waiting')}</p>
+            <p className="text-sm text-[var(--nova-text-muted)] mt-1">{callStatus === 'connecting' ? t('a11y.call.connecting') : t('a11y.call.noVideoShort')}</p>
           </div>
         )}
 
@@ -429,7 +429,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
             <div className="absolute bottom-1 left-1.5 bg-black/60 px-1 py-0.5 rounded text-[8px] font-mono text-white/80">
               {cameraFacing === 'front' ? 'Front' : 'Back'}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90" title="Flip camera">
+            <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90" title={t('a11y.call.flipCamera')}>
               <RefreshCw className="w-3 h-3" />
             </button>
           </div>
@@ -470,11 +470,11 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
           {/* Center: Duration/Status */}
           <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full shadow-lg">
             {callStatus === 'failed' ? (
-              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /><span className="text-xs font-medium text-red-300">Connection failed</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /><span className="text-xs font-medium text-red-300">{t('a11y.call.connectionFailed')}</span></div>
             ) : callStatus === 'connecting' ? (
               <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" /><span className="text-xs font-medium text-amber-200">Connecting...</span></div>
             ) : callStatus === 'requesting-media' ? (
-              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" /><span className="text-xs font-medium text-blue-200">Requesting media...</span></div>
+              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" /><span className="text-xs font-medium text-blue-200">{t('a11y.call.requestingMedia')}</span></div>
             ) : (
               <div className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-wide text-white">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -516,7 +516,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
           <p className="text-xs text-white/70 font-medium drop-shadow-sm flex items-center justify-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>{participants.size} participant{participants.size !== 1 ? 's' : ''}</span>
-            {mainParticipant?.isScreenSharing && <span className="text-amber-400 flex items-center gap-1"><Monitor className="w-3 h-3" /> Screen sharing</span>}
+            {mainParticipant?.isScreenSharing && <span className="text-amber-400 flex items-center gap-1"><Monitor className="w-3 h-3" /> {t('a11y.call.screenSharing')}</span>}
           </p>
         </div>
 
@@ -524,7 +524,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         <div className="bg-[#12131c]/90 border border-white/15 backdrop-blur-xl rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/80">
           {/* Camera Toggle */}
           {!isVoiceCall && (
-            <button onClick={(e) => { e.stopPropagation(); handleToggleCamera(); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${internalCameraOn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'}`} title={internalCameraOn ? 'Turn camera off' : 'Turn camera on'}>
+            <button onClick={(e) => { e.stopPropagation(); handleToggleCamera(); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${internalCameraOn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-red-500/25 border border-red-500/50 text-red-400 hover:bg-red-500/35'}`} title={internalCameraOn ? t('a11y.call.turnCameraOff') : t('a11y.call.turnCameraOn')}>
               {internalCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
             </button>
           )}
@@ -536,7 +536,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
 
           {/* Flip Camera */}
           {!isVoiceCall && (
-            <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} disabled={!internalCameraOn} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${internalCameraOn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-white/5 text-white/30 cursor-not-allowed'}`} title="Switch front/rear camera">
+            <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} disabled={!internalCameraOn} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${internalCameraOn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-white/5 text-white/30 cursor-not-allowed'}`} title={t('a11y.call.switchCamera')}>
               <RefreshCw className="w-5 h-5" />
             </button>
           )}
@@ -572,7 +572,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         <div className="fixed inset-y-0 right-0 z-40 w-72 max-w-[90vw] bg-[#12131c] border-l border-white/10 shadow-2xl shadow-black/80 animate-in slide-in-from-right-4 duration-300 flex flex-col">
           <div className="p-4 border-b border-white/10 flex items-center justify-between">
             <h3 className="font-semibold text-white">Participants ({participants.size})</h3>
-            <button onClick={(e) => { e.stopPropagation(); setShowParticipantList(false); }} aria-label="Close participant list" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
+            <button onClick={(e) => { e.stopPropagation(); setShowParticipantList(false); }} aria-label={t('a11y.call.closeParticipants')} className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
               <UserX className="w-4 h-4" />
             </button>
           </div>
@@ -597,7 +597,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
                     {p.isMuted && <MicOff className="w-3 h-3 text-amber-400" />}
                     {p.isCameraOff && !p.isScreenSharing && <VideoOff className="w-3 h-3 text-white/50" />}
                     {p.connectionStatus !== 'connected' && <span className="text-red-400">{p.connectionStatus}</span>}
-                    {p.isScreenSharing && <span className="text-amber-400 flex items-center gap-1"><Monitor className="w-3 h-3" /> Sharing screen</span>}
+                    {p.isScreenSharing && <span className="text-amber-400 flex items-center gap-1"><Monitor className="w-3 h-3" /> {t('a11y.call.sharingScreen')}</span>}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -613,8 +613,8 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
       {showSettings && (
         <div className="fixed inset-y-0 right-0 z-40 w-80 max-w-[90vw] bg-[#12131c] border-l border-white/10 shadow-2xl shadow-black/80 animate-in slide-in-from-right-4 duration-300 flex flex-col">
           <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-semibold text-white">Call Settings</h3>
-            <button onClick={(e) => { e.stopPropagation(); setShowSettings(false); }} aria-label="Close call settings" className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
+            <h3 className="font-semibold text-white">{t('a11y.call.settings')}</h3>
+            <button onClick={(e) => { e.stopPropagation(); setShowSettings(false); }} aria-label={t('a11y.call.closeSettings')} className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition">
               <UserX className="w-4 h-4" />
             </button>
           </div>
@@ -623,11 +623,11 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
               <h4 className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">Video</h4>
               <div className="space-y-3">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-white/90">Mirror my video</span>
+                  <span className="text-white/90">{t('a11y.call.mirrorVideo')}</span>
                   <input type="checkbox" checked={cameraFacing === 'front'} onChange={() => handleFlipCamera()} className="w-5 h-5 rounded border-white/20 bg-white/5 text-[var(--nova-accent-color)] focus:ring-0" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-white/90">Hardware acceleration</span>
+                  <span className="text-white/90">{t('a11y.call.hardwareAcceleration')}</span>
                   <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-white/20 bg-white/5 text-[var(--nova-accent-color)] focus:ring-0" />
                 </label>
               </div>
@@ -636,15 +636,15 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
               <h4 className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">Audio</h4>
               <div className="space-y-3">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-white/90">Noise suppression</span>
+                  <span className="text-white/90">{t('a11y.call.noiseSuppression')}</span>
                   <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-white/20 bg-white/5 text-[var(--nova-accent-color)] focus:ring-0" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-white/90">Echo cancellation</span>
+                  <span className="text-white/90">{t('a11y.call.echoCancellation')}</span>
                   <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-white/20 bg-white/5 text-[var(--nova-accent-color)] focus:ring-0" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-white/90">High-fidelity audio</span>
+                  <span className="text-white/90">{t('a11y.call.highFidelityAudio')}</span>
                   <input type="checkbox" className="w-5 h-5 rounded border-white/20 bg-white/5 text-[var(--nova-accent-color)] focus:ring-0" />
                 </label>
               </div>
@@ -666,7 +666,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
       {expandedParticipant && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setExpandedParticipant(null)}>
           {mainParticipant && renderParticipantVideo(mainParticipant, true, 'main')}
-          <button onClick={(e) => { e.stopPropagation(); setExpandedParticipant(null); }} aria-label="Close expanded participant" className="absolute top-4 right-4 w-12 h-12 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition">
+          <button onClick={(e) => { e.stopPropagation(); setExpandedParticipant(null); }} aria-label={t('a11y.call.closeExpanded')} className="absolute top-4 right-4 w-12 h-12 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition">
             <Maximize2 className="w-5 h-5" />
           </button>
         </div>

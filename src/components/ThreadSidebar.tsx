@@ -38,7 +38,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
     ) ?? [];
     
     // Sort by createdAt
-    return threadMsgs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    return [...threadMsgs].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   }, [threadRootId, chatId]);
 
   const rootMessage = useMemo(() => {
@@ -73,7 +73,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
       };
     }
     return {
-      name: 'Unknown',
+      name: t('common.unknown', 'Unknown'),
       avatar: '',
       initials: '??',
     };
@@ -123,13 +123,13 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
               onClick={() => onScrollToMessage(msg.id)}
               role="button"
               tabIndex={0}
-              aria-label={`Thread message from ${senderInfo.name}`}
+              aria-label={t('a11y.threadMessageFrom', { name: senderInfo.name })}
             >
               {/* Avatar */}
               <div className="relative shrink-0">
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-surface-2)]">
                   {msg.senderId === 'me' ? (
-                    <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">You</div>
+                    <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">{t('chat.you', 'You')}</div>
                   ) : senderInfo.avatar ? (
                     <LazyMedia src={senderInfo.avatar} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -155,7 +155,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
 
                 {msg.replyTo && (
                   <div className="mt-1.5 pt-1.5 border-t border-[var(--nova-border-color)] text-[11px] text-[var(--nova-text-secondary)]">
-                    Replying to {msg.replyTo.senderName || 'Unknown'}
+                    {t('chat.replyingToName', { name: msg.replyTo.senderName || t('common.unknown', 'Unknown') })}
                   </div>
                 )}
               </div>
@@ -191,7 +191,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
           <div className="flex items-start gap-2">
             <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] shrink-0 mt-0.5">
               {rootMessage.senderId === 'me' ? (
-                <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">You</div>
+                <div className="w-full h-full bg-[var(--nova-accent-color)] flex items-center justify-center text-white text-xs font-bold">{t('chat.you', 'You')}</div>
               ) : (() => {
                 const senderInfo = getSenderInfo(rootMessage);
                 return senderInfo.avatar ? (

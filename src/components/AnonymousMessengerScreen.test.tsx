@@ -239,7 +239,7 @@ describe('AnonymousMessengerScreen', () => {
     await waitFor(() => expect(document.activeElement).toBe(localPanel));
 
     expect(screen.queryByRole('button', { name: 'Create link and QR code' })).toBeNull();
-    expect(screen.queryByLabelText('Your invitation link')).toBeNull();
+    expect(screen.queryByLabelText('Your invitation link (for app)')).toBeNull();
     expect(screen.queryByRole('img', { name: 'Scan this QR code to add me' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Share link' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
@@ -534,7 +534,7 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Create link and QR code' }));
-    await screen.findByLabelText('Your invitation link');
+    await screen.findByLabelText('Your invitation link (for app)');
     expect(screen.getByRole('button', { name: 'Share link' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy();
     await screen.findByRole('img', { name: 'Scan this QR code to add me' });

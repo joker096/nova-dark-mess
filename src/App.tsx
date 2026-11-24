@@ -24,6 +24,7 @@ import { EncryptedBotStorage, NOVA_BOTS } from './lib/bots/runtime';
 import { dbInstance } from './lib/storage/db';
 import { botSession } from './lib/bots/session';
 import { ThreadSidebar } from './components/ThreadSidebar';
+import { BottomNav } from './components/BottomNav';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -122,6 +123,7 @@ import {
   applyAppTheme,
   applyFontSize,
   readAppTheme,
+  readFabSide,
   readFontSize,
 } from './lib/ui/appearance';
 import { parseDeepLinkFromHash, parseDeepLink, type DeepLinkTarget } from './lib/network/deepLinks';
@@ -403,6 +405,10 @@ export default function App() {
   // Set when a link points at one post's comments; cleared once the channel
   // screen has opened the sheet.
   const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
+  // Bottom navigation active tab for mobile
+  const [activeBottomTab, setActiveBottomTab] = useState<'chats' | 'contacts' | 'channels' | 'settings' | 'premium'>('chats');
+  // One-handed FAB side, persisted across reloads.
+  const [fabSide, setFabSide] = useState<'left' | 'right'>(() => readFabSide());
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
@@ -653,6 +659,15 @@ export default function App() {
       if (opts?.profileId) setActiveProfileId(opts.profileId);
       if (opts?.channelId) setActiveChannelId(opts.channelId);
       setCurrentScreen(screen);
+
+      // Update bottom nav tab for mobile when navigating to main tabs
+      if (screen === 'chats' || screen === 'chat-katie') setActiveBottomTab('chats');
+      else if (screen === 'channel-kyiv') setActiveBottomTab('channels');
+      else if (screen === 'anonymous') setActiveBottomTab('contacts');
+      else if (screen === 'settings') setActiveBottomTab('settings');
+      else if (screen === 'sites' || screen === 'analytics' || screen === 'mesh-map') {
+        // These open as modals/full screens, keep current tab
+      }
     },
     [currentScreen, activeChatId, activeProfileId, activeChannelId],
   );
@@ -908,7 +923,10 @@ export default function App() {
 
   // Mobile Single-Pane Screen renderer
   const renderMobileScreen = () => {
-    switch (currentScreen) {
+    // On mobile, use activeBottomTab for primary navigation
+    const mobileScreen = activeBottomTab === 'channels' ? 'channel-kyiv' : activeBottomTab;
+
+    switch (mobileScreen) {
       case 'channel-kyiv':
         if (mobileChannelListOpen || !activeChannelId) {
           return (
@@ -928,7 +946,10 @@ export default function App() {
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
             {...channelScreenProps}
-            onBack={() => setMobileChannelListOpen(true)}
+            onBack={() => {
+              setMobileChannelListOpen(true);
+              goBack();
+            }}
           />
         );
       case 'chats':
@@ -953,6 +974,39 @@ export default function App() {
             onDeleteStory={deleteStory}
             onViewStory={viewStory}
             onToggleStoryReaction={toggleStoryReaction}
+          />
+        );
+      case 'contacts':
+        return (
+          <AnonymousMessengerScreen
+            onBack={goBack}
+            initialInvite={pendingContactInvite}
+            onInviteConsumed={() => setPendingContactInvite(null)}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsModal
+            isOpen={true}
+            onClose={() => setActiveBottomTab('chats')}
+            onOpenAnalytics={openAnalytics}
+            onOpenSites={openSites}
+            getBotSession={botsEnabled ? getBotSession : undefined}
+            pendingBotInstall={pendingBotInstall}
+            onBotInstallHandled={() => setPendingBotInstall(null)}
+            onOpenBotChat={(botId) => {
+              setPendingBotStart({ chatId: botId, payload: '' });
+              navigate('chat-katie', { chatId: botId });
+            }}
+            onOpenMeshMap={() => navigate('mesh-map')}
+          />
+        );
+      case 'premium':
+        return (
+          <CryptoCheckoutModal
+            isOpen={true}
+            onClose={() => setActiveBottomTab('chats')}
+            onSuccess={() => setActiveBottomTab('chats')}
           />
         );
       case 'chat-katie': {
@@ -1227,8 +1281,20 @@ export default function App() {
       {/* 2. MOBILE VIEW (< 768px md: breakpoint)                   */}
       {/* ======================================================== */}
         <div className="flex-1 w-full h-full lg:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
-        <Suspense fallback={<ScreenFallback />}>{renderMobileScreen()}</Suspense>
-      </div>
+          <div className="flex-1 overflow-hidden">
+            <Suspense fallback={<ScreenFallback />}>{renderMobileScreen()}</Suspense>
+          </div>
+          <BottomNav
+            activeTab={activeBottomTab}
+            onTabChange={setActiveBottomTab}
+            fabSide={fabSide}
+            onNewChat={() => setNewChatModalOpen(true)}
+            unreadChats={totalUnreadChats}
+            unreadChannels={totalUnreadChannels}
+            unreadContacts={0}
+            premium={premium}
+          />
+        </div>
 
 
 

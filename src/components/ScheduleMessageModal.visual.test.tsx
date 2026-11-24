@@ -7,7 +7,27 @@ import { ScheduleMessageModal } from './ScheduleMessageModal';
 
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
-    t: (key: string) => key,
+    t: (key: string, fallback?: string) => {
+      const translations: Record<string, string> = {
+        'schedule.customDateTime': 'Custom Date & Time',
+        'schedule.confirm': 'Schedule Message',
+        'common.close': 'Close',
+        'schedule.title': 'Schedule Message',
+        'schedule.subtitle': 'Send automatically at a chosen time',
+        'schedule.preview': 'Preview',
+        'schedule.chooseTime': 'Choose when to send',
+        'schedule.in5s': 'In 5 seconds',
+        'schedule.quickTest': 'Quick test',
+        'schedule.in15m': 'In 15 minutes',
+        'schedule.shortDelay': 'Short delay',
+        'schedule.tonight': 'Tonight',
+        'schedule.eveningReminder': 'Evening reminder',
+        'schedule.tomorrow': 'Tomorrow',
+        'schedule.morningFollowUp': 'Morning follow-up',
+        'schedule.demo': 'Demo',
+      };
+      return translations[key] ?? fallback ?? key;
+    },
     language: 'en',
     changeLanguage: vi.fn(),
     languages: [],
@@ -69,7 +89,7 @@ describe('ScheduleMessageModal visual snapshot', () => {
     expect(chip.className).toContain('text-[var(--nova-accent-color)]');
     expect(screen.getByRole('heading', { name: 'Schedule Message' })).toBeTruthy();
     expect(screen.getByText('Send automatically at a chosen time')).toBeTruthy();
-    const close = screen.getByRole('button', { name: 'common.close' });
+    const close = screen.getByRole('button', { name: 'Close' });
     expect(close.className).toContain('bg-[var(--nova-overlay-weak)]');
     expect(close.className).toContain('hover:bg-[var(--nova-overlay-medium)]');
   });
@@ -81,7 +101,7 @@ describe('ScheduleMessageModal visual snapshot', () => {
     const preview = findByClass(document, 'bg-[var(--nova-surface-high)]')!;
     expect(preview.className).toContain('border-[var(--nova-border-color)]');
     expect(preview.className).toContain('rounded-2xl');
-    expect(screen.getByText('Message Preview')).toBeTruthy();
+    expect(screen.getByText('Preview')).toBeTruthy();
     expect(screen.getByText('"Hello world"')).toBeTruthy();
   });
 
@@ -93,8 +113,8 @@ describe('ScheduleMessageModal visual snapshot', () => {
     expect(grid.className).toContain('gap-2');
     expect(screen.getByText('In 5 seconds')).toBeTruthy();
     expect(screen.getByText('In 15 minutes')).toBeTruthy();
-    expect(screen.getByText('Tonight 21:00')).toBeTruthy();
-    expect(screen.getByText('Tomorrow 09:00')).toBeTruthy();
+    expect(screen.getByText('Tonight')).toBeTruthy();
+    expect(screen.getByText('Tomorrow')).toBeTruthy();
   });
 
   it('marks selected preset with accent border and bg', () => {
@@ -153,7 +173,7 @@ describe('ScheduleMessageModal visual snapshot', () => {
     expect(confirm.className).toContain('bg-[var(--nova-accent-color)]');
     expect(confirm.className).toContain('shadow-[var(--nova-accent-color)]/25');
     expect(confirm.className).toContain('active:scale-95');
-    const cancel = screen.getByRole('button', { name: 'Cancel' })!;
+    const cancel = screen.getByRole('button', { name: 'common.cancel' })!;
     expect(cancel.className).toContain('bg-[var(--nova-overlay-weak)]');
     expect(cancel.className).toContain('hover:bg-[var(--nova-overlay-medium)]');
   });

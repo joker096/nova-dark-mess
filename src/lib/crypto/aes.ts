@@ -12,12 +12,14 @@ export interface EncryptedData {
  * Converts Uint8Array to Base64 string
  */
 export function bufferToBase64(buffer: Uint8Array): string {
-  let binary = '';
-  const len = buffer.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(buffer[i]);
+  // Chunked conversion to avoid call stack limits on large buffers
+  const chunkSize = 0x8000; // 32KB chunks
+  const chunks: string[] = [];
+  for (let i = 0; i < buffer.length; i += chunkSize) {
+    const chunk = buffer.subarray(i, i + chunkSize);
+    chunks.push(String.fromCharCode.apply(null, Array.from(chunk)));
   }
-  return btoa(binary);
+  return btoa(chunks.join(''));
 }
 
 /**

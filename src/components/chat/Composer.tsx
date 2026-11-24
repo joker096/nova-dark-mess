@@ -1,0 +1,190 @@
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Paperclip, Mic, Send, X, Smile, Image, Film, Paperclip as PaperclipIcon, Mic as MicIcon, Send as SendIcon } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useSecurity } from '../../hooks/useSecurity';
+import { pendingConsent, sanitizeManifest, type InstalledBot } from '../../lib/bots/runtime';
+import type { BotManifest, BotPermission } from '../../lib/bots/types';
+import { createAnonymousIdentity } from '../../lib/crypto/identity';
+import { usePremium } from '../../hooks/usePremium';
+import { resetOnboarding } from '../../lib/onboarding';
+import { PIN_HASH_KEY, PIN_ENABLED_KEY } from '../../context/SecurityContext';
+import { createKeychain } from '../../lib/storage/keychain';
+import { downloadEncryptedBackup, uploadEncryptedBackup } from '../../lib/storage/cloudBackup';
+import { downloadMyDataExport } from '../../lib/dataExport';
+import { localAnalytics } from '../../lib/analytics/localAnalytics';
+import {
+  loadPrivacyPrefs,
+  readBatteryStatus,
+  savePrivacyPrefs,
+  shouldEmitCoverTraffic,
+  probeTor,
+  type BatteryStatus,
+  type PrivacyPrefs,
+} from '../../lib/network/privacyMode';
+import { loadJoinOutbox, retryJoinOutboxNow } from '../../lib/social/joinRequestRelay';
+import {
+  getSocialPrivacy,
+  setSocialPrivacy,
+  setContactBlocked,
+  getBlockedContactsWithProfiles,
+  type SocialPrivacySettings,
+  type PrivacyScope,
+} from '../../lib/social/socialPrivacy'.
+import {
+  clearLocalAdPrefs,
+  loadAdPreferences,
+  restoreHiddenAd,
+  unblockAdvertiser,
+  type LocalAdPreferences,
+} from '../../lib/ads/localAds'.
+import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../../lib/notifications/sounds'.
+import {
+  getNotificationPrefs,
+  setNotificationPref,
+  setNotificationException,
+  setNotificationSound,
+  muteContact,
+  getMutedContacts,
+  setPriorityContact,
+  getPriorityContacts,
+  type NotificationPrefs,
+  type NotificationLevel,
+  type MuteDurationKey,
+} from '../../lib/notifications/notificationPrefs'.
+import { LanguageSwitcher } from '../../components/LanguageSwitcher'.
+import { useFocusTrap } from '../../lib/ui/useFocusTrap'.
+import { CryptoCheckoutModal } from '../../components/CryptoCheckoutModal'.
+import { LegalModal } from '../../components/LegalModal'.
+import { SanctionScreen } from '../../components/SanctionScreen'.
+import { AccountSwitcher } from '../../components/AccountSwitcher'.
+import { BottomNav } from '../../components/BottomNav'.
+import { NovaIconButton } from '../../lib/ui/NovaIconButton'.
+import { LazyMedia } from '../../components/LazyMedia'.
+import { JoinRequestNotice, type JoinRequestNoticeData } from '../../components/JoinRequestNotice'.
+import { PinLockScreen } from '../../components/PinLockScreen'.
+import { SanctionGate } from '../../components/SanctionGate'.
+import { EncryptedBotStorage, NOVA_BOTS } from '../../lib/bots/runtime'.
+import { dbInstance } from '../../lib/storage/db'.
+import { botSession } from '../../lib/bots/session'.
+import { ThreadSidebar } from '../ThreadSidebar'.
+import { SettingsModal } from '../../components/SettingsModal'.
+import { SettingsModalTabbed } from '../../components/SettingsModalTabbed'.
+import { ProfileScreen } from '../../components/ProfileScreen'.
+import { NovaIconButton } from '../../lib/ui/NovaIconButton'.
+
+import type { BotSession } from '../../lib/bots/session'.
+import { movieCatalogBotManifest } from '../../../examples/bots/movie-catalog/manifest'.
+import { novafatherManifest } from '../../../examples/bots/novafather/manifest'.
+import { echoBotManifest } from '../../../examples/bots/echo/manifest'.
+
+const AVAILABLE_BUILTIN_BOTS: BotManifest[] = [
+  movieCatalogBotManifest,
+  novafatherManifest,
+  echoBotManifest,
+];
+
+type SettingsTab = 'general' | 'notifications' | 'privacy' | 'data' | 'advanced' | 'about';
+
+interface ComposerProps {
+  draft: string;
+  onDraftChange: (draft: string) => void;
+  onSend: () => void;
+  onAttach: () => void;
+  onVoiceStart: () => void;
+  onVoiceEnd: () => void;
+  isRecording: boolean;
+  disabled?: boolean;
+  showOptions?: boolean;
+  onOptionsToggle?: () => void;
+}
+
+export const Composer: React.FC<ComposerProps> = ({
+  draft,
+  onDraftChange,
+  onSend,
+  onAttach,
+  onVoiceStart,
+  onVoiceEnd,
+  isRecording,
+  disabled = false,
+  showOptions = false,
+  onOptionsToggle,
+}) => {
+  const { t } = useLanguage();
+  const textareaRef = useRef<HTMLTextareaElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showSendOptions, setShowSendOptions] = useState(false);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (draft.trim()) onSend();
+    }
+  }, [draft, onSend]);
+
+  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextareaElement>) => {
+    onDraftChange(e.target.value);
+  }, [onDraftChange]);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  return (
+    <div className="flex items-end gap-2 p-3 bg-[var(--nova-surface)] border-t border-[var(--nova-border-subtle)]">
+      <button
+        type="button"
+        onClick={onAttach}
+        disabled={disabled}
+        className="p-2 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer disabled:opacity-50"
+        aria-label={t('chat.attach')}
+      >
+        <PaperclipIcon className="w-5 h-5" />
+      </button>
+
+      <div className="flex-1 relative">
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={t('chat.messagePlaceholder', { defaultValue: 'Message…' })}
+          className="w-full min-h-[44px] max-h-32 px-4 py-2.5 pr-12 rounded-2xl bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)] resize-none transition"
+          rows={1}
+        />
+
+        <div className="absolute right-2 bottom-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="p-2 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+            aria-label={t('chat.emoji')}
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onOptionsToggle}
+            className="p-2 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+            aria-label={t('chat.sendOptions')}
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onSend}
+        disabled={disabled || !draft.trim()}
+        className="p-2.5 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] hover:opacity-90 transition cursor-pointer disabled:opacity-50"
+        aria-label={t('chat.send')}
+      >
+        <SendIcon className="w-5 h-5" />
+      </button>
+    </div>
+  );
+};
+
+export default Composer;

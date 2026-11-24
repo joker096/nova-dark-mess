@@ -8,6 +8,7 @@
  */
 
 import { getCachedItem, setCachedItem } from '../storage/localStorageCache';
+import { dbInstance } from '../storage/db';
 
 const CREDENTIAL_ID_KEY = 'nova_biometric_credential_id';
 
@@ -54,11 +55,38 @@ export async function isBiometricSupported(): Promise<boolean> {
   }
 }
 
-export function getBiometricCredentialId(): string | null {
+async function getCredentialIdFromDB(): Promise<string | null> {
+  if (!dbInstance.isReady()) return null;
+  try {
+    return await dbInstance.loadSetting<string>(CREDENTIAL_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+async function setCredentialIdInDB(id: string): Promise<void> {
+  if (!dbInstance.isReady()) return;
+  try {
+    await dbInstance.saveSetting(CREDENTIAL_ID_KEY, id);
+  } catch {
+    /* ignore - best effort */
+  }
+}
+
+async function removeCredentialIdFromDB(): Promise<void> {
+  if (!dbInstance.isReady()) return;
+  try {
+    await dbInstance.deleteRecord?.('settings', CREDENTIAL_ID_KEY);
+  } catch {
+    /* ignore - best effort */
+  }
+}
+
+export async function getBiometricCredentialId(): Promise<string | null> {
   try {
     const cached = getCachedItem<string>(CREDENTIAL_ID_KEY);
     if (cached !== null) return cached;
-    const value = localStorage.getItem(CREDENTIAL_ID_KEY);
+    const value = await getCredentialIdFromDB();
     setCachedItem(CREDENTIAL_ID_KEY, value);
     return value;
   } catch {
@@ -66,9 +94,9 @@ export function getBiometricCredentialId(): string | null {
   }
 }
 
-export function clearBiometricCredential(): void {
+export async function clearBiometricCredential(): Promise<void> {
   try {
-    localStorage.removeItem(CREDENTIAL_ID_KEY);
+    await removeCredentialIdFromDB();
   } catch {
     void 0;
   }
@@ -102,7 +130,7 @@ export async function registerBiometricCredential(): Promise<string | null> {
     })) as PublicKeyCredential | null;
     if (!credential) return null;
     const id = toBase64Url(credential.rawId);
-    localStorage.setItem(CREDENTIAL_ID_KEY, id);
+    await setCredentialIdInDB(id);
     setCachedItem(CREDENTIAL_ID_KEY, id);
     return id;
   } catch {
@@ -112,7 +140,7 @@ export async function registerBiometricCredential(): Promise<string | null> {
 
 /** Asks the platform authenticator to verify the person holding the device. */
 export async function verifyBiometricCredential(): Promise<boolean> {
-  const id = getBiometricCredentialId();
+  const id = await getBiometricCredentialId();
   if (!id || !isBiometricPlatformAvailable()) return false;
   try {
     const assertion = await navigator.credentials.get({

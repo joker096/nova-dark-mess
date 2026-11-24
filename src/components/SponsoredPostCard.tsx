@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { toSafeExternalUrl } from '../lib/security/safeUrl';
 import {
   AD_PREFS_CHANGED_EVENT,
@@ -48,6 +49,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
   );
   const [whyOpen, setWhyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const whyDialogRef = useFocusTrap<HTMLDivElement>(whyOpen, () => setWhyOpen(false));
 
   useEffect(() => {
     if (hidden || !cardRef.current || typeof IntersectionObserver === 'undefined') return;
@@ -251,6 +253,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
           data-testid="ad-disclosure-sheet"
         >
           <div
+            ref={whyDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={t('ads.whyTitle')}

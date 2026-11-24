@@ -11,6 +11,7 @@ import {
 import { ModalOverlay } from './ModalOverlay';
 import { DocumentAttachment } from '../types/messenger';
 import { LazyMedia } from './LazyMedia';
+import { useLanguage } from '../context/LanguageContext';
 import { mediaCache } from '../lib/media/mediaCache';
 import { createThumbnail } from '../lib/media/imageThumbnail';
 import { compressVideo } from '../lib/media/videoCompress';
@@ -134,6 +135,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
   onSendAttachment,
   onStageAttachment,
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'images' | 'documents'>('images');
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>(['img1']);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
@@ -494,7 +496,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSend();
             }}
-            placeholder="Add an optional message or caption..."
+            placeholder={t('a11y.addCaption')}
             className="w-full bg-[#11121a] border border-white/10 focus:border-[var(--nova-accent-color)] rounded-xl px-3.5 py-2 text-xs text-white placeholder-white/35 focus:outline-none transition shadow-inner"
           />
 

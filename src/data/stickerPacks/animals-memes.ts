@@ -1,4 +1,4 @@
-import { StickerPack } from '../stickers';
+import { StickerPack } from '../types/messenger';
 
 export const ANIMALS_MEMES_PACK: StickerPack = {
   id: 'animals-memes',
@@ -9,20 +9,20 @@ export const ANIMALS_MEMES_PACK: StickerPack = {
   sortOrder: 30,
   license: 'CC0',
   stickers: [
-  { id: 'butterfly', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Butterfly', emoji: '🦋', imageUrl: '/stickers/butterfly/full.webp', thumbUrl: '/stickers/butterfly/thumb.webp' },
-  { id: 'cat', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Cat', emoji: '🐱', imageUrl: '/stickers/cat/full.webp', thumbUrl: '/stickers/cat/thumb.webp' },
-  { id: 'chicken', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Chicken', emoji: '🐔', imageUrl: '/stickers/chicken/full.webp', thumbUrl: '/stickers/chicken/thumb.webp' },
-  { id: 'dango', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Dango', emoji: '🍡', imageUrl: '/stickers/dango/full.webp', thumbUrl: '/stickers/dango/thumb.webp' },
-  { id: 'dog', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Dog', emoji: '🐶', imageUrl: '/stickers/dog/full.webp', thumbUrl: '/stickers/dog/thumb.webp' },
-  { id: 'fox', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Fox', emoji: '🦊', imageUrl: '/stickers/fox/full.webp', thumbUrl: '/stickers/fox/thumb.webp' },
-  { id: 'frog', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Frog', emoji: '🐸', imageUrl: '/stickers/frog/full.webp', thumbUrl: '/stickers/frog/thumb.webp' },
-  { id: 'octopus', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Octopus', emoji: '🐙', imageUrl: '/stickers/octopus/full.webp', thumbUrl: '/stickers/octopus/thumb.webp' },
-  { id: 'panda', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Panda', emoji: '🐼', imageUrl: '/stickers/panda/full.webp', thumbUrl: '/stickers/panda/thumb.webp' },
-  { id: 'penguin-dance', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Penguin Dance', emoji: '🐧', imageUrl: '/stickers/penguin-dance/full.webp', thumbUrl: '/stickers/penguin-dance/thumb.webp' },
-  { id: 'penguin', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Penguin', emoji: '🐧', imageUrl: '/stickers/penguin/full.webp', thumbUrl: '/stickers/penguin/thumb.webp' },
-  { id: 'shrimp', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Shrimp', emoji: '🦐', imageUrl: '/stickers/shrimp/full.webp', thumbUrl: '/stickers/shrimp/thumb.webp' },
-  { id: 'sloth', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Sloth', emoji: '🦥', imageUrl: '/stickers/sloth/full.webp', thumbUrl: '/stickers/sloth/thumb.webp' },
-  { id: 't-rex', packId: 'animals-memes', packName: 'Animals & Memes', name: 'T Rex', emoji: '🦖', imageUrl: '/stickers/t-rex/full.webp', thumbUrl: '/stickers/t-rex/thumb.webp' },
-  { id: 'unicorn', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Unicorn', emoji: '🦄', imageUrl: '/stickers/unicorn/full.webp', thumbUrl: '/stickers/unicorn/thumb.webp' },
+  { id: 'butterfly', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Butterfly', emoji: '🦋', imageUrl: '/stickers/animals-memes/butterfly/full.webp', thumbUrl: '/stickers/animals-memes/butterfly/thumb.webp' },
+  { id: 'cat', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Cat', emoji: '🐱', imageUrl: '/stickers/animals-memes/cat/full.webp', thumbUrl: '/stickers/animals-memes/cat/thumb.webp' },
+  { id: 'chicken', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Chicken', emoji: '🐔', imageUrl: '/stickers/animals-memes/chicken/full.webp', thumbUrl: '/stickers/animals-memes/chicken/thumb.webp' },
+  { id: 'dango', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Dango', emoji: '🍡', imageUrl: '/stickers/animals-memes/dango/full.webp', thumbUrl: '/stickers/animals-memes/dango/thumb.webp' },
+  { id: 'dog', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Dog', emoji: '🐶', imageUrl: '/stickers/animals-memes/dog/full.webp', thumbUrl: '/stickers/animals-memes/dog/thumb.webp' },
+  { id: 'fox', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Fox', emoji: '🦊', imageUrl: '/stickers/animals-memes/fox/full.webp', thumbUrl: '/stickers/animals-memes/fox/thumb.webp' },
+  { id: 'frog', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Frog', emoji: '🐸', imageUrl: '/stickers/animals-memes/frog/full.webp', thumbUrl: '/stickers/animals-memes/frog/thumb.webp' },
+  { id: 'octopus', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Octopus', emoji: '🐙', imageUrl: '/stickers/animals-memes/octopus/full.webp', thumbUrl: '/stickers/animals-memes/octopus/thumb.webp' },
+  { id: 'panda', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Panda', emoji: '🐼', imageUrl: '/stickers/animals-memes/panda/full.webp', thumbUrl: '/stickers/animals-memes/panda/thumb.webp' },
+  { id: 'penguin-dance', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Penguin Dance', emoji: '🐧', imageUrl: '/stickers/animals-memes/penguin-dance/full.webp', thumbUrl: '/stickers/animals-memes/penguin-dance/thumb.webp' },
+  { id: 'penguin', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Penguin', emoji: '🐧', imageUrl: '/stickers/animals-memes/penguin/full.webp', thumbUrl: '/stickers/animals-memes/penguin/thumb.webp' },
+  { id: 'shrimp', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Shrimp', emoji: '🦐', imageUrl: '/stickers/animals-memes/shrimp/full.webp', thumbUrl: '/stickers/animals-memes/shrimp/thumb.webp' },
+  { id: 'sloth', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Sloth', emoji: '🦥', imageUrl: '/stickers/animals-memes/sloth/full.webp', thumbUrl: '/stickers/animals-memes/sloth/thumb.webp' },
+  { id: 't-rex', packId: 'animals-memes', packName: 'Animals & Memes', name: 'T Rex', emoji: '🦖', imageUrl: '/stickers/animals-memes/t-rex/full.webp', thumbUrl: '/stickers/animals-memes/t-rex/thumb.webp' },
+  { id: 'unicorn', packId: 'animals-memes', packName: 'Animals & Memes', name: 'Unicorn', emoji: '🦄', imageUrl: '/stickers/animals-memes/unicorn/full.webp', thumbUrl: '/stickers/animals-memes/unicorn/thumb.webp' },
   ],
 };

@@ -5,6 +5,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 
+// The player reads its labels (title/aria) from i18n; mirror the app provider
+// by returning the key, which is what every other component spec asserts on.
+vi.mock('../context/LanguageContext', () => ({
+  useLanguage: () => ({ t: (key: string) => key, language: 'en' }),
+}));
+
 const voiceNote = {
   id: 'vn-1',
   durationSeconds: 10,
@@ -14,7 +20,12 @@ const voiceNote = {
 
 function barColor(wrapper: HTMLElement, index: number): string | null {
   const bar = wrapper.querySelectorAll('[role="button"]')[index];
-  return bar ? (bar.querySelector('div') as HTMLElement)?.style.backgroundColor ?? null : null;
+  const inner = bar ? (bar.querySelector('div') as HTMLElement | null) : null;
+  if (!inner) return null;
+  // Idle bars are painted by theme tokens, played ones by the accent colour.
+  if (inner.className.includes('--nova-wave-idle-on-accent')) return 'rgba(255, 255, 255, 0.22)';
+  if (inner.className.includes('--nova-wave-idle')) return 'rgb(43, 45, 56)';
+  return inner.style.backgroundColor || null;
 }
 
 describe('AudioWaveformPlayer visual snapshot', () => {
@@ -73,14 +84,16 @@ describe('AudioWaveformPlayer visual snapshot', () => {
     render(<AudioWaveformPlayer voiceNote={voiceNote} />);
     // без проигрывания оба показателя показывают длительность
     expect(screen.getAllByText('0:10')).toHaveLength(2);
+    // The labels follow the theme, not a hardcoded white: the muted token
+    // keeps them readable in light, dark and custom-theme modes.
     const timeRow = document.querySelector('.font-mono')!;
-    expect(timeRow.className).toContain('text-white/50');
+    expect(timeRow.className).toContain('text-[var(--nova-text-muted)]');
   });
 
   it('renders speed multiplier pill', () => {
     render(<AudioWaveformPlayer voiceNote={voiceNote} showSpeedButton />);
     const pill = screen.getByText('1x').closest('button')!;
-    expect(pill.className).toContain('bg-white/10');
+    expect(pill.className).toContain('bg-[var(--nova-surface)]');
     expect(pill.className).toContain('rounded-full');
   });
 

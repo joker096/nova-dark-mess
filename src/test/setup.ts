@@ -1,9 +1,22 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
+import i18n from '../i18n';
+
+// Components now resolve control labels through i18next, so tests must get the
+// English strings (identifiers like 'Forward message'), not raw keys. English is
+// bundled synchronously; any language sticky from a previous spec is reset.
+void i18n.changeLanguage('en');
 
 // Mini Apps in tests use https://example.com; production requires an explicit
 // VITE_MINI_APP_ORIGINS allowlist (see src/lib/bots/miniAppOrigins.ts).
 (import.meta.env as Record<string, string>).VITE_MINI_APP_ORIGINS = 'https://example.com';
+
+// Anonymous relay URLs used by invitation tests; kept stable so specs can
+// assert on the standby queue URL. The dev machine may have VITE_ANON_RELAY_URL
+// set in the environment, so override it here.
+(import.meta.env as Record<string, string>).VITE_ANON_RELAY_URL = '';
+(import.meta.env as Record<string, string>).VITE_ANON_RELAY_FALLBACK_URLS =
+  'https://p01--profound-hill--97yk4ph4sg85.code.run';
 
 // Node 22 ships an undici WebSocket that tries to establish real connections.
 // ChatScreen opens a call-signaling socket on mount when a relay URL is

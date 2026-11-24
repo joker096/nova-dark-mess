@@ -151,13 +151,12 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
           <div
             key="reply"
             className="mb-2 pl-2 border-l-2 border-[var(--c-primary)] bg-[var(--bg-quote)] rounded-r-[var(--radius-media)]"
-            style={{ borderLeftWidth: '2px' } as React.CSSProperties}
           >
             <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] mb-1">
               <Reply className="w-3 h-3" aria-hidden="true" />
               <span>{replyPreview.isOwn ? 'You' : replyPreview.authorName}</span>
             </div>
-            <p className="text-[14px] text-[var(--text-primary)] truncate" style={{ color: replyPreview.isOwn ? 'var(--c-primary)' : 'inherit' } as React.CSSProperties}>
+            <p className={`text-[14px] truncate ${replyPreview.isOwn ? 'text-[var(--c-primary)]' : 'text-[var(--text-primary)]'}`}>
               {replyPreview.text}
             </p>
           </div>
@@ -169,7 +168,6 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
           <div
             key="forward"
             className="mb-2 pl-2 border-l-2 border-[var(--c-forward)] bg-[var(--bg-quote)] rounded-r-[var(--radius-media)]"
-            style={{ borderLeftWidth: '2px' } as React.CSSProperties}
           >
             <div className="flex items-center gap-1.5 text-xs text-[var(--c-forward)] font-medium mb-1">
               <Share2 className="w-3 h-3" aria-hidden="true" />
@@ -185,10 +183,10 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             key="link"
             className="mb-2 bg-[var(--bg-quote)] border border-[var(--border-divider)] rounded-[var(--radius-media)] overflow-hidden"
             onClick={() => onTextClick?.()}
-            style={{ cursor: onTextClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <div className="flex">
-              <div className="w-3" style={{ backgroundColor: 'var(--c-primary)' } as React.CSSProperties} />
+              <div className="w-3 bg-[var(--c-primary)]" />
               <div className="flex-1 p-3 min-w-0">
                 <p className="text-xs font-medium text-[var(--c-primary)] truncate">{linkPreview.siteName ?? new URL(linkPreview.url).hostname}</p>
                 <p className="text-[15px] font-semibold text-[var(--text-primary)] truncate mt-0.5">{linkPreview.title}</p>
@@ -197,7 +195,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
                 )}
               </div>
               {linkPreview.image && (
-                <div className="w-[80px] h-[80px] shrink-0 relative" style={{ flexShrink: 0 } as React.CSSProperties}>
+                <div className="w-[80px] h-[80px] shrink-0 relative">
                   <LazyMedia src={linkPreview.image} alt="" className="w-full h-full object-cover" />
                 </div>
               )}
@@ -212,7 +210,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             key="image"
             className="mb-2 rounded-[var(--radius-media)] overflow-hidden"
             onClick={() => onMediaClick?.(image)}
-            style={{ cursor: onMediaClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onMediaClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <LazyMedia
               src={image.url}
@@ -232,7 +230,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             key="video"
             className="mb-2 rounded-[var(--radius-media)] overflow-hidden relative"
             onClick={() => onMediaClick?.(video)}
-            style={{ cursor: onMediaClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onMediaClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <LazyMedia
               src={video.thumbnail ?? video.url}
@@ -261,7 +259,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             key="file"
             className="mb-2 flex items-center gap-3 p-3 bg-[var(--bg-field)] rounded-[var(--radius-media)] max-w-[280px]"
             onClick={() => onTextClick?.()}
-            style={{ cursor: onTextClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             <button
               type="button"
@@ -297,7 +295,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             key="text"
             className="text-[16px] leading-[24px] text-[var(--text-primary)] break-words"
             onClick={() => onTextClick?.()}
-            style={{ cursor: onTextClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onTextClick ? 'cursor-pointer' : 'cursor-default'}
           >
             {text}
           </p>
@@ -331,7 +329,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
             name={senderName}
             size="m"
             onClick={onAvatarClick}
-            style={{ cursor: onAvatarClick ? 'pointer' : 'default' } as React.CSSProperties}
+            className={onAvatarClick ? 'cursor-pointer' : 'cursor-default'}
           />
         )}
         {showAvatar && grouped && <div className="w-10 shrink-0" />}
@@ -340,8 +338,7 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
           {!grouped && showName && (
             <div className="flex items-baseline gap-2 mb-1">
               <span
-                className="text-[13px] font-medium leading-[20px]"
-                style={{ color: senderColor } as React.CSSProperties}
+                className={`text-[13px] font-medium leading-[20px] ${senderColor}`}
               >
                 {isOwn ? 'You' : senderName}
               </span>

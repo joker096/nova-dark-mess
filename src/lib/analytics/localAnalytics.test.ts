@@ -43,4 +43,20 @@ describe('localAnalytics', () => {
     localAnalytics.clear();
     expect(localAnalytics.getEvents().length).toBe(0);
   });
+
+  it('stores crash reports only with consent and clears them separately', () => {
+    localAnalytics.setCrashReportsConsent(false);
+    window.onerror?.('before consent', 'app.ts', 1, 1, new Error('before consent'));
+    expect(localAnalytics.getCrashes()).toHaveLength(0);
+
+    localAnalytics.setCrashReportsConsent(true);
+    window.onerror?.('after consent', 'app.ts', 2, 2, new Error('after consent'));
+    expect(localAnalytics.getCrashes()).toHaveLength(1);
+    expect(localAnalytics.getCrashes()[0].message).toBe('after consent');
+
+    localAnalytics.track({ type: 'message_send', chatId: 'katie', timestamp: 1000 });
+    localAnalytics.clearCrashes();
+    expect(localAnalytics.getCrashes()).toHaveLength(0);
+    expect(localAnalytics.getEvents().length).toBeGreaterThan(0);
+  });
 });

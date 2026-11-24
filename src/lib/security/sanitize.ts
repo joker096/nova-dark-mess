@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 const ESCAPE_MAP: Record<string, string> = {
   '&': '&amp;',
   '<': '&lt;',
@@ -22,28 +24,21 @@ interface SanitizedHtmlOptions {
   allowTags?: boolean;
 }
 
-const ALLOWED_TAGS = new Set([
-  'b',
-  'i',
-  'em',
-  'strong',
-  'u',
-  'br',
-  'p',
-  'span',
-  'a',
-  'code',
-]);
+const ALLOWED_TAGS = [
+  'b', 'i', 'em', 'strong', 'u', 'br', 'p', 'span', 'a', 'code',
+];
 
 export function sanitizeHtml(html: string, options: SanitizedHtmlOptions = {}): string {
   if (!options.allowTags) {
     return escapeHtml(html);
   }
-  return html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (tag, rawTagName: string) => {
-    const tagName = rawTagName.toLowerCase();
-    if (!ALLOWED_TAGS.has(tagName)) return escapeHtml(tag);
-    // Rebuild the tag without any attributes: no href, on*, style, etc.
-    return tag.startsWith('</') ? `</${tagName}>` : `<${tagName}>`;
+  // Use DOMPurify for robust HTML sanitization with allow-list
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR: [], // No attributes allowed for safety
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
   });
 }
 

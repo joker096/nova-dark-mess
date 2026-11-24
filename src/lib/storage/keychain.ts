@@ -198,7 +198,9 @@ class BrowserKeychain implements Keychain {
 }
 
 export function createKeychain(): Keychain {
-  return isTauriShell() ? new OsKeychain() : new BrowserKeychain(SERVICE);
+  if (isTauriShell()) return new OsKeychain();
+  if (import.meta.env.DEV) return new BrowserKeychain(SERVICE);
+  throw new KeychainUnavailableError('Secure storage unavailable: no native keychain in production web build');
 }
 
 /**

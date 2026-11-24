@@ -200,32 +200,34 @@ describe('App - desktop navigation rail', () => {
     // Let the async screen chunks mount, then open the map from Settings —
     // where the entry lives now (the rail no longer has a map button).
     await screen.findAllByTestId('chats-screen');
-    fireEvent.click(screen.getByRole('button', { name: 'settings.title' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'settings.title' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'meshMap.title' }));
 
     const mapScreens = await screen.findAllByTestId('mesh-map-screen');
     expect(mapScreens.length).toBeGreaterThan(0);
     expect(mapScreens.every((screen) => screen.getAttribute('data-live-inputs') === 'true')).toBe(true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.back' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.back' })[0]);
     expect(screen.queryByTestId('mesh-map-screen')).toBeNull();
   });
 
   it('keeps the chat list mounted under the channel list on the Channels screen', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'common.channels' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.channels' })[0]);
 
     expect(screen.getByTestId('chats-screen')).toBeInTheDocument();
-    expect(screen.getByText('Real Kyiv Life')).toBeInTheDocument();
+    // Both the desktop panel and the mobile single-pane render the channel
+    // list in jsdom, since responsive visibility is CSS-only.
+    expect(screen.getAllByText('Real Kyiv Life').length).toBeGreaterThan(0);
   });
 
   it('desktop Folders button still opens the folder modal from the Channels screen', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'common.channels' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.channels' })[0]);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'folders' })[0]);
     expect(capturedRef.current?.openFolderModal).toHaveBeenCalledTimes(1);
-  });
+});
 
   it('hides the Bots UI and ignores bot deep links when VITE_NOVA_BOTS=false', async () => {
     vi.resetModules();

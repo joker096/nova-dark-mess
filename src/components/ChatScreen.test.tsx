@@ -220,12 +220,12 @@ describe('ChatScreen - message rendering', () => {
     renderChat();
     fireEvent.click(screen.getByTestId('chat-media-m2-0'));
 
-    const viewer = screen.getByRole('dialog', { name: 'Media viewer' });
+    const viewer = screen.getByRole('dialog', { name: 'a11y.mediaViewer' });
     expect(within(viewer).getByRole('img', { name: 'Media 1' })).toBeTruthy();
-    fireEvent.click(within(viewer).getByRole('button', { name: 'Next media' }));
+    fireEvent.click(within(viewer).getByRole('button', { name: 'a11y.nextMedia' }));
     expect(within(viewer).getByRole('img', { name: 'Media 2' })).toBeTruthy();
-    fireEvent.click(within(viewer).getByRole('button', { name: 'Close media viewer' }));
-    expect(screen.queryByRole('dialog', { name: 'Media viewer' })).toBeNull();
+    fireEvent.click(within(viewer).getByRole('button', { name: 'a11y.closeMediaViewer' }));
+    expect(screen.queryByRole('dialog', { name: 'a11y.mediaViewer' })).toBeNull();
   });
 
   it('opens video attachments with native playback controls', () => {
@@ -237,7 +237,7 @@ describe('ChatScreen - message rendering', () => {
     try {
       renderChat();
       fireEvent.click(screen.getByTestId('chat-media-m2-0'));
-      expect(screen.getByRole('dialog', { name: 'Media viewer' }).querySelector('video[controls]')).toBeTruthy();
+      expect(screen.getByRole('dialog', { name: 'a11y.mediaViewer' }).querySelector('video[controls]')).toBeTruthy();
     } finally {
       imageMessage.images = originalImages;
     }
@@ -259,15 +259,15 @@ describe('ChatScreen - message rendering', () => {
   it('renders reply and forward quick actions on messages', () => {
     renderChat();
     const bubble = getBubble();
-    expect(within(bubble).getByTitle('Reply to message')).toBeTruthy();
-    expect(within(bubble).getByTitle('Forward message')).toBeTruthy();
+    expect(within(bubble).getByTitle('a11y.replyToMessage')).toBeTruthy();
+    expect(within(bubble).getByTitle('a11y.forwardMessage')).toBeTruthy();
   });
 
   it('uses a subtle highlight instead of an outer frame when replying to a message', () => {
     renderChat();
     const bubble = getBubble();
 
-    fireEvent.click(within(bubble).getByTitle('Reply to message'));
+    fireEvent.click(within(bubble).getByTitle('a11y.replyToMessage'));
 
     expect(bubble.className).not.toContain('ring-2');
     expect(bubble.className).toContain('shadow-[0_0_18px_rgba(255,78,24,0.28)]');
@@ -341,7 +341,7 @@ describe('ChatScreen - swipe-to-reply gesture', () => {
     renderChat();
     const bubble = getBubble();
 
-    fireEvent.click(within(bubble).getByTitle('Forward message'));
+    fireEvent.click(within(bubble).getByTitle('a11y.forwardMessage'));
     pointer(bubble, 'pointerDown', 100, 200);
     pointer(bubble, 'pointerMove', 220, 200);
     pointer(bubble, 'pointerUp', 220, 200);
@@ -440,7 +440,7 @@ describe('ChatScreen - long press and double tap', () => {
     renderChat();
     const bubble = getBubble();
 
-    fireEvent.click(within(bubble).getByTitle('Forward message'));
+    fireEvent.click(within(bubble).getByTitle('a11y.forwardMessage'));
     pointer(bubble, 'pointerDown', 100, 200);
     act(() => {
       vi.advanceTimersByTime(420);
@@ -469,7 +469,7 @@ describe('ChatScreen - long press and double tap', () => {
   it('ignores taps that land on interactive message controls', () => {
     renderChat();
     const bubble = getBubble();
-    const forwardButton = within(bubble).getByTitle('Forward message');
+    const forwardButton = within(bubble).getByTitle('a11y.forwardMessage');
 
     fireEvent.pointerUp(forwardButton);
     fireEvent.pointerUp(forwardButton);

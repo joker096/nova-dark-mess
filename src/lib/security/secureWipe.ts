@@ -19,6 +19,7 @@ export interface WipeableMessage {
  * Strings and arrays are cleared in place where possible; nested objects are
  * wiped recursively. This is a best-effort in-memory wipe (JS strings are
  * immutable, so callers should drop references to the original afterwards).
+ * Typed arrays and ArrayBuffers are zeroed in-place.
  */
 export function secureWipe(value: unknown): void {
   if (value === null || value === undefined) return;
@@ -43,7 +44,13 @@ export function secureWipe(value: unknown): void {
     const obj = value as Record<string, unknown>;
     for (const key of Object.keys(obj)) {
       const v = obj[key];
-      if (typeof v === 'string') {
+      if (v instanceof Uint8Array) {
+        v.fill(0);
+      } else if (v instanceof ArrayBuffer) {
+        new Uint8Array(v).fill(0);
+      } else if (ArrayBuffer.isView(v)) {
+        new Uint8Array(v.buffer, v.byteOffset, v.byteLength).fill(0);
+      } else if (typeof v === 'string') {
         obj[key] = '';
       } else if (v && typeof v === 'object') {
         secureWipe(v);

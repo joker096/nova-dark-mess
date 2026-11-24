@@ -18,6 +18,7 @@ import {
 import { ChatMessage, SharedMediaItem } from '../types/messenger';
 import { KATIE_SHARED_MEDIA, CONTACT_PROFILES } from '../data/mockMessengerData';
 import { LazyMedia } from './LazyMedia';
+import { useLanguage } from '../context/LanguageContext';
 import { createThumbnail } from '../lib/media/imageThumbnail';
 
 interface SharedMediaSectionProps {
@@ -37,6 +38,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
   onClose,
   onJumpToMessage,
 }) => {
+  const { t } = useLanguage();
   const profile = contactId ? (CONTACT_PROFILES[contactId] || CONTACT_PROFILES['katie']) : CONTACT_PROFILES['katie'];
   const displayName = contactName || profile.name;
   const [filter, setFilter] = useState<MediaFilter>('all');
@@ -291,7 +293,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)]/70 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer active:scale-95"
-              title="Return to chat"
+              title={t('a11y.returnToChat')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -486,7 +488,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                   showToast('Media link copied to clipboard');
                 }}
                 className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
-                title="Copy media URL"
+                title={t('a11y.copyMediaUrl')}
               >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
@@ -497,7 +499,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                   setLightboxIndex(null);
                 }}
                 className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
-                title="Close lightbox"
+                title={t('a11y.closeLightbox')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -513,7 +515,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
             <button
               onClick={handlePrev}
               className="absolute left-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[var(--nova-accent-color)] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
-              title="Previous media (Left Arrow)"
+              title={t('a11y.previousMediaArrow')}
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -565,7 +567,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
             <button
               onClick={handleNext}
               className="absolute right-4 z-20 w-11 h-11 rounded-full bg-black/60 hover:bg-[var(--nova-accent-color)] text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition active:scale-95 cursor-pointer shadow-xl"
-              title="Next media (Right Arrow)"
+              title={t('a11y.nextMediaArrow')}
             >
               <ChevronRight className="w-6 h-6" />
             </button>
@@ -586,7 +588,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                     }}
                     disabled={zoom.scale <= 1}
                     className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Уменьшить"
+                    title={t('a11y.zoomOut')}
                   >
                     <Minus className="w-3 h-3" />
                   </button>
@@ -597,7 +599,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                     }}
                     disabled={zoom.scale >= 4}
                     className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Увеличить"
+                    title={t('a11y.zoomIn')}
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -607,7 +609,7 @@ export const SharedMediaSection: React.FC<SharedMediaSectionProps> = ({
                       setZoomScale(1);
                     }}
                     className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition cursor-pointer"
-                    title="По размеру"
+                    title={t('a11y.resetZoom')}
                   >
                     <Maximize2 className="w-3 h-3" />
                   </button>

@@ -134,7 +134,9 @@ export class LocalAnalytics {
   /** Call from the settings UI when the user toggles crash report consent. */
   setCrashReportsConsent(consent: boolean): void {
     this.crashReportsConsent = consent;
-    this.saveCrashes();
+    // Revoking consent also drops reports captured under the previous grant.
+    if (!consent) this.clearCrashes();
+    else this.saveCrashes();
   }
 
   /** Check whether analytics tracking is currently enabled. */
@@ -203,6 +205,16 @@ export class LocalAnalytics {
 
   getCrashes(): CrashReport[] {
     return [...this.crashes];
+  }
+
+  /** Remove stored crash reports without touching analytics events. */
+  clearCrashes(): void {
+    this.crashes = [];
+    try {
+      localStorage.removeItem(CRASH_STORAGE_KEY);
+    } catch {
+      // localStorage may be unavailable in private mode
+    }
   }
 
   clear(): void {

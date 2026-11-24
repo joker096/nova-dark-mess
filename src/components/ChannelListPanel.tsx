@@ -126,22 +126,22 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
 
   return (
     <div className="flex h-full flex-col bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] select-none">
-      <div className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-4">
+      <div className="flex shrink-0 items-center gap-3 px-4 pb-1.5 pt-3">
         {onBack && (
           <button
             type="button"
             onClick={onBack}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80 text-[var(--nova-text-secondary)] hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)] transition active:scale-95"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80 text-[var(--nova-text-secondary)] hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)] transition active:scale-95"
             aria-label={t('common.back', 'Back')}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
         )}
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
-          <Radio className="h-4 w-4" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
+          <Radio className="h-3.5 w-3.5" />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-[var(--nova-text-primary)]">
+          <h1 className="truncate text-[16px] font-bold leading-tight tracking-tight text-[var(--nova-text-primary)]">
             {t('channel.channels')}
           </h1>
           <span className="shrink-0 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--nova-text-muted)]">
@@ -159,7 +159,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 setSelectedIds([]);
               }
             }}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
               selectionMode
                 ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
                 : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80 text-[var(--nova-text-secondary)] hover:bg-[var(--nova-surface-high)] hover:text-red-400'
@@ -173,7 +173,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       </div>
 
       {selectionMode ? (
-        <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4 pt-2">
+        <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-3 pt-1.5">
           <div className="mb-1 flex items-center justify-between rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2">
             <span className="text-[11px] font-semibold text-[var(--nova-text-secondary)]">
               {selectedIds.length} / {ownedChannels.length}
@@ -207,7 +207,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 key={channel.id}
                 type="button"
                 onClick={() => toggleSelected(channel.id)}
-                className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${
+                className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${
                   isSelected
                     ? 'border-red-500/50 bg-red-500/10'
                     : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'
@@ -250,14 +250,14 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
             placeholder={t('channel.searchChannels', 'Search channels...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 pl-10 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 pl-10 py-1.5 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4 pt-2">
+      <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-3 pt-1.5">
         {privateChannels.length > 0 && (
-          <section className="mb-3">
+          <section className="mb-2">
             <h2 className="mb-1.5 flex items-center gap-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)]">
               <Lock className="h-3 w-3" />
               {t('channel.privateChannels')}
@@ -266,7 +266,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
               {privateChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -283,14 +283,14 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
           </section>
         )}
         {followingChannels.length > 0 && (
-          <section className="mb-3">
+          <section className="mb-2">
             <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)] mb-1.5">{t('channel.following')}</h2>
             <div className="space-y-1">
               {followingChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -311,14 +311,14 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
           </section>
         )}
         {recommendedChannels.length > 0 && (
-          <section className="mb-3">
+          <section className="mb-2">
             <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)] mb-1.5">{t('channel.recommended')}</h2>
             <div className="space-y-1">
               {recommendedChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -364,7 +364,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
         </>
       )}
 
-      <div className="shrink-0 border-t border-[var(--nova-border-color)] p-3">
+      <div className="shrink-0 border-t border-[var(--nova-border-color)] p-2.5">
         {selectionMode ? (
           confirmingDelete ? (
             <div className="space-y-2">
@@ -394,7 +394,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
                 disabled={selectedIds.length === 0}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-red-500/90 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500/90 py-2 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {t('common.delete')} ({selectedIds.length})
@@ -402,7 +402,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
               <button
                 type="button"
                 onClick={exitSelection}
-                className="flex-1 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2.5 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
+                className="flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
               >
                 {t('common.cancel')}
               </button>
@@ -412,7 +412,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/5 py-2.5 text-xs font-semibold text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/10 active:scale-[0.99]"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/5 py-2 text-xs font-semibold text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/10 active:scale-[0.99]"
           >
             <Plus className="h-3.5 w-3.5" />
             {t('channel.createChannel')}

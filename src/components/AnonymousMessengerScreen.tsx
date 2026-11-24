@@ -6,6 +6,7 @@ import { sanitizeDownloadMime } from '../lib/security/safeUrl';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
 import { dbInstance } from '../lib/storage/db';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { LazyMedia } from './LazyMedia';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { AnonCallSession, type AnonCallSnapshot } from '../lib/anon/callSession';
@@ -28,7 +29,8 @@ import {
   type LocalInbox,
 } from '../lib/anon/pairing';
 import { decodeInvite, encodeInvite, isAllowedRelayUrl } from '../lib/anon/session';
-import { buildContactInviteUrl, parseDeepLink, parseDeepLinkFromHash } from '../lib/network/deepLinks';
+import { buildContactInviteUrl, buildNativeContactInviteUrl, parseDeepLink, parseDeepLinkFromHash } from '../lib/network/deepLinks';
+import { isTauriRuntime } from '../lib/network/tauriDeepLinks';
 import {
   blockSender,
   createAbuseReportSubmission,
@@ -404,7 +406,8 @@ export const AnonymousMessengerScreen: React.FC<{
         saveSettings: 'Сохранить подключение',
       useDefaultRelay: 'Сбросить на локальный режим',
       createInvite: 'Создать ссылку и QR-код',
-      inviteLink: 'Ваша ссылка-приглашение',
+      inviteLink: 'Ваша ссылка-приглашение (для приложения)',
+      inviteLinkWeb: 'Ссылка для браузера',
       showQr: 'QR-код для добавления',
       importInvite: 'Вставьте ссылку или код приглашения',
       acceptInvite: 'Добавить контакт',
@@ -413,6 +416,7 @@ export const AnonymousMessengerScreen: React.FC<{
       emptyContacts: 'Контактов пока нет. Создайте ссылку или примите приглашение.',
         messagePlaceholder: 'Сообщение…',
       copyInvite: 'Копировать ссылку',
+      copyInviteWeb: 'Копировать веб-ссылку',
       shareInvite: 'Поделиться ссылкой',
         loading: 'Загрузка зашифрованного хранилища…',
       saved: 'Контакт добавлен.',
@@ -504,7 +508,8 @@ export const AnonymousMessengerScreen: React.FC<{
         saveSettings: 'Save connection',
         useDefaultRelay: 'Reset to local mode',
         createInvite: 'Create link and QR code',
-        inviteLink: 'Your invitation link',
+        inviteLink: 'Your invitation link (for app)',
+        inviteLinkWeb: 'Web link (for browser)',
         showQr: 'Scan this QR code to add me',
         importInvite: 'Paste an invitation link or code',
         acceptInvite: 'Add contact',
@@ -513,6 +518,7 @@ export const AnonymousMessengerScreen: React.FC<{
         emptyContacts: 'No contacts yet. Create a link or accept an invitation.',
         messagePlaceholder: 'Message…',
         copyInvite: 'Copy link',
+        copyInviteWeb: 'Copy web link',
         shareInvite: 'Share link',
         loading: 'Loading encrypted storage…',
         saved: 'Contact added.',
@@ -572,6 +578,7 @@ export const AnonymousMessengerScreen: React.FC<{
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [localContactsOpen, setLocalContactsOpen] = useState(false);
   const [contactPendingDeleteId, setContactPendingDeleteId] = useState<string | null>(null);
+  const incomingCallRef = useFocusTrap<HTMLDivElement>(anonCall?.phase === 'incoming', () => setAnonCall(null));
   const [inviteClock, setInviteClock] = useState(() => Date.now());
   const advancedSettingsRef = useRef<HTMLDetailsElement>(null);
   const advancedSummaryRef = useRef<HTMLElement>(null);
@@ -702,6 +709,7 @@ export const AnonymousMessengerScreen: React.FC<{
   const selectedContact = state.contacts.find((entry) => entry.id === selectedContactId) ?? null;
   const contactPendingDelete =
     state.contacts.find((entry) => entry.id === contactPendingDeleteId) ?? null;
+  const deleteContactRef = useFocusTrap<HTMLDivElement>(!!contactPendingDelete, () => setContactPendingDeleteId(null));
   // Blocks follow the contact's identity key, which survives a queue rotation.
   const selectedContactKey = selectedContact
     ? contactIdentity(selectedContact.contact.peerInvite)
@@ -709,6 +717,9 @@ export const AnonymousMessengerScreen: React.FC<{
   const selectedContactBlocked = Boolean(selectedContactKey && isBlocked(selectedContactKey));
   const currentInvite = inviteCodeForInbox(state.pendingInbox);
   const inviteLink = currentInvite
+    ? buildNativeContactInviteUrl(currentInvite)
+    : '';
+  const webInviteLink = currentInvite
     ? buildContactInviteUrl(currentInvite, publicAppUrl())
     : '';
   const isConfigured = Boolean(configuredSettings && transport);
@@ -1949,6 +1960,16 @@ export const AnonymousMessengerScreen: React.FC<{
     }
   };
 
+  const copyWebInvite = async () => {
+    if (!webInviteLink) return;
+    try {
+      await navigator.clipboard.writeText(webInviteLink);
+      setStatus(labels.copyInviteWeb);
+    } catch {
+      setError(labels.copyFailed);
+    }
+  };
+
   const shareInvite = async () => {
     if (!inviteLink) return;
     if (!navigator.share) {
@@ -2165,6 +2186,17 @@ export const AnonymousMessengerScreen: React.FC<{
                     className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-2 font-mono text-xs text-white/80"
                   />
                 </label>
+                {webInviteLink && (
+                  <label className="block space-y-1 text-xs text-white/60">
+                    <span>{labels.inviteLinkWeb}</span>
+                    <textarea
+                      readOnly
+                      value={webInviteLink}
+                      rows={2}
+                      className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-2 font-mono text-xs text-white/80"
+                    />
+                  </label>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -2181,6 +2213,16 @@ export const AnonymousMessengerScreen: React.FC<{
                     <Copy className="h-4 w-4" />
                     {labels.copyInvite}
                   </button>
+                  {webInviteLink && (
+                    <button
+                      type="button"
+                      onClick={() => void copyWebInvite()}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
+                    >
+                      <Copy className="h-4 w-4" />
+                      {labels.copyInviteWeb}
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-white p-3">
                 {inviteQr ? (
@@ -2541,6 +2583,7 @@ export const AnonymousMessengerScreen: React.FC<{
 
       {anonCall?.phase === 'incoming' && (
         <div
+          ref={incomingCallRef}
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
           role="dialog"
           aria-modal="true"
@@ -2605,6 +2648,7 @@ export const AnonymousMessengerScreen: React.FC<{
 
       {contactPendingDelete && (
         <div
+          ref={deleteContactRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"

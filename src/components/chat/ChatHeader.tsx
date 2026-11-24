@@ -261,7 +261,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             <button
               onClick={onBack}
               className="w-9 h-9 rounded-full bg-[var(--nova-surface-raised)]/80 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-95 transition cursor-pointer lg:hidden shrink-0"
-              aria-label="Back to chats"
+              aria-label={t('a11y.backToChats')}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>

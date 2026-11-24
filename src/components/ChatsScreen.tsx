@@ -27,6 +27,8 @@ import {
   VolumeX,
   Check,
   BellOff,
+  ChevronRight,
+  GripVertical,
 } from 'lucide-react';
 import { getAllDrafts, subscribeDraftChanges } from '../lib/messaging/drafts';
 import { readFabSide, saveFabSide, FAB_SIDE_EVENT, isFabSide, type FabSide } from '../lib/ui/appearance';
@@ -1200,6 +1202,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                               </div>
                             </div>
                           </div>
+                          <ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] group-hover:text-[var(--nova-accent-color)] transition-colors shrink-0 ml-2" aria-hidden="true" />
                         </div>
                       </div>
                       );
@@ -1430,6 +1433,22 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                   >
                   Manage Folder Chats
                 </button>
+                <div className="mt-4 flex flex-col gap-2 w-full max-w-xs">
+                  <button
+                    onClick={() => setNewChatModalOpen(true)}
+                    className="px-4 py-2 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3 mr-1.5" />
+                    Create New Chat
+                  </button>
+                  <button
+                    onClick={() => { triggerHaptic('light'); onOpenAnonymous?.(); }}
+                    className="px-4 py-2 rounded-full border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                  >
+                    <Users className="w-3 h-3 mr-1.5" />
+                    Invite Contact
+                  </button>
+                </div>
               </div>
             ) : (
               categoryChats.map((chat) => {
@@ -1506,7 +1525,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     role="button"
                     aria-label={`Chat with ${chat.name}, ${chat.time}`}
                     tabIndex={0}
-                    className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-center gap-3.5 shadow-sm ${
+                    className={`group relative border rounded-[22px] p-4 transition-all duration-150 cursor-pointer flex items-center gap-4 shadow-sm ${
                       isSelected
                         ? 'bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
                         : 'bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]'
@@ -1515,13 +1534,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                   {/* Avatar Slot */}
                   <div className="relative shrink-0">
                     {chat.isChannel ? (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
                         <svg className="w-6 h-6 fill-[var(--nova-text-primary)]" viewBox="0 0 24 24">
                           <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
                         </svg>
                       </div>
                     ) : chat.groupAvatars ? (
-                      <div className="w-12 h-12 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
                         <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
                           <LazyMedia src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
                         </div>
@@ -1533,7 +1552,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         </div>
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
                         <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
                         <div className="w-full h-full bg-[var(--nova-surface-high)] flex items-center justify-center text-xs font-bold text-[var(--nova-text-secondary)]">
                           {chat.name.slice(0, 2).toUpperCase()}
@@ -1685,6 +1704,12 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                         ))}
                       </div>
                     )}
+                  </div>
+                </div>
+                {/* Swipe Actions Hint - shows on hover/focus */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none" aria-hidden="true">
+                  <div className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] flex items-center justify-center">
+                    <GripVertical className="w-3 h-3 text-[var(--nova-text-muted)]" />
                   </div>
                 </div>
                   </div>

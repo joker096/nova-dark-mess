@@ -83,7 +83,7 @@ const encoder = new TextEncoder();
 const X3DH_INFO = encoder.encode('NovaX3DH-v2');
 const ROOT_INFO = encoder.encode('NovaRatchetRoot-v2');
 const X3DH_PREFIX = new Uint8Array(32).fill(0xff);
-const MAX_SKIPPED_MESSAGES = 1000;
+const MAX_SKIPPED_MESSAGES = 100;
 
 function concatBytes(...arrays: Uint8Array[]): Uint8Array {
   const total = arrays.reduce((sum, arr) => sum + arr.length, 0);

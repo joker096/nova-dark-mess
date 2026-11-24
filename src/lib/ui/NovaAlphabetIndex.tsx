@@ -103,7 +103,7 @@ export const NovaAlphabetIndex = forwardRef<HTMLDivElement, NovaAlphabetIndexPro
                 : 'text-[var(--text-secondary)] hover:text-[var(--c-primary)] hover:bg-[var(--c-primary)]/10'
             }`}
             aria-label={letter === '#' ? 'Numbers and symbols' : letter}
-            style={{ minWidth: 16 } as React.CSSProperties}
+            className="min-w-4"
           >
             {letter}
           </button>

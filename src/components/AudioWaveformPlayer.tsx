@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Play, Pause } from 'lucide-react';
 import { VoiceNoteData } from '../types/messenger';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AudioWaveformPlayerProps {
   voiceNote: VoiceNoteData;
@@ -21,6 +22,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
   accentColor = '#ff4e18',
   showSpeedButton = true,
 }) => {
+  const { t } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(autoPlayOnMount);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<1 | 1.5 | 2>(1);
@@ -253,7 +255,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         {/* Interactive Waveform Bar Visualizer */}
         <div
           className="flex items-center gap-[2px] h-7 cursor-pointer group py-1"
-          title="Click to seek"
+          title={t('a11y.clickToSeek')}
         >
           {waveform.map((height, i) => {
             const isPlayed = i <= activeBarIndex;
@@ -277,10 +279,17 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
                 <div
                   style={{
                     height: `${normalizedHeight}%`,
-                    backgroundColor: isPlayed ? accentColor : isMe ? 'rgba(255,255,255,0.22)' : '#2b2d38',
+                    // Keep the bar transparent so the class below decides the
+                    // colour: an inline backgroundColor would override the
+                    // token-based palette (light/dark/custom themes).
+                    backgroundColor: isPlayed ? accentColor : undefined,
                   }}
                   className={`w-full rounded-full transition-colors duration-100 ${
-                    isPlayed ? 'shadow-[0_0_6px_rgba(255,78,24,0.4)]' : ''
+                    isPlayed
+                      ? 'shadow-[0_0_6px_rgba(255,78,24,0.4)]'
+                      : isMe
+                        ? 'bg-[var(--nova-wave-idle-on-accent,rgba(255,255,255,0.22))]'
+                        : 'bg-[var(--nova-wave-idle,#2b2d38)]'
                   }`}
                 />
               </div>
@@ -306,7 +315,7 @@ export const AudioWaveformPlayer: React.FC<AudioWaveformPlayerProps> = ({
         <button
           onClick={cycleSpeed}
           className="min-w-6 min-h-6 px-1.5 py-0.5 rounded-full bg-[var(--nova-surface)] hover:bg-[var(--nova-surface-high)] text-[10px] font-semibold text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
-          title="Playback speed"
+          title={t('a11y.playbackSpeed')}
         >
           {playbackSpeed}x
         </button>

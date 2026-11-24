@@ -191,6 +191,13 @@ export function buildContactInviteUrl(
   return url.toString();
 }
 
+export function buildNativeContactInviteUrl(code: string): string {
+  if (!CONTACT_INVITE_PATTERN.test(code)) {
+    throw new Error('Contact invite code is invalid.');
+  }
+  return buildDeepLink({ type: 'contact-invite', code });
+}
+
 /**
  * Extracts a deep link from a page location, e.g. `#nova://chat/katie`.
  * Returns null when the hash holds no valid link.

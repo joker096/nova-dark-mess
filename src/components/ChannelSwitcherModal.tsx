@@ -153,7 +153,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                   onSelect(channel.id);
                   onClose();
                 }}
-                className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl border p-2.5 text-left transition ${
+                className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border p-2 text-left transition ${
                   selecting && isSelected
                     ? 'border-red-500/50 bg-red-500/10'
                     : isActive && !selecting
@@ -216,10 +216,10 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                       setConfirmId(channel.id);
                     }
                   }}
-                  className={`flex h-9 shrink-0 items-center justify-center rounded-full transition ${
+                  className={`flex h-8 shrink-0 items-center justify-center rounded-full transition ${
                     confirmId === channel.id
                       ? 'w-14 border border-red-500/40 bg-red-500/15 px-1 text-[9px] font-bold text-red-300'
-                      : 'w-9 border border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-muted)] hover:text-red-400'
+                      : 'w-8 border border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-muted)] hover:text-red-400'
                   }`}
                   aria-label={t('channel.deleteChannel')}
                   title={
@@ -264,7 +264,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                 type="button"
                 onClick={() => setConfirmingBulk(true)}
                 disabled={selectedIds.length === 0}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-red-500/90 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500/90 py-2 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {t('common.delete')} ({selectedIds.length})
@@ -272,7 +272,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
               <button
                 type="button"
                 onClick={exitSelection}
-                className="flex-1 rounded-2xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2.5 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
+                className="flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] py-2 text-xs font-semibold text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-surface-high)] active:scale-[0.99]"
               >
                 {t('common.cancel')}
               </button>
@@ -282,7 +282,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
           <button
             type="button"
             onClick={onCreateRequest}
-            className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/5 py-2.5 text-xs font-semibold text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/10 active:scale-[0.99]"
+            className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/5 py-2 text-xs font-semibold text-[var(--nova-accent-color)] transition hover:bg-[var(--nova-accent-color)]/10 active:scale-[0.99]"
           >
             <Plus className="h-3.5 w-3.5" />
             {t('channel.createChannel')}
