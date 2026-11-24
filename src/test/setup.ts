@@ -7,6 +7,19 @@ import i18n from '../i18n';
 // bundled synchronously; any language sticky from a previous spec is reset.
 void i18n.changeLanguage('en');
 
+// Mock useSecurity for components that require SecurityProvider (e.g., AccountSwitcher)
+vi.mock('../hooks/useSecurity', () => ({
+  useSecurity: () => ({
+    isLocked: false,
+    pinHash: null,
+    unlock: vi.fn(),
+    isDemoPeer: () => false,
+    encryptAndSendMessage: vi.fn(),
+    checkPeerKey: vi.fn(),
+    identity: { fingerprint: 'test-fingerprint' },
+  }),
+}));
+
 // Mini Apps in tests use https://example.com; production requires an explicit
 // VITE_MINI_APP_ORIGINS allowlist (see src/lib/bots/miniAppOrigins.ts).
 (import.meta.env as Record<string, string>).VITE_MINI_APP_ORIGINS = 'https://example.com';
