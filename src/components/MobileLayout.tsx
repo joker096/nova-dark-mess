@@ -35,8 +35,8 @@ import {
   restoreHiddenAd,
   unblockAdvertiser,
   type LocalAdPreferences,
-} from '../lib/ads/localAds'.
-import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds'.
+} from '../lib/ads/localAds';
+import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import {
   getNotificationPrefs,
   setNotificationPref,
@@ -49,47 +49,42 @@ import {
   type NotificationPrefs,
   type NotificationLevel,
   type MuteDurationKey,
-} from '../lib/notifications/notificationPrefs'.
-import { LanguageSwitcher } from './LanguageSwitcher'.
-import { useFocusTrap } from '../lib/ui/useFocusTrap'.
-import { CryptoCheckoutModal } from './CryptoCheckoutModal'.
-import { LegalModal } from './LegalModal'.
-import { SanctionScreen } from './SanctionScreen'.
-import { AccountSwitcher } from './AccountSwitcher'.
-import { BottomNav } from './BottomNav'.
-import { ChatsScreen } from './ChatsScreen'.
-import { AnonymousMessengerScreen } from './AnonymousMessengerScreen'.
-import { ChannelListPanel } from './ChannelListPanel'.
-import { ChannelScreen } from './ChannelScreen'.
-import { ProfileScreen } from './ProfileScreen'.
-import { SettingsModal } from './SettingsModal'.
-import { CryptoCheckoutModal as CryptoCheckoutModal2 } from './CryptoCheckoutModal'.
-import { SettingsModalTabbed } from './SettingsModalTabbed'.
-import { ProfileScreen } from './ProfileScreen'.
-import { NovaIconButton } from '../lib/ui/NovaIconButton'.
-import { LazyMedia } from './LazyMedia'.
-import { JoinRequestNotice, type JoinRequestNoticeData } from './JoinRequestNotice'.
-import { PinLockScreen } from './PinLockScreen'.
-import { SanctionGate } from './SanctionGate'.
-import { EncryptedBotStorage, NOVA_BOTS } from '../lib/bots/runtime'.
-import { dbInstance } from '../lib/storage/db'.
-import { botSession } from '../lib/bots/session'.
-import { ThreadSidebar } from './ThreadSidebar'.
-import { SettingsModal } from './SettingsModal'.
-import { SettingsModalTabbed } from './SettingsModalTabbed'.
+} from '../lib/notifications/notificationPrefs';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
+import { CryptoCheckoutModal } from './CryptoCheckoutModal';
+import { LegalModal } from './LegalModal';
+import { SanctionScreen } from './SanctionScreen';
+import { AccountSwitcher } from './AccountSwitcher';
+import { BottomNav } from './BottomNav';
+import { ChatsScreen } from './ChatsScreen';
+import { AnonymousMessengerScreen } from './AnonymousMessengerScreen';
+import { ChannelListPanel } from './ChannelListPanel';
+import { ChannelScreen } from './ChannelScreen';
+import { ProfileScreen } from './ProfileScreen';
+import { SettingsModal } from './SettingsModal';
+import { SettingsModalTabbed } from './SettingsModalTabbed';
+import { NovaIconButton } from '../lib/ui/NovaIconButton';
+import { LazyMedia } from './LazyMedia';
+import { JoinRequestNotice, type JoinRequestNoticeData } from './JoinRequestNotice';
+import { PinLockScreen } from './PinLockScreen';
+import { SanctionGate } from './SanctionGate';
+import { EncryptedBotStorage, NOVA_BOTS } from '../lib/bots/runtime';
+import { dbInstance } from '../lib/storage/db';
+import { botSession } from '../lib/bots/session';
+import { ThreadSidebar } from './ThreadSidebar';
 
-import type { BotSession } from '../lib/bots/session'.
-import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest'.
-import { novafatherManifest } from '../../examples/bots/novafather/manifest'.
-import { echoBotManifest } from '../../examples/bots/echo/manifest'.
+import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest';
+import { novafatherManifest } from '../../examples/bots/novafather/manifest';
+import { echoBotManifest } from '../../examples/bots/echo/manifest';
+
+import type { BotSession } from '../lib/bots/session';
 
 const AVAILABLE_BUILTIN_BOTS: BotManifest[] = [
   movieCatalogBotManifest,
   novafatherManifest,
   echoBotManifest,
 ];
-
-type SettingsTab = 'general' | 'notifications' | 'privacy' | 'data' | 'advanced' | 'about';
 
 interface MobileLayoutProps {
   currentScreen: string;

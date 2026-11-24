@@ -29,6 +29,7 @@
   --nova-accent-gradient-to: color-mix(in srgb, var(--nova-accent-color) 72%, #000);
   --nova-danger-gradient-from: #dc2626;
   --nova-danger-gradient-to: #ff7a45;
+  --nova-danger: #f87171;
 }
 
 /* The Android shell pads the native content view with WindowInsets, so the
@@ -70,6 +71,7 @@ html[data-theme='light'] {
   --nova-overlay-medium: rgba(15, 23, 42, 0.06);
   --nova-overlay-strong: rgba(15, 23, 42, 0.08);
   --nova-border-subtle: rgba(15, 23, 42, 0.08);
+  --nova-danger: #dc2626;
 }
 
 html[data-theme='dark'] {

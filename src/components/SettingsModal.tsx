@@ -58,6 +58,17 @@ import { LegalModal } from './LegalModal';
 import { SanctionScreen } from './SanctionScreen';
 import { AccountSwitcher } from './AccountSwitcher';
 import {
+  SettingsTabs,
+  SettingsTile,
+  IconCycleButton,
+  IconToggle,
+  IconSegmented,
+  InfoHint,
+  SettingsSheet,
+  HoldToConfirm,
+  SettingsSection,
+} from './settings/settingsPrimitives';
+import {
   ACCENT_COLORS,
   APP_THEME_KEY,
   FONT_SIZE_KEY,
@@ -396,6 +407,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+
+  // New tabbed settings state
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'privacy' | 'security' | 'data' | 'more'>('general');
+  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
+  const [melodySheetOpen, setMelodySheetOpen] = useState(false);
+  const [premiumSheetOpen, setPremiumSheetOpen] = useState(false);
+  const [privacyPresetSheetOpen, setPrivacyPresetSheetOpen] = useState(false);
+  const [whoSeesSheetOpen, setWhoSeesSheetOpen] = useState<string | null>(null);
+  const [relaysSheetOpen, setRelaysSheetOpen] = useState(false);
+  const [turnSheetOpen, setTurnSheetOpen] = useState(false);
+  const [torSheetOpen, setTorSheetOpen] = useState(false);
+  const [presenceSheetOpen, setPresenceSheetOpen] = useState(false);
+  const [analyticsSheetOpen, setAnalyticsSheetOpen] = useState(false);
+  const [adsSheetOpen, setAdsSheetOpen] = useState(false);
+  const [driveSheetOpen, setDriveSheetOpen] = useState(false);
+  const [pinSheetOpen, setPinSheetOpen] = useState(false);
+  const [twoFactorSheetOpen, setTwoFactorSheetOpen] = useState(false);
+  const [recoveryGateOpen, setRecoveryGateOpen] = useState(false);
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
+  const [storageExpanded, setStorageExpanded] = useState(false);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -1243,6 +1275,163 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     saveFabSide(side);
   };
 
+  // ---- New tabbed settings helpers ----
+
+  // Privacy preset derivation
+  const derivePrivacyPreset = (prefs: PrivacyPrefs, social: SocialPrivacySettings): 'basic' | 'enhanced' | 'maximum' | 'custom' => {
+    const isBasic = !prefs.metadataMinimization && !prefs.presenceSharing && prefs.webrtcRelayOnly === false &&
+      social.lastSeen === 'contacts' && social.profilePhoto === 'contacts' && social.calls === 'contacts' &&
+      social.groupsAndChannels === 'contacts' && social.phoneNumber === 'contacts' &&
+      !prefs.torEnabled && prefs.relayEndpoints.length === 0 && prefs.turnServers.length === 0;
+    const isEnhanced = prefs.metadataMinimization && prefs.presenceSharing === false && prefs.webrtcRelayOnly === true &&
+      social.lastSeen === 'contacts' && social.profilePhoto === 'contacts' && social.calls === 'contacts' &&
+      social.groupsAndChannels === 'contacts' && social.phoneNumber === 'nobody' &&
+      !prefs.torEnabled && prefs.relayEndpoints.length > 0;
+    const isMaximum = prefs.metadataMinimization && prefs.presenceSharing === false && prefs.webrtcRelayOnly === true &&
+      social.lastSeen === 'nobody' && social.profilePhoto === 'nobody' && social.calls === 'nobody' &&
+      social.groupsAndChannels === 'contacts' && social.phoneNumber === 'nobody' &&
+      prefs.torEnabled && prefs.relayEndpoints.length > 0 && prefs.turnServers.length > 0;
+    if (isBasic) return 'basic';
+    if (isEnhanced) return 'enhanced';
+    if (isMaximum) return 'maximum';
+    return 'custom';
+  };
+
+  const applyPrivacyPreset = (name: 'basic' | 'enhanced' | 'maximum') => {
+    if (name === 'basic') {
+      const nextPrefs = { ...privacyPrefs, metadataMinimization: false, webrtcRelayOnly: false, torEnabled: false, relayEndpoints: [], turnServers: [] };
+      setPrivacyPrefs(nextPrefs);
+      savePrivacyPrefs(nextPrefs);
+      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'contacts' as PrivacyScope };
+      setSocialPrivacyState(nextSocial);
+      setSocialPrivacy('lastSeen', 'contacts');
+      setSocialPrivacy('profilePhoto', 'contacts');
+      setSocialPrivacy('calls', 'contacts');
+      setSocialPrivacy('groupsAndChannels', 'contacts');
+      setSocialPrivacy('phoneNumber', 'contacts');
+    } else if (name === 'enhanced') {
+      const nextPrefs = { ...privacyPrefs, metadataMinimization: true, webrtcRelayOnly: true, torEnabled: false, relayEndpoints: [{ id: 'relay_default', url: 'https://relay.example.com', operator: 'Example' }], turnServers: [] };
+      setPrivacyPrefs(nextPrefs);
+      savePrivacyPrefs(nextPrefs);
+      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope };
+      setSocialPrivacyState(nextSocial);
+      setSocialPrivacy('lastSeen', 'contacts');
+      setSocialPrivacy('profilePhoto', 'contacts');
+      setSocialPrivacy('calls', 'contacts');
+      setSocialPrivacy('groupsAndChannels', 'contacts');
+      setSocialPrivacy('phoneNumber', 'nobody');
+    } else if (name === 'maximum') {
+      const nextPrefs = { ...privacyPrefs, metadataMinimization: true, webrtcRelayOnly: true, torEnabled: true, relayEndpoints: [{ id: 'relay_default', url: 'https://relay.example.com', operator: 'Example' }], turnServers: [{ urls: 'turn:relay.example.com' }] };
+      setPrivacyPrefs(nextPrefs);
+      savePrivacyPrefs(nextPrefs);
+      const nextSocial = { lastSeen: 'nobody' as PrivacyScope, profilePhoto: 'nobody' as PrivacyScope, calls: 'nobody' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope };
+      setSocialPrivacyState(nextSocial);
+      setSocialPrivacy('lastSeen', 'nobody');
+      setSocialPrivacy('profilePhoto', 'nobody');
+      setSocialPrivacy('calls', 'nobody');
+      setSocialPrivacy('groupsAndChannels', 'contacts');
+      setSocialPrivacy('phoneNumber', 'nobody');
+    }
+    setPrivacyPresetSheetOpen(false);
+    showToast(t('settings.presetApplied', { name: t(`settings.preset${name.charAt(0).toUpperCase() + name.slice(1)}`) }));
+  };
+
+  // Notification helpers
+  const setAllNotificationLevels = (level: NotificationLevel) => {
+    setNotificationPref('privateChats', level);
+    setNotificationPref('groups', level);
+    setNotificationPref('channels', level);
+    setNotificationPref('bots', level);
+    setNotificationPrefsState(getNotificationPrefs());
+    showToast(t('settings.notificationsApplyAll', { level: t(`settings.notifications${level.charAt(0).toUpperCase() + level.slice(1)}`) }));
+  };
+
+  const cycleNotificationLevel = (current: NotificationLevel): NotificationLevel => {
+    if (current === 'all') return 'mentions';
+    if (current === 'mentions') return 'none';
+    return 'all';
+  };
+
+  const cycleSoundMode = () => {
+    const current = prefs.notificationSound ? (prefs.vibration ? 'silent' : 'sound') : 'sound';
+    if (current === 'sound') {
+      updatePref('notificationSound', true);
+      updatePref('vibration', false);
+    } else if (current === 'vibration') {
+      updatePref('notificationSound', false);
+      updatePref('vibration', true);
+    } else {
+      updatePref('notificationSound', false);
+      updatePref('vibration', false);
+    }
+  };
+
+  const getSoundModeLabel = () => {
+    if (!prefs.notificationSound && !prefs.vibration) return t('settings.soundModeSilent');
+    if (!prefs.notificationSound && prefs.vibration) return t('settings.soundModeVibration');
+    return t('settings.soundModeSound');
+  };
+
+  const cycleTheme = () => {
+    if (appTheme === 'light') setAppTheme('dark');
+    else if (appTheme === 'dark') setAppTheme('system');
+    else setAppTheme('light');
+  };
+
+  const cycleFontSize = () => {
+    if (prefs.fontSize === 'small') updatePref('fontSize', 'medium');
+    else if (prefs.fontSize === 'medium') updatePref('fontSize', 'large');
+    else updatePref('fontSize', 'small');
+  };
+
+  const cycleFabSide = () => {
+    updateFabSide(fabSide === 'right' ? 'left' : 'right');
+  };
+
+  // Push notification handler
+  const handlePushToggle = async () => {
+    const { registerForPush, unregisterFromPush, getPushToken } = await import('../lib/notifications/push');
+    if (prefs.pushEnabled) {
+      // Currently enabled, disable it
+      await unregisterFromPush();
+      updatePref('pushEnabled', false);
+      setPushMsg(t('settings.pushDisabled'));
+    } else {
+      // Currently disabled, enable it
+      updatePref('pushEnabled', true);
+      try {
+        const token = await registerForPush();
+        if (token) {
+          setPushMsg(t('settings.pushRegistered', { token: token.slice(0, 8) + '…' }));
+        } else {
+          setPushMsg(t('settings.pushPermissionDenied'));
+          updatePref('pushEnabled', false); // Revert if permission denied
+        }
+      } catch {
+        setPushMsg(t('settings.pushError'));
+        updatePref('pushEnabled', false);
+      }
+    }
+    setTimeout(() => setPushMsg(null), 3000);
+  };
+
+  // Handle melody selection
+  const selectMelody = (id: SoundId) => {
+    saveSoundId(id);
+    setSoundId(id);
+    if (id !== 'silent') playSound('notification', id);
+    setMelodySheetOpen(false);
+  };
+
+  // Muted/Priority contacts - just show counts, tap opens existing screens
+  const openMutedContacts = () => {
+    showToast(t('settings.mutedContactsCount', { count: getMutedContacts().length }));
+  };
+  const openPriorityContacts = () => {
+    showToast(t('settings.priorityContactsCount', { count: getPriorityContacts().length }));
+  };
+
+  // Analytics counts
   const analyticsCounts = localAnalytics.getEventCountsByType();
   const analyticsMessageCount =
     (analyticsCounts.message_send ?? 0) +

@@ -60,8 +60,10 @@ beforeAll(async () => {
   const RELAY_DIR = path.join(TMP_ROOT, 'relay');
   const ANON_REPORTS_DIR = path.join(TMP_ROOT, 'anon-reports');
   const ANON_STATE_DB_PATH = path.join(TMP_ROOT, 'anon-state.sqlite');
-  // Use the actual PaymentO HMAC secret from .env (32 hex chars = 16 bytes)
-  PAYMENTO_SECRET = '31FDA1C365877F2784882F721B8275C2';
+  // Test-only HMAC secret. Never reuse a real `.env` value here: a fixture
+  // secret that matches production turns every forged-IPN test into a valid
+  // forged IPN against the real payment provider.
+  PAYMENTO_SECRET = 'test_only_paymento_secret_do_not_reuse';
   // Server derives PREMIUM_LICENSE_SECRET from PAYMENTO_SECRET: sha256("nova-premium-license:" + PAYMENTO_SECRET)
   DERIVED_LICENSE_SECRET = crypto.createHash('sha256').update(`nova-premium-license:${PAYMENTO_SECRET}`).digest('hex');
   PREMIUM_LICENSE_SECRET = DERIVED_LICENSE_SECRET;
@@ -708,8 +710,14 @@ describe('server: Premium checkout flow', () => {
 });
 
 describe('server: License activation', () => {
-  function makeLicense(device: string, expiresAt: number, orderId = 'ord_test'): string {
-    const payloadObj = { v: 1, d: device, p: 'premium', o: orderId, exp: expiresAt };
+  function makeLicense(
+    device: string,
+    expiresAt: number,
+    orderId = 'ord_test',
+    paymentId: string | null = 'pay_test_001',
+  ): string {
+    const payloadObj: Record<string, unknown> = { v: 1, d: device, p: 'premium', o: orderId, exp: expiresAt };
+    if (paymentId) payloadObj.t = paymentId;
     const payload = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
     const sig = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(payload).digest('base64url');
     return `MA1.${payload}.${sig}`;
@@ -720,11 +728,33 @@ describe('server: License activation', () => {
     const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
     const license = makeLicense(device, expiresAt);
 
-    const res = await call('POST', '/api/premium/activate', { license, device });
+    const res = await call('POST', '/api/premium/activate', { license, device, paymentId: 'pay_test_001' });
 
     expect(res.status).toBe(200);
     expect(res.json.ok).toBe(true);
     expect(res.json.expiresAt).toBe(expiresAt);
+  });
+
+  it('rejects a valid license without the provider payment id', async () => {
+    const device = 'dev_test_activation_1234567890abcdef';
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    const license = makeLicense(device, expiresAt);
+
+    // A license seen in a backup/disk dump must not be enough to activate a device.
+    expect((await call('POST', '/api/premium/activate', { license, device })).status).toBe(403);
+    expect(
+      (await call('POST', '/api/premium/activate', { license, device, paymentId: 'pay_guessed' })).status,
+    ).toBe(403);
+  });
+
+  it('rejects a license that carries no payment binding at all', async () => {
+    const device = 'dev_test_activation_1234567890abcdef';
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    const license = makeLicense(device, expiresAt, 'ord_test', null);
+
+    const res = await call('POST', '/api/premium/activate', { license, device, paymentId: 'pay_test_001' });
+
+    expect(res.status).toBe(403);
   });
 
   it('rejects license with mismatched device', async () => {

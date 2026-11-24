@@ -7,14 +7,17 @@ import {
   storeWrappedMasterKey,
   removeWrappedMasterKey,
   hasWrappedMasterKey,
+  clearVaultCache,
 } from './vaultKey';
 
 beforeEach(() => {
   localStorage.clear();
+  clearVaultCache();
 });
 
 afterEach(() => {
   localStorage.clear();
+  clearVaultCache();
 });
 
 describe('vault key wrapping', () => {
@@ -44,6 +47,19 @@ describe('vault key wrapping', () => {
 
     const result = await unwrapMasterKey('wrong_pin');
     expect(result).toBeNull();
+  });
+
+  it('keeps at most one unwrapped key in memory and drops it on clear', async () => {
+    const masterKey = 'cache_isolation_key';
+    const wrapped = await wrapMasterKey('real_pin', masterKey);
+    await storeWrappedMasterKey(wrapped);
+    clearVaultCache();
+
+    expect(await unwrapMasterKey('real_pin')).toBe(masterKey);
+    clearVaultCache();
+    // After clearing, the cache cannot short-circuit decryption: an incorrect
+    // PIN now goes through Argon2id + AES-GCM and fails.
+    expect(await unwrapMasterKey('wrong_pin')).toBeNull();
   });
 
   it('returns null when no wrapped key exists', async () => {

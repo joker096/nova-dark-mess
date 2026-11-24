@@ -129,11 +129,11 @@ const PrivacyScopeSelector: React.FC<{ value: PrivacyScope; onChange: (v: Privac
   return (
     <div className="flex items-center gap-1">
       {scopes.map((s) => (
-        <button key={s.value} type="button" onClick={() => onChange(s.value)} className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === s.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'`}>{s.label}</button>
+        <button key={s.value} type="button" onClick={() => onChange(s.value)} className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === s.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`}>{s.label}</button>
       ))}
     </div>
   );
-);
+};
 
 const NotificationLevelSelector: React.FC<{ value: NotificationLevel; onChange: (v: NotificationLevel) => void }> = ({ value, onChange }) => {
   const levels: { value: NotificationLevel; label: string; icon: React.ReactNode }[] = [
@@ -144,15 +144,15 @@ const NotificationLevelSelector: React.FC<{ value: NotificationLevel; onChange: 
   return (
     <div className="flex items-center gap-1">
       {levels.map((l) => (
-        <button key={l.value} type="button" onClick={() => onChange(l.value)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === l.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'`} aria-label={l.label}><l.icon />{l.label}</button>
+        <button key={l.value} type="button" onClick={() => onChange(l.value)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === l.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`} aria-label={l.label}>{l.icon}{l.label}</button>
       ))}
     </div>
   );
-);
+};
 
 const PanelErrorBoundary = React.memo(({ name, children }: { name: string; children: React.ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
-  if (error) return <div role="alert" data-testid={`${name}-error`} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6 text-left"><pre className="max-h-full max-w-2xl overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--nova-surface)] p-4 text-xs text-red-400">{name}: {error.message}\n{error.stack}</pre></div>;
+  if (error) return <div role="alert" data-testid={`${name}-error`} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6 text-left"><pre className="max-h-full max-w-2xl overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--nova-surface)] p-4 text-xs text-red-400">{`${name}: ${error.message}\n${error.stack}`}</pre></div>;
   return <>{children}</>;
 });
 

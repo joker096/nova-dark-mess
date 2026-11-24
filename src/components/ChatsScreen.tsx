@@ -29,6 +29,9 @@ import {
   BellOff,
   ChevronRight,
   GripVertical,
+  Loader2,
+  RotateCcw,
+  ArrowDown,
 } from 'lucide-react';
 import { getAllDrafts, subscribeDraftChanges } from '../lib/messaging/drafts';
 import { readFabSide, saveFabSide, FAB_SIDE_EVENT, isFabSide, type FabSide } from '../lib/ui/appearance';
@@ -64,6 +67,7 @@ import { searchGlobal } from '../lib/search/globalSearch';
 import { useLanguage } from '../context/LanguageContext';
 import { muteContact, getNotificationPrefs } from '../lib/notifications/notificationPrefs';
 import { CHAT_READ_EVENT, loadReadChats, markChatRead } from '../lib/messaging/unread';
+import { triggerHaptic, hapticLight, hapticMedium } from '../lib/ui/haptics';
 
 interface ChatsScreenProps {
   onSelectChat: (chatId: string) => void;
@@ -251,6 +255,8 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
   // Swipe actions on chat rows (archive, pin, mute, delete)
   const [swipingChatId, setSwipingChatId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
   const swipeStartXRef = useRef(0);
   const isSwipingRef = useRef(false);
   const swipeThreshold = 80;
@@ -260,6 +266,48 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
     setSwipeOffset(0);
     isSwipingRef.current = false;
   }, []);
+
+  // Pull-to-refresh
+  const pullStartYRef = useRef<number>(0);
+  const isPullingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handlePullStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) return;
+    isPullingRef.current = true;
+    pullStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handlePullMove = (e: React.TouchEvent) => {
+    if (!isPullingRef.current || e.touches.length !== 1) return;
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) return;
+    const dy = e.touches[0].clientY - pullStartYRef.current;
+    if (dy > 0) {
+      e.preventDefault();
+      setPullDistance(Math.min(dy * 0.5, 80));
+      if (pullDistance > 60 && !isPullRefreshing) {
+        triggerHaptic('light');
+      }
+    }
+  };
+
+  const handlePullEnd = () => {
+    if (!isPullingRef.current) return;
+    isPullingRef.current = false;
+    if (pullDistance > 60 && !isPullRefreshing) {
+      setIsPullRefreshing(true);
+      triggerHaptic('medium');
+      setTimeout(() => {
+        setIsPullRefreshing(false);
+        setPullDistance(0);
+      }, 1000);
+    } else {
+      setPullDistance(0);
+    }
+  };
 
   const handleTouchStart = (e: React.TouchEvent, chatId: string) => {
     if (e.touches.length !== 1) return;
@@ -297,7 +345,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       setContextMenuChatId(chatId);
       setContextMenuPosition({ x: touch.clientX, y: touch.clientY });
       // Haptic feedback
-      if ('vibrate' in navigator) navigator.vibrate(10);
+      hapticLight();
     }, 500);
   };
 
@@ -1404,7 +1452,38 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           )}
 
           {/* Chats List Filtered by Active Folder */}
-          <div className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5 safe-area-bottom-min">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5 safe-area-bottom-min"
+            onTouchStart={handlePullStart}
+            onTouchMove={handlePullMove}
+            onTouchEnd={handlePullEnd}
+            onTouchCancel={handlePullEnd}
+          >
+            {/* Pull-to-refresh indicator */}
+            {pullDistance > 0 && (
+              <div
+                className="flex items-center justify-center py-2 text-[var(--nova-text-muted)] transition"
+                style={{ transform: `translateY(${Math.max(pullDistance - 20, 0)}px)` }}
+              >
+                {isPullRefreshing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 text-[var(--nova-accent-color)] animate-spin" />
+                    <span className="ml-2 text-xs">{t('common.refreshing')}</span>
+                  </>
+                ) : pullDistance > 60 ? (
+                  <>
+                    <RotateCcw className="w-5 h-5 text-[var(--nova-accent-color)]" />
+                    <span className="ml-2 text-xs">{t('common.releaseToRefresh')}</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowDown className="w-5 h-5" />
+                    <span className="ml-2 text-xs">{t('common.pullToRefresh')}</span>
+                  </>
+                )}
+              </div>
+            )}
             {currentFolder?.filterType === 'channels' && !isSearching && (
               <CommunitiesPanel
                 channels={channels}

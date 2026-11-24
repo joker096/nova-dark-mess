@@ -24,12 +24,20 @@ import { encryptAESGCM, decryptAESGCM } from '../crypto/aes';
 const WRAPPED_MASTER_KEY_KEY = 'nova_wrapped_master_key';
 const WRAP_SALT_KEY = 'nova_wrap_salt';
 
-/** In-memory (RAM-only) cache for unwrapped master key, keyed by PIN. Never persists to disk. */
-const unwrappedCache = new Map<string, string>();
+/**
+ * In-memory (RAM-only) cache for the unwrapped master key. Never persisted.
+ *
+ * Deliberately NOT keyed by the PIN: the PIN is the low-entropy secret this
+ * wrapping is meant to protect, and a map keyed by it leaves every correct PIN
+ * (plus the plaintext master key) sitting in a heap snapshot forever. One
+ * cache entry is enough — the vault is per-device and unlocked by one PIN —
+ * and a fresh unwrap replaces the previous entry.
+ */
+let unwrappedCache: string | null = null;
 
 /** Clear all in-memory vault caches. Call on PIN removal or logout. */
 export function clearVaultCache(): void {
-  unwrappedCache.clear();
+  unwrappedCache = null;
 }
 
 function randomBase64(length: number): string {
@@ -88,9 +96,11 @@ export async function wrapMasterKey(pin: string, masterKey: string): Promise<str
  * is wrong or no wrapped key exists.
  */
 export async function unwrapMasterKey(pin: string): Promise<string | null> {
-  // RAM-only cache: unwrapped master key never touches disk.
-  const cached = unwrappedCache.get(pin);
-  if (cached !== undefined) return cached;
+  // RAM-only cache: unwrapped master key never touches disk. It is reused only
+  // for the most recent successful unwrap (see `unwrappedCache` above) and is
+  // dropped by every failure path below.
+  const cached = unwrappedCache as string | null;
+  if (cached !== null) return cached;
 
   const kc = createKeychain();
   const wrapped = await kc.get(KEYCHAIN_SERVICE, WRAPPED_MASTER_KEY_KEY);
@@ -110,9 +120,10 @@ export async function unwrapMasterKey(pin: string): Promise<string | null> {
   const wrappingKey = await deriveWrappingKey(pin, parsed.salt, params);
   try {
     const decrypted = await decryptAESGCM({ ciphertext: parsed.ciphertext, iv: parsed.iv }, wrappingKey);
-    unwrappedCache.set(pin, decrypted);
+    unwrappedCache = decrypted;
     return decrypted;
   } catch {
+    unwrappedCache = null;
     return null;
   }
 }
@@ -131,7 +142,7 @@ export async function storeWrappedMasterKey(wrapped: string): Promise<void> {
 export async function removeWrappedMasterKey(): Promise<void> {
   const kc = createKeychain();
   await kc.remove(KEYCHAIN_SERVICE, WRAPPED_MASTER_KEY_KEY);
-  unwrappedCache.clear();
+  unwrappedCache = null;
 }
 
 /**

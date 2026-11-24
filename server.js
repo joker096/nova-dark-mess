@@ -69,6 +69,8 @@ const RECEIPTS_DIR = process.env.RECEIPTS_DIR
   : path.join(__dirname, 'receipts');
 
 if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
+// Do not advertise the framework to scanners looking for known Express CVEs.
+app.disable('x-powered-by');
 
 // Browser clients (Tauri webview, local dev server, landing) call these APIs
 // from a different origin. Only those origins are reflected back: a wildcard
@@ -270,10 +272,21 @@ function createRateLimiter({ max, windowMs }) {
   };
 }
 
+// Every limit below is spent BEFORE the signature/key check, so an attacker who
+// never knows the secret can still exhaust a victim's budget by hammering the
+// endpoint. They are therefore sized for real traffic, not for diagnostics:
+// a payment provider retrying a failed IPN a few dozen times a minute is the
+// realistic upper bound. Signatures are rejected instantly on mismatch.
 const ipnLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 const checkoutLimiter = createRateLimiter({ max: 10, windowMs: 60_000 });
 const orderLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 const statusLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+// Gift codes are bearer secrets. Redemption is the only endpoint where a
+// guessable success unlocks paid content, so it gets its own strict bucket.
+const giftRedeemLimiter = createRateLimiter({ max: 8, windowMs: 10 * 60_000 });
+// Deleting a queue requires the recipient capability token, so this is not a
+// guessable secret; the limit only stops a runaway client from spinning here.
+const anonDeleteLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 
 function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
@@ -476,7 +489,7 @@ async function paymentoVerify(token) {
   }
 }
 
-function issueLicense({ device, plan, orderId, expiresAt }) {
+function issueLicense({ device, plan, orderId, expiresAt, paymentId = null }) {
   if (!PREMIUM_LICENSE_SECRET) {
     throw new Error('PREMIUM_LICENSE_SECRET is not configured');
   }
@@ -486,7 +499,10 @@ function issueLicense({ device, plan, orderId, expiresAt }) {
   const exp = Number.isFinite(expiresAt)
     ? Number(expiresAt)
     : Date.now() + p.days * 24 * 60 * 60 * 1000;
+  // `t` binds the license to the provider payment it was issued for and is
+  // never handed to the client on its own; `/api/premium/activate` requires it.
   const payload = { v: 1, d: String(device), p: plan, o: orderId, exp };
+  if (paymentId) payload.t = String(paymentId).slice(0, 128);
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
   const key = `MA1.${body}.${sig}`;
@@ -632,8 +648,15 @@ async function fulfillOrder(orderId) {
     if (fresh.kind === 'gift') {
       ensureGiftEntitlement(fresh);
     } else {
-      const { license, expiresAt } = issueLicense({ device: fresh.device, plan: fresh.plan, orderId: fresh.orderId });
+      const paymentId = verified.paymentId || verified.id || verified.txnId || null;
+      const { license, expiresAt } = issueLicense({
+        device: fresh.device,
+        plan: fresh.plan,
+        orderId: fresh.orderId,
+        paymentId,
+      });
       fresh.license = license;
+      fresh.paymentId = paymentId;
       fresh.expiresAt = expiresAt;
     }
     fresh.status = 'paid';
@@ -818,7 +841,7 @@ app.get('/api/premium/order/:orderId', async (req, res) => {
 
 app.post('/api/premium/gift/redeem', (req, res) => {
   const ip = req.ip || 'unknown';
-  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  if (!giftRedeemLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
   const code = String((req.body && req.body.code) || '').trim();
   const device = String((req.body && req.body.device) || '');
   if (!GIFT_CODE_PATTERN.test(code)) {
@@ -868,6 +891,7 @@ app.post('/api/premium/gift/redeem', (req, res) => {
       plan: gift.plan,
       orderId: `gift_${gift.orderId}`,
       expiresAt: newExpiry,
+      paymentId: `gift_${gift.codeHash}`,
     });
     gift.status = 'redeemed';
     gift.device = device;
@@ -895,8 +919,16 @@ app.post('/api/premium/activate', (req, res) => {
   if (!DEVICE_PATTERN.test(device) || String(v.payload.d) !== device) {
     return res.status(403).json({ ok: false, error: 'device mismatch' });
   }
+  // The license alone must not be enough: it is returned to the buyer's client
+  // and stored on disk, so anyone who sees it could otherwise mark any device
+  // as activated. Activation therefore also requires the provider payment id
+  // the license was issued against.
+  const paymentId = String((req.body && req.body.paymentId) || '').slice(0, 128);
+  if (!v.payload.t || !paymentId || paymentId !== String(v.payload.t)) {
+    return res.status(403).json({ ok: false, error: 'payment proof required' });
+  }
   fs.mkdirSync(LICENSES_DIR, { recursive: true });
-  writeAtomic(path.join(LICENSES_DIR, `activation-${safeFileId(license)}.json`), JSON.stringify({ license, device, activatedAt: new Date().toISOString() }, null, 2));
+  writeAtomic(path.join(LICENSES_DIR, `activation-${safeFileId(license)}.json`), JSON.stringify({ license, device, paymentId, activatedAt: new Date().toISOString() }, null, 2));
   res.json({ ok: true, expiresAt: v.payload.exp, plan: v.payload.p });
 });
 
@@ -2121,6 +2153,9 @@ app.post('/api/anon/poll', (req, res) => {
 
 app.post('/api/anon/ack', (req, res) => {
   anonCleanup();
+  if (!anonRateLimit(`ack:${anonClientKey(req)}`, 100, 60 * 1000)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
   const { queueId, recipientToken, packetIds, signature, signedAt, commandNonce } = req.body || {};
   const result = anonAck(queueId, recipientToken, packetIds, {
     signature,
@@ -2132,6 +2167,10 @@ app.post('/api/anon/ack', (req, res) => {
 
 app.post('/api/anon/queues/delete', (req, res) => {
   anonCleanup();
+  const ip = anonClientKey(req);
+  if (!anonDeleteLimiter(ip)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
   const { queueId, recipientToken, signature, signedAt, commandNonce } = req.body || {};
   const result = anonDeleteQueue(queueId, recipientToken, {
     signature,
