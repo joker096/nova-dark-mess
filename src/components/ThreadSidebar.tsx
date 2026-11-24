@@ -115,7 +115,7 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
             <div
               key={msg.id}
               id={`thread-msg-${msg.id}`}
-              className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-start gap-3.5 ${
+              className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-start gap-3 ${
                 isRoot
                   ? 'bg-[var(--nova-accent-color)]/10 border-[var(--nova-accent-color)]/30 ring-1 ring-[var(--nova-accent-color)]/20'
                   : 'bg-[var(--nova-surface-high)]/90 hover:bg-[var(--nova-surface-raised)] border-[var(--nova-border-color)]/20'

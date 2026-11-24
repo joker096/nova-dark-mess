@@ -1,5 +1,13 @@
 export type HapticType = 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error';
 
+export const hapticLight = () => triggerHaptic('light');
+export const hapticMedium = () => triggerHaptic('medium');
+export const hapticHeavy = () => triggerHaptic('heavy');
+export const hapticSelection = () => triggerHaptic('selection');
+export const hapticSuccess = () => triggerHaptic('success');
+export const hapticWarning = () => triggerHaptic('warning');
+export const hapticError = () => triggerHaptic('error');
+
 export function triggerHaptic(type: HapticType = 'light'): void {
   if (typeof navigator === 'undefined') return;
   

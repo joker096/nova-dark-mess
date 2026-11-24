@@ -874,7 +874,17 @@ export default function App() {
         return <SitesScreen onBack={goBack} />;
       case 'mesh-map':
         return (
-          <div className="w-full h-full p-4">
+          <div className="w-full h-full p-4 flex-col gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--nova-border-color)] shrink-0">
+              <NovaIconButton
+                label={t('common.back')}
+                icon={<ArrowLeft />}
+                size={32}
+                variant="subtle"
+                onClick={goBack}
+              />
+              <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
+            </div>
             <MeshMapScreen
               nodes={liveMesh.nodes}
               links={liveMesh.links}

@@ -673,7 +673,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] relative select-none overflow-y-auto no-scrollbar pb-10">
+    <div className="flex flex-col h-full bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] relative select-none overflow-y-auto no-scrollbar pb-10 safe-area-bottom-min">
       {/* Toast Notification */}
       {mediaToast && (
         <div className="pointer-events-none fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface-high)]/95 border border-[var(--nova-accent-color)]/40 text-[var(--nova-text-primary)] text-xs px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-3">

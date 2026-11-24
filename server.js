@@ -209,13 +209,26 @@ const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
  * bounce the victim to a phishing page after paying. Only allowlisted origins
  * are used; everything else falls back to the public site.
  */
+const DEFAULT_RETURN_URL = 'https://mess.cvr.name/premium.html';
+
+function isHttpsUrl(value) {
+  try {
+    return new URL(String(value)).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function resolveReturnUrl(req) {
-  // In development, never use PAYMENTO_RETURN_URL - use the actual origin
-  // so local checkouts can complete. Only production should use the configured URL.
-  if (IS_PRODUCTION && PAYMENTO_RETURN_URL) return PAYMENTO_RETURN_URL;
+  // PaymentO rejects non-HTTPS return URLs ("Only HTTPS URLs are allowed").
+  // A dev server (http://localhost:3000), a loopback preview or the Tauri
+  // webview (tauri://localhost) therefore can never be used here: doing so made
+  // every checkout fail with an opaque 502. Those flows are confirmed by
+  // polling /api/premium/order, so fall back to the public HTTPS page.
+  if (PAYMENTO_RETURN_URL && isHttpsUrl(PAYMENTO_RETURN_URL)) return PAYMENTO_RETURN_URL;
   const origin = String(req.headers.origin || '').replace(/\/+$/, '');
-  if (isAllowedCorsOrigin(origin)) return `${origin}/premium.html`;
-  return 'https://mess.cvr.name/premium.html';
+  if (isAllowedCorsOrigin(origin) && isHttpsUrl(origin)) return `${origin}/premium.html`;
+  return DEFAULT_RETURN_URL;
 }
 
 // The license key signs temporary premium grants. Derive a separate key from
@@ -423,6 +436,11 @@ function paymentoCreate({ amount, currency, orderId, returnUrl }) {
       if (!resp.ok) throw new Error(text || `Paymento create failed (${resp.status})`);
       let parsed;
       try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = { body: text }; }
+      // PaymentO answers HTTP 200 even for rejected requests; the real verdict is
+      // success/message in the body. Surface it instead of the generic 502.
+      if (parsed && parsed.success === false) {
+        throw new Error(`Paymento rejected the request: ${parsed.message || 'unknown error'}`);
+      }
       const token = parsed && (parsed.body ?? parsed.token) || (typeof parsed === 'string' ? parsed : null);
       if (!token || typeof token !== 'string') throw new Error('Paymento did not return a token');
       return { token, paymentUrl: `${PAYMENTO_GATEWAY_URL}?token=${encodeURIComponent(token)}` };

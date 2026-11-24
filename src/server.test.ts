@@ -615,6 +615,41 @@ describe('server: Premium checkout flow', () => {
     expect(res.json.url).toContain('token=');
   });
 
+  it('never sends a non-HTTPS ReturnUrl to PaymentO from a dev/loopback origin', async () => {
+    // PaymentO answers success:false for http:// return URLs, which used to turn
+    // every local checkout into an opaque 502 ("payment provider error").
+    const realFetch = globalThis.fetch;
+    let providerReturnUrl = '';
+    globalThis.fetch = (async (input: any, init?: any) => {
+      const url = String(typeof input === 'string' ? input : input?.url || '');
+      if (url.includes('/v1/payment/request')) {
+        const payload = JSON.parse(String(init?.body || '{}'));
+        providerReturnUrl = String(payload.ReturnUrl || '');
+        return new Response(JSON.stringify({ success: true, body: 'TEST_TOKEN_123' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return realFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      const res = await call(
+        'POST',
+        '/api/premium/checkout',
+        { device: 'dev_test_1234567890abcdef1234567890abcdef', plan: 'premium' },
+        { Origin: 'http://localhost:3000' },
+      );
+      expect(res.status).toBe(200);
+      expect(res.json.ok).toBe(true);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+
+    expect(providerReturnUrl).not.toBe('');
+    expect(providerReturnUrl.startsWith('https://')).toBe(true);
+  });
+
   it('creates a gift checkout order with contactId', async () => {
     const res = await call('POST', '/api/premium/gift/checkout', {
       device: 'dev_test_1234567890abcdef1234567890abcdef',

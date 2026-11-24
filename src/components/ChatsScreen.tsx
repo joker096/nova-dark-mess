@@ -981,7 +981,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
       {/* CONDITIONAL BODY: SEARCH RESULTS OR NORMAL FOLDER/STORIES VIEW */}
       {isSearching ? (
         /* SEARCH RESULTS VIEW */
-        <div className="flex-1 overflow-y-auto px-5 pb-24 lg:pb-6 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 pb-24 lg:pb-6 space-y-3 safe-area-bottom-min">
           {/* Search Scope Filter Pills */}
           <div className="flex items-center justify-between pt-1 pb-0.5">
             <div className="flex items-center gap-1.5 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--border-strong)]">
@@ -1067,42 +1067,42 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                           style={{ transform: isSwipingThis ? `translateX(-${swipeOffset}px)` : undefined }}
                         >
                           {/* Swipe Action Buttons */}
-                          <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2" style={{ width: '320px' }}>
+                          <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2" style={{ width: '180px' }}>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handlePinToggle(chat.id); resetSwipe(); }}
-                              className="w-10 h-10 rounded-full bg-amber-500/20 hover:bg-amber-500/30 flex items-center justify-center text-amber-400 transition cursor-pointer"
+                              className="w-9 h-9 rounded-full bg-amber-500/20 hover:bg-amber-500/30 flex items-center justify-center text-amber-400 transition cursor-pointer"
                               aria-label={pinnedChatIds.has(chat.id) ? t('common.unpin') : t('common.pin')}
                               title={pinnedChatIds.has(chat.id) ? 'Unpin' : 'Pin'}
                             >
-                              <Pin className={`w-4 h-4 ${pinnedChatIds.has(chat.id) ? 'fill-current' : ''}`} />
+                              <Pin className={`w-3.5 h-3.5 ${pinnedChatIds.has(chat.id) ? 'fill-current' : ''}`} />
                             </button>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleArchiveToggle(chat.id); resetSwipe(); }}
-                              className="w-10 h-10 rounded-full bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 transition cursor-pointer"
+                              className="w-9 h-9 rounded-full bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 transition cursor-pointer"
                               aria-label={archivedChatIds.has(chat.id) ? t('actions.unarchive') : t('actions.archive')}
                               title={archivedChatIds.has(chat.id) ? 'Unarchive' : 'Archive'}
                             >
-                              <Archive className={`w-4 h-4 ${archivedChatIds.has(chat.id) ? 'rotate-180' : ''}`} />
+                              <Archive className={`w-3.5 h-3.5 ${archivedChatIds.has(chat.id) ? 'rotate-180' : ''}`} />
                             </button>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); resetSwipe(); }}
-                              className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center text-red-400 transition cursor-pointer"
+                              className="w-9 h-9 rounded-full bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center text-red-400 transition cursor-pointer"
                               aria-label={t('common.delete', { defaultValue: 'Delete' })}
                               title="Delete"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleMuteToggle(chat.id); resetSwipe(); }}
-                              className="w-10 h-10 rounded-full bg-gray-500/20 hover:bg-gray-500/30 flex items-center justify-center text-gray-400 transition cursor-pointer"
+                              className="w-9 h-9 rounded-full bg-gray-500/20 hover:bg-gray-500/30 flex items-center justify-center text-gray-400 transition cursor-pointer"
                               aria-label={t('common.mute', { defaultValue: 'Mute' })}
                               title="Mute"
                             >
-                              <VolumeX className="w-4 h-4" />
+                              <VolumeX className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
@@ -1112,7 +1112,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                             role="button"
                             aria-label={`Chat with ${chat.name}`}
                             tabIndex={0}
-                            className={`group relative border rounded-[22px] p-3.5 transition-all duration-150 cursor-pointer flex items-center gap-3.5 shadow-sm ${
+                            className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-center gap-3 shadow-sm ${
                               isSelected
                                 ? 'bg-[var(--bg-surface-2)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
                                 : 'bg-[var(--bg-app)] hover:bg-[var(--bg-surface-2)] active:bg-[var(--bg-hover)] border border-[var(--border)]'
@@ -1404,7 +1404,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
           )}
 
           {/* Chats List Filtered by Active Folder */}
-          <div className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5">
+          <div className="flex-1 overflow-y-auto px-5 pt-2 pb-24 lg:pb-6 space-y-2.5 safe-area-bottom-min">
             {currentFolder?.filterType === 'channels' && !isSearching && (
               <CommunitiesPanel
                 channels={channels}
@@ -1525,7 +1525,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                     role="button"
                     aria-label={`Chat with ${chat.name}, ${chat.time}`}
                     tabIndex={0}
-                    className={`group relative border rounded-[22px] p-4 transition-all duration-150 cursor-pointer flex items-center gap-4 shadow-sm ${
+                    className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-center gap-3 shadow-sm ${
                       isSelected
                         ? 'bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30'
                         : 'bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]'
@@ -1534,25 +1534,25 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                   {/* Avatar Slot */}
                   <div className="relative shrink-0">
                     {chat.isChannel ? (
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
-                        <svg className="w-6 h-6 fill-[var(--nova-text-primary)]" viewBox="0 0 24 24">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
+                        <svg className="w-5 h-5 fill-[var(--nova-text-primary)]" viewBox="0 0 24 24">
                           <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
                         </svg>
                       </div>
                     ) : chat.groupAvatars ? (
-                      <div className="w-14 h-14 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
-                        <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
+                      <div className="w-11 h-11 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
+                        <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
                           <LazyMedia src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
                         </div>
-                        <div className="absolute top-0.5 right-1 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
+                        <div className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
                           <LazyMedia src={chat.groupAvatars[1]} alt="" className="w-full h-full object-cover" />
                         </div>
-                        <div className="absolute bottom-0.5 left-3 w-6 h-6 rounded-full overflow-hidden border border-[#17181e]">
+                        <div className="absolute bottom-0.5 left-2.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
                           <LazyMedia src={chat.groupAvatars[2]} alt="" className="w-full h-full object-cover" />
                         </div>
                       </div>
                     ) : (
-                      <div className="w-14 h-14 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
+                      <div className="w-11 h-11 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
                         <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
                         <div className="w-full h-full bg-[var(--nova-surface-high)] flex items-center justify-center text-xs font-bold text-[var(--nova-text-secondary)]">
                           {chat.name.slice(0, 2).toUpperCase()}

@@ -5,25 +5,20 @@ import {
   ChevronUp,
   Image as ImageIcon,
   ListFilter,
-  Lock,
   Mic,
   MoreHorizontal,
-  Palette,
   Pin,
   Phone,
   Search,
   ShieldCheck,
-  Sparkles,
   Users,
   Video,
   X,
 } from 'lucide-react';
-import { NovaButton } from '../../lib/ui/NovaButton';
 import { ChatMessage } from '../../types/messenger';
 import { PremiumFeature } from '../../hooks/usePremium';
-import { usePremium } from '../../hooks/usePremium';
 import { useLanguage } from '../../context/LanguageContext';
-import { CHAT_THEME_KEY, CHAT_THEME_ORDER, ChatTheme, PREMIUM_THEMES } from './chatTheme';
+import { ChatTheme } from './chatTheme';
 import { LazyMedia } from '../LazyMedia';
 import type { GroupJoinRequest } from '../../lib/social/groupJoinRequests';
 
@@ -108,12 +103,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   sharedMediaCount,
   isVideoCallOpen,
   handleStartVideoCall,
-  isWallpaperModalOpen,
-  setIsWallpaperModalOpen,
-  chatTheme,
-  setChatTheme,
-  canUse,
-  checkout,
   pinnedMessages,
   isPinnedCarouselOpen,
   setIsPinnedCarouselOpen,
@@ -136,7 +125,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onOpenMoreMenu,
 }) => {
   const { t } = useLanguage();
-  const theme = PREMIUM_THEMES[chatTheme];
 
   return (
 <>
@@ -149,7 +137,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             <button
               onClick={handleCloseSearch}
               className="w-8 h-8 rounded-full bg-[var(--nova-surface-raised)]/80 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-95 transition cursor-pointer shrink-0"
-              title={t('common.back')}
+              aria-label={t('common.back')}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -188,7 +176,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     searchInputRef.current?.focus();
                   }}
                   className="p-1 rounded-full hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0"
-                  title={t('common.close')}
+                  aria-label={t('common.close')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -210,14 +198,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 <button
                   onClick={handlePrevMatch}
                   className="w-7 h-7 rounded-lg hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
-                  title={t('common.previous')}
+                  aria-label={t('common.previous')}
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleNextMatch}
                   className="w-7 h-7 rounded-lg hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)] transition cursor-pointer active:scale-95"
-                  title={t('common.next')}
+                  aria-label={t('common.next')}
                 >
                   <ChevronDown className="w-4 h-4" />
                 </button>
@@ -272,7 +260,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 <button
                   onClick={onOpenProfile}
                   className="relative w-8 h-8 rounded-full overflow-hidden border transition-all duration-300 cursor-pointer active:scale-95 shrink-0"
-                  title={t('common.profile')}
+                  aria-label={t('common.profile')}
                 >
                   <LazyMedia
                     src={profile.avatar}
@@ -404,7 +392,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                       ? 'border-[var(--nova-accent-color,#ff4e18)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/60 shadow-[0_0_16px_rgba(255,78,24,0.6)]'
                       : 'border-[var(--nova-border-color)] ring-2 ring-[var(--nova-accent-color,#ff4e18)]/20'
                   }`}
-                  title={t('common.profile')}
+                  aria-label={t('common.profile')}
                 >
                   <LazyMedia
                     src={profile.avatar}
@@ -461,7 +449,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                       ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
                       : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                   }`}
-                  title={
+                  aria-label={
                     isVideoCallOpen && callMode === 'voice'
                       ? 'Voice call in progress (click to view)'
                       : `Start voice call with ${profile.name}`
@@ -479,7 +467,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                     ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
                     : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                 }`}
-                title={
+                aria-label={
                   isVideoCallOpen && callMode === 'video'
                     ? 'Video call in progress (click to view)'
                     : `Start video call with ${profile.name}`
@@ -498,7 +486,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                         ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
                         : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
-                    title={isGroupCallOpen && callMode === 'voice' ? 'Group voice call in progress' : `Start group voice call (${groupMembers.length + 1} participants)`}
+                    aria-label={isGroupCallOpen && callMode === 'voice' ? 'Group voice call in progress' : `Start group voice call (${groupMembers.length + 1} participants)`}
                   >
                     <Phone className="w-3 h-3" />
                     <Users className="w-3 h-3 absolute -top-1 -right-1" />
@@ -511,7 +499,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                         ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/30 animate-pulse'
                         : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)]/20 border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color,#ff4e18)]/40 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color,#ff4e18)]'
                     }`}
-                    title={isGroupCallOpen && callMode === 'video' ? 'Group video call in progress' : `Start group video call (${groupMembers.length + 1} participants)`}
+                    aria-label={isGroupCallOpen && callMode === 'video' ? 'Group video call in progress' : `Start group video call (${groupMembers.length + 1} participants)`}
                   >
                     <Video className="w-3 h-3" />
                     <Users className="w-3 h-3 absolute -top-1 -right-1" />
@@ -586,51 +574,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                   </button>
                 </div>
               )}
-
-              {/* Secondary controls (wallpaper, theme) - desktop only */}
-              <div className="hidden xl:flex items-center gap-1">
-                {/* Wallpaper Settings Button */}
-                <NovaButton
-                  variant={isWallpaperModalOpen ? 'accent' : 'ghost'}
-                  onClick={() => setIsWallpaperModalOpen(true)}
-                  title={t('settings.chatWallpaper')}
-                >
-                  <Palette className="w-3 h-3" />
-                </NovaButton>
-
-                {/* Premium Chat Theme Toggle */}
-                <NovaButton
-                  variant={chatTheme === 'default' ? 'ghost' : 'accent'}
-                  disabled={chatTheme !== 'default' && !canUse('chat_themes')}
-                  onClick={() => {
-                    const isPremiumTheme = chatTheme !== 'default';
-                    if (isPremiumTheme && !canUse('chat_themes')) {
-                      checkout();
-                      return;
-                    }
-                    const next: ChatTheme = CHAT_THEME_ORDER[
-                      (CHAT_THEME_ORDER.indexOf(chatTheme) + 1) % CHAT_THEME_ORDER.length
-                    ];
-                    if (next !== 'default' && !canUse('chat_themes')) {
-                      checkout();
-                      return;
-                    }
-                    setChatTheme(next);
-                    try {
-                      localStorage.setItem(CHAT_THEME_KEY, next);
-                    } catch {
-                      void 0;
-                    }
-                  }}
-                  title={`Chat theme: ${theme.label}${!canUse('chat_themes') && chatTheme === 'default' ? ' (Premium)' : ''}`}
-                >
-                  {canUse('chat_themes') || chatTheme !== 'default' ? (
-                    <Sparkles className={`w-3 h-3 ${chatTheme === 'default' ? '' : 'fill-[var(--nova-text-primary)]'}`} />
-                  ) : (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </NovaButton>
-              </div>
 
             </div>
           </>

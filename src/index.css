@@ -355,6 +355,11 @@ html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   padding-bottom: var(--nova-safe-bottom);
 }
 
+/* Safe area bottom with minimum 1rem - ensures content doesn't sit on gesture bar */
+.safe-area-bottom-min {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
 /* Pinned composer (one-handed use). The chat is a `flex flex-col h-full`
    column whose only scroller is the message list, so the composer stays at the
    bottom edge and rides above the on-screen keyboard instead of being pushed
@@ -365,7 +370,7 @@ html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   position: relative;
   z-index: 20;
   flex-shrink: 0;
-  padding-bottom: calc(0.75rem + var(--nova-safe-bottom));
+  padding-bottom: calc(0.75rem + max(var(--nova-safe-bottom), var(--keyboard-height, 0px)));
 }
 
 /* One-handed operation: keep floating controls above the gesture bar.

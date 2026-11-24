@@ -4147,7 +4147,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       </div>
 
       {/* Messages Scroll Area (virtualized) */}
-      <div ref={messagesListWrapperRef} className="flex-1 flex flex-col min-h-0 relative z-10">
+      <div ref={messagesListWrapperRef} className="flex-1 flex flex-col min-h-0 relative z-10 safe-area-bottom-min">
         <VirtualizedList
           items={renderedMessages}
           itemHeight={72}
