@@ -29,7 +29,7 @@ export const Composer: React.FC<ComposerProps> = ({
   onOptionsToggle,
 }) => {
   const { t } = useLanguage();
-  const textareaRef = useRef<HTMLTextareaElement>(null);
+  const textareaRef = useRef<globalThis.HTMLTextAreaElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSendOptions, setShowSendOptions] = useState(false);
 
@@ -40,7 +40,7 @@ export const Composer: React.FC<ComposerProps> = ({
     }
   }, [draft, onSend]);
 
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextareaElement>) => {
+  const handleInput = useCallback((e: React.ChangeEvent<globalThis.HTMLTextAreaElement>) => {
     onDraftChange(e.target.value);
   }, [onDraftChange]);
 

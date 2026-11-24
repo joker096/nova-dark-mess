@@ -1169,13 +1169,13 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                           {/* Avatar Slot */}
                           <div className="relative shrink-0">
                             {chat.isChannel ? (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--text-on-accent)] shadow-inner font-bold">
+                              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--text-on-accent)] shadow-inner font-bold">
                                 <svg className="w-6 h-6 fill-[var(--text-on-accent)]" viewBox="0 0 24 24">
                                   <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
                                 </svg>
                               </div>
                             ) : chat.groupAvatars ? (
-<div className="w-12 h-12 rounded-full bg-[var(--bg-surface-2)] relative overflow-hidden border border-[var(--border-strong)] flex items-center justify-center">
+<div className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] relative overflow-hidden border border-[var(--border-strong)] flex items-center justify-center">
                                 <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[var(--border-strong)]">
                                   <LazyMedia src={chat.groupAvatars[0]} alt="" className="w-full h-full object-cover" />
                                 </div>
@@ -1187,7 +1187,7 @@ export const ChatsScreen = forwardRef<{ openFolderModal: () => void }, ChatsScre
                                 </div>
                               </div>
                             ) : (
-<div className="w-12 h-12 rounded-full overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-surface-2)] relative">
+<div className="w-11 h-11 rounded-full overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-surface-2)] relative">
                                 {chat.avatar ? (
                                   <LazyMedia src={chat.avatar} alt={chat.name} className="w-full h-full object-cover" />
                                 ) : (

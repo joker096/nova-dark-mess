@@ -221,8 +221,8 @@ describe('ProfileScreen - header and avatar', () => {
     renderProfile();
     const edit = screen.getByRole('button', { name: 'profile.changeAvatar' });
     const remove = screen.getByRole('button', { name: 'profile.removeAvatar' });
-    expect(edit.className).toContain('w-10');
-    expect(edit.className).toContain('h-10');
+    expect(edit.className).toContain('w-11');
+    expect(edit.className).toContain('h-11');
     expect(edit.parentElement?.className).toContain('relative');
     expect(edit.parentElement?.className).not.toContain('overflow-hidden');
     expect(remove.parentElement?.className).not.toContain('overflow-hidden');

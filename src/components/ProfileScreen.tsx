@@ -763,7 +763,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/95 text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[var(--nova-canvas)]"
+                className="absolute bottom-1 right-1 w-11 h-11 rounded-full bg-[var(--nova-accent-color)]/95 text-[var(--nova-on-accent)] flex items-center justify-center shadow-lg active:scale-95 transition cursor-pointer border-2 border-[var(--nova-canvas)] min-w-[44px] min-h-[44px]"
                 title={t('profile.changeAvatar')}
                 aria-label={t('profile.changeAvatar')}
               >

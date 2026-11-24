@@ -142,6 +142,17 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  const onOpenChannel = (channelId: string) => {
+    onNavigate('channel-kyiv', { channelId });
+  };
+  const handleCreateChannel = () => onSetActiveBottomTab('channels');
+  const handleToggleChannelPopular = () => {};
+  const handleDeleteChannels = () => {};
+  const createStory = () => {};
+  const deleteStory = () => {};
+  const viewStory = () => {};
+  const toggleStoryReaction = () => {};
+
   const renderMobileScreen = () => {
     const mobileScreen = activeBottomTab === 'channels' ? 'channel-kyiv' : activeBottomTab;
 

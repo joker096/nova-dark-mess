@@ -51,6 +51,27 @@ async function call(
 let closeAnonStateDb: (() => void) | null = null;
 
 beforeAll(async () => {
+  // Tooling under test must never reach the real payment provider. Requests to
+  // PaymentO endpoints are answered locally; everything else (the loopback HTTP
+  // calls this suite makes) goes to the real fetch below.
+  const realFetch = globalThis.fetch;
+  process.env.PAYMENTO_API_KEY = 'test_only_api_key';
+  globalThis.fetch = (async (input: any, init?: any) => {
+    const url = String(typeof input === 'string' ? input : input?.url || '');
+    if (url.includes('/v1/payment/request')) {
+      return new Response(JSON.stringify({ success: true, body: 'TEST_TOKEN_123' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/v1/payment/verify')) {
+      return new Response(JSON.stringify({ orderStatus: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return realFetch(input, init);
+  }) as typeof fetch;
   TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'nova-server-test-'));
   // Set up test directories
   RECEIPTS_DIR = path.join(TMP_ROOT, 'receipts');
@@ -76,7 +97,12 @@ beforeAll(async () => {
   process.env.GIFTS_DIR = GIFTS_DIR;
   process.env.ANON_REPORTS_DIR = ANON_REPORTS_DIR;
   process.env.ANON_STATE_DB_PATH = ANON_STATE_DB_PATH;
+  // `.env` is loaded by server.js with `override: true`, so a developer machine
+  // with real PaymentO keys would otherwise replace every fixture below. Point
+  // the loader at a file that does not exist for the lifetime of this suite.
+  process.env.DOTENV_CONFIG_PATH = path.join(TMP_ROOT, 'no-such.env');
   process.env.PAYMENTO_SECRET = PAYMENTO_SECRET;
+  delete process.env.PAYMENTO_SECRET_KEYS;
   process.env.PREMIUM_LICENSE_SECRET = PREMIUM_LICENSE_SECRET;
   process.env.ADMIN_TOKEN = '';
 
@@ -320,9 +346,10 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
   const makeSignature = (body: string) =>
     crypto.createHmac('sha256', PAYMENTO_SECRET).update(body).digest('hex');
 
-  // Server writes receipts to project root ./receipts (RECEIPTS_DIR default)
-  // because vitest loads .env after server import, setting RECEIPTS_DIR=""
-  const PROJECT_RECEIPTS_DIR = path.join(process.cwd(), 'receipts');
+  // Receipts land in the per-suite temp dir pinned via process.env.RECEIPTS_DIR
+  // in beforeAll; never in the repo's real ./receipts directory. Read it lazily:
+  // this block is evaluated at collection time, before beforeAll assigns it.
+  const projectReceiptsDir = () => RECEIPTS_DIR;
 
   beforeEach(() => {
     // Clear project receipts dir between tests (only test files)
@@ -522,8 +549,9 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
       'X-Hmac-Sha256-Signature': sig,
     });
 
-    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR)
-      .filter((f) => f.startsWith('pay_test_008'));
+    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR, { recursive: true } as any)
+      .map((f: any) => String(f).replace(/\\/g, '/'))
+      .filter((f: string) => f.startsWith('pay_test_008'));
     expect(receiptFiles).toHaveLength(1);
     expect(receiptFiles[0]).toMatch(/^pay_test_008\.json$/);
 
@@ -570,8 +598,9 @@ describe('server: PaymentO IPN (HMAC-SHA256 verification)', () => {
     });
     expect(res2.status).toBe(200);
 
-    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR)
-      .filter((f) => f.startsWith('pay_test_009'));
+    const receiptFiles = fs.readdirSync(PROJECT_RECEIPTS_DIR, { recursive: true } as any)
+      .map((f: any) => String(f).replace(/\\/g, '/'))
+      .filter((f: string) => f.startsWith('pay_test_009'));
     expect(receiptFiles).toHaveLength(1);
   });
 

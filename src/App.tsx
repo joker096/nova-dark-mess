@@ -149,7 +149,7 @@ const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
 );
 
-type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous' | 'sites';
+type ScreenId = 'chats' | 'chat-katie' | 'channel-kyiv' | 'profile-katie' | 'analytics' | 'mesh-map' | 'anonymous' | 'sites' | 'settings' | 'premium';
 
 export default function App() {
   const { t, language } = useLanguage();
@@ -1298,7 +1298,7 @@ export default function App() {
             activeTab={activeBottomTab}
             onTabChange={setActiveBottomTab}
             fabSide={fabSide}
-            onNewChat={() => setNewChatModalOpen(true)}
+            onNewChat={() => void 0}
             unreadChats={totalUnreadChats}
             unreadChannels={totalUnreadChannels}
             unreadContacts={0}

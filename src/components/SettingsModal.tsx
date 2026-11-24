@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2, Globe, UserRound, Users, Phone, Clock, ShieldCheck, MessageSquare, VolumeX, Star } from 'lucide-react';
+import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2, Globe, UserRound, Users, Phone, Clock, ShieldCheck, MessageSquare, VolumeX, Star, SlidersHorizontal, Type, Vibrate, BellRing, BellOff, Eye, Shield, ShieldHalf, Wifi, Hash, HelpCircle, KeyRound, Volume2, Crown, LayoutGrid } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -281,7 +281,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenBotChat,
   onOpenMeshMap,
 }) => {
-  const { t } = useLanguage();
+  const { t, language, changeLanguage } = useLanguage();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -1453,32 +1453,1140 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         aria-labelledby="settings-title"
         className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md text-[var(--nova-text-primary)] shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
       >
+        {/* Header */}
         <div className="flex items-center justify-between p-4 pb-3 border-b border-[var(--nova-border-subtle)] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
               <Palette className="w-4 h-4" />
             </div>
-            <div>
-              <h3 id="settings-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight">{t('settings.title')}</h3>
-              <p className="text-[10.5px] text-[var(--nova-text-muted)]">{t('app.name')}</p>
+            <div className="min-w-0">
+              <h3 id="settings-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight truncate">{t('settings.title')}</h3>
+              <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('app.name')}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
-            aria-label={t('common.close')}
-            title={t('common.close')}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Premium chip */}
+            <button
+              type="button"
+              onClick={() => setPremiumSheetOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[10px] font-medium transition hover:bg-[var(--nova-accent-color)]/25 hover:border-[var(--nova-accent-color)]/50 cursor-pointer active:scale-[0.98]"
+              aria-label={t('settings.premiumChipAria', { status: premiumChipLabel })}
+            >
+              <Crown className="w-3 h-3" />
+              <span className="truncate max-w-[80px]">{premiumChipLabel}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+              aria-label={t('common.close')}
+              title={t('common.close')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 space-y-1 flex-1">
-          <SectionHeader
-            icon={<Languages className="w-3.5 h-3.5" />}
-            title={t('settings.language')}
-          />
-          <LanguageSwitcher />
+        {/* Tabs */}
+        <SettingsTabs
+          tabs={tabs}
+          active={activeTab}
+          onChange={setActiveTab}
+          className="border-b border-[var(--nova-border-subtle)] shrink-0"
+        />
+
+        {/* Tab Panels - Fixed height, scroll inside */}
+        <div className="flex-1 overflow-hidden relative">
+          {/* General Tab */}
+          {activeTab === 'general' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.general')}>
+
+                {/* Language Tile */}
+                <SettingsTile
+                  icon={<Languages className="w-5 h-5" />}
+                  label={t('settings.language')}
+                  description={t('settings.languageDesc')}
+                  badge={<span className="text-[11px] font-mono text-[var(--nova-text-muted)]">{t(`common.lang${language.charAt(0).toUpperCase() + language.slice(1)}`)}</span>}
+                  onClick={() => setLanguageSheetOpen(true)}
+                  testId="settings-language-tile"
+                />
+
+                {/* Theme Cycle */}
+                <IconCycleButton
+                  icon={appTheme === 'light' ? <Sun className="w-5 h-5" /> : appTheme === 'dark' ? <Moon className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+                  label={t('settings.theme')}
+                  valueLabel={appTheme === 'light' ? t('settings.themeLight') : appTheme === 'dark' ? t('settings.themeDark') : t('settings.themeSystem')}
+                  onClick={cycleTheme}
+                  ariaLabel={t('settings.themeAria', { value: appTheme })}
+                  testId="settings-theme-cycle"
+                />
+
+                {/* Font Size Cycle */}
+                <IconCycleButton
+                  icon={<Type className="w-5 h-5" />}
+                  label={t('settings.fontSize')}
+                  valueLabel={prefs.fontSize === 'small' ? t('settings.fontSmall') : prefs.fontSize === 'medium' ? t('settings.fontMedium') : t('settings.fontLarge')}
+                  onClick={cycleFontSize}
+                  ariaLabel={t('settings.fontSizeAria', { value: t(`settings.font${prefs.fontSize.charAt(0).toUpperCase() + prefs.fontSize.slice(1)}`) })}
+                  testId="settings-font-cycle"
+                />
+
+                {/* Hand Toggle */}
+                <IconCycleButton
+                  icon={<Hand className={`w-5 h-5 ${fabSide === 'left' ? '-scale-x-100' : ''}`} />}
+                  label={t('settings.fabSide', { defaultValue: 'One-handed button' })}
+                  valueLabel={fabSide === 'right' ? t('settings.fabHandRight', { defaultValue: 'Right' }) : t('settings.fabHandLeft', { defaultValue: 'Left' })}
+                  onClick={cycleFabSide}
+                  ariaLabel={t('settings.fabSideAria', { value: fabSide })}
+                  testId="settings-hand-cycle"
+                />
+
+                {/* Sound Mode Cycle (Sound → Vibration → Silent) */}
+                <IconCycleButton
+                  icon={prefs.notificationSound ? (prefs.vibration ? <Vibrate className="w-5 h-5" /> : <BellRing className="w-5 h-5" />) : <BellOff className="w-5 h-5" />}
+                  label={t('settings.soundMode')}
+                  valueLabel={getSoundModeLabel()}
+                  onClick={cycleSoundMode}
+                  onLongPress={() => setMelodySheetOpen(true)}
+                  ariaLabel={t('settings.soundModeAria', { value: getSoundModeLabel() })}
+                  testId="settings-sound-cycle"
+                />
+
+                {/* Privacy Preset Tile */}
+                <SettingsTile
+                  icon={currentPrivacyPreset === 'maximum' ? <ShieldCheck className="w-5 h-5" /> : currentPrivacyPreset === 'enhanced' ? <ShieldHalf className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
+                  label={t('settings.privacyPreset')}
+                  description={t('settings.privacyPresetDesc')}
+                  badge={
+                    <>
+                      {currentPrivacyPreset !== 'custom' ? (
+                        <span className="text-[11px] font-medium text-[var(--nova-accent-color)] capitalize">{t(`settings.preset${currentPrivacyPreset.charAt(0).toUpperCase() + currentPrivacyPreset.slice(1)}`)}</span>
+                      ) : (
+                        <span className="relative flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />
+                          <span className="text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.presetCustom')}</span>
+                        </span>
+                      )}
+                    </>
+                  }
+                  onClick={() => setPrivacyPresetSheetOpen(true)}
+                  testId="settings-privacy-preset-tile"
+                />
+
+                {/* Message Colors - 4 swatches */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[12px] font-medium text-[var(--nova-text-primary)]">{t('settings.chatColors')}</span>
+                    <InfoHint label={t('settings.chatColorsDesc')} />
+                  </div>
+                  <div className="flex gap-2" role="radiogroup" aria-label={t('settings.chatColors')}>
+                    {CHAT_COLOR_OPTIONS.map((opt, idx) => {
+                      const label = opt.value === 'default' ? t('settings.chatColorDefault') : opt.value === 'sapphire' ? t('settings.chatColorSapphire') : opt.value === 'amethyst' ? t('settings.chatColorAmethyst') : t('settings.chatColorEmerald');
+                      const isPremiumLocked = opt.value !== 'default' && !canUse('chat_themes');
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={chatColorTheme === opt.value}
+                          aria-disabled={isPremiumLocked}
+                          aria-label={label}
+                          onClick={() => {
+                            if (isPremiumLocked) {
+                              checkout();
+                              return;
+                            }
+                            setChatColorTheme(opt.value);
+                            try {
+                              localStorage.setItem(CHAT_THEME_KEY, opt.value);
+                            } catch { void 0; }
+                          }}
+                          className={`relative flex flex-col items-center gap-1.5 flex-1 py-3 px-2 rounded-xl border transition cursor-pointer min-h-[56px] ${isPremiumLocked ? 'opacity-60' : ''} ${chatColorTheme === opt.value ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] hover:border-[var(--nova-accent-color)]/30'}`}
+                          style={{ minWidth: '56px' }}
+                        >
+                          <div className="relative w-10 h-10 rounded-full border border-[var(--nova-border-subtle)] shadow-sm overflow-hidden">
+                            <div className={`absolute inset-0 bg-gradient-to-tr ${opt.grad}`} />
+                            <div className="absolute inset-1 rounded-full bg-[var(--nova-overlay-strong)]" />
+                            {isPremiumLocked && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                                <Lock className="w-4 h-4 text-[var(--nova-text-primary)]" />
+                              </div>
+                            )}
+                            {chatColorTheme === opt.value && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <Check className="w-5 h-5 text-[var(--nova-accent-color)] drop-shadow-sm" />
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-medium ${isPremiumLocked ? 'text-[var(--nova-text-muted)]' : ''}`}>{label}</span>
+                          {isPremiumLocked && (
+                            <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] flex items-center justify-center text-[9px] font-bold">
+                              <Lock className="w-2 h-2 fill-[var(--nova-text-primary)]" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </SettingsSection>
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === 'notifications' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.notifications')}>
+                {/* Notification Matrix - 4 rows IconCycleButton */}
+                <div className="space-y-2" role="list" aria-label={t('settings.notificationsMatrixTitle')}>
+                  {[
+                    { key: 'privateChats', label: t('settings.privateChats'), icon: <MessageSquare className="w-5 h-5" /> },
+                    { key: 'groups', label: t('settings.groupChats'), icon: <Users className="w-5 h-5" /> },
+                    { key: 'channels', label: t('settings.channelChats'), icon: <Megaphone className="w-5 h-5" /> },
+                    { key: 'bots', label: t('settings.botChats'), icon: <Bot className="w-5 h-5" /> },
+                  ].map((item) => {
+                    const current = notificationPrefs[item.key as keyof NotificationPrefs] as NotificationLevel;
+                    return (
+                      <IconCycleButton
+                        key={item.key}
+                        icon={item.icon}
+                        label={item.label}
+                        valueLabel={current === 'all' ? t('settings.notificationsAll') : current === 'mentions' ? t('settings.notificationsMentions') : t('settings.notificationsNone')}
+                        onClick={() => {
+                          const next = cycleNotificationLevel(current);
+                          setNotificationPref(item.key as keyof NotificationPrefs, next);
+                          setNotificationPrefsState(getNotificationPrefs());
+                        }}
+                        ariaLabel={t('settings.notificationLevelAria', { type: item.label, level: t(`settings.notifications${current.charAt(0).toUpperCase() + current.slice(1)}`) })}
+                        testId={`settings-notify-${item.key}`}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Apply All Button */}
+                <button
+                  type="button"
+                  onClick={() => setAllNotificationLevels('all')}
+                  className="w-full py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-accent-color)]/20 hover:border-[var(--nova-accent-color)]/30 hover:text-[var(--nova-accent-color)] transition cursor-pointer"
+                >
+                  {t('settings.notificationsApplyAll')}
+                </button>
+
+                {/* Global Toggles Row: Preview, Vibration, Push */}
+                <div className="flex items-center gap-2 flex-wrap pt-2" role="group" aria-label={t('settings.globalToggles')}>
+                  <IconToggle
+                    icon={<Eye className="w-5 h-5" />}
+                    label={t('settings.previewMessages')}
+                    checked={prefs.previewMessages}
+                    onChange={(v) => updatePref('previewMessages', v)}
+                    ariaLabel={t('settings.previewMessagesAria', { value: prefs.previewMessages ? t('common.on') : t('common.off') })}
+                    testId="settings-preview-toggle"
+                  />
+                  <IconToggle
+                    icon={<Vibrate className="w-5 h-5" />}
+                    label={t('settings.vibration')}
+                    checked={prefs.vibration}
+                    onChange={(v) => updatePref('vibration', v)}
+                    ariaLabel={t('settings.vibrationAria', { value: prefs.vibration ? t('common.on') : t('common.off') })}
+                    testId="settings-vibration-toggle"
+                  />
+                  <IconToggle
+                    icon={<BellRing className="w-5 h-5" />}
+                    label={t('settings.pushNotifications')}
+                    checked={prefs.pushEnabled}
+                    onChange={handlePushToggle}
+                    ariaLabel={t('settings.pushNotificationsAria', { value: prefs.pushEnabled ? t('common.on') : t('common.off') })}
+                    badge={pushMsg && <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />}
+                    testId="settings-push-toggle"
+                  />
+                </div>
+
+                {/* Muted / Priority badge rows */}
+                <div className="flex gap-2 pt-2">
+                  <SettingsTile
+                    icon={<VolumeX className="w-5 h-5" />}
+                    label={t('settings.mutedContacts')}
+                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.contactsCount', { count: getMutedContacts().length })}</span>}
+                    onClick={openMutedContacts}
+                    testId="settings-muted-contacts"
+                  />
+                  <SettingsTile
+                    icon={<Star className="w-5 h-5" />}
+                    label={t('settings.priorityContacts')}
+                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.contactsCount', { count: getPriorityContacts().length })}</span>}
+                    onClick={openPriorityContacts}
+                    testId="settings-priority-contacts"
+                  />
+                </div>
+              </SettingsSection>
+            </div>
+          )}
+
+          {/* Privacy Tab */}
+          {activeTab === 'privacy' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.privacyPreset')}>
+                {/* Privacy Preset Segmented */}
+                <IconSegmented<string>
+                  options={[
+                    { value: 'basic', label: t('settings.presetBasic'), icon: <Shield className="w-4 h-4" /> },
+                    { value: 'enhanced', label: t('settings.presetEnhanced'), icon: <ShieldHalf className="w-4 h-4" /> },
+                    { value: 'maximum', label: t('settings.presetMaximum'), icon: <ShieldCheck className="w-4 h-4" /> },
+                  ]}
+                  value={currentPrivacyPreset === 'custom' ? 'basic' : currentPrivacyPreset}
+                  onChange={(v) => applyPrivacyPreset(v as 'basic' | 'enhanced' | 'maximum')}
+                  ariaLabel={t('settings.privacyPresetAria')}
+                  testId="settings-privacy-preset-segmented"
+                />
+                {currentPrivacyPreset === 'custom' && (
+                  <p className="text-[11px] text-[var(--nova-text-muted)] text-center mt-2 flex items-center justify-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />
+                    <span>{t('settings.presetCustom')}</span>
+                    <InfoHint label={t('settings.presetHint')} />
+                  </p>
+                )}
+              </SettingsSection>
+
+              <SettingsSection title={t('settings.whoSees')}>
+                {/* Who Sees - 5 rows IconCycleButton */}
+                {[
+                  { key: 'lastSeen', label: t('settings.lastSeen'), icon: <Clock className="w-5 h-5" /> },
+                  { key: 'profilePhoto', label: t('settings.profilePhoto'), icon: <UserRound className="w-5 h-5" /> },
+                  { key: 'calls', label: t('settings.calls'), icon: <Phone className="w-5 h-5" /> },
+                  { key: 'groupsAndChannels', label: t('settings.groups'), icon: <Users className="w-5 h-5" /> },
+                  { key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-5 h-5" /> },
+                ].map((item) => {
+                  const current = socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope;
+                  return (
+                    <IconCycleButton
+                      key={item.key}
+                      icon={item.icon}
+                      label={item.label}
+                      valueLabel={current === 'everyone' ? t('settings.everyone') : current === 'contacts' ? t('settings.contacts') : t('settings.nobody')}
+                      onClick={() => {
+                        const scopes: PrivacyScope[] = ['everyone', 'contacts', 'nobody'];
+                        const next = scopes[(scopes.indexOf(current) + 1) % 3];
+                        setSocialPrivacy(item.key as keyof SocialPrivacySettings, next);
+                        setSocialPrivacyState(getSocialPrivacy());
+                      }}
+                      ariaLabel={t('settings.whoSeesAria', { type: item.label, scope: t(`settings.${current}`) })}
+                      testId={`settings-who-sees-${item.key}`}
+                    />
+                  );
+                })}
+              </SettingsSection>
+
+              <SettingsSection title={t('settings.network')}>
+                {/* Network Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <IconToggle
+                    icon={<Shield className="w-5 h-5" />}
+                    label={t('settings.metadataMinimization')}
+                    checked={privacyPrefs.metadataMinimization}
+                    onChange={(v) => updatePrivacyPref(v)}
+                    ariaLabel={t('settings.metadataMinimizationAria', { value: privacyPrefs.metadataMinimization ? t('common.on') : t('common.off') })}
+                    testId="settings-metadata-toggle"
+                  />
+                  <IconToggle
+                    icon={<Globe className="w-5 h-5" />}
+                    label={t('settings.hideIP')}
+                    checked={privacyPrefs.webrtcRelayOnly}
+                    onChange={(v) => updatePresencePref({ webrtcRelayOnly: v })}
+                    ariaLabel={t('settings.hideIPAria', { value: privacyPrefs.webrtcRelayOnly ? t('common.on') : t('common.off') })}
+                    testId="settings-hide-ip-toggle"
+                  />
+                  <IconToggle
+                    icon={<Monitor className="w-5 h-5" />}
+                    label={t('settings.torMode')}
+                    checked={privacyPrefs.torEnabled}
+                    onChange={() => toggleTor()}
+                    ariaLabel={t('settings.torModeAria', { value: privacyPrefs.torEnabled ? t('common.on') : t('common.off') })}
+                    testId="settings-tor-toggle"
+                  />
+                  <SettingsTile
+                    icon={<Send className="w-5 h-5" />}
+                    label={t('settings.relays')}
+                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.relayCount', { count: privacyPrefs.relayEndpoints.length })}</span>}
+                    onClick={() => setRelaysSheetOpen(true)}
+                    testId="settings-relays-tile"
+                  />
+                  <SettingsTile
+                    icon={<ShieldAlert className="w-5 h-5" />}
+                    label={t('settings.turnServers')}
+                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.turnServersCount', { count: privacyPrefs.turnServers.length })}</span>}
+                    onClick={() => setTurnSheetOpen(true)}
+                    testId="settings-turn-tile"
+                  />
+                  <IconToggle
+                    icon={<Wifi className="w-5 h-5" />}
+                    label={t('settings.presenceSharing')}
+                    checked={privacyPrefs.presenceSharing}
+                    onChange={(v) => updatePresencePref({ presenceSharing: v })}
+                    ariaLabel={t('settings.presenceSharingAria', { value: privacyPrefs.presenceSharing ? t('common.on') : t('common.off') })}
+                    testId="settings-presence-toggle"
+                  />
+                </div>
+                <InfoHint label={t('settings.networkHint')} className="ml-2" />
+              </SettingsSection>
+
+              {/* Mesh Map, Blocked Users as tiles */}
+              <SettingsSection title={t('settings.moreOptions')}>
+                {onOpenMeshMap && (
+                  <SettingsTile
+                    icon={<MapPin className="w-5 h-5" />}
+                    label={t('meshMap.title')}
+                    description={t('meshMap.subtitle', { defaultValue: 'Visual radar of nearby relay nodes' })}
+                    onClick={() => { onClose(); onOpenMeshMap?.(); }}
+                    testId="settings-mesh-map"
+                  />
+                )}
+                <SettingsTile
+                  icon={<Ban className="w-5 h-5" />}
+                  label={t('settings.blockedUsers')}
+                  onClick={() => setBlockedUsersOpen(true)}
+                  testId="settings-blocked-users"
+                />
+              </SettingsSection>
+            </div>
+          )}
+
+          {/* Security Tab */}
+          {activeTab === 'security' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.security')}>
+                {!secureStorage && (
+                  <div role="alert" className="mb-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+                    <div className="font-semibold">{t('settings.secureStorageUnavailable')}</div>
+                    <div className="mt-0.5 text-amber-200/80">{t('settings.secureStorageUnavailableHint')}</div>
+                  </div>
+                )}
+                {!dbAvailable && (
+                  <div role="alert" className="mb-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+                    {t('settings.encryptedStorageUnavailable')}
+                  </div>
+                )}
+
+                <IconToggle
+                  icon={<Lock className="w-5 h-5" />}
+                  label={t('settings.passcodeLock')}
+                  checked={pinEnabled}
+                  onChange={() => setPinSheetOpen(true)}
+                  ariaLabel={t('settings.passcodeLockAria', { value: pinEnabled ? t('common.on') : t('common.off') })}
+                  testId="settings-pin-toggle"
+                />
+
+                <IconToggle
+                  icon={<Fingerprint className="w-5 h-5" />}
+                  label={t('settings.biometricUnlock', { defaultValue: 'Fingerprint/Face unlock' })}
+                  checked={biometricEnabled}
+                  disabled={!biometricSupported || !pinEnabled}
+                  onChange={() => { if (pinEnabled) handleToggleBiometric(); }}
+                  ariaLabel={t('settings.biometricUnlockAria', { value: biometricEnabled ? t('common.on') : t('common.off') })}
+                  badge={!pinEnabled && biometricSupported && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  testId="settings-biometric-toggle"
+                />
+                {!pinEnabled && biometricSupported && (
+                  <p className="ml-10 text-[11px] text-amber-400/80">{t('settings.biometricNeedsPin')}</p>
+                )}
+
+                <IconToggle
+                  icon={<ShieldCheck className="w-5 h-5" />}
+                  label={t('settings.twoFactorAuth')}
+                  checked={is2FAEnabled}
+                  onChange={() => setTwoFactorSheetOpen(true)}
+                  ariaLabel={t('settings.twoFactorAuthAria', { value: is2FAEnabled ? t('common.on') : t('common.off') })}
+                  testId="settings-2fa-toggle"
+                />
+
+                <SettingsTile
+                  icon={<KeyRound className="w-5 h-5" />}
+                  label={t('settings.showSeedPhrase')}
+                  description={t('settings.seedPhraseDesc')}
+                  onClick={() => setRecoveryGateOpen(true)}
+                  disabled={!identity}
+                  testId="settings-recovery-tile"
+                />
+
+                <SettingsTile
+                  icon={<Users className="w-5 h-5" />}
+                  label={t('settings.accounts.manage')}
+                  badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.accountsCount')}</span>}
+                  onClick={() => setAccountSwitcherOpen(true)}
+                  testId="settings-accounts-tile"
+                />
+              </SettingsSection>
+            </div>
+          )}
+
+          {/* Data Tab */}
+          {activeTab === 'data' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.dataStorage')}>
+                <IconToggle
+                  icon={<Download className="w-5 h-5" />}
+                  label={t('settings.autoDownload')}
+                  checked={prefs.autoDownload}
+                  onChange={(v) => updatePref('autoDownload', v)}
+                  ariaLabel={t('settings.autoDownloadAria', { value: prefs.autoDownload ? t('common.on') : t('common.off') })}
+                  testId="settings-autodownload-toggle"
+                />
+
+                {/* Storage Usage Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[11px] font-medium text-[var(--nova-text-secondary)]">
+                    <span>{t('settings.memory')}</span>
+                    <span>{formatBytes(totalStorageBytes)}</span>
+                  </div>
+                  <div className="h-2 bg-[var(--nova-overlay-weak)] rounded-full overflow-hidden">
+                    {storageUsage.map((cat, idx) => (
+                      <div
+                        key={cat.category}
+                        className="h-full float-left transition-all duration-300"
+                        style={{ width: `${totalStorageBytes > 0 ? (cat.bytes / totalStorageBytes) * 100 : 0}%`, backgroundColor: `var(--nova-chart-${idx % 5})` }}
+                        title={`${cat.category}: ${formatBytes(cat.bytes)}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStorageExpanded(!storageExpanded)}
+                    className="w-full text-left text-[11px] text-[var(--nova-text-muted)] py-1"
+                  >
+                    {storageExpanded ? t('common.less') : t('settings.storageDetails')} <ChevronRight className={`w-3 h-3 inline ${storageExpanded ? 'rotate-90' : ''}`} />
+                  </button>
+                  {storageExpanded && (
+                    <div className="space-y-1 mt-1 max-h-48 overflow-y-auto">
+                      {storageUsage.map((cat) => (
+                        <div key={cat.category} className="flex justify-between text-[11px] text-[var(--nova-text-muted)]">
+                          <span>{cat.category}</span>
+                          <span>{formatBytes(cat.bytes)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <InfoHint label={t('settings.memoryHint')} className="ml-2" />
+                </div>
+
+                <SettingsTile
+                  icon={<Trash2 className="w-5 h-5" />}
+                  label={t('settings.clearCache')}
+                  onClick={handleClearCache}
+                  testId="settings-clear-cache"
+                />
+                {cacheMsg && <p className="text-[11px] text-[var(--nova-accent-color)]" role="status">{cacheMsg}</p>}
+              </SettingsSection>
+
+              <SettingsSection title={t('settings.dataBackup')}>
+                <div className="grid grid-cols-4 gap-2">
+                  <SettingsTile
+                    icon={<FileText className="w-5 h-5" />}
+                    label={t('settings.exportData')}
+                    description={t('settings.exportDataDesc')}
+                    onClick={handleExportMyData}
+                    disabled={exporting}
+                    testId="settings-export-data"
+                  />
+                  <SettingsTile
+                    icon={<Download className="w-5 h-5" />}
+                    label={t('settings.exportBackupShort')}
+                    description={t('settings.exportBackupDesc')}
+                    onClick={() => { setCloudUrl(loadSavedCloudUrl()); setBackupModal({ open: true, mode: 'export' }); }}
+                    testId="settings-export-backup"
+                  />
+                  <SettingsTile
+                    icon={<Upload className="w-5 h-5" />}
+                    label={t('settings.importBackupShort')}
+                    description={t('settings.importBackupDesc')}
+                    onClick={() => { setCloudUrl(loadSavedCloudUrl()); setBackupModal({ open: true, mode: 'import' }); }}
+                    testId="settings-import-backup"
+                  />
+                  <SettingsTile
+                    icon={<Cloud className="w-5 h-5" />}
+                    label={t('settings.googleDrive')}
+                    description={gdriveConnected ? t('settings.gdriveConnected') : t('settings.gdriveNotConnected')}
+                    badge={gdriveConnected ? <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> : <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-text-muted)]" />}
+                    onClick={() => setDriveSheetOpen(true)}
+                    testId="settings-gdrive-tile"
+                  />
+                </div>
+              </SettingsSection>
+
+              <SettingsSection title={t('settings.dangerZone')} divider>
+                <SettingsTile
+                  icon={<Trash2 className="w-5 h-5" />}
+                  label={t('settings.deleteAll')}
+                  description={t('settings.deleteAllDesc')}
+                  tone="danger"
+                  onClick={() => setDeleteSheetOpen(true)}
+                  testId="settings-delete-all"
+                />
+              </SettingsSection>
+            </div>
+          )}
+
+          {/* More Tab */}
+          {activeTab === 'more' && (
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <SettingsSection title={t('settings.moreOptions')}>
+                <div className="grid grid-cols-3 gap-2">
+                  {getBotSession && (
+                    <SettingsTile
+                      icon={<Bot className="w-5 h-5" />}
+                      label={t('settings.bots')}
+                      badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.botsCount', { count: getBots().length })}</span>}
+                      onClick={() => setBotsOpen(true)}
+                      testId="settings-bots-tile"
+                    />
+                  )}
+                  <SettingsTile
+                    icon={<BarChart3 className="w-5 h-5" />}
+                    label={t('settings.analytics')}
+                    onClick={() => setAnalyticsSheetOpen(true)}
+                    testId="settings-analytics-tile"
+                  />
+                  <SettingsTile
+                    icon={<Globe className="w-5 h-5" />}
+                    label={t('settings.widgets')}
+                    onClick={() => { onClose(); onOpenSites?.(); }}
+                    testId="settings-widgets-tile"
+                  />
+                  <SettingsTile
+                    icon={<Megaphone className="w-5 h-5" />}
+                    label={t('settings.ads')}
+                    description={canUse('ads_free') ? t('settings.adsDisabledPremium') : undefined}
+                    onClick={() => setAdsSheetOpen(true)}
+                    testId="settings-ads-tile"
+                  />
+                  {joinOutboxCount > 0 && (
+                    <SettingsTile
+                      icon={<Send className="w-5 h-5" />}
+                      label={t('settings.joinRequests')}
+                      badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/20 text-[11px] font-medium text-[var(--nova-accent-color)]">{t('settings.joinRequestsCount', { count: joinOutboxCount })}</span>}
+                      onClick={() => setJoinOutboxCount(retryJoinOutboxNow())}
+                      testId="settings-join-tile"
+                    />
+                  )}
+                  <SettingsTile
+                    icon={<ShieldAlert className="w-5 h-5" />}
+                    label={t('settings.moderation')}
+                    onClick={() => setModerationOpen(true)}
+                    testId="settings-moderation-tile"
+                  />
+                </div>
+              </SettingsSection>
+
+              {/* Footer */}
+              <div className="border-t border-[var(--nova-border-subtle)] pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] text-[var(--nova-text-primary)]">{t('app.name')}</span>
+                  <span className="text-[11px] font-mono text-[var(--nova-text-muted)]">v1.0.0</span>
+                </div>
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setLegalDoc('terms')}
+                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
+                    aria-label={t('settings.termsOfService')}
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLegalDoc('privacy')}
+                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
+                    aria-label={t('settings.privacyPolicy')}
+                  >
+                    <Lock className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm(t('settings.rerunSetupConfirm'))) return;
+                      resetOnboarding();
+                      window.location.reload();
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
+                    aria-label={t('settings.rerunSetup')}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Sheets / Sub-screens */}
+        {/* Language Sheet */}
+        <SettingsSheet
+          open={languageSheetOpen}
+          onClose={() => setLanguageSheetOpen(false)}
+          title={t('settings.language')}
+          testId="settings-language-sheet"
+        >
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {[
+              { code: 'en', flag: '🇺🇸', name: 'English', native: 'English' },
+              { code: 'ru', flag: '🇷🇺', name: 'Russian', native: 'Русский' },
+              { code: 'uk', flag: '🇺🇦', name: 'Ukrainian', native: 'Українська' },
+            ].map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => { changeLanguage(lang.code as any); setLanguageSheetOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/10 border border-[var(--nova-border-subtle)] text-left transition cursor-pointer"
+              >
+                <span className="text-2xl">{lang.flag}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-[var(--nova-text-primary)] truncate">{lang.name}</p>
+                  <p className="text-[11px] text-[var(--nova-text-muted)] truncate">{lang.native}</p>
+                </div>
+                {language === lang.code && <Check className="w-5 h-5 text-[var(--nova-accent-color)] shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </SettingsSheet>
+
+        {/* Melody Sheet */}
+        <SettingsSheet
+          open={melodySheetOpen}
+          onClose={() => setMelodySheetOpen(false)}
+          title={t('settings.melody')}
+          description={t('settings.melodyHint')}
+          testId="settings-melody-sheet"
+        >
+          <div className="space-y-2">
+            {SOUND_IDS.filter(id => id !== 'silent').map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectMelody(id)}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition cursor-pointer ${soundId === id ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/40' : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] hover:bg-[var(--nova-overlay-weak)]'}`}
+              >
+                <span className="text-[13px] text-[var(--nova-text-primary)]">{SOUNDS[id].label}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); playSound('notification', id); }}
+                  className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color)] transition"
+                  aria-label={t('settings.previewSound', { name: SOUNDS[id].label })}
+                >
+                  <Volume2 className="w-4 h-4" />
+                </button>
+              </button>
+            ))}
+          </div>
+        </SettingsSheet>
+
+        {/* Premium Sheet */}
+        <SettingsSheet
+          open={premiumSheetOpen}
+          onClose={() => setPremiumSheetOpen(false)}
+          title={t('settings.premium')}
+          testId="settings-premium-sheet"
+        >
+          <div className="space-y-4">
+            <div className="text-center py-2">
+              <Crown className="w-12 h-12 mx-auto text-[var(--nova-accent-color)]" />
+              <h4 className="mt-2 text-lg font-bold text-[var(--nova-text-primary)]">{premium ? t('settings.premiumActive') : t('settings.premiumTitle')}</h4>
+              <p className="mt-1 text-[13px] text-[var(--nova-text-secondary)]">{premium ? t('settings.premiumActiveDesc') : t('settings.premiumDesc')}</p>
+              {freeDaysRemaining() > 0 && !premium && (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-xs font-medium">
+                  <Clock className="w-3 h-3" />
+                  <span>{t('settings.premiumFreeTrial', { days: freeDaysRemaining() })}</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={async () => { const r = await checkout(); if (!r.ok && r.error) alert(r.error); }}
+              disabled={loading || premium}
+              className="w-full py-3 rounded-xl border transition cursor-pointer active:scale-95 flex items-center justify-center gap-2 shadow-md text-base font-medium disabled:opacity-50"
+            >
+              {loading ? <span className="animate-pulse">Loading...</span> : premium ? (
+                <> <Check className="w-5 h-5" /> <span>{t('settings.premiumActive')}</span> </>
+              ) : (
+                <> <Sparkles className="w-5 h-5" /> <span>{t('settings.premiumUpgrade')} • {minSubscriptionCost / 100} {t('settings.premiumCurrency')}</span> </>
+              )}
+            </button>
+            <button onClick={() => { setPremiumSheetOpen(false); setCryptoModalOpen(true); }} disabled={premium} className="w-full py-2.5 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] text-sm font-medium transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2">
+              <DollarSign className="w-4 h-4" /> {t('premium.cryptoTitle')}
+            </button>
+          </div>
+        </SettingsSheet>
+
+        {/* Privacy Preset Sheet */}
+        <SettingsSheet
+          open={privacyPresetSheetOpen}
+          onClose={() => setPrivacyPresetSheetOpen(false)}
+          title={t('settings.privacyPreset')}
+          description={t('settings.privacyPresetDesc')}
+          testId="settings-privacy-preset-sheet"
+        >
+          <div className="space-y-2">
+            {['basic', 'enhanced', 'maximum'].map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => applyPrivacyPreset(p as 'basic' | 'enhanced' | 'maximum')}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl border transition cursor-pointer ${currentPrivacyPreset === p ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/40' : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] hover:bg-[var(--nova-overlay-weak)]'}`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                  {p === 'basic' ? <Shield className="w-5 h-5" /> : p === 'enhanced' ? <ShieldHalf className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-[var(--nova-text-primary)] truncate">{t(`settings.preset${p.charAt(0).toUpperCase() + p.slice(1)}`)}</p>
+                  <p className="text-[11px] text-[var(--nova-text-muted)] truncate">{t(`settings.preset${p.charAt(0).toUpperCase() + p.slice(1)}Desc`)}</p>
+                </div>
+                {currentPrivacyPreset === p && <Check className="w-5 h-5 text-[var(--nova-accent-color)] shrink-0" />}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => { setPrivacyPresetSheetOpen(false); showToast(t('settings.presetCustomInfo')); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-muted)] shrink-0">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-[var(--nova-text-primary)] truncate">{t('settings.presetCustom')}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)] truncate">{t('settings.presetCustomDesc')}</p>
+              </div>
+              {currentPrivacyPreset === 'custom' && <Check className="w-5 h-5 text-[var(--nova-accent-color)] shrink-0" />}
+            </button>
+          </div>
+        </SettingsSheet>
+
+        {/* Relays Sheet */}
+        <SettingsSheet
+          open={relaysSheetOpen}
+          onClose={() => setRelaysSheetOpen(false)}
+          title={t('settings.relays')}
+          description={t('settings.relayScreenDesc')}
+          testId="settings-relays-sheet"
+        >
+          <div className="space-y-3">
+            {privacyPrefs.relayEndpoints.length === 0 ? (
+              <p className="text-[13px] text-[var(--nova-text-muted)] text-center py-8">{t('settings.noRelays')}</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {privacyPrefs.relayEndpoints.map((relay) => (
+                  <div key={relay.id} className="flex items-center gap-2 px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)]">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-[var(--nova-text-primary)] truncate">{relay.url}</p>
+                      {relay.operator && <p className="text-[11px] text-[var(--nova-text-muted)] truncate">{relay.operator}</p>}
+                    </div>
+                    <button type="button" onClick={() => removeRelay(relay.id)} className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-red-500/20 text-[var(--nova-text-muted)] hover:text-red-400 transition" aria-label={t('settings.removeRelay')}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="pt-2 border-t border-[var(--nova-border-subtle)] space-y-2">
+              <input type="url" placeholder={t('settings.relayUrl')} value={newRelayUrl} onChange={(e) => setNewRelayUrl(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+              <input type="text" placeholder={t('settings.relayOperator')} value={newRelayOperator} onChange={(e) => setNewRelayOperator(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+              <button type="button" onClick={addRelay} disabled={!newRelayUrl.trim()} className="w-full py-2 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{t('settings.addRelay')}</button>
+            </div>
+          </div>
+        </SettingsSheet>
+
+        {/* TURN Sheet */}
+        <SettingsSheet
+          open={turnSheetOpen}
+          onClose={() => setTurnSheetOpen(false)}
+          title={t('settings.turnServers')}
+          description={t('settings.turnScreenDesc')}
+          testId="settings-turn-sheet"
+        >
+          <div className="space-y-3">
+            {privacyPrefs.turnServers.length === 0 ? (
+              <p className="text-[13px] text-[var(--nova-text-muted)] text-center py-8">{t('settings.turnServersEmpty')}</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {privacyPrefs.turnServers.map((server, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)]">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-[var(--nova-text-primary)] truncate">{typeof server.urls === 'string' ? server.urls : Array.isArray(server.urls) ? server.urls.join(', ') : 'TURN'}</p>
+                      {server.username && <p className="text-[11px] text-[var(--nova-text-muted)] truncate">{server.username}</p>}
+                    </div>
+                    <button type="button" onClick={() => removeTurnServer(idx)} className="p-1.5 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-red-500/20 text-[var(--nova-text-muted)] hover:text-red-400 transition" aria-label={t('settings.removeTurnServer')}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <InfoHint label={t('settings.turnWarning')} className="text-amber-400/80" />
+            <div className="pt-2 border-t border-[var(--nova-border-subtle)] space-y-2">
+              <input type="text" placeholder={t('settings.turnServerUrlPlaceholder')} value={newTurnServerUrl} onChange={(e) => setNewTurnServerUrl(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+              <input type="text" placeholder={t('settings.turnUsernameLabel')} value={newTurnServerUsername} onChange={(e) => setNewTurnServerUsername(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+              <input type="password" placeholder={t('settings.turnPasswordLabel')} value={newTurnServerPassword} onChange={(e) => setNewTurnServerPassword(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+              <button type="button" onClick={addTurnServer} disabled={!newTurnServerUrl.trim()} className="w-full py-2 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{t('settings.addTurnServerBtn')}</button>
+            </div>
+          </div>
+        </SettingsSheet>
+
+        {/* Tor Sheet */}
+        <SettingsSheet
+          open={torSheetOpen}
+          onClose={() => setTorSheetOpen(false)}
+          title={t('settings.torMode')}
+          description={t('settings.torDetails')}
+          testId="settings-tor-sheet"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
+                {privacyPrefs.torEnabled ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-[13px] font-medium text-[var(--nova-text-primary)]">{t('settings.torMode')}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.torModeHint')}</p>
+              </div>
+              <IconToggle
+                icon={<Monitor className="w-5 h-5" />}
+                label=""
+                checked={privacyPrefs.torEnabled}
+                onChange={() => toggleTor()}
+              />
+            </div>
+            {privacyPrefs.torEnabled && (
+              <div className="space-y-3 pt-2 border-t border-[var(--nova-border-subtle)]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-[var(--nova-text-secondary)] w-24">{t('settings.torSocksPort')}</span>
+                  <input type="number" min="1" max="65535" value={privacyPrefs.torSocksPort} onChange={(e) => { const v = Number(e.target.value); if (v > 0 && v <= 65535) { setPrivacyPrefs((prev) => { const next = { ...prev, torSocksPort: v }; savePrivacyPrefs(next); return next; }); } }} className="flex-1 px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" />
+                </div>
+                <button type="button" onClick={checkTor} disabled={torStatus === 'checking'} className="w-full py-2 rounded-xl border text-[12px] font-medium transition ${torStatus === 'checking' ? 'border-[#8c919d]/40 text-[var(--nova-text-muted)] cursor-wait bg-[var(--nova-overlay-weak)]' : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)]'}">
+                  {torStatus === 'checking' ? t('settings.torCheck') + '…' : t('settings.torCheck')}
+                </button>
+                <p className="text-center text-[12px] font-medium ${torStatus === 'connected' ? 'text-emerald-400' : torStatus === 'error' ? 'text-red-400' : 'text-[var(--nova-text-muted)]'}">
+                  {torStatus === 'connected' ? t('settings.torConnected') : torStatus === 'error' ? t('settings.torNotConnected') : '—'}
+                </p>
+              </div>
+            )}
+          </div>
+        </SettingsSheet>
+
+        {/* Presence Sheet */}
+        <SettingsSheet
+          open={presenceSheetOpen}
+          onClose={() => setPresenceSheetOpen(false)}
+          title={t('settings.presenceSharing')}
+          description={t('settings.presenceDetails')}
+          testId="settings-presence-sheet"
+        >
+          <div className="space-y-3">
+            <IconToggle
+              icon={<Hash className="w-5 h-5" />}
+              label={t('settings.presenceHashing')}
+              checked={privacyPrefs.presenceHashing}
+              onChange={(v) => updatePresencePref({ presenceHashing: v })}
+            />
+            <div>
+              <p className="text-[12px] font-medium text-[var(--nova-text-secondary)] mb-2">{t('settings.presenceTtl')}</p>
+              <div className="flex gap-2">
+                {(['short', 'normal', 'long'] as const).map((ttl) => (
+                  <button key={ttl} type="button" onClick={() => updatePresencePref({ presenceTtl: ttl })} className={`flex-1 py-2 rounded-xl border text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${privacyPrefs.presenceTtl === ttl ? 'bg-[var(--nova-accent-color)]/15 border-[var(--nova-accent-color)]/45 text-[var(--nova-text-primary)]' : 'border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'}`}>
+                    {t(`settings.presenceTtl_${ttl}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SettingsSheet>
+
+        {/* Analytics Sheet */}
+        <SettingsSheet
+          open={analyticsSheetOpen}
+          onClose={() => setAnalyticsSheetOpen(false)}
+          title={t('settings.analytics')}
+          description={t('settings.analyticsDiagnostics')}
+          testId="settings-analytics-sheet"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="p-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)]">
+                <p className="text-2xl font-bold text-[var(--nova-text-primary)]">{analyticsMessageCount}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)]">{t('analytics.totalMessages')}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)]">
+                <p className="text-2xl font-bold text-[var(--nova-text-primary)]">{analyticsActiveChats}</p>
+                <p className="text-[11px] text-[var(--nova-text-muted)]">{t('analytics.activeChats')}</p>
+              </div>
+            </div>
+            <div className="space-y-2 pt-2 border-t border-[var(--nova-border-subtle)]">
+              <IconToggle
+                icon={<BarChart3 className="w-5 h-5" />}
+                label={t('analytics.consent')}
+                checked={privacyPrefs.analyticsConsent}
+                onChange={(v) => { const next = v; setPrivacyPrefs((prev) => { const p = { ...prev, analyticsConsent: next }; savePrivacyPrefs(p); return p; }); localAnalytics.setAnalyticsConsent(next); }}
+              />
+              <IconToggle
+                icon={<AlertTriangle className="w-5 h-5" />}
+                label={t('analytics.crashReports')}
+                checked={privacyPrefs.crashReports}
+                onChange={(v) => { const next = v; setPrivacyPrefs((prev) => { const p = { ...prev, crashReports: next }; savePrivacyPrefs(p); return p; }); localAnalytics.setCrashReportsConsent(next); setCrashCount(localAnalytics.getCrashes().length); }}
+              />
+              {privacyPrefs.crashReports && (
+                <div className="space-y-2 pl-10">
+                  <p className="text-[11px] text-[var(--nova-text-secondary)]">{t('analytics.crashReportsCount', { count: crashCount })}</p>
+                  <div className="flex gap-2">
+                    <button onClick={handleExportCrashReports} disabled={crashCount === 0} className="flex-1 py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition disabled:opacity-40">{t('analytics.exportCrashReports')}</button>
+                    <button onClick={handleClearCrashReports} disabled={crashCount === 0} className="flex-1 py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[11px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] transition disabled:opacity-40">{t('analytics.clearCrashReports')}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => { setAnalyticsSheetOpen(false); onClose(); onOpenAnalytics?.(); }} className="w-full py-2 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95">{t('analytics.openFullAnalytics')}</button>
+          </div>
+        </SettingsSheet>
+
+        {/* Ads Sheet */}
+        <SettingsSheet
+          open={adsSheetOpen}
+          onClose={() => setAdsSheetOpen(false)}
+          title={t('settings.advertising')}
+          testId="settings-ads-sheet"
+        >
+          <div className="space-y-4" data-testid="ad-preferences">
+            <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)]">{t('settings.adsPrivacyHint')}</p>
+            {canUse('ads_free') && <p className="flex items-start gap-1.5 rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-2 py-1.5 text-[11px] font-medium text-[var(--nova-text-secondary)]" data-testid="ads-premium-off"><Check className="mt-0.5 h-3 w-3 shrink-0 text-[var(--nova-accent-color)]" /><span>{t('settings.adsPremiumOff')}</span></p>}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] p-2"><span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.adsHidden')}</span><span className="mt-0.5 block text-sm font-bold text-[var(--nova-text-primary)]" data-testid="ad-prefs-hidden">{adPrefs.hiddenAds.length}</span></div>
+              <div className="rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] p-2"><span className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.adsBlocked')}</span><span className="mt-0.5 block text-sm font-bold text-[var(--nova-text-primary)]" data-testid="ad-prefs-blocked">{adPrefs.blockedAdvertisers.length}</span></div>
+            </div>
+            {adPrefs.hiddenAds.length > 0 && <div className="space-y-1 max-h-48 overflow-y-auto">{adPrefs.hiddenAds.map((id) => <div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] px-2 py-1"><span className="truncate text-[10.5px] text-[var(--nova-text-secondary)]" title={id}>{readableAdId(id)}</span><button type="button" onClick={() => handleRestoreAd(id)} className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"><RotateCcw className="h-2.5 w-2.5" />{t('settings.adsRestore')}</button></div>)}</div>}
+            {adPrefs.blockedAdvertisers.length > 0 && <div className="space-y-1 max-h-48 overflow-y-auto">{adPrefs.blockedAdvertisers.map((id) => <div key={id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] px-2 py-1"><span className="truncate text-[10.5px] text-[var(--nova-text-secondary)]" title={id}>{readableAdId(id)}</span><button type="button" onClick={() => handleUnblockAdvertiser(id)} className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"><Ban className="h-2.5 w-2.5" />{t('settings.adsUnblock')}</button></div>)}</div>}
+            <button type="button" onClick={handleResetAdPrefs} disabled={adPrefs.hiddenAds.length === 0 && adPrefs.blockedAdvertisers.length === 0} className="w-full py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer disabled:opacity-35">{t('settings.adsReset')}</button>
+          </div>
+        </SettingsSheet>
+
+        {/* Google Drive Sheet */}
+        <SettingsSheet
+          open={driveSheetOpen}
+          onClose={() => setDriveSheetOpen(false)}
+          title={t('settings.googleDrive')}
+          testId="settings-gdrive-sheet"
+        >
+          <div className="space-y-4">
+            {!gdriveConnected ? (
+              <button onClick={handleGDriveConnect} disabled={gdriveLinking} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer disabled:opacity-50"><HardDrive className="w-5 h-5" /><span>{gdriveLinking ? t('settings.gdriveConnecting') : t('settings.gdriveConnect')}</span></button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)]"><div className="flex items-center gap-2"><HardDrive className="w-5 h-5 text-[var(--nova-accent-color)]" /><span className="text-[12px] font-medium text-[var(--nova-text-secondary)]">{t('settings.gdriveConnected')}</span><span className="w-2 h-2 rounded-full bg-green-400" /></div><button onClick={handleGDriveDisconnect} disabled={gdriveLoading} className="text-[12px] text-red-400 hover:text-red-300 disabled:opacity-50">{t('settings.gdriveDisconnect')}</button></div>
+                <div className="space-y-3">
+                  <div><label className="block text-[11px] font-medium text-[var(--nova-text-secondary)] mb-1">{t('settings.gdrivePassphrase')}</label><input type="password" value={exportPassphrase} onChange={(e) => setExportPassphrase(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[12px] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" placeholder="••••••••" /></div>
+                  <div className="flex gap-2"><button onClick={handleGDriveBackup} disabled={backupBusy || exportPassphrase.trim().length < 8} className="flex-1 py-2 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50"><Upload className="w-4 h-4" />{t('settings.gdriveBackupNow')}</button><button onClick={handleGDriveRefresh} disabled={gdriveLoading} className="px-4 py-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition active:scale-95 disabled:opacity-50"><RotateCcw className="w-4 h-4" /></button></div>
+                  {gdriveBackups.length > 0 && <div className="max-h-48 overflow-y-auto space-y-1 border-t border-[var(--nova-border-subtle)] pt-2"><p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-muted)]">{t('settings.gdriveBackups')}</p>{gdriveBackups.map((b) => <div key={b.id} className="flex items-center justify-between p-2 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[11px]"><div className="flex items-center gap-2 min-w-0"><FileText className="w-4 h-4 text-[var(--nova-text-muted)]" /><div className="min-w-0"><span className="truncate block text-[var(--nova-text-secondary)]">{b.name}</span><span className="text-[10px] text-[var(--nova-text-muted)]">{new Date(b.createdAt).toLocaleDateString()} • {Math.round(b.size / 1024)} KB</span></div></div><div className="flex items-center gap-1"><button onClick={() => handleGDriveRestore(b.id)} disabled={backupBusy || importPassphrase.length < 8} className="p-2 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition disabled:opacity-50" title={t('settings.gdriveRestore')}>{<Download className="w-4 h-4" />}</button><button onClick={() => handleGDriveDelete(b.id)} disabled={gdriveLoading} className="p-2 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-red-500/20 text-[var(--nova-text-muted)] hover:text-red-400 transition disabled:opacity-50" title={t('settings.gdriveDelete')}>{<Trash2 className="w-4 h-4" />}</button></div></div>)}</div>}
+                  {gdriveBackups.length === 0 && <p className="text-[12px] text-[var(--nova-text-muted)] text-center py-4">{t('settings.gdriveNoBackups')}</p>}
+                </div>
+              </div>
+            )}
+            {gdriveMsg && <p className="text-[11px] text-[var(--nova-text-primary)]">{gdriveMsg}</p>}
+          </div>
+        </SettingsSheet>
+
+        {/* PIN Sheet */}
+        <SettingsSheet
+          open={pinSheetOpen}
+          onClose={() => { setPinSheetOpen(false); setIsCreatingPin(false); setIsRemovingPin(false); setPinInput(''); setPinMsg(null); }}
+          title={t('settings.passcodeLock')}
+          testId="settings-pin-sheet"
+        >
+          <div className="space-y-3">
+            {!pinEnabled ? (
+              <div className="space-y-3">
+                <p className="text-[13px] text-[var(--nova-text-secondary)]">{t('settings.pinCreateDesc')}</p>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-[16px] font-mono text-[var(--nova-text-muted)] select-all">{'*'.repeat(pinInput.length)}</span>
+                  <input type="password" inputMode="numeric" autoComplete="off" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} className="w-[80px] bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-2 py-2 text-[14px] text-[var(--nova-text-primary)] text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition" placeholder="0000" />
+                </div>
+                <button type="button" onClick={handleConfirmPin} disabled={pinInput.length < 4} className="w-full py-3 rounded-xl bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 text-[var(--nova-on-accent)] text-[13px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50">{t('common.save')}</button>
+                <button type="button" onClick={handleCancelPin} className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition">{t('common.cancel')}</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-[13px] text-[var(--nova-text-secondary)]">{t('settings.pinManageDesc')}</p>
+                <div className="space-y-2">
+                  <IconToggle icon={<Lock className="w-5 h-5" />} label={t('settings.lockOnHide')} checked={lockOnHide} onChange={(v) => setLockOnHide(v)} />
+                  <div><p className="text-[12px] font-medium text-[var(--nova-text-secondary)] mb-2">{t('settings.pinLength')}</p><div className="flex gap-2">{[4, 6].map((l) => <button key={l} type="button" onClick={() => setPinLength(l)} aria-pressed={pinLength === l} className={`flex-1 py-2 rounded-xl border text-[12px] font-semibold transition cursor-pointer ${pinLength === l ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]' : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'}`}>{l}</button>)}</div></div>
+                  <button type="button" onClick={() => { setIsRemovingPin(false); setIsCreatingPin(true); setPinInput(''); setPinMsg(null); }} className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition">{t('settings.changePin')}</button>
+                  <button type="button" onClick={() => { setIsRemovingPin(true); setIsCreatingPin(false); setPinInput(''); setPinMsg(null); }} className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-red-500/30 text-red-400 text-[13px] font-medium hover:bg-red-500/10 transition">{t('settings.removePasscode')}</button>
+                </div>
+                {pinMsg && <p className="text-[11px] text-[var(--nova-accent-color)]" role="status">{pinMsg}</p>}
+              </div>
+            )}
+          </div>
+        </SettingsSheet>
+
+        {/* 2FA Sheet */}
+        <SettingsSheet
+          open={twoFactorSheetOpen}
+          onClose={() => { setTwoFactorSheetOpen(false); setShow2FASetup(false); setOtpInput(''); setOtpMsg(null); }}
+          title={t('settings.twoFactorAuth')}
+          description={t('settings.twoFactorSetupDesc')}
+          testId="settings-2fa-sheet"
+        >
+          <div className="space-y-3">
+            {!is2FAEnabled && totpSecret ? (
+              <div className="space-y-3">
+                <p className="text-[12px] font-mono text-[var(--nova-text-muted)] select-all text-center bg-[var(--nova-overlay-weak)] p-2 rounded-xl">{totpSecret}</p>
+                <input type="text" maxLength={6} value={otpInput} onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} className="w-full text-center text-[18px] font-mono tracking-widest px-3 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]/50" placeholder="000000" />
+                <button onClick={handleActivate2FA} disabled={!otpInput || otpInput.length !== 6} className="w-full py-3 rounded-xl bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 text-[var(--nova-on-accent)] text-[13px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50">{t('settings.activate')}</button>
+                {otpMsg && <p className={`text-[11px] ${otpMsg === 'Invalid code' ? 'text-red-400' : 'text-[var(--nova-accent-color)]'}`} role="status">{otpMsg}</p>}
+              </div>
+            ) : (
+              <p className="text-[13px] text-[var(--nova-text-secondary)] text-center py-4">{is2FAEnabled ? t('settings.twoFactorActive') : t('settings.twoFactorSetupDesc')}</p>
+            )}
+          </div>
+        </SettingsSheet>
+
+        {/* Recovery Gate */}
+        <SettingsSheet
+          open={recoveryGateOpen}
+          onClose={() => setRecoveryGateOpen(false)}
+          title={t('settings.recoveryGateTitle')}
+          description={t('settings.recoveryGateDesc')}
+          testId="settings-recovery-gate"
+        >
+          <div className="space-y-3 text-center">
+            <KeyRound className="w-12 h-12 mx-auto text-[var(--nova-accent-color)]" />
+            <p className="text-[13px] text-[var(--nova-text-secondary)]">{t('settings.recoveryGateDesc')}</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setRecoveryGateOpen(false); if (pinEnabled || biometricEnabled) { /* TODO: add biometric/PIN verify */ handleShowSeedPhrase(); } else { handleShowSeedPhrase(); } }} className="flex-1 py-3 rounded-xl bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 text-[var(--nova-on-accent)] text-[13px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95">{t('settings.revealRecovery')}</button>
+              <button type="button" onClick={() => setRecoveryGateOpen(false)} className="flex-1 py-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition">{t('common.cancel')}</button>
+            </div>
+          </div>
+        </SettingsSheet>
+
+        {/* Delete All Sheet */}
+        <SettingsSheet
+          open={deleteSheetOpen}
+          onClose={() => { setDeleteSheetOpen(false); setClearDataConfirm(false); setClearDataPin(''); setPinMsg(null); }}
+          title={t('settings.deleteAll')}
+          description={t('settings.deleteAllWarning')}
+          testId="settings-delete-sheet"
+        >
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] text-center">{t('settings.deleteAllWarning')}</div>
+            <HoldToConfirm
+              label={t('settings.holdToConfirm')}
+              holdLabel={t('settings.deleting')}
+              onConfirm={async () => { await eraseAllData(); setDeleteSheetOpen(false); }}
+              tone="danger"
+            />
+            {pinEnabled && (
+              <div className="space-y-2">
+                <p className="text-[12px] text-[var(--nova-text-muted)]">{t('settings.confirmClear')}</p>
+                <input type="password" inputMode="numeric" autoComplete="off" value={clearDataPin} onChange={(e) => setClearDataPin(e.target.value.replace(/\D/g, ''))} placeholder="0000" className="w-[80px] mx-auto bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] rounded-xl px-2 py-2 text-[14px] text-[var(--nova-text-primary)] text-center focus:outline-none focus:border-[var(--nova-accent-color)] transition" />
+                <button type="button" onClick={handleClearAllData} disabled={clearDataPin.length < 4} className="w-full py-2.5 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95 disabled:opacity-50">{t('common.delete')}</button>
+              </div>
+            )}
+            <button type="button" onClick={() => { setDeleteSheetOpen(false); setClearDataConfirm(false); setClearDataPin(''); setPinMsg(null); }} className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition">{t('common.cancel')}</button>
+          </div>
+        </SettingsSheet>
 
           <SectionHeader
             icon={<Palette className="w-3.5 h-3.5" />}

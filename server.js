@@ -59,7 +59,14 @@ try {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: '.env', override: true });
+// Load `.env` for local runs. `DOTENV_CONFIG_PATH` overrides the file so tests
+// and tooling can opt out; without it, `override: true` lets a developer's real
+// `.env` replace anything a test pinned, including secret fixtures.
+dotenv.config({
+  path: process.env.DOTENV_CONFIG_PATH || path.join(__dirname, '.env'),
+  override: true,
+  quiet: true,
+});
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -193,13 +200,9 @@ function verifyRelayAuth(req) {
 const PAYMENTO_API_URL = (process.env.PAYMENTO_API_URL || 'https://api.paymento.io').replace(/\/+$/, '');
 const PAYMENTO_API_KEY = (process.env.PAYMENTO_API_KEY || '').trim();
 // PaymentO signs IPN callbacks with the store secret. Accept a comma-separated
-// list so a rotated/extra secret can be added without a code change.
-const PAYMENTO_SECRETS = (process.env.PAYMENTO_SECRET_KEYS || '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-const PAYMENTO_SECRET = (PAYMENTO_SECRETS[0] || process.env.PAYMENTO_SECRET || process.env.PAYMENTO_SECRET_KEY || '').trim();
-if (PAYMENTO_SECRET && !PAYMENTO_SECRETS.includes(PAYMENTO_SECRET)) PAYMENTO_SECRETS.unshift(PAYMENTO_SECRET);
+// list so a rotated/extra secret can be added without a code change; the
+// per-request reader is `paymentoSecrets()` further down.
+const PAYMENTO_SECRET = String(process.env.PAYMENTO_SECRET || '').trim();
 const PAYMENTO_RETURN_URL = (process.env.PAYMENTO_RETURN_URL || '').trim();
 const PAYMENTO_VERIFY_URL = (process.env.PAYMENTO_VERIFY_URL || `${PAYMENTO_API_URL}/v1/payment/verify`).trim();
 const PAYMENTO_GATEWAY_URL = (process.env.PAYMENTO_GATEWAY_URL || 'https://app.paymento.io/gateway').trim();
@@ -235,9 +238,10 @@ function resolveReturnUrl(req) {
 
 // The license key signs temporary premium grants. Derive a separate key from
 // the PaymentO secret when PREMIUM_LICENSE_SECRET is not set instead of reusing
-// the IPN secret directly.
+// the IPN secret directly. This is the module-load snapshot; `currentPremiumLicenseSecret()`
+// re-reads `process.env` so a rotation does not need a restart.
 const PREMIUM_LICENSE_SECRET = (
-  process.env.PREMIUM_LICENSE_SECRET ||
+  String(process.env.PREMIUM_LICENSE_SECRET || '').trim() ||
   (PAYMENTO_SECRET
     ? crypto.createHash('sha256').update(`nova-premium-license:${PAYMENTO_SECRET}`).digest('hex')
     : '')
@@ -280,13 +284,35 @@ function createRateLimiter({ max, windowMs }) {
 const ipnLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 const checkoutLimiter = createRateLimiter({ max: 10, windowMs: 60_000 });
 const orderLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
-const statusLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 // Gift codes are bearer secrets. Redemption is the only endpoint where a
 // guessable success unlocks paid content, so it gets its own strict bucket.
 const giftRedeemLimiter = createRateLimiter({ max: 8, windowMs: 10 * 60_000 });
 // Deleting a queue requires the recipient capability token, so this is not a
 // guessable secret; the limit only stops a runaway client from spinning here.
 const anonDeleteLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+// Activation/status are pure HMAC checks with no secret to guess, so they share
+// a generous bucket; this only caps runaway clients and log spam.
+const activateLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+
+/**
+ * Per-request view of the signing secrets. Read from `process.env` on every use
+ * instead of relying only on the module-load snapshot: a test or an operator
+ * must be able to rotate/replace a key without restarting the process, and a
+ * stale copy would silently keep accepting a leaked secret.
+ */
+function paymentoSecrets() {
+  return String(process.env.PAYMENTO_SECRET_KEYS || process.env.PAYMENTO_SECRET || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function currentPremiumLicenseSecret() {
+  return (
+    String(process.env.PREMIUM_LICENSE_SECRET || '').trim() ||
+    PREMIUM_LICENSE_SECRET
+  );
+}
 
 function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
@@ -339,7 +365,7 @@ function verifyPaymentoSignature(rawBody, provided, secret) {
 
 /** Returns the secret that matched the signature, or null. */
 function verifyPaymentoSignatureAny(rawBody, provided) {
-  const matched = PAYMENTO_SECRETS.find((secret) => verifyPaymentoSignature(rawBody, provided, secret));
+  const matched = paymentoSecrets().find((secret) => verifyPaymentoSignature(rawBody, provided, secret));
   return matched || null;
 }
 
@@ -490,7 +516,8 @@ async function paymentoVerify(token) {
 }
 
 function issueLicense({ device, plan, orderId, expiresAt, paymentId = null }) {
-  if (!PREMIUM_LICENSE_SECRET) {
+  const licenseSecret = currentPremiumLicenseSecret();
+  if (!licenseSecret) {
     throw new Error('PREMIUM_LICENSE_SECRET is not configured');
   }
   const p = PREMIUM_PLANS[plan];
@@ -504,7 +531,7 @@ function issueLicense({ device, plan, orderId, expiresAt, paymentId = null }) {
   const payload = { v: 1, d: String(device), p: plan, o: orderId, exp };
   if (paymentId) payload.t = String(paymentId).slice(0, 128);
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
+  const sig = crypto.createHmac('sha256', licenseSecret).update(body).digest('base64url');
   const key = `MA1.${body}.${sig}`;
   const keyId = crypto.createHash('sha256').update(key).digest('hex').slice(0, 32);
   writeAtomic(
@@ -518,7 +545,9 @@ function verifyLicense(key) {
   const parts = String(key || '').split('.');
   if (parts.length !== 3 || parts[0] !== 'MA1') return null;
   const [, body, sig] = parts;
-  const calc = crypto.createHmac('sha256', PREMIUM_LICENSE_SECRET).update(body).digest('base64url');
+  const licenseSecret = currentPremiumLicenseSecret();
+  if (!licenseSecret) return null;
+  const calc = crypto.createHmac('sha256', licenseSecret).update(body).digest('base64url');
   const expected = Buffer.from(calc);
   const given = Buffer.from(sig);
   if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) return null;
@@ -545,8 +574,9 @@ function giftCodeHash(code) {
 }
 
 function giftEncryptionKey() {
-  if (!PREMIUM_LICENSE_SECRET) throw new Error('PREMIUM_LICENSE_SECRET is not configured');
-  return crypto.createHash('sha256').update(`nova-premium-gift:v1:${PREMIUM_LICENSE_SECRET}`).digest();
+  const licenseSecret = currentPremiumLicenseSecret();
+  if (!licenseSecret) throw new Error('PREMIUM_LICENSE_SECRET is not configured');
+  return crypto.createHash('sha256').update(`nova-premium-gift:v1:${licenseSecret}`).digest();
 }
 
 function encryptGiftCode(code) {
@@ -680,9 +710,10 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
   const provided = String(req.headers['x-hmac-sha256-signature'] || body.signature || body.signature_sha256 || body.ipn_signature || '');
 
   // HMAC is computed over the raw bytes PaymentO signed.
+  const secrets = paymentoSecrets();
   let sigError = null;
   let signatureOk = false;
-  if (PAYMENTO_SECRETS.length === 0) {
+  if (secrets.length === 0) {
     sigError = 'secret not configured';
   } else if (!/^[0-9a-f]{64}$/i.test(String(provided).trim())) {
     sigError = 'malformed signature';
@@ -707,7 +738,7 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
       reason: sigError,
       method: req.method,
       contentType: req.headers['content-type'],
-      secretsConfigured: PAYMENTO_SECRETS.length,
+      secretsConfigured: secrets.length,
       providedSignature: String(provided).slice(0, 16),
       // Body content can carry payer PII and is attacker-controlled; log only
       // its size so a bad IPN can still be diagnosed without leaking data.
@@ -769,7 +800,7 @@ app.post('/api/premium/gift/checkout', async (req, res) => {
     const plan = PREMIUM_PLANS.premium;
     if (!DEVICE_PATTERN.test(device)) return res.status(400).json({ ok: false, error: 'invalid device' });
     if (!PAYMENTO_API_KEY) return res.status(503).json({ ok: false, error: 'payments disabled' });
-    if (!PREMIUM_LICENSE_SECRET) return res.status(503).json({ ok: false, error: 'gift service unavailable' });
+    if (!PREMIUM_LICENSE_SECRET && !currentPremiumLicenseSecret()) return res.status(503).json({ ok: false, error: 'gift service unavailable' });
 
     const orderId = `ord_${crypto.randomBytes(8).toString('hex')}`;
     const order = {
@@ -910,7 +941,7 @@ app.post('/api/premium/gift/redeem', (req, res) => {
 
 app.post('/api/premium/activate', (req, res) => {
   const ip = req.ip || 'unknown';
-  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  if (!activateLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
   const license = String((req.body && req.body.license) || '');
   const device = String((req.body && req.body.device) || '');
   const v = verifyLicense(license);
@@ -934,7 +965,7 @@ app.post('/api/premium/activate', (req, res) => {
 
 app.get('/api/premium/status', (req, res) => {
   const ip = req.ip || 'unknown';
-  if (!statusLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
+  if (!activateLimiter(ip)) return res.status(429).json({ ok: false, reason: 'rate limited' });
   const license = String((req.query && req.query.license) || '');
   const device = String((req.query && req.query.device) || '');
   const v = verifyLicense(license);

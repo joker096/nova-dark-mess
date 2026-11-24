@@ -59,7 +59,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <tab.icon className={`w-6 h-6 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+<tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
                 <span className="text-[10px] font-medium">{tab.label}</span>
                 {tab.unread > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">
@@ -79,7 +79,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
             >
-              <tab.icon className={`w-6 h-6 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+              <tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
               <span className="text-[10px] font-medium">{tab.label}</span>
               {tab.unread > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">

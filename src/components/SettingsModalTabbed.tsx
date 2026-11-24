@@ -180,12 +180,12 @@ function ChatColorOption({
       onClick={handleClick}
       className={className}
     >
-      <div className="relative w-6 h-6 rounded-full border border-[var(--nova-border-color)] shadow-sm overflow-hidden">
+      <div className="relative w-8 h-8 rounded-full border border-[var(--nova-border-color)] shadow-sm overflow-hidden">
         <div className={`absolute inset-0 bg-gradient-to-tr ${opt.grad}`} />
         <div className="absolute inset-1 rounded-full bg-[var(--nova-overlay-strong)]" />
         {isPremiumLocked && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <Lock className="w-3 h-3 text-[var(--nova-text-primary)]" />
+            <Lock className="w-4 h-4 text-[var(--nova-text-primary)]" />
           </div>
         )}
       </div>
@@ -193,8 +193,8 @@ function ChatColorOption({
         {label}
       </span>
       {isPremiumLocked && (
-        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] flex items-center justify-center text-[10px] font-bold">
-          <Lock className="w-2 h-2 fill-[var(--nova-text-primary)]" />
+        <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] flex items-center justify-center text-[11px] font-bold">
+          <Lock className="w-3 h-3 fill-[var(--nova-text-primary)]" />
         </span>
       )}
     </button>
