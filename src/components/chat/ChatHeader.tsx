@@ -129,7 +129,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   return (
 <>
     {/* Floating Header Pill */}
-    <div className="p-2 shrink-0 relative z-20">
+    <div className="p-2 shrink-0 relative z-30">
       <div className="bg-[var(--nova-surface)]/90 backdrop-blur-xl border border-[var(--nova-border-subtle)] rounded-2xl px-2.5 py-1.5 flex items-center justify-between shadow-xl shadow-black/60 min-h-[44px]">
         {isSearchOpen ? (
           /* ACTIVE SEARCH BAR HEADER WITH WORD STEPPER & CONTROLS */
