@@ -85,9 +85,6 @@ import { AudioWaveformPlayer } from './AudioWaveformPlayer';
 import { VirtualizedList } from './VirtualizedList';
 import { LazyMedia } from './LazyMedia';
 import { VoiceMemoInput, VoiceMemoInputHandle } from './VoiceMemoInput';
-import { WallpaperSettingsModal } from './WallpaperSettingsModal';
-import { ScheduleMessageModal } from './ScheduleMessageModal';
-import { VideoCallOverlay } from './VideoCallOverlay';
 import { SharedMediaSection } from './SharedMediaSection';
 import { FileSelectionModal } from './FileSelectionModal';
 import { PollCreateModal } from './PollCreateModal';
@@ -96,6 +93,26 @@ import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
 import { ChatTextInput, type ChatTextInputHandle } from './chat/ChatTextInput';
 import { ChatHeader } from './chat/ChatHeader';
+import { PollBubble } from './chat/PollBubble';
+import { LocationBubble } from './chat/LocationBubble';
+import { StickerMedia } from './chat/StickerMedia';
+import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
+import { LocationPickerModal } from './LocationPickerModal';
+import { MessageHoverActions } from './chat/MessageHoverActions';
+import { useChatGroupManagement } from '../hooks/useChatGroupManagement';
+import { useChatMediaCalls } from '../hooks/useChatMediaCalls';
+import { useChatFileTransfer } from '../hooks/useChatFileTransfer';
+import { useChatBotHandling } from '../hooks/useChatBotHandling';
+import { useChatMessageHandling } from '../hooks/useChatMessageHandling';
+import { useChatComposer } from '../hooks/useChatComposer';
+import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+
+// Lazy-loaded modals/overlays - only loaded when needed (heaviest components)
+const VideoCallOverlay = React.lazy(() => import('./VideoCallOverlay').then(m => ({ default: m.VideoCallOverlay })));
+const GroupVideoCallOverlay = React.lazy(() => import('./GroupVideoCallOverlay').then(m => ({ default: m.GroupVideoCallOverlay })));
+const WallpaperSettingsModal = React.lazy(() => import('./WallpaperSettingsModal').then(m => ({ default: m.WallpaperSettingsModal })));
+const ScheduleMessageModal = React.lazy(() => import('./ScheduleMessageModal').then(m => ({ default: m.ScheduleMessageModal })));
 import {
   isNotificationsEnabled,
   setNotificationsEnabledForChannel,
@@ -103,14 +120,9 @@ import {
 import { renderMarkdown } from '../lib/markdown';
 import { suggestSmartReplies } from '../lib/chat/smartReplies';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
-import { PollBubble } from './chat/PollBubble';
-import { LocationPickerModal } from './LocationPickerModal';
-import { LocationBubble } from './chat/LocationBubble';
 import { ACCENT_COLORS, applyAccentColor } from '../lib/ui/appearance';
 import { Avatar } from '../lib/ui';
 import { useAccount } from '../hooks/useAccount';
-import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
-import { StickerMedia } from './chat/StickerMedia';
 import {
   MEDIA_PREFERENCES_EVENT,
   loadMediaPreferences,
@@ -133,7 +145,6 @@ import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCa
 import { GroupCallManager, GroupCallStatus, GroupCallParticipant } from '../lib/p2p/groupCall';
 import { P2PSignalingClient } from '../lib/p2p/signaling';
 import { resolveSignalingUrl, resolveTurnServers } from '../lib/p2p/signalingConfig';
-import { GroupVideoCallOverlay } from './GroupVideoCallOverlay';
 import { loadPrivacyPrefs } from '../lib/network/privacyMode';
 import { GroupChatManager, type GroupPayload } from '../lib/p2p/groupManager';
 import { wrapGroupPayload } from '../lib/p2p/groupWire';
@@ -1267,6 +1278,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     left: number;
   } | null>(null);
   const pickerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [hoverActionsMsgId, setHoverActionsMsgId] = useState<string | null>(null);
+  const hoverActionsTriggerRef = useRef<HTMLDivElement | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
@@ -3827,6 +3840,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         isMoreMenuOpen={isMoreMenuOpen}
         setIsMoreMenuOpen={setIsMoreMenuOpen}
         moreMenuAnchorRef={moreMenuAnchorRef}
+        onOpenGroupMembers={() => setIsGroupMembersOpen(true)}
       />
 
       {/* CONDITIONAL BODY: SHARED MEDIA GALLERY vs ACTIVE CONVERSATION */}
@@ -4538,123 +4552,44 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       : ''
                   }`}
                 >
-                  {/* Quick Action Pill on hover (Desktop) attached directly to the message bubble */}
+                  {/* Hover Actions Trigger - shows actions on hover/long press */}
                   <div
+                    ref={hoverActionsTriggerRef}
+                    className={`absolute -top-3 ${isMine ? 'left-2' : 'right-2'} z-20 hidden sm:block w-10 h-10 rounded-full bg-transparent hover:bg-[var(--nova-overlay-weak)] transition-colors cursor-pointer flex items-center justify-center opacity-0 group-hover/row:opacity-100`}
+                    onMouseEnter={() => setHoverActionsMsgId(msg.id)}
+                    onMouseLeave={() => setHoverActionsMsgId(null)}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className={`absolute -top-3.5 ${isMine ? 'left-3' : 'right-3'} z-20 hidden sm:flex items-center gap-1 bg-[var(--nova-surface)]/95 border border-[var(--nova-border-color)] backdrop-blur-xl rounded-full px-2 py-0.5 shadow-xl shadow-black/80 opacity-0 transition-all duration-150 scale-95 select-none hidden`}
+                    aria-label={t('chat.messageActions.title', 'Message actions')}
                   >
-                    <NovaTooltip label="Add reaction (emoji popup)">
-                      <NovaIconButton
-                        ref={pickerTriggerRef}
-                        label="Add reaction (emoji popup)"
-                        icon={<Heart className="fill-rose-400/50" />}
-                        size={32}
-                        className="text-rose-400 hover:bg-rose-500/25"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveReactionMsgId((curr) => (curr === msg.id ? null : msg.id));
-                        }}
-                      />
-                    </NovaTooltip>
-                    <NovaTooltip label={t('a11y.replyToMessage')}>
-                      <NovaIconButton
-                        label={t('a11y.replyToMessage')}
-                        icon={<Reply />}
-                        size={32}
-                        className="text-[var(--nova-accent-color,#ff4e18)]"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReplyMessage(msg);
-                        }}
-                      />
-                    </NovaTooltip>
-                    <NovaTooltip label={t('a11y.forwardMessage')}>
-                      <NovaIconButton
-                        label={t('a11y.forwardMessage')}
-                        icon={<Forward />}
-                        size={32}
-                        className="text-[var(--nova-accent-color,#ff4e18)]"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartForward(msg.id);
-                        }}
-                      />
-                    </NovaTooltip>
-                    <NovaTooltip label={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}>
-                      <NovaIconButton
-                        label={msg.isPinned ? t('chat.messageActions.unpin') : t('chat.messageActions.pin')}
-                        icon={<Pin />}
-                        size={32}
-                        active={msg.isPinned}
-                        className="text-[var(--nova-accent-color,#ff4e18)]"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePinMessage(msg.id);
-                        }}
-                      />
-                    </NovaTooltip>
-                    <div className="w-[1px] h-4 bg-[var(--nova-overlay-medium)]" />
-                    <NovaMenu
-                      label={t('common.more')}
-                      trigger={
-                        <NovaIconButton
-                          label={t('common.more')}
-                          icon={<MoreHorizontal />}
-                          size={32}
-                          onPointerDown={(e) => e.stopPropagation()}
-                        />
-                      }
-                      items={[
-                        ...(msg.text
-                          ? [
-                              {
-                                key: 'copy',
-                                label: t('chat.messageActions.copy'),
-                                icon: <Copy />,
-                                shortcut: 'mod+c',
-                                onSelect: () => handleCopyMessage(msg),
-                              },
-                            ]
-                          : []),
-                        ...(isMine && msg.text
-                          ? [
-                              {
-                                key: 'edit',
-                                label: t('chat.messageActions.edit'),
-                                icon: <Pencil />,
-                                onSelect: () => handleStartEdit(msg),
-                              },
-                            ]
-                          : []),
-                        ...(messages.some((m) => m.replyTo?.id === msg.id)
-                          ? [
-                              {
-                                key: 'thread',
-                                label: 'Thread',
-                                icon: <Reply />,
-                                onSelect: () => setActiveThreadRootId(msg.id),
-                              },
-                            ]
-                          : []),
-                        ...(isMine
-                          ? [
-                              {
-                                key: 'delete',
-                                label: t('chat.messageActions.delete'),
-                                icon: <Trash2 />,
-                                danger: true,
-                                separatorBefore: true,
-                                onSelect: () => handleDeleteMessage(msg.id),
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
+                    <MoreHorizontal className="w-5 h-5 text-[var(--nova-text-muted)]" />
                   </div>
+                  <MessageHoverActions
+                    msg={{
+                      id: msg.id,
+                      text: msg.text,
+                      isPinned: msg.isPinned,
+                      replyTo: msg.replyTo,
+                    }}
+                    isMine={isMine}
+                    onReply={() => handleReplyMessage(msg)}
+                    onForward={() => handleStartForward(msg.id)}
+                    onPin={() => handlePinMessage(msg.id)}
+                    onCopy={() => handleCopyMessage(msg)}
+                    onEdit={() => handleStartEdit(msg)}
+                    onDelete={() => handleDeleteMessage(msg.id)}
+                    onReaction={() => setActiveReactionMsgId(msg.id)}
+                    onBlock={() => {
+                      // Block user from message hover actions
+                      if (!isMine) {
+                        // TODO: Integrate with socialPrivacy blocking system
+                        triggerPinnedToast('User blocked');
+                      }
+                    }}
+                    hasThread={messages.some((m) => m.replyTo?.id === msg.id)}
+                    triggerRef={hoverActionsTriggerRef}
+                    isOpen={hoverActionsMsgId === msg.id}
+                    onClose={() => setHoverActionsMsgId(null)}
+                  />
                   {/* Forward Selection Checkmark Overlay */}
                   {isForwardSelecting && (
                     <div
@@ -6196,23 +6131,27 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         })()}
 
       {/* Wallpaper Settings Modal */}
-      <WallpaperSettingsModal
-        isOpen={isWallpaperModalOpen}
-        currentWallpaper={wallpaperId}
-        intensity={wallpaperIntensity}
-        onSelect={handleSelectWallpaper}
-        onIntensityChange={handleIntensityChange}
-        onCycle={handleCycleWallpaper}
-        onClose={() => setIsWallpaperModalOpen(false)}
-      />
+      <React.Suspense fallback={<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50" data-testid="wallpaper-modal-loading" />}>
+        <WallpaperSettingsModal
+          isOpen={isWallpaperModalOpen}
+          currentWallpaper={wallpaperId}
+          intensity={wallpaperIntensity}
+          onSelect={handleSelectWallpaper}
+          onIntensityChange={handleIntensityChange}
+          onCycle={handleCycleWallpaper}
+          onClose={() => setIsWallpaperModalOpen(false)}
+        />
+      </React.Suspense>
 
       {/* SCHEDULE MESSAGE MODAL */}
-      <ScheduleMessageModal
-        isOpen={isScheduleModalOpen}
-        messageText={inputTextRef.current || (recordedVoiceNote ? t('voiceMessage', { duration: recordedVoiceNote.duration }) : '')}
-        onSchedule={handleScheduleMessage}
-        onClose={() => setIsScheduleModalOpen(false)}
-      />
+      <React.Suspense fallback={<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50" data-testid="schedule-modal-loading" />}>
+        <ScheduleMessageModal
+          isOpen={isScheduleModalOpen}
+          messageText={inputTextRef.current || (recordedVoiceNote ? t('voiceMessage', { duration: recordedVoiceNote.duration }) : '')}
+          onSchedule={handleScheduleMessage}
+          onClose={() => setIsScheduleModalOpen(false)}
+        />
+      </React.Suspense>
 
       {/* REPORT BOT MODAL */}
       {isReportBotOpen && (
@@ -6354,46 +6293,50 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       )}
 
       {/* FULL-SCREEN MEDIA CALL OVERLAY */}
-      <VideoCallOverlay
-        isOpen={isVideoCallOpen}
-        isMinimized={isVideoCallMinimized}
-        onEndCall={handleEndVideoCall}
-        onMinimize={() => setIsVideoCallMinimized(true)}
-        onMaximize={() => setIsVideoCallMinimized(false)}
-        contactName={profile.name}
-        contactAvatar={profile.avatar}
-        mode={callMode}
-        localStream={localCallStream}
-        remoteStream={remoteCallStream}
-        connectionStatus={callConnectionStatus}
-        hidesIp={loadPrivacyPrefs().webrtcRelayOnly}
-        isMicOn={isCallMicOn}
-        isCameraOn={isCallCameraOn}
-        onToggleMic={() => {
-          setIsCallMicOn((prev) => {
-            mediaCallRef.current?.setMicrophoneEnabled(!prev);
-            return !prev;
-          });
-        }}
-        onToggleCamera={() => {
-          setIsCallCameraOn((prev) => {
-            mediaCallRef.current?.setCameraEnabled(!prev);
-            return !prev;
-          });
-        }}
-      />
+      <React.Suspense fallback={<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" data-testid="video-call-loading" />}>
+        <VideoCallOverlay
+          isOpen={isVideoCallOpen}
+          isMinimized={isVideoCallMinimized}
+          onEndCall={handleEndVideoCall}
+          onMinimize={() => setIsVideoCallMinimized(true)}
+          onMaximize={() => setIsVideoCallMinimized(false)}
+          contactName={profile.name}
+          contactAvatar={profile.avatar}
+          mode={callMode}
+          localStream={localCallStream}
+          remoteStream={remoteCallStream}
+          connectionStatus={callConnectionStatus}
+          hidesIp={loadPrivacyPrefs().webrtcRelayOnly}
+          isMicOn={isCallMicOn}
+          isCameraOn={isCallCameraOn}
+          onToggleMic={() => {
+            setIsCallMicOn((prev) => {
+              mediaCallRef.current?.setMicrophoneEnabled(!prev);
+              return !prev;
+            });
+          }}
+          onToggleCamera={() => {
+            setIsCallCameraOn((prev) => {
+              mediaCallRef.current?.setCameraEnabled(!prev);
+              return !prev;
+            });
+          }}
+        />
+      </React.Suspense>
 
       {/* GROUP VIDEO CALL OVERLAY */}
-      <GroupVideoCallOverlay
-        isOpen={isGroupCallOpen}
-        onEndCall={handleEndGroupCall}
-        onMinimize={() => {}} // Group calls don't minimize for now
-        callManager={groupCallManager}
-        mode={callMode}
+      <React.Suspense fallback={<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" data-testid="group-video-call-loading" />}>
+        <GroupVideoCallOverlay
+          isOpen={isGroupCallOpen}
+          onEndCall={handleEndGroupCall}
+          onMinimize={() => {}} // Group calls don't minimize for now
+          callManager={groupCallManager}
+          mode={callMode}
         hidesIp={loadPrivacyPrefs().webrtcRelayOnly}
         localName={account.displayName}
         localAvatar={account.avatar}
       />
+      </React.Suspense>
 
       {/* SIMULATED FILE & MEDIA SELECTION MODAL */}
       <FileSelectionModal
