@@ -162,6 +162,28 @@ export function VirtualizedList<T>({
     recompute,
   ]);
 
+  // Render the visible slice once per window change. Scrolling re-renders this
+  // component every animation frame, but as long as the window bounds and the
+  // incoming props are unchanged the row trees are reused, so the (potentially
+  // expensive) row bodies never re-run during a scroll.
+  const rows = useMemo(() => {
+    return items.slice(startIndex, endIndex).map((item, i) => {
+      const index = startIndex + i;
+      return (
+        <div
+          key={getItemKey ? getItemKey(item, index) : String(index)}
+          ref={(node) => {
+            if (node) rowRefs.current.set(index, node);
+            else rowRefs.current.delete(index);
+          }}
+          className="pb-3"
+        >
+          {renderItem(item, index)}
+        </div>
+      );
+    });
+  }, [items, startIndex, endIndex, renderItem, getItemKey]);
+
   return (
     <div
       ref={(node) => {
@@ -174,23 +196,7 @@ export function VirtualizedList<T>({
       onClick={onClick}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
-        <div style={{ transform: `translateY(${offsetY}px)` }}>
-          {items.slice(startIndex, endIndex).map((item, i) => {
-            const index = startIndex + i;
-            return (
-              <div
-                key={getItemKey ? getItemKey(item, index) : String(index)}
-                ref={(node) => {
-                  if (node) rowRefs.current.set(index, node);
-                  else rowRefs.current.delete(index);
-                }}
-                className="pb-3"
-              >
-                {renderItem(item, index)}
-              </div>
-            );
-          })}
-        </div>
+        <div style={{ transform: `translateY(${offsetY}px)` }}>{rows}</div>
       </div>
     </div>
   );
