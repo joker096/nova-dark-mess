@@ -94,9 +94,14 @@ vi.mock('./DoodleBackground', () => ({
   DoodleBackground: vi.fn(() => null),
 }));
 
-// Group members moved into the chat "..." menu.
+// Group members moved into the "..." menu -> "All chat actions" submenu.
+const openChatActionsMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'chat.moreActions' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'chat.chatActions' }));
+};
+
 const openGroupMembers = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'chat.chatActions' }));
+  openChatActionsMenu();
   fireEvent.click(screen.getByRole('button', { name: 'chat.groupMembers' }));
 };
 
@@ -244,9 +249,9 @@ describe('ChatScreen - message rendering', () => {
   });
 
   it('renders chat action menu in a top-level portal and closes it from the menu', () => {
-    // The "..." menu is a group-chat affordance; the 1:1 chat header has none.
+    // The full actions list is a group-chat affordance reachable from "...".
     renderChat({ chatId: 'thailand', onBack: vi.fn(), onOpenProfile: vi.fn() });
-    fireEvent.click(screen.getByRole('button', { name: 'chat.chatActions' }));
+    openChatActionsMenu();
 
     const menu = screen.getByRole('menu', { name: 'chat.chatActions' });
     expect(menu.parentElement).toBe(document.body);
@@ -526,7 +531,8 @@ describe('ChatScreen - long press and double tap', () => {
 describe('ChatScreen - horizontal lists hide scrollbar', () => {
   it('quick search chips list uses no-scrollbar when search opened', () => {
     renderChat();
-    fireEvent.click(screen.getByTitle('common.search'));
+    fireEvent.click(screen.getByRole('button', { name: 'chat.moreActions' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'common.search' }));
     const list = screen.getByTestId('quick-search-chips');
     expect(list.className).toContain('no-scrollbar');
     expect(list.className).not.toContain('scrollbar-x');
@@ -571,9 +577,12 @@ describe('ChatScreen - message edit', () => {
     renderChat();
     const bubble = getBubble('m3');
     fireEvent.click(within(bubble).getByTitle('chat.messageActions.edit'));
-    const input = within(bubble).getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'Updated text' } });
+    
+    // Inline edit UI appears in the bubble
+    const textarea = within(bubble).getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'Updated text' } });
     fireEvent.click(within(bubble).getByText('common.save'));
+    
     expect(screen.getByText('Updated text')).toBeTruthy();
     expect(within(bubble).getByText('chat.edited')).toBeTruthy();
   });
@@ -582,9 +591,11 @@ describe('ChatScreen - message edit', () => {
     renderChat();
     const bubble = getBubble('m3');
     fireEvent.click(within(bubble).getByTitle('chat.messageActions.edit'));
-    const input = within(bubble).getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'Changed' } });
+    
+    const textarea = within(bubble).getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'Changed' } });
     fireEvent.click(within(bubble).getByText('common.cancel'));
+    
     expect(screen.getByText('Yeah, good times. For sure...')).toBeTruthy();
     expect(screen.queryByText('Changed')).toBeNull();
   });

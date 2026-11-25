@@ -31,6 +31,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { ed25519 } from '@noble/curves/ed25519.js';
 import {
   generateRoutingKeyPair,
   openRoutingEnvelope,
@@ -38,6 +39,7 @@ import {
   sealRoutingEnvelope,
 } from './src/lib/anon/routing.js';
 import { isQueuePublicKey, verifyQueueCommand } from './src/lib/anon/signing.js';
+import { computeRelayReceipt } from './src/lib/anon/receipt.js';
 import {
   isInviteToken,
   isPowChallenge,
@@ -146,6 +148,56 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
+
+// Padded anonymous control bodies: one fixed size per command type. Must match
+// the client padding in `src/lib/anon/httpRelay.ts` and `src/lib/anon/proxy.ts`.
+const ANON_CONTROL_PADDED_BYTES = {
+  '/api/anon/ack': 8192,
+  '/api/anon/queues/delete': 4096,
+  '/api/anon/push/register': 4096,
+  // The proxy seals the whole routing command into a fixed envelope server-side,
+  // so the request body is padding-sized too (see `proxy.ts`).
+  '/api/anon/route': 10240,
+};
+// A hop body is `{ relay, envelope }`; the envelope is ~1.7-1.9 KB, so the
+// control profile leaves room for the largest routing action. An enqueue that
+// carries a bigger packet moves to the matching profile, the same way direct
+// enqueue bodies do. Must match `HOP_PADDED_BYTES` / `ENQUEUE_HOP_PADDED_BYTES`
+// in `src/lib/anon/proxy.ts` (`test/anon-control-body.test.ts` pins them).
+const ANON_HOP_PADDED_BYTE_PROFILES = [16384, 16384 + 3 * 16384, 16384 + 3 * 65536];
+
+function anonPaddedBodyError() {
+  const error = new Error('Invalid body length');
+  error.status = 400;
+  error.code = 'INVALID_BODY_LENGTH';
+  return error;
+}
+
+function verifyAnonPaddedBody(req, _res, buf) {
+  if (req.method !== 'POST') return;
+  const pathname = String(req.path || req.url || '').split('?')[0];
+  const isHop = pathname.startsWith('/api/anon/hop');
+  const expected = ANON_CONTROL_PADDED_BYTES[pathname];
+  if (expected === undefined && !isHop) return;
+  const allowed = isHop ? ANON_HOP_PADDED_BYTE_PROFILES : [expected];
+  const declared = Number(req.headers['content-length']);
+  // Chunked requests carry no length to compare against; the body-size limit
+  // still applies, and a real client always sets Content-Length.
+  if (!Number.isFinite(declared)) return;
+  if (!allowed.includes(buf.length)) throw anonPaddedBodyError();
+}
 
 // Store-and-forward relay: encrypted envelopes only, never content or identity.
 const RELAY_DIR = process.env.RELAY_DIR
@@ -759,8 +811,31 @@ app.post('/api/paymento/ipn', express.raw({ type: '*/*', limit: '128kb' }), asyn
   });
 });
 
-app.use(express.json({ limit: '256kb' }));
+app.use(
+  express.json({
+    limit: '256kb',
+    // A9: anonymous control requests are padded by the client to one fixed size
+    // per command type, so the wire length says nothing beyond "some command was
+    // sent". Enforcing the declared Content-Length here keeps that property
+    // honest on the server side too: a short body (a bug, or a client trying to
+    // make the length meaningful again) is rejected before parsing. Requests
+    // without a Content-Length (chunked) and everything outside /api/anon skip
+    // this, so the premium/IPN flows are unaffected.
+    verify: verifyAnonPaddedBody,
+  }),
+);
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
+
+// Browsers talk to these endpoints cross-origin, so an HTML error page would
+// surface as an opaque CORS failure. Return the same JSON shape as every other
+// rejection instead.
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  const status = Number(err.status || err.statusCode) || 500;
+  if (res.headersSent) return next(err);
+  const reason = err.code || err.type || 'BAD_REQUEST';
+  return res.status(status).json({ ok: false, reason: String(reason) });
+});
 
 // ───────────────────────────────────────────────────────────────────────────
 // Premium (PaymentO) endpoints
@@ -1382,6 +1457,10 @@ const anonSpamQueuesByKey = new Map();
 const anonQueueOwners = new Map();
 const anonRoutingNonces = new Map();
 const anonCommandNonces = new Map();
+// commandNonce -> ownerKeyHash (see `anonOwnerKeyHash`). Lets ACK/delete be
+// metered per signed command owner instead of only per IP, so one abusive
+// client behind a shared proxy hop cannot spend everyone else's budget.
+const anonCommandOwners = new Map();
 
 // ── Queue persistence ──────────────────────────────────────────────────────
 // Store one row per queue instead of a process-wide snapshot: a single large
@@ -1411,6 +1490,19 @@ function anonOpenStateDb() {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS anon_replay_nonce (
+        scope TEXT NOT NULL,
+        nonce TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        PRIMARY KEY (scope, nonce)
+      );
+      CREATE TABLE IF NOT EXISTS anon_replay_nonce_owner (
+        scope TEXT NOT NULL,
+        nonce TEXT NOT NULL,
+        owner_key_hash TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        PRIMARY KEY (scope, nonce)
+      );
     `);
     return {
       db,
@@ -1426,6 +1518,29 @@ function anonOpenStateDb() {
       ),
       deleteOwner: db.prepare('DELETE FROM anon_owner_state WHERE queue_id_hash = ?'),
       selectOwners: db.prepare('SELECT queue_id_hash, state FROM anon_owner_state'),
+      insertNonce: db.prepare(
+        `INSERT INTO anon_replay_nonce (scope, nonce, expires_at) VALUES (?, ?, ?)
+         ON CONFLICT(scope, nonce) DO UPDATE SET expires_at = excluded.expires_at`,
+      ),
+      // Owner of a command nonce, so an ACK/delete can be metered per signed
+      // command owner even through a shared proxy IP.
+      insertNonceOwner: db.prepare(
+        `INSERT INTO anon_replay_nonce_owner (scope, nonce, owner_key_hash, expires_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(scope, nonce) DO UPDATE SET owner_key_hash = excluded.owner_key_hash, expires_at = excluded.expires_at`,
+      ),
+      selectNonceOwner: db.prepare(
+        'SELECT owner_key_hash, expires_at FROM anon_replay_nonce_owner WHERE scope = ? AND nonce = ?',
+      ),
+      deleteNonceOwner: db.prepare('DELETE FROM anon_replay_nonce_owner WHERE scope = ? AND nonce = ?'),
+      purgeNonceOwners: db.prepare('DELETE FROM anon_replay_nonce_owner WHERE expires_at <= ?'),
+      hasNonce: db.prepare('SELECT 1 AS present FROM anon_replay_nonce WHERE scope = ? AND nonce = ?'),
+      deleteNonce: db.prepare('DELETE FROM anon_replay_nonce WHERE scope = ? AND nonce = ?'),
+      purgeNonces: db.prepare('DELETE FROM anon_replay_nonce WHERE expires_at <= ?'),
+      selectNonces: db.prepare('SELECT scope, nonce, expires_at FROM anon_replay_nonce WHERE expires_at > ?'),
+      selectNonceOwners: db.prepare(
+        'SELECT scope, nonce, owner_key_hash, expires_at FROM anon_replay_nonce_owner WHERE expires_at > ?',
+      ),
+      deleteAllNonces: db.prepare('DELETE FROM anon_replay_nonce'),
     };
   } catch (err) {
     console.warn('[anon] queue persistence disabled', {
@@ -1488,6 +1603,98 @@ function anonForgetOwner(queueIdHash) {
   }
 }
 
+// ── Replay nonces ──────────────────────────────────────────────────────────
+// A signed command is only replayable inside its timestamp window
+// (`ANON_COMMAND_MAX_AGE_MS`) — but that window survived a restart only when
+// the nonce lived in SQLite. An attacker could replay a captured command right
+// after a deploy refreshed the in-memory Map. Each nonce is now written through
+// on first use and reloaded at boot; the Map stays as the in-process fast path.
+const NONCE_SCOPE_COMMAND = 'command';
+const NONCE_SCOPE_ROUTING = 'routing';
+
+function anonNonceStore(scope, nonce, expiresAt) {
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.insertNonce.run(scope, nonce, expiresAt);
+  } catch (err) {
+    if (!anonStateWriteWarned) {
+      anonStateWriteWarned = true;
+      console.warn('[anon] could not persist replay nonce', {
+        error: String(err && err.message ? err.message : err),
+      });
+    }
+  }
+}
+
+function anonNonceForget(scope, nonce) {
+  if (scope === NONCE_SCOPE_COMMAND) anonCommandOwners.delete(nonce);
+  if (!anonStateStore) return;
+  try {
+    anonStateStore.deleteNonce.run(scope, nonce);
+    if (scope === NONCE_SCOPE_COMMAND) anonStateStore.deleteNonceOwner.run(scope, nonce);
+  } catch {
+    // Best effort; cleanup retries on the next pass.
+  }
+}
+
+/**
+ * Stable, non-reversible metering key for a signed command owner.
+ *
+ * A queue key wins over the token, because the queue key is the actor that
+ * signs every command; an unsigned legacy queue falls back to its recipient
+ * token so it is not charged to whoever shares the IP.
+ */
+function anonOwnerKeyHash(queue, recipientToken) {
+  const material =
+    typeof queue?.signingPublicKey === 'string' && queue.signingPublicKey
+      ? `key:${queue.signingPublicKey}`
+      : typeof recipientToken === 'string' && recipientToken
+        ? `token:${recipientToken}`
+        : '';
+  return material ? anonHash(material) : null;
+}
+
+function anonOwnerMeterKey(ownerKeyHash) {
+  return `anon-owner:${ownerKeyHash.slice(0, 32)}`;
+}
+
+// Per-action per-owner budget for ACK/delete. `anonRateLimit` multiplies the
+// effective rate by the number of clients behind one proxy IP; this counter is
+// per signed command owner, so the budget cannot be widened by adding clients.
+const ANON_OWNER_RATE_BUCKETS = 10_000;
+const anonOwnerRateBuckets = new Map();
+function anonOwnerRateLimit(action, ownerKeyHash, max, windowMs) {
+  if (!ownerKeyHash) return true;
+  const key = `${action}:${anonOwnerMeterKey(ownerKeyHash)}`;
+  const now = Date.now();
+  const bucket = anonOwnerRateBuckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    if (anonOwnerRateBuckets.size >= ANON_OWNER_RATE_BUCKETS) {
+      for (const [candidate, value] of anonOwnerRateBuckets) {
+        if (now > value.resetAt) anonOwnerRateBuckets.delete(candidate);
+      }
+    }
+    anonOwnerRateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
+}
+
+/**
+ * Charges the per-owner budget after a successful ACK/delete and sends the
+ * response. The command nonce is only known to have an owner once the command
+ * verified, so metering happens here instead of before dispatch.
+ */
+function anonChargeOwner(res, action, commandNonce, max, windowMs) {
+  const ownerKeyHash = typeof commandNonce === 'string' ? anonCommandOwners.get(commandNonce) : undefined;
+  if (ownerKeyHash && !anonOwnerRateLimit(action, ownerKeyHash, max, windowMs)) {
+    return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
+  }
+  return res.status(200).json({ ok: true });
+}
+
 function anonForgetQueueState(queueId, queueIdHash) {
   if (!anonStateStore) return;
   try {
@@ -1521,10 +1728,28 @@ function anonIsStoredQueue(state) {
 }
 
 function anonLoadState() {
-  if (!anonStateStore) return { queues: 0, owners: 0 };
+  if (!anonStateStore) return { queues: 0, owners: 0, nonces: 0 };
   const now = Date.now();
   let queues = 0;
   let owners = 0;
+  let nonces = 0;
+  try {
+    anonStateStore.purgeNonces.run(now);
+    anonStateStore.purgeNonceOwners.run(now);
+    for (const row of anonStateStore.selectNonces.all(now)) {
+      if (row.scope === NONCE_SCOPE_COMMAND) anonCommandNonces.set(row.nonce, row.expires_at);
+      else if (row.scope === NONCE_SCOPE_ROUTING) anonRoutingNonces.set(row.nonce, row.expires_at);
+      else continue;
+      nonces += 1;
+    }
+    for (const row of anonStateStore.selectNonceOwners.all(now)) {
+      if (row.scope === NONCE_SCOPE_COMMAND) anonCommandOwners.set(row.nonce, row.owner_key_hash);
+    }
+  } catch (err) {
+    console.warn('[anon] could not restore replay nonces', {
+      error: String(err && err.message ? err.message : err),
+    });
+  }
   for (const row of anonStateStore.selectQueues.all()) {
     let state = null;
     try {
@@ -1567,7 +1792,7 @@ function anonLoadState() {
     anonQueueOwners.set(row.queue_id_hash, owner);
     owners += 1;
   }
-  return { queues, owners };
+  return { queues, owners, nonces };
 }
 
 export function closeAnonStateDb() {
@@ -1584,7 +1809,7 @@ anonStateStore = anonOpenStateDb();
 const anonStateLoaded = anonLoadState();
 if (anonStateStore) {
   console.log(
-    `[anon] queue persistence: ${ANON_STATE_DB_PATH} (${anonStateLoaded.queues} queues, ${anonStateLoaded.owners} owners loaded)`,
+    `[anon] queue persistence: ${ANON_STATE_DB_PATH} (${anonStateLoaded.queues} queues, ${anonStateLoaded.owners} owners, ${anonStateLoaded.nonces} replay nonces loaded)`,
   );
 }
 
@@ -1816,10 +2041,16 @@ function anonCleanup() {
     if (packetsChanged) anonPersistQueue(queue);
   }
   for (const [nonce, expiresAt] of anonRoutingNonces) {
-    if (now > expiresAt) anonRoutingNonces.delete(nonce);
+    if (now > expiresAt) {
+      anonRoutingNonces.delete(nonce);
+      anonNonceForget(NONCE_SCOPE_ROUTING, nonce);
+    }
   }
   for (const [nonce, expiresAt] of anonCommandNonces) {
-    if (now > expiresAt) anonCommandNonces.delete(nonce);
+    if (now > expiresAt) {
+      anonCommandNonces.delete(nonce);
+      anonNonceForget(NONCE_SCOPE_COMMAND, nonce);
+    }
   }
   for (const [reportId, report] of anonAbuseReports) {
     if (now > report.expiresAt) {
@@ -1874,7 +2105,25 @@ function anonVerifyCommand(queue, action, fields, auth) {
   if (!valid) {
     return { status: 403, body: { ok: false, reason: 'INVALID_SIGNATURE' } };
   }
-  anonCommandNonces.set(auth.commandNonce, now + ANON_COMMAND_MAX_AGE_MS);
+  const commandExpiry = now + ANON_COMMAND_MAX_AGE_MS;
+  anonCommandNonces.set(auth.commandNonce, commandExpiry);
+  anonNonceStore(NONCE_SCOPE_COMMAND, auth.commandNonce, commandExpiry);
+  const ownerKeyHash = anonOwnerKeyHash(queue, fields.token);
+  if (ownerKeyHash) {
+    anonCommandOwners.set(auth.commandNonce, ownerKeyHash);
+    if (anonStateStore) {
+      try {
+        anonStateStore.insertNonceOwner.run(
+          NONCE_SCOPE_COMMAND,
+          auth.commandNonce,
+          ownerKeyHash,
+          commandExpiry,
+        );
+      } catch {
+        // Best effort: the per-IP limit still applies without this row.
+      }
+    }
+  }
   return null;
 }
 
@@ -1933,9 +2182,27 @@ function anonCreateQueue(ttlMs, signingPublicKey, pow) {
   anonQueueOwners.set(queueIdHash, owner);
   anonPersistQueue(queue);
   anonPersistOwner(queueIdHash, owner);
+  // A6: the create reply is signed with the recipient token it just issued, so
+  // a proxy cannot substitute its own queue and tokens.
   return {
     status: 201,
-    body: { ok: true, queueId, senderToken, recipientToken, inviteToken, expiresAt: now + ttl },
+    body: {
+      ok: true,
+      queueId,
+      senderToken,
+      recipientToken,
+      inviteToken,
+      expiresAt: now + ttl,
+      createdAt: now,
+      receipt: computeRelayReceipt(recipientToken, 'create', {
+        queueId,
+        senderToken,
+        recipientToken,
+        inviteToken,
+        expiresAt: now + ttl,
+        createdAt: now,
+      }),
+    },
   };
 }
 
@@ -2031,7 +2298,23 @@ function anonPoll(queueId, recipientToken, limit, auth) {
     });
     if (packets.length >= max) break;
   }
-  return { status: 200, body: { ok: true, packets, nextCursor: null } };
+  // A6: the relay proves the reply is its own. The client holds the recipient
+  // token, so a proxy can neither fabricate "nothing new" nor drop a packet id
+  // from the list without the tag failing.
+  const body = {
+    ok: true,
+    packets,
+    nextCursor: null,
+    relayTime: now,
+    createdAt: queue.createdAt,
+  };
+  body.receipt = computeRelayReceipt(recipientToken, 'poll', {
+    queueId,
+    packets: body.packets,
+    relayTime: body.relayTime,
+    createdAt: body.createdAt,
+  });
+  return { status: 200, body };
 }
 
 function anonAck(queueId, recipientToken, packetIds, auth) {
@@ -2049,7 +2332,15 @@ function anonAck(queueId, recipientToken, packetIds, auth) {
     if (typeof id === 'string') queue.packets.delete(id);
   }
   anonPersistQueue(queue);
-  return { status: 200, body: { ok: true } };
+  // A6: an ACK is acknowledged by the relay itself, so a proxy cannot report a
+  // failed delete as success.
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      receipt: computeRelayReceipt(recipientToken, 'ack', { queueId, packetIds }),
+    },
+  };
 }
 
 function anonDeleteQueue(queueId, recipientToken, auth) {
@@ -2071,12 +2362,35 @@ function anonDeleteQueue(queueId, recipientToken, auth) {
 // opaque to the relay; the queue id is already a random 16-byte id, not an
 // identity. A registration is overwritten when the same token re-registers
 // (device reinstalls rotate the token), and expires after the TTL.
-function anonPushRegister(pushToken, queueId) {
+function anonPushRegister(pushToken, queueId, auth) {
   if (typeof pushToken !== 'string' || pushToken.length === 0 || pushToken.length > 4096) {
     return { status: 400, body: { ok: false, reason: 'INVALID_PUSH_TOKEN' } };
   }
   if (typeof queueId !== 'string' || !PUSH_QUEUE_ID_RE.test(queueId)) {
     return { status: 400, body: { ok: false, reason: 'INVALID_QUEUE_ID' } };
+  }
+  // Only the queue's own parties may attach a device to it: the recipient by
+  // bearer token (signed when the queue has a key), the sender by its send
+  // token plus the one-time invite before the first enqueue. Without this,
+  // anyone knowing a queue id could learn from the hint endpoint that a
+  // specific device watches it.
+  const queue = anonQueues.get(queueId);
+  if (!queue) return { status: 404, body: { ok: false, reason: 'QUEUE_NOT_FOUND' } };
+  const recipientOk = anonTokenMatches(auth?.recipientToken, queue.recipientTokenHash);
+  const senderOk =
+    queue.inviteTokenHash !== null &&
+    anonTokenMatches(auth?.senderToken, queue.senderTokenHash) &&
+    anonTokenMatches(auth?.inviteToken, queue.inviteTokenHash);
+  if (!recipientOk && !senderOk) {
+    return { status: 403, body: { ok: false, reason: 'INVALID_QUEUE_CREDENTIALS' } };
+  }
+  if (recipientOk && queue.signingPublicKey) {
+    const authError = anonVerifyCommand(queue, 'poll', {
+      queueId,
+      token: auth.recipientToken,
+      limit: 1,
+    }, auth);
+    if (authError) return authError;
   }
   const now = Date.now();
   const previous = anonPushRegistrations.get(pushToken);
@@ -2111,6 +2425,8 @@ function anonPushNotify(queueId) {
     fetch(ANON_PUSH_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // A6 / F: no queue id either — the bridge only needs the provider token
+      // to send an empty wake-up, so a captured webhook cannot enumerate queues.
       body: JSON.stringify({ token }),
       signal: AbortSignal.timeout(ANON_PUSH_WEBHOOK_TIMEOUT_MS),
     }).catch(() => {
@@ -2128,8 +2444,9 @@ function anonPushHint(pushToken) {
     anonPushRegistrations.delete(pushToken);
     return { status: 404, body: { ok: false, reason: 'PUSH_TOKEN_NOT_FOUND' } };
   }
-  // Empty body by design: the device must poll the relay to learn anything.
-  return { status: 200, body: { ok: true, queueId: reg.queueId, hint: '' } };
+  // Empty body by design, and the queue id is not echoed back: a token holder
+  // only learns "check your queues", never which queue a device watches.
+  return { status: 200, body: { ok: true, hint: '' } };
 }
 
 function anonPushCleanup() {
@@ -2193,6 +2510,7 @@ app.post('/api/anon/ack', (req, res) => {
     signedAt,
     commandNonce,
   });
+  if (result.status === 200) return anonChargeOwner(res, 'ack', commandNonce, 100, 60 * 1000);
   return res.status(result.status).json(result.body);
 });
 
@@ -2208,6 +2526,7 @@ app.post('/api/anon/queues/delete', (req, res) => {
     signedAt,
     commandNonce,
   });
+  if (result.status === 200) return anonChargeOwner(res, 'delete', commandNonce, 100, 60 * 1000);
   return res.status(result.status).json(result.body);
 });
 
@@ -2218,8 +2537,16 @@ app.post('/api/anon/push/register', (req, res) => {
   if (!anonRateLimit(`push-register:${anonClientKey(req)}`, 60, 60 * 1000)) {
     return res.status(429).json({ ok: false, reason: 'RATE_LIMITED' });
   }
-  const { pushToken, queueId } = req.body || {};
-  const result = anonPushRegister(pushToken, queueId);
+  const { pushToken, queueId, senderToken, recipientToken, inviteToken, signature, signedAt, commandNonce } =
+    req.body || {};
+  const result = anonPushRegister(pushToken, queueId, {
+    senderToken,
+    recipientToken,
+    inviteToken,
+    signature,
+    signedAt,
+    commandNonce,
+  });
   return res.status(result.status).json(result.body);
 });
 
@@ -2283,7 +2610,9 @@ app.post('/api/anon/route', async (req, res) => {
   if (anonRoutingNonces.has(route.nonce)) {
     return res.status(409).json({ ok: false, reason: 'REPLAYED_ENVELOPE' });
   }
-  anonRoutingNonces.set(route.nonce, now + ANON_ROUTING_MAX_AGE_MS);
+  const routingExpiry = now + ANON_ROUTING_MAX_AGE_MS;
+  anonRoutingNonces.set(route.nonce, routingExpiry);
+  anonNonceStore(NONCE_SCOPE_ROUTING, route.nonce, routingExpiry);
 
   if (route.action === 'report') {
     if (!anonRateLimit(`route-report:${anonClientKey(req)}`, 60, 60 * 60 * 1000)) {
@@ -2356,6 +2685,8 @@ app.post('/api/anon/route', async (req, res) => {
         recipientToken: created.body.recipientToken,
         inviteToken: created.body.inviteToken,
         expiresAt: created.body.expiresAt,
+        createdAt: created.body.createdAt,
+        receipt: created.body.receipt,
       });
       return res.status(created.status).json({ ok: true, envelope });
     } catch {
@@ -2403,9 +2734,25 @@ app.post('/api/anon/route', async (req, res) => {
       return res.status(400).json({ ok: false, reason: 'UNKNOWN_ACTION' });
   }
 
+  // A6: proxy mode returns the relay's own reply, sealed to the ephemeral
+  // reply key the client put in the request. That makes the proxy unable to
+  // read or alter a poll result; the extra receipt tag proves the relay itself
+  // produced the bytes inside it.
+  const replyKey = route.replyPublicKey;
+  if (typeof replyKey === 'string') {
+    try {
+      const envelope = await sealRoutingEnvelope(replyKey, {
+        action: route.action,
+        status: result.status,
+        ...result.body,
+      });
+      return res.status(result.status).json({ ok: true, envelope });
+    } catch {
+      return res.status(400).json({ ok: false, reason: 'INVALID_REPLY_KEY' });
+    }
+  }
   return res.status(result.status).json(result.body);
 });
-
 
 // ───────────────────────────────────────────────────────────────────────────
 // Proxy hop (phase C): the proxy knows the caller's IP and an opaque relay id
@@ -2488,6 +2835,11 @@ function attachSignaling(httpServer) {
   });
   /** @type {Map<string, Set<import('ws').WebSocket>>} */
   const peers = new Map();
+  /** @type {Map<string, { count: number; windowStart: number }>} */
+  const identityRateLimits = new Map();
+
+  const IDENTITY_MSG_LIMIT = 600; // max messages per minute per identity
+  const IDENTITY_WINDOW_MS = 60_000;
 
   const unregister = (ws) => {
     const fingerprint = ws.novaFingerprint;
@@ -2501,6 +2853,7 @@ function attachSignaling(httpServer) {
   wss.on('connection', (ws) => {
     ws.isAlive = true;
     ws.novaFingerprint = null;
+    ws.novaAuthenticated = false;
     ws.novaWindowStart = Date.now();
     ws.novaWindowCount = 0;
 
@@ -2528,22 +2881,99 @@ function attachSignaling(httpServer) {
       }
       if (!message || typeof message !== 'object') return;
 
+      // Handle authentication challenge/response
+      if (message.type === 'auth-challenge') {
+        const challenge = crypto.randomBytes(32).toString('base64');
+        ws.novaAuthChallenge = challenge;
+        ws.send(JSON.stringify({ type: 'auth-challenge', challenge }));
+        return;
+      }
+      if (message.type === 'auth-response') {
+        const { fingerprint, signingKey, signature } = message;
+        if (!ws.novaAuthChallenge || !fingerprint || !signingKey || !signature) {
+          ws.close(1008, 'AUTH_INVALID');
+          return;
+        }
+        if (typeof fingerprint !== 'string' || fingerprint.length < 8 || fingerprint.length > 200) {
+          ws.close(1008, 'AUTH_INVALID');
+          return;
+        }
+        // Verify fingerprint matches signingKey: nova_pk_<sha256(signingKey)>
+        const expectedFingerprint = 'nova_pk_' + crypto.createHash('sha256').update(Buffer.from(signingKey, 'base64')).digest('hex');
+        if (fingerprint !== expectedFingerprint) {
+          ws.close(1008, 'AUTH_FINGERPRINT_MISMATCH');
+          return;
+        }
+        // Verify Ed25519 signature over challenge
+        let sigBuf, keyBuf, challengeBuf;
+        try {
+          sigBuf = Buffer.from(signature, 'base64');
+          keyBuf = Buffer.from(signingKey, 'base64');
+          challengeBuf = Buffer.from(ws.novaAuthChallenge, 'base64');
+        } catch {
+          ws.close(1008, 'AUTH_INVALID_ENCODING');
+          return;
+        }
+        if (sigBuf.length !== 64 || keyBuf.length !== 32) {
+          ws.close(1008, 'AUTH_INVALID_LENGTH');
+          return;
+        }
+        // Verify Ed25519 signature using noble/curves (requires Uint8Array, not Buffer)
+        let isValid = false;
+        try {
+          const sig = new Uint8Array(sigBuf);
+          const key = new Uint8Array(keyBuf);
+          const challenge = new Uint8Array(challengeBuf);
+          isValid = ed25519.verify(sig, challenge, key);
+        } catch {
+          isValid = false;
+        }
+        if (!isValid) {
+          ws.close(1008, 'AUTH_SIGNATURE_INVALID');
+          return;
+        }
+        ws.novaFingerprint = fingerprint;
+        ws.novaAuthenticated = true;
+        let sockets = peers.get(fingerprint);
+        if (!sockets) {
+          sockets = new Set();
+          peers.set(fingerprint, sockets);
+        }
+        sockets.add(ws);
+        ws.send(JSON.stringify({ type: 'auth-success' }));
+        return;
+      }
+
+      if (!ws.novaAuthenticated) {
+        ws.close(1008, 'AUTH_REQUIRED');
+        return;
+      }
+
       const sender = message.senderFingerprint;
       const target = message.targetFingerprint;
       if (typeof sender !== 'string' || sender.length < 8 || sender.length > 200) return;
 
-      if (!ws.novaFingerprint) {
-        ws.novaFingerprint = sender;
-        let sockets = peers.get(sender);
-        if (!sockets) {
-          sockets = new Set();
-          peers.set(sender, sockets);
-        }
-        sockets.add(ws);
-      } else if (ws.novaFingerprint !== sender) {
-        // A connection may not switch identities mid-stream.
+      if (ws.novaFingerprint !== sender) {
         ws.close(1008, 'FINGERPRINT_MISMATCH');
         return;
+      }
+
+      // Per-identity rate limiting
+      const identityNow = Date.now();
+      const rl = identityRateLimits.get(sender);
+      if (rl) {
+        if (identityNow - rl.windowStart > IDENTITY_WINDOW_MS) {
+          rl.count = 1;
+          rl.windowStart = identityNow;
+        } else {
+          rl.count += 1;
+          if (rl.count > IDENTITY_MSG_LIMIT) {
+            ws.close(1008, 'IDENTITY_RATE_LIMITED');
+            return;
+          }
+        }
+      } else {
+        identityRateLimits.set(sender, { count: 1, windowStart: identityNow });
       }
 
       if (message.type === 'ping') return;
@@ -2571,6 +3001,13 @@ function attachSignaling(httpServer) {
       }
       ws.isAlive = false;
       ws.ping();
+    }
+    // Clean up expired identity rate limits
+    const now = Date.now();
+    for (const [fingerprint, rl] of identityRateLimits.entries()) {
+      if (now - rl.windowStart > IDENTITY_WINDOW_MS * 2) {
+        identityRateLimits.delete(fingerprint);
+      }
     }
   }, 30_000);
   heartbeat.unref?.();

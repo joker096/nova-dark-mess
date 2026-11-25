@@ -12,8 +12,10 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import { WebSocket, type WebSocketServer } from 'ws';
+import { ed25519 } from '@noble/curves/ed25519.js';
 import { generateQueueSigningKeyPair, signQueueCommand } from './lib/anon/signing';
 
 let TMP_ROOT = '';
@@ -131,20 +133,96 @@ afterAll(async () => {
 });
 
 describe('server: WebRTC signaling', () => {
-  const connect = (fingerprint: string) =>
-    new Promise<WebSocket>((resolve, reject) => {
-      const socket = new WebSocket(`${baseUrl.replace('http', 'ws')}/api/signaling`);
-      openSockets.push(socket);
+  // Helper to generate a valid Ed25519 keypair for testing
+  const generateTestKeypair = () => {
+    const privateKey = ed25519.utils.randomSecretKey();
+    const publicKey = ed25519.getPublicKey(privateKey);
+    const fingerprint = 'nova_pk_' + crypto.createHash('sha256').update(publicKey).digest('hex');
+    return {
+      privateKey: Buffer.from(privateKey).toString('base64'),
+      publicKey: Buffer.from(publicKey).toString('base64'),
+      fingerprint,
+    };
+  };
+
+const authenticate = async (socket, keypair) => {
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('auth timeout')), 5000);
+      
+      // First, request an auth challenge from the server
+      socket.send(JSON.stringify({ type: 'auth-challenge' }));
+      
+      socket.on('message', (raw) => {
+        const text = String(raw);
+        console.log('[test] received:', text);
+        const msg = JSON.parse(text);
+        if (msg.type === 'auth-challenge' && msg.challenge) {
+          const challenge = msg.challenge;
+          console.log('[test] challenge:', challenge);
+          console.log('[test] privateKey:', keypair.privateKey);
+          console.log('[test] publicKey:', keypair.publicKey);
+          console.log('[test] fingerprint:', keypair.fingerprint);
+          
+          const challengeBytes = new Uint8Array(Buffer.from(challenge, 'base64'));
+          const privateKeyBytes = new Uint8Array(Buffer.from(keypair.privateKey, 'base64'));
+          const signature = ed25519.sign(challengeBytes, privateKeyBytes);
+          
+          console.log('[test] signature length:', signature.length);
+          console.log('[test] signature:', Buffer.from(signature).toString('base64'));
+          
+          const authResponse = {
+            type: 'auth-response',
+            fingerprint: keypair.fingerprint,
+            signingKey: keypair.publicKey,
+            signature: Buffer.from(signature).toString('base64'),
+          };
+          const authResponseStr = JSON.stringify(authResponse);
+          console.log('[test] sending auth-response:', authResponseStr);
+          console.log('[test] sending bytes:', Buffer.from(authResponseStr).toString('hex'));
+          socket.send(authResponseStr);
+        } else if (msg.type === 'auth-success') {
+          clearTimeout(timeout);
+          resolve();
+        } else if (msg.type === 'auth-failed' || msg.type === 'auth-invalid') {
+          clearTimeout(timeout);
+          reject(new Error('auth failed: ' + msg.reason || 'unknown'));
+        }
+      });
+      
+      socket.once('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+      socket.once('close', (code, reason) => {
+        clearTimeout(timeout);
+        console.log('[test] connection closed:', code, reason?.toString());
+        reject(new Error(`connection closed during auth: ${code} ${reason?.toString()}`));
+      });
+    });
+  };
+  
+  const connect = async (keypair) => {
+    const socket = new WebSocket(`${baseUrl.replace('http', 'ws')}/api/signaling`);
+    openSockets.push(socket);
+    
+    return new Promise<WebSocket>((resolve, reject) => {
       socket.once('open', () => {
-        socket.send(JSON.stringify({ type: 'ping', senderFingerprint: fingerprint }));
         resolve(socket);
       });
       socket.once('error', reject);
+    }).then(async (sock) => {
+      await authenticate(sock, keypair);
+      return sock;
     });
+  };
 
   it('routes a call invite only to the target fingerprint and refuses identity switching', async () => {
-    const alice = await connect('nova_pk_alice_signaling');
-    const bob = await connect('nova_pk_bob_signaling');
+    const aliceKey = generateTestKeypair();
+    const bobKey = generateTestKeypair();
+    const malloryKey = generateTestKeypair();
+    
+    const alice = await connect(aliceKey);
+    const bob = await connect(bobKey);
 
     const received = new Promise<any>((resolve, reject) => {
       bob.on('message', (raw) => resolve(JSON.parse(String(raw))));
@@ -154,8 +232,8 @@ describe('server: WebRTC signaling', () => {
     alice.send(
       JSON.stringify({
         type: 'call_invite',
-        senderFingerprint: 'nova_pk_alice_signaling',
-        targetFingerprint: 'nova_pk_bob_signaling',
+        senderFingerprint: aliceKey.fingerprint,
+        targetFingerprint: bobKey.fingerprint,
         payload: { callId: 'call-1', mode: 'voice' },
       }),
     );
@@ -168,11 +246,11 @@ describe('server: WebRTC signaling', () => {
     alice.send(
       JSON.stringify({
         type: 'ping',
-        senderFingerprint: 'nova_pk_mallory_signaling',
-        targetFingerprint: 'nova_pk_bob_signaling',
+        senderFingerprint: malloryKey.fingerprint,
+        targetFingerprint: bobKey.fingerprint,
       }),
     );
-    expect(await closed).toBe(1008);
+expect(await closed).toBe(1008);
   });
 });
 
@@ -252,6 +330,73 @@ describe('server: anonymous queue commands', () => {
     expect(res.json.reason).toBe('INVALID_SENDER_TOKEN');
   });
 
+  it('rejects an unpadded ack/delete body before parsing it (A9)', async () => {
+    // The declared length itself is what leaks, so the relay refuses any size
+    // that is not the fixed profile. No valid queue is needed: the body-length
+    // check runs before routing.
+    const short = await call('POST', '/api/anon/ack', {
+      queueId: 'q_0123456789abcdef0123456789abcdef',
+      recipientToken: 'r_0123456789abcdef0123456789abcdef',
+      packetIds: ['p_1'],
+    });
+    expect(short.status).toBe(400);
+
+    const padded = JSON.stringify({
+      queueId: 'q_0123456789abcdef0123456789abcdef',
+      recipientToken: 'r_0123456789abcdef0123456789abcdef',
+      packetIds: ['p_1'],
+      pad: '',
+    });
+    const filler = 8192 - new TextEncoder().encode(padded).length;
+    const exactBody = padded.replace('"pad":""', `"pad":"${'A'.repeat(filler)}"`);
+    expect(new TextEncoder().encode(exactBody).length).toBe(8192);
+    const exact = await call('POST', '/api/anon/ack', JSON.parse(exactBody));
+    // Padded but for an unknown queue: it got past the length gate.
+    expect(exact.status).toBe(404);
+    expect(exact.json.reason).toBe('QUEUE_NOT_FOUND');
+
+    const shortDelete = await call('POST', '/api/anon/queues/delete', {
+      queueId: 'q_0123456789abcdef0123456789abcdef',
+      recipientToken: 'r_0123456789abcdef0123456789abcdef',
+    });
+    expect(shortDelete.status).toBe(400);
+  });
+
+  it('meters ACK per signed command owner, so a shared proxy IP cannot widen it', async () => {
+    // The per-IP bucket is 100/min for every client behind one proxy hop, so an
+    // abusive owner is additionally limited per queue signing key. Acking an
+    // already-acked packet is a no-op, so the 429 can only come from this meter.
+    const signing = generateQueueSigningKeyPair();
+    const created = await call('POST', '/api/anon/queues', {
+      signingPublicKey: signing.publicKey,
+    });
+    const { queueId, recipientToken } = created.json;
+
+    let lastStatus = 0;
+    for (let index = 0; index < 105; index += 1) {
+      const auth = signQueueCommand(signing.privateKey, {
+        action: 'ack',
+        queueId,
+        token: recipientToken,
+        packetIds: ['p_missing'],
+      });
+      const body = { queueId, recipientToken, packetIds: ['p_missing'], ...auth };
+      const padded = JSON.stringify({ ...body, pad: '' });
+      const filler = 8192 - new TextEncoder().encode(padded).length;
+      const res = await call(
+        'POST',
+        '/api/anon/ack',
+        JSON.parse(padded.replace('"pad":""', `"pad":"${'A'.repeat(filler)}"`)),
+      );
+      lastStatus = res.status;
+      if (lastStatus === 429) {
+        expect(res.json.reason).toBe('RATE_LIMITED');
+        break;
+      }
+    }
+    expect(lastStatus).toBe(429);
+  });
+
   it('rejects a wrong recipient token on poll', async () => {
     const created = await call('POST', '/api/anon/queues', {
       signingPublicKey: generateQueueSigningKeyPair().publicKey,
@@ -325,6 +470,42 @@ describe('server: invite token burns only on a valid enqueue (F3.4)', () => {
     expect(polled.status).toBe(200);
     expect(polled.json.packets).toHaveLength(2);
     expect(polled.json.packets[0].payload).toBe(packet);
+  });
+
+  it('rejects a replayed signed command and persists the nonce', async () => {
+    const signing = generateQueueSigningKeyPair();
+    const created = await call('POST', '/api/anon/queues', {
+      signingPublicKey: signing.publicKey,
+    });
+    const { queueId, senderToken, inviteToken } = created.json;
+    const packet = Buffer.alloc(4096, 9).toString('base64');
+    const auth = signQueueCommand(signing.privateKey, {
+      action: 'enqueue',
+      queueId,
+      token: senderToken,
+      packet,
+    });
+    const body = { queueId, senderToken, packet, inviteToken, ...auth };
+
+    expect((await call('POST', '/api/anon/enqueue', body)).status).toBe(202);
+    const replay = await call('POST', '/api/anon/enqueue', body);
+    expect(replay.status).toBe(409);
+    expect(replay.json.reason).toBe('REPLAYED_COMMAND');
+
+    // A7: the nonce must outlive the process, not just the in-memory Map.
+    // The SQLite file is read by a child Node process so Vite never has to
+    // resolve the `node:sqlite` built-in inside the browser test graph.
+    const script = [
+      "const { DatabaseSync } = require('node:sqlite');",
+      `const db = new DatabaseSync(${JSON.stringify(path.join(TMP_ROOT, 'anon-state.sqlite'))});`,
+      "const row = db.prepare('SELECT nonce FROM anon_replay_nonce WHERE scope = ? AND nonce = ?').get('command', process.argv[1]);",
+      "process.stdout.write(row ? 'present' : 'missing');",
+      'db.close();',
+    ].join('\n');
+    const printed = execFileSync(process.execPath, ['-e', script, auth.commandNonce], {
+      encoding: 'utf8',
+    });
+    expect(printed).toBe('present');
   });
 
   it('rejects an enqueue with a valid invite but no signature', async () => {

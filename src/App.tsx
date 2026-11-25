@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspens
 import {
   MessageSquare,
   Radio,
-  BarChart3,
   Settings,
   Folder,
   Users,
@@ -25,6 +24,7 @@ import { dbInstance } from './lib/storage/db';
 import { botSession } from './lib/bots/session';
 import { ThreadSidebar } from './components/ThreadSidebar';
 import { BottomNav } from './components/BottomNav';
+import { KeepAlive, useSeenScreens } from './components/KeepAlive';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -63,6 +63,36 @@ const SitesScreen = lazy(() =>
 const CryptoCheckoutModal = lazy(() =>
   import('./components/CryptoCheckoutModal').then((m) => ({ default: m.CryptoCheckoutModal })),
 );
+
+// Chunks for the on-demand screens are fetched while the app is idle, so a tap
+// on Profile/Settings/Channels/Chat never waits on a network round trip before
+// the first frame of the new screen can render.
+const preloadScreenChunks = () => {
+  const loaders: Array<() => Promise<unknown>> = [
+    () => import('./components/ChatsScreen'),
+    () => import('./components/ChatScreen'),
+    () => import('./components/ChannelScreen'),
+    () => import('./components/ProfileScreen'),
+    () => import('./components/SettingsModal'),
+    () => import('./components/AnonymousMessengerScreen'),
+    () => import('./components/AnalyticsScreen'),
+    () => import('./features/sites/SitesScreen'),
+  ];
+  let next = 0;
+  const schedule = () => {
+    if (next >= loaders.length) return;
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(step, { timeout: 2_000 });
+    } else {
+      window.setTimeout(step, 200);
+    }
+  };
+  const step = () => {
+    const loader = loaders[next++];
+    void loader().finally(schedule);
+  };
+  schedule();
+};
 
 const ScreenFallback: React.FC = () => (
       <div className="flex h-full w-full items-center justify-center bg-[var(--bg-app)]">
@@ -127,10 +157,9 @@ import {
   readFontSize,
 } from './lib/ui/appearance';
 import { parseDeepLinkFromHash, parseDeepLink, type DeepLinkTarget } from './lib/network/deepLinks';
-import { type SiteHandoff } from './features/sites/HandoffPrompt';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
-import { buildLiveMeshSnapshot, clearLastGpsFix, GPS_FIX_EVENT } from './lib/p2p/meshMapNodes';
+import { buildLiveMeshSnapshot, clearLastGpsFix } from './lib/p2p/meshMapNodes';
 import { heartbeatPresence, fetchPresence, resolvePresenceIds } from './lib/p2p/presence';
 import { loadPrivacyPrefs } from './lib/network/privacyMode';
 import { flushOfflineQueueViaRelay } from './lib/network/offlineRelay';
@@ -178,6 +207,358 @@ export default function App() {
   useEffect(() => {
     peerFingerprintsRef.current = peerFingerprintsByChat;
   }, [peerFingerprintsByChat]);
+
+  // Auto-flush the offline message queue when connectivity returns or on a
+  // periodic tick, so messages sent while offline are delivered without the
+  // user having to open Settings → Join Outbox → Retry.
+  useEffect(() => {
+    const flush = async () => {
+      const relay = relayRef.current;
+      if (!relay) return;
+      try {
+        await flushOfflineQueueViaRelay(relay);
+      } catch {
+        /* relay flush failures are retried on the next tick */
+      }
+    };
+
+    const onOnline = () => void flush();
+    window.addEventListener('online', onOnline);
+
+    const interval = window.setInterval(flush, 30_000);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.clearInterval(interval);
+    };
+  }, []);
+  const {
+    stories,
+    channels,
+    posts,
+    now,
+    createStory,
+    deleteStory,
+    viewStory,
+    toggleStoryReaction,
+    createChannel,
+    deleteChannel,
+    setChannelSound,
+    createChannelPost,
+    voteChannelPoll,
+    deleteChannelPost,
+    editChannelPost,
+    addChannelComment,
+    togglePostReaction,
+    pinChannelPost,
+    unpinChannelPost,
+    addChannelAdmin,
+    removeChannelAdmin,
+    toggleChannelAdmin,
+    setChannelDiscussionGroup,
+    toggleChannelPopular,
+    toggleChannelSubscriberPrivacy,
+  } = useSocialData();
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
+  // Navigation history: each entry is the screen state we came from, so the
+  // back button restores the previous view instead of jumping to a fixed menu.
+  const [, setNavHistory] = useState<
+    Array<{ screen: ScreenId; chatId: string; profileId: string; channelId: string }>
+  >([]);
+  const [activeChatId, setActiveChatId] = useState<string>('katie');
+  const [callSignaling, setCallSignaling] = useState<P2PSignalingClient | null>(null);
+  const [pendingIncomingCall, setPendingIncomingCall] = useState<{
+    chatId: string;
+    callId: string;
+    mode: 'voice' | 'video';
+    from: string;
+  } | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string>('katie');
+  const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
+  // Mobile has a single pane, so the Channels tab needs its own level: the
+  // channel list is shown first, and a channel feed only after one is picked.
+  const [mobileChannelListOpen, setMobileChannelListOpen] = useState(true);
+  // Set when a link points at one post's comments; cleared once the channel
+  // screen has opened the sheet.
+  const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
+  // Bottom navigation active tab for mobile
+  const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('chats');
+  // One-handed FAB side, persisted across reloads.
+
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete());
+  const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
+    null,
+  );
+  const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
+  const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
+  const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
+  const [activeThreadRootId, setActiveThreadRootId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!botsEnabled) return;
+    void getBotSession().ensureReady();
+  }, [botsEnabled, getBotSession]);
+
+  // Switch bot registry to the encrypted vault once it is ready (SecurityContext
+  // initializes dbInstance with the user's master key). Until then the registry
+  // lives in memory and is lost on reload — acceptable for dev fixtures; real
+  // bots installed via Phase B3 UI will persist once the vault is up.
+  useEffect(() => {
+    if (!botsEnabled) return;
+    let cancelled = false;
+    const waitForVault = async () => {
+      while (!dbInstance.isReady() && !cancelled) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (cancelled) return;
+      await getBotSession().ensureReady();
+      getBotSession().switchStorage(new EncryptedBotStorage(dbInstance));
+    };
+    void waitForVault();
+    return () => { cancelled = true; };
+  }, [botsEnabled, getBotSession]);
+  const handleBotCallback = useCallback(
+    (botId: string, chatId: string, messageId: string, callbackData: string) => {
+      if (!botsEnabled) return false;
+      return getBotSession().dispatchCallback(botId, chatId, messageId, callbackData);
+    },
+    [botsEnabled, getBotSession],
+  );
+  const pendingInviteRef = useFocusTrap<HTMLDivElement>(
+    Boolean(pendingInvite),
+    () => setPendingInvite(null),
+  );
+
+  const foldersRef = useRef<{ openFolderModal: () => void } | null>(null);
+  const handledDeepLinkRef = useRef<string | null>(null);
+
+  const [joinNotice, setJoinNotice] = useState<JoinRequestNoticeData | null>(null);
+  // The relay effect outlives screen switches, so it reads the current view
+  // from a ref instead of restarting on every navigation.
+  const viewRef = useRef({ screen: currentScreen, chatId: activeChatId });
+  useEffect(() => {
+    viewRef.current = { screen: currentScreen, chatId: activeChatId };
+  }, [currentScreen, activeChatId]);
+
+  useEffect(() => {
+    if (!joinNotice) return;
+    const timer = window.setTimeout(() => setJoinNotice(null), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [joinNotice]);
+
+  useEffect(() => {
+    if (currentScreen !== 'mesh-map') clearLastGpsFix();
+  }, [currentScreen]);
+
+  // Relay presence (strictly opt-in): announce ourselves and refresh the list
+  // of online peers so the mesh map reflects who is actually reachable right
+  // now. With presence sharing off, nothing is sent and nothing is fetched.
+  const [presencePeers, setPresencePeers] = useState<string[]>([]);
+  const presencePrefs = loadPrivacyPrefs();
+  const knownFingerprints = useMemo(() => {
+    const known = new Set<string>();
+    for (const chat of MOCK_CHATS) {
+      if (chat.id && chat.id !== 'me') known.add(chat.id);
+    }
+    return [...known];
+  }, []);
+  useEffect(() => {
+    const fingerprint = identity?.fingerprint;
+    if (!fingerprint || !presencePrefs.presenceSharing) return;
+    const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
+    beat();
+    const interval = window.setInterval(beat, 60_000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [identity?.fingerprint, presencePrefs.presenceSharing, presencePrefs.presenceHashing, presencePrefs.presenceTtl]);
+  useEffect(() => {
+    if (currentScreen !== 'mesh-map' || !presencePrefs.presenceSharing) {
+      setPresencePeers([]);
+      return;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      const ids = await fetchPresence();
+      const peers = await resolvePresenceIds(ids, knownFingerprints, presencePrefs.presenceHashing);
+      if (!cancelled) setPresencePeers(peers);
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [currentScreen, presencePrefs.presenceSharing, presencePrefs.presenceHashing, knownFingerprints]);
+
+  // Real mesh map points: computed whenever the mesh-map screen mounts.
+  // useMemo keyed on the screen keeps the GPS fix read out of other renders.
+  const liveMesh = useMemo(
+    () =>
+      currentScreen === 'mesh-map'
+        ? buildLiveMeshSnapshot({
+            localFingerprint: identity?.fingerprint,
+            onlinePeers: presencePeers,
+          })
+        : { nodes: [], links: [] },
+    [currentScreen, identity?.fingerprint, presencePeers],
+  );
+
+
+  // Join requests and admin decisions travel through a session-wide mesh relay,
+  // so a request survives closing the group (or the app) before an admin sees it.
+  useEffect(() => {
+    const fingerprint = identity?.fingerprint;
+    if (!fingerprint) return;
+    const relay = new JoinRequestRelay({
+      localFingerprint: fingerprint,
+      // Only admins of a group record incoming requests for it.
+      isAdminOf: (groupId) => isGroupAdmin(loadGroupRoles(groupId), fingerprint),
+      onApplied: (applied) => {
+        if (applied.kind !== 'request') return;
+        const view = viewRef.current;
+        // Inside that very group the chat itself already shows the request.
+        if (view.screen === 'chat' && view.chatId === applied.groupId) return;
+        playSound('notification');
+        setJoinNotice({
+          groupId: applied.groupId,
+          groupName:
+            MOCK_CHATS.find((chat) => chat.id === applied.groupId)?.name ?? applied.groupId,
+          who: applied.name || applied.fingerprint,
+        });
+      },
+    });
+    relay.start();
+
+    // Wake up when the earliest queued job is due (its backoff expiry), not on
+    // a fixed tick; an idle outbox is only polled occasionally for new work.
+    let timer: number | undefined;
+    let stopped = false;
+    const schedule = () => {
+      if (stopped) return;
+      const delay = nextJoinOutboxDelay();
+      const wait = delay === null ? 15_000 : Math.min(Math.max(delay, 1_000), JOIN_RETRY_MAX_MS);
+      timer = window.setTimeout(() => {
+        relay.flush();
+        schedule();
+      }, wait);
+    };
+    schedule();
+
+    const flush = () => relay.flush();
+    window.addEventListener('online', flush);
+    window.addEventListener('focus', flush);
+    return () => {
+      stopped = true;
+      if (timer) window.clearTimeout(timer);
+      window.removeEventListener('online', flush);
+      window.removeEventListener('focus', flush);
+      relay.stop();
+    };
+  }, [identity?.fingerprint]);
+
+  useEffect(() => {
+    // Idle-time prefetch: never competes with the first paint or user input.
+    const timer = window.setTimeout(preloadScreenChunks, 2_500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    applyAppTheme(readAppTheme());
+    applyFontSize(readFontSize());
+    try {
+      const saved = localStorage.getItem('nova_accent_color') || ACCENT_COLORS.default;
+      applyAccentColor(saved);
+    } catch {
+      applyAccentColor(ACCENT_COLORS.default);
+    }
+    applyContactOverrides();
+  }, []);
+
+  // Follow a switch to another local account. The active profile (history,
+  // drafts, encryption journal, folders) is read from localStorage on read, so
+  // dropping the in-memory caches leaves no room for one account's state to
+  // leak into another's; a reload then rebuilds everything from the new id.
+  useEffect(() => {
+    const onAccountChanged = () => {
+      // A full reload is the only way to guarantee no in-memory state (P2P
+      // manager, bot session, caches) survives into the other account.
+      window.location.reload();
+    };
+    window.addEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
+    return () => window.removeEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
+  }, []);
+
+  const openProfile = (profileId: string) => {
+    navigate('profile', { profileId });
+  };
+
+  const openAnalytics = () => {
+    setIsSettingsOpen(false);
+    navigate('analytics');
+  };
+
+  const openSites = () => {
+    setIsSettingsOpen(false);
+    navigate('sites');
+  };
+
+  const openChannel = (channelId?: string) => {
+    if (typeof channelId === 'string' && channelId) {
+      setActiveChannelId(channelId);
+      setMobileChannelListOpen(false);
+    } else {
+      // The Channels tab opens the list; picking a channel opens its feed.
+      setMobileChannelListOpen(true);
+    }
+    setPendingCommentsPostId(null);
+    navigate('channel');
+  };
+
+  // Central navigation: push the current view onto the history stack, then
+  // switch to the requested screen (updating the relevant active ids).
+  const navigate = useCallback(
+    (screen: ScreenId, opts?: { chatId?: string; profileId?: string; channelId?: string }) => {
+      setNavHistory((h) => [
+        ...h,
+        { screen: currentScreen, chatId: activeChatId, profileId: activeProfileId, channelId: activeChannelId },
+      ]);
+      if (opts?.chatId) setActiveChatId(opts.chatId);
+      if (opts?.profileId) setActiveProfileId(opts.profileId);
+      if (opts?.channelId) setActiveChannelId(opts.channelId);
+      setCurrentScreen(screen);
+
+      // Update bottom nav tab for mobile when navigating to main tabs
+      if (screen === 'chats' || screen === 'chat') setActiveBottomTab('chats');
+      else if (screen === 'channel') setActiveBottomTab('channels');
+      else if (screen === 'anonymous') setActiveBottomTab('contacts');
+      else if (screen === 'profile') setActiveBottomTab('profile');
+      else if (screen === 'premium') setActiveBottomTab('premium');
+      else if (screen === 'sites' || screen === 'analytics' || screen === 'mesh-map') {
+        // These open as modals/full screens, keep current tab
+      }
+    },
+    [currentScreen, activeChatId, activeProfileId, activeChannelId],
+  );
+
+  const goBack = useCallback(() => {
+    setNavHistory((h) => {
+      if (h.length === 0) {
+        // No previous view recorded (e.g. top-level tab or deep link):
+        // fall back to the chats list instead of doing nothing.
+        setCurrentScreen('chats');
+        return h;
+      }
+      const prev = h[h.length - 1];
+      setActiveChatId(prev.chatId);
+      setActiveProfileId(prev.profileId);
+      setActiveChannelId(prev.channelId);
+      setCurrentScreen(prev.screen);
+      return h.slice(0, -1);
+    });
+  }, []);
 
   // Wire the real P2P transport once the local identity is available. The
   // signaling client uses the configured WebSocket endpoint when available;
@@ -337,363 +718,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity, setP2PManager]);
 
-  // Auto-flush the offline message queue when connectivity returns or on a
-  // periodic tick, so messages sent while offline are delivered without the
-  // user having to open Settings → Join Outbox → Retry.
-  useEffect(() => {
-    const flush = async () => {
-      const relay = relayRef.current;
-      if (!relay) return;
-      try {
-        await flushOfflineQueueViaRelay(relay);
-      } catch {
-        /* relay flush failures are retried on the next tick */
-      }
-    };
-
-    const onOnline = () => void flush();
-    window.addEventListener('online', onOnline);
-
-    const interval = window.setInterval(flush, 30_000);
-    return () => {
-      window.removeEventListener('online', onOnline);
-      window.clearInterval(interval);
-    };
-  }, []);
-  const {
-    stories,
-    channels,
-    posts,
-    now,
-    createStory,
-    deleteStory,
-    viewStory,
-    toggleStoryReaction,
-    createChannel,
-    deleteChannel,
-    setChannelSound,
-    createChannelPost,
-    voteChannelPoll,
-    deleteChannelPost,
-    editChannelPost,
-    addChannelComment,
-    togglePostReaction,
-    pinChannelPost,
-    unpinChannelPost,
-    addChannelAdmin,
-    removeChannelAdmin,
-    toggleChannelAdmin,
-    setChannelDiscussionGroup,
-    toggleChannelPopular,
-    toggleChannelSubscriberPrivacy,
-  } = useSocialData();
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('chats');
-  // Navigation history: each entry is the screen state we came from, so the
-  // back button restores the previous view instead of jumping to a fixed menu.
-  const [, setNavHistory] = useState<
-    Array<{ screen: ScreenId; chatId: string; profileId: string; channelId: string }>
-  >([]);
-  const [activeChatId, setActiveChatId] = useState<string>('katie');
-  const [callSignaling, setCallSignaling] = useState<P2PSignalingClient | null>(null);
-  const [pendingIncomingCall, setPendingIncomingCall] = useState<{
-    chatId: string;
-    callId: string;
-    mode: 'voice' | 'video';
-    from: string;
-  } | null>(null);
-  const [activeProfileId, setActiveProfileId] = useState<string>('katie');
-  const [activeChannelId, setActiveChannelId] = useState<string>(KYIV_CHANNEL_ID);
-  // Mobile has a single pane, so the Channels tab needs its own level: the
-  // channel list is shown first, and a channel feed only after one is picked.
-  const [mobileChannelListOpen, setMobileChannelListOpen] = useState(true);
-  // Set when a link points at one post's comments; cleared once the channel
-  // screen has opened the sheet.
-  const [pendingCommentsPostId, setPendingCommentsPostId] = useState<string | null>(null);
-  // Bottom navigation active tab for mobile
-  const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('chats');
-  // One-handed FAB side, persisted across reloads.
-
-
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
-  const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingComplete());
-  const [pendingInvite, setPendingInvite] = useState<{ chatId: string; groupName: string } | null>(
-    null,
-  );
-  const [pendingContactInvite, setPendingContactInvite] = useState<string | null>(null);
-  const [pendingSiteHandoff, setPendingSiteHandoff] = useState<SiteHandoff | null>(null);
-  const [pendingBotStart, setPendingBotStart] = useState<{ chatId: string; payload: string } | null>(null);
-  const [pendingBotInstall, setPendingBotInstall] = useState<{ id: string; startPayload?: string } | null>(null);
-  const [activeThreadRootId, setActiveThreadRootId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!botsEnabled) return;
-    void getBotSession().ensureReady();
-  }, [botsEnabled, getBotSession]);
-
-  // Switch bot registry to the encrypted vault once it is ready (SecurityContext
-  // initializes dbInstance with the user's master key). Until then the registry
-  // lives in memory and is lost on reload — acceptable for dev fixtures; real
-  // bots installed via Phase B3 UI will persist once the vault is up.
-  useEffect(() => {
-    if (!botsEnabled) return;
-    let cancelled = false;
-    const waitForVault = async () => {
-      while (!dbInstance.isReady() && !cancelled) {
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      if (cancelled) return;
-      await getBotSession().ensureReady();
-      getBotSession().switchStorage(new EncryptedBotStorage(dbInstance));
-    };
-    void waitForVault();
-    return () => { cancelled = true; };
-  }, [botsEnabled, getBotSession]);
-  const handleBotCallback = useCallback(
-    (botId: string, chatId: string, messageId: string, callbackData: string) => {
-      if (!botsEnabled) return false;
-      return getBotSession().dispatchCallback(botId, chatId, messageId, callbackData);
-    },
-    [botsEnabled, getBotSession],
-  );
-  const pendingInviteRef = useFocusTrap<HTMLDivElement>(
-    Boolean(pendingInvite),
-    () => setPendingInvite(null),
-  );
-
-  const foldersRef = useRef<{ openFolderModal: () => void } | null>(null);
-  const handledDeepLinkRef = useRef<string | null>(null);
-
-  const [joinNotice, setJoinNotice] = useState<JoinRequestNoticeData | null>(null);
-  // The relay effect outlives screen switches, so it reads the current view
-  // from a ref instead of restarting on every navigation.
-  const viewRef = useRef({ screen: currentScreen, chatId: activeChatId });
-  useEffect(() => {
-    viewRef.current = { screen: currentScreen, chatId: activeChatId };
-  }, [currentScreen, activeChatId]);
-
-  useEffect(() => {
-    if (!joinNotice) return;
-    const timer = window.setTimeout(() => setJoinNotice(null), 8_000);
-    return () => window.clearTimeout(timer);
-  }, [joinNotice]);
-
-  // A new GPS fix changes where the local node belongs, so recompute the
-  // snapshot when one lands (the map writes it, we only listen).
-  const [meshTick, setMeshTick] = useState(0);
-  useEffect(() => {
-    const onFix = () => setMeshTick((tick) => tick + 1);
-    window.addEventListener(GPS_FIX_EVENT, onFix);
-    return () => window.removeEventListener(GPS_FIX_EVENT, onFix);
-  }, []);
-  useEffect(() => {
-    if (currentScreen !== 'mesh-map') clearLastGpsFix();
-  }, [currentScreen]);
-
-  // Relay presence (strictly opt-in): announce ourselves and refresh the list
-  // of online peers so the mesh map reflects who is actually reachable right
-  // now. With presence sharing off, nothing is sent and nothing is fetched.
-  const [presencePeers, setPresencePeers] = useState<string[]>([]);
-  const presencePrefs = loadPrivacyPrefs();
-  const knownFingerprints = useMemo(() => {
-    const known = new Set<string>();
-    for (const chat of MOCK_CHATS) {
-      if (chat.id && chat.id !== 'me') known.add(chat.id);
-    }
-    return [...known];
-  }, []);
-  useEffect(() => {
-    const fingerprint = identity?.fingerprint;
-    if (!fingerprint || !presencePrefs.presenceSharing) return;
-    const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
-    beat();
-    const interval = window.setInterval(beat, 60_000);
-    return () => {
-      window.clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity?.fingerprint, presencePrefs.presenceSharing, presencePrefs.presenceHashing, presencePrefs.presenceTtl]);
-  useEffect(() => {
-    if (currentScreen !== 'mesh-map' || !presencePrefs.presenceSharing) {
-      setPresencePeers([]);
-      return;
-    }
-    let cancelled = false;
-    const refresh = async () => {
-      const ids = await fetchPresence();
-      const peers = await resolvePresenceIds(ids, knownFingerprints, presencePrefs.presenceHashing);
-      if (!cancelled) setPresencePeers(peers);
-    };
-    refresh();
-    const interval = window.setInterval(refresh, 30_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentScreen, presencePrefs.presenceSharing, presencePrefs.presenceHashing, knownFingerprints]);
-
-  // Real mesh map points: computed whenever the mesh-map screen mounts.
-  // useMemo keyed on the screen keeps the GPS fix read out of other renders.
-  const liveMesh = useMemo(
-    () =>
-      currentScreen === 'mesh-map'
-        ? buildLiveMeshSnapshot({
-            localFingerprint: identity?.fingerprint,
-            onlinePeers: presencePeers,
-          })
-        : { nodes: [], links: [] },
-    [currentScreen, identity?.fingerprint, meshTick, presencePeers],
-  );
-
-
-  // Join requests and admin decisions travel through a session-wide mesh relay,
-  // so a request survives closing the group (or the app) before an admin sees it.
-  useEffect(() => {
-    const fingerprint = identity?.fingerprint;
-    if (!fingerprint) return;
-    const relay = new JoinRequestRelay({
-      localFingerprint: fingerprint,
-      // Only admins of a group record incoming requests for it.
-      isAdminOf: (groupId) => isGroupAdmin(loadGroupRoles(groupId), fingerprint),
-      onApplied: (applied) => {
-        if (applied.kind !== 'request') return;
-        const view = viewRef.current;
-        // Inside that very group the chat itself already shows the request.
-        if (view.screen === 'chat' && view.chatId === applied.groupId) return;
-        playSound('notification');
-        setJoinNotice({
-          groupId: applied.groupId,
-          groupName:
-            MOCK_CHATS.find((chat) => chat.id === applied.groupId)?.name ?? applied.groupId,
-          who: applied.name || applied.fingerprint,
-        });
-      },
-    });
-    relay.start();
-
-    // Wake up when the earliest queued job is due (its backoff expiry), not on
-    // a fixed tick; an idle outbox is only polled occasionally for new work.
-    let timer: number | undefined;
-    let stopped = false;
-    const schedule = () => {
-      if (stopped) return;
-      const delay = nextJoinOutboxDelay();
-      const wait = delay === null ? 15_000 : Math.min(Math.max(delay, 1_000), JOIN_RETRY_MAX_MS);
-      timer = window.setTimeout(() => {
-        relay.flush();
-        schedule();
-      }, wait);
-    };
-    schedule();
-
-    const flush = () => relay.flush();
-    window.addEventListener('online', flush);
-    window.addEventListener('focus', flush);
-    return () => {
-      stopped = true;
-      if (timer) window.clearTimeout(timer);
-      window.removeEventListener('online', flush);
-      window.removeEventListener('focus', flush);
-      relay.stop();
-    };
-  }, [identity?.fingerprint]);
-
-  useEffect(() => {
-    applyAppTheme(readAppTheme());
-    applyFontSize(readFontSize());
-    try {
-      const saved = localStorage.getItem('nova_accent_color') || ACCENT_COLORS.default;
-      applyAccentColor(saved);
-    } catch {
-      applyAccentColor(ACCENT_COLORS.default);
-    }
-    applyContactOverrides();
-  }, []);
-
-  // Follow a switch to another local account. The active profile (history,
-  // drafts, encryption journal, folders) is read from localStorage on read, so
-  // dropping the in-memory caches leaves no room for one account's state to
-  // leak into another's; a reload then rebuilds everything from the new id.
-  useEffect(() => {
-    const onAccountChanged = () => {
-      // A full reload is the only way to guarantee no in-memory state (P2P
-      // manager, bot session, caches) survives into the other account.
-      window.location.reload();
-    };
-    window.addEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
-    return () => window.removeEventListener(ACTIVE_ACCOUNT_CHANGED_EVENT, onAccountChanged);
-  }, []);
-
-  const openProfile = (profileId: string) => {
-    navigate('profile', { profileId });
-  };
-
-  const openAnalytics = () => {
-    setIsSettingsOpen(false);
-    navigate('analytics');
-  };
-
-  const openSites = () => {
-    setIsSettingsOpen(false);
-    navigate('sites');
-  };
-
-  const openChannel = (channelId?: string) => {
-    if (typeof channelId === 'string' && channelId) {
-      setActiveChannelId(channelId);
-      setMobileChannelListOpen(false);
-    } else {
-      // The Channels tab opens the list; picking a channel opens its feed.
-      setMobileChannelListOpen(true);
-    }
-    setPendingCommentsPostId(null);
-    navigate('channel');
-  };
-
-  // Central navigation: push the current view onto the history stack, then
-  // switch to the requested screen (updating the relevant active ids).
-  const navigate = useCallback(
-    (screen: ScreenId, opts?: { chatId?: string; profileId?: string; channelId?: string }) => {
-      setNavHistory((h) => [
-        ...h,
-        { screen: currentScreen, chatId: activeChatId, profileId: activeProfileId, channelId: activeChannelId },
-      ]);
-      if (opts?.chatId) setActiveChatId(opts.chatId);
-      if (opts?.profileId) setActiveProfileId(opts.profileId);
-      if (opts?.channelId) setActiveChannelId(opts.channelId);
-      setCurrentScreen(screen);
-
-      // Update bottom nav tab for mobile when navigating to main tabs
-      if (screen === 'chats' || screen === 'chat') setActiveBottomTab('chats');
-      else if (screen === 'channel') setActiveBottomTab('channels');
-      else if (screen === 'anonymous') setActiveBottomTab('contacts');
-      else if (screen === 'profile') setActiveBottomTab('profile');
-      else if (screen === 'premium') setActiveBottomTab('premium');
-      else if (screen === 'sites' || screen === 'analytics' || screen === 'mesh-map') {
-        // These open as modals/full screens, keep current tab
-      }
-    },
-    [currentScreen, activeChatId, activeProfileId, activeChannelId],
-  );
-
-  const goBack = useCallback(() => {
-    setNavHistory((h) => {
-      if (h.length === 0) {
-        // No previous view recorded (e.g. top-level tab or deep link):
-        // fall back to the chats list instead of doing nothing.
-        setCurrentScreen('chats');
-        return h;
-      }
-      const prev = h[h.length - 1];
-      setActiveChatId(prev.chatId);
-      setActiveProfileId(prev.profileId);
-      setActiveChannelId(prev.channelId);
-      setCurrentScreen(prev.screen);
-      return h.slice(0, -1);
-    });
-  }, []);
-
   // Deep links are handled locally; contact invites carry one-time payloads
   // in the fragment, never in the request path or query.
   const handleTarget = useCallback(
@@ -701,7 +725,6 @@ export default function App() {
       if (!target || target.type === 'device-link') return;
 
       if (target.type === 'site-handoff') {
-        setPendingSiteHandoff({ token: target.token, key: target.key });
         navigate('sites');
         return;
       }
@@ -772,9 +795,13 @@ export default function App() {
         (pathMatch
           ? parseDeepLink(`nova://site-handoff/${pathMatch[1]}#${hash.replace(/^#/, '')}`)
           : null);
-      if (!target || locationKey === handledDeepLinkRef.current) return;
-      handledDeepLinkRef.current = locationKey;
+      if (!target) return;
+      // Only mark as handled if we successfully processed it (channels loaded, etc.)
+      // This allows retry when channels load asynchronously
+      if (locationKey === handledDeepLinkRef.current) return;
       handleTarget(target, locationKey);
+      // Only mark as handled after successful processing
+      handledDeepLinkRef.current = locationKey;
     };
 
     applyDeepLink();
@@ -853,9 +880,17 @@ export default function App() {
     onInitialCommentsHandled: () => setPendingCommentsPostId(null),
   };
 
-  // Desktop Main Panel renderer
-  const renderDesktopMainScreen = () => {
-    switch (currentScreen) {
+  // Desktop main stage.
+  //
+  // Each screen is mounted the first time it is visited and then only toggled
+  // between visible and hidden (see KeepAlive). ChatScreen/ChannelScreen are
+  // thousands of lines with dozens of effects, so returning to them used to
+  // cost a remount plus a full layout pass; now it is a style change.
+  const desktopScreenSlot: ScreenId = currentScreen === 'chats' ? 'chat' : currentScreen;
+  const desktopScreenSlots = useSeenScreens<ScreenId>(desktopScreenSlot, ['chat']);
+
+  const renderDesktopScreen = (screen: ScreenId) => {
+    switch (screen) {
       case 'channel':
         return (
           <ChannelScreen
@@ -936,31 +971,38 @@ export default function App() {
     }
   };
 
-  // Mobile Single-Pane Screen renderer
-  const renderMobileScreen = () => {
-    // On mobile, use activeBottomTab for primary navigation; the bottom tabs map
-    // onto the screens, so a tab always renders its own screen type.
-    // Through the shared helper the type stays ScreenId: assigning the
-    // conditionals inline would narrow it to the five tab values and make the
-    // deep-link cases below unreachable for the type checker.
-    const mobileScreen = screenForBottomTab(activeBottomTab);
+  // Mobile single-pane navigation. It follows the same keep-alive contract as
+  // the desktop stage: a tab is mounted on its first visit and then shown or
+  // hidden, so moving between tabs does not remount the screen underneath.
+  const mobileScreen = screenForBottomTab(activeBottomTab);
+  const mobileChannelListVisible =
+    mobileScreen === 'channel' && (mobileChannelListOpen || !activeChannelId);
+  const mobileScreenSlot: string =
+    mobileScreen === 'channel'
+      ? mobileChannelListVisible
+        ? 'channel-list'
+        : 'channel'
+      : mobileScreen === 'anonymous'
+        ? 'contacts'
+        : mobileScreen;
+  const mobileScreenSlots = useSeenScreens<string>(mobileScreenSlot, ['chats']);
 
-    switch (mobileScreen) {
+  const renderMobileScreen = (slot: string) => {
+    switch (slot) {
+      case 'channel-list':
+        return (
+          <ChannelListPanel
+            key="channel-list"
+            channels={channels}
+            activeChannelId={activeChannelId}
+            onSelectChannel={openChannel}
+            onCreateChannel={handleCreateChannel}
+            onTogglePopular={handleToggleChannelPopular}
+            onDeleteChannels={handleDeleteChannels}
+            onBack={goBack}
+          />
+        );
       case 'channel':
-        if (mobileChannelListOpen || !activeChannelId) {
-          return (
-            <ChannelListPanel
-              key="channel-list"
-              channels={channels}
-              activeChannelId={activeChannelId}
-              onSelectChannel={openChannel}
-              onCreateChannel={handleCreateChannel}
-              onTogglePopular={handleToggleChannelPopular}
-              onDeleteChannels={handleDeleteChannels}
-              onBack={goBack}
-            />
-          );
-        }
         return (
           <ChannelScreen
             key={`${activeChannelId}:${pendingCommentsPostId ?? ''}`}
@@ -1000,31 +1042,6 @@ export default function App() {
             onBack={goBack}
             initialInvite={pendingContactInvite}
             onInviteConsumed={() => setPendingContactInvite(null)}
-          />
-        );
-      case 'settings':
-        return (
-          <SettingsModal
-            isOpen={true}
-            onClose={() => setActiveBottomTab('chats')}
-            onOpenAnalytics={openAnalytics}
-            onOpenSites={openSites}
-            getBotSession={botsEnabled ? getBotSession : undefined}
-            pendingBotInstall={pendingBotInstall}
-            onBotInstallHandled={() => setPendingBotInstall(null)}
-            onOpenBotChat={(botId) => {
-              setPendingBotStart({ chatId: botId, payload: '' });
-              navigate('chat', { chatId: botId });
-            }}
-            onOpenMeshMap={() => navigate('mesh-map')}
-          />
-        );
-      case 'premium':
-        return (
-          <CryptoCheckoutModal
-            isOpen={true}
-            onClose={() => setActiveBottomTab('chats')}
-            onSuccess={() => setActiveBottomTab('chats')}
           />
         );
       case 'chat': {
@@ -1275,7 +1292,17 @@ export default function App() {
 
       {/* Right Main Content Stage (Desktop Only) */}
       <main className="hidden lg:flex flex-1 min-w-0 h-full overflow-hidden bg-[#090a0e] flex-col relative">
-        <Suspense fallback={<ScreenFallback />}>{renderDesktopMainScreen()}</Suspense>
+        <Suspense fallback={<ScreenFallback />}>
+          {desktopScreenSlots.map((screen) => (
+            <KeepAlive
+              key={screen}
+              active={screen === desktopScreenSlot}
+              className="w-full h-full min-h-0 flex flex-col"
+            >
+              {renderDesktopScreen(screen)}
+            </KeepAlive>
+          ))}
+        </Suspense>
       </main>
 
       {/* Thread Sidebar (Desktop Only) - appears when thread is open in chat */}
@@ -1298,8 +1325,41 @@ export default function App() {
       {/* 2. MOBILE VIEW (< 768px md: breakpoint)                   */}
       {/* ======================================================== */}
         <div className="flex-1 w-full h-full lg:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
-          <div className="flex-1 overflow-hidden">
-            <Suspense fallback={<ScreenFallback />}>{renderMobileScreen()}</Suspense>
+          <div className="flex-1 overflow-hidden relative">
+            <Suspense fallback={<ScreenFallback />}>
+              {mobileScreenSlots.map((slot) => (
+                <KeepAlive
+                  key={slot}
+                  active={slot === mobileScreenSlot}
+                  className="w-full h-full min-h-0 flex flex-col"
+                >
+                  {renderMobileScreen(slot)}
+                </KeepAlive>
+              ))}
+              {mobileScreen === 'settings' && (
+                <SettingsModal
+                  isOpen={true}
+                  onClose={() => setActiveBottomTab('chats')}
+                  onOpenAnalytics={openAnalytics}
+                  onOpenSites={openSites}
+                  getBotSession={botsEnabled ? getBotSession : undefined}
+                  pendingBotInstall={pendingBotInstall}
+                  onBotInstallHandled={() => setPendingBotInstall(null)}
+                  onOpenBotChat={(botId) => {
+                    setPendingBotStart({ chatId: botId, payload: '' });
+                    navigate('chat', { chatId: botId });
+                  }}
+                  onOpenMeshMap={() => navigate('mesh-map')}
+                />
+              )}
+              {mobileScreen === 'premium' && (
+                <CryptoCheckoutModal
+                  isOpen={true}
+                  onClose={() => setActiveBottomTab('chats')}
+                  onSuccess={() => setActiveBottomTab('chats')}
+                />
+              )}
+            </Suspense>
           </div>
           <BottomNav
             activeTab={activeBottomTab}
@@ -1308,7 +1368,6 @@ export default function App() {
             unreadChats={totalUnreadChats}
             unreadChannels={totalUnreadChannels}
             unreadContacts={0}
-            premium={premium}
           />
         </div>
 

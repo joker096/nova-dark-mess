@@ -208,7 +208,8 @@ export default defineConfig(({ mode, command }) => {
       chunkSizeWarningLimit: 300,
     },
     server: {
-      hmr: process.env.DISABLE_HMR !== 'true',
+      host: '0.0.0.0',
+      hmr: process.env.DISABLE_HMR !== 'true' ? { protocol: 'ws' } : false,
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
         '/api': { target: 'http://localhost:8080', changeOrigin: true },

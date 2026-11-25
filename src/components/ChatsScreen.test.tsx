@@ -37,27 +37,25 @@ const renderChats = (extra: Record<string, unknown> = {}) =>
     />,
   );
 
-describe('ChatsScreen - mobile header (localized)', () => {
+describe('ChatsScreen - header (localized)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.removeItem('nova_read_chats_v1');
   });
 
-  it('renders a minimal header with search and an action menu instead of shortcut tabs', () => {
+  it('renders a search bar with no menu button (settings via bottom nav)', () => {
     renderChats();
-    expect(screen.getByRole('button', { name: 'chats.search' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'common.menu' })).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search conversations by contact name...')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'common.menu' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'meshMap.title' })).toBeNull();
   });
 
-  it('shows "Chats" on mobile and only the nickname on desktop, without greeting or unread text', () => {
+  it('shows chat list with contacts', () => {
     renderChats();
 
-    const headings = screen
-      .getAllByRole('heading', { level: 1 })
-      .map((heading) => heading.textContent);
-    expect(headings).toEqual(['common.chats', loadAccount().nickname]);
+    expect(screen.getByText('Katie Rogers')).toBeTruthy();
+    expect(screen.getByText('Kurt Williamson')).toBeTruthy();
     expect(screen.queryByText('chats.greeting')).toBeNull();
     expect(screen.queryByText('chats.unreadCount')).toBeNull();
   });
@@ -72,45 +70,6 @@ describe('ChatsScreen - mobile header (localized)', () => {
     expect(screen.queryByTestId('unread-katie')).toBeNull();
     expect(localStorage.getItem('nova_read_chats_v1')).toContain('katie');
     expect(onSelectChat).toHaveBeenCalledWith('katie');
-  });
-
-  it('opens the isolated anonymous messenger from the header menu', () => {
-    const onOpenAnonymous = vi.fn();
-    renderChats({ onOpenAnonymous });
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
-    fireEvent.click(screen.getByRole('button', { name: 'common.contacts' }));
-
-    expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
-  });
-
-  it('opens the folder manager from the mobile header menu', () => {
-    renderChats();
-    const folderModal = vi.mocked(FolderModal);
-    const isFolderModalOpen = () =>
-      (folderModal.mock.calls.at(-1)?.[0] as { isOpen?: boolean } | undefined)?.isOpen;
-
-    expect(isFolderModalOpen()).toBe(false);
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
-    fireEvent.click(screen.getByRole('button', { name: 'foldersObj.title' }));
-
-    expect(isFolderModalOpen()).toBe(true);
-    // Opening the manager from the menu must not carry a folder being edited.
-    expect((folderModal.mock.calls.at(-1)?.[0] as { editingFolder?: unknown }).editingFolder).toBeNull();
-  });
-
-  it('offers an invite-based add-contact action in the new conversation dialog', () => {
-    const onOpenAnonymous = vi.fn();
-    renderChats({ onOpenAnonymous });
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.menu' }));
-    fireEvent.click(screen.getByRole('button', { name: 'chats.newChat' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Add a new contact with a link or QR code' }),
-    );
-
-    expect(onOpenAnonymous).toHaveBeenCalledTimes(1);
   });
 });
 

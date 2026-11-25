@@ -173,10 +173,20 @@ export const FolderModal: React.FC<FolderModalProps> = ({
     [t, folders.length]
   );
 
+  // Helper: format mute time remaining
+  const formatMuteTime = (ms: number) => {
+    const hours = Math.ceil(ms / (60 * 60 * 1000));
+    if (hours < 24) return `${hours}h`;
+    return `${Math.ceil(hours / 24)}d`;
+  };
+
   // Create Tab Content
   const createTabContent = (
     <form onSubmit={handleSave} className="flex-1 overflow-y-auto no-scrollbar space-y-4">
-      <SettingsSection title={t('foldersObj.nameLabel')}>
+      <SettingsSection
+        title={t('foldersObj.nameLabel')}
+        description={t('foldersObj.nameDesc')}
+      >
         <input
           type="text"
           value={name}
@@ -191,8 +201,11 @@ export const FolderModal: React.FC<FolderModalProps> = ({
         {errorMsg && <p className="mt-1 text-[11px] text-red-400 font-medium">{errorMsg}</p>}
       </SettingsSection>
 
-      <SettingsSection title={t('foldersObj.iconLabel')}>
-        <div data-testid="folder-icon-list" className="flex gap-2 overflow-x-auto touch-pan-x no-scrollbar pb-2">
+      <SettingsSection
+        title={t('foldersObj.iconLabel')}
+        description={t('foldersObj.iconDesc')}
+      >
+        <div data-testid="folder-icon-list" className="grid grid-cols-7 gap-2 pb-2 overflow-x-auto no-scrollbar min-w-0">
           {FOLDER_ICONS.map((item) => {
             const IconComp = ICON_BY_ID[item.id];
             const isSelected = selectedIcon === item.id;
@@ -209,9 +222,9 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   setSelectedIcon(item.id);
                 }}
                 disabled={isLocked}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center transition cursor-pointer ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} ${
+                className={`aspect-square rounded-xl flex items-center justify-center transition cursor-pointer shrink-0 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''} ${
                   isSelected
-                    ? 'bg-[var(--nova-accent-color)]/20 border-2 border-[var(--nova-accent-color)]/40 shadow-sm shadow-[var(--nova-accent-color)]/25'
+                    ? 'bg-[var(--nova-accent-color)]/20 border-2 border-[var(--nova-accent-color)]/40 shadow-sm shadow-[var(--nova-accent-color)]/25 ring-2 ring-[var(--nova-accent-color)]/30 ring-offset-2 ring-offset-[var(--nova-surface)]'
                     : 'bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] hover:border-[var(--nova-accent-color)]/30'
                 }`}
                 aria-label={t(item.label)}
@@ -226,12 +239,15 @@ export const FolderModal: React.FC<FolderModalProps> = ({
       </SettingsSection>
 
       {!editingFolder && (
-        <SettingsSection title={t('foldersObj.chatsLabel')}>
+        <SettingsSection
+          title={t('foldersObj.chatsLabel')}
+          description={t('foldersObj.chatsDesc')}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] text-[var(--nova-text-muted)]">
               {t('foldersObj.includedChats', { selected: selectedChatIds.length, total: chats.length })}
             </span>
-            <div className="flex gap-1">
+            <div className="flex gap-1" role="group" aria-label={t('foldersObj.filterChats')}>
               <NovaIconButton
                 icon={<User className="w-3.5 h-3.5" />}
                 label={t('foldersObj.directChats')}
@@ -274,7 +290,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   <div
                     className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
                       isChecked
-                        ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-sm'
+                        ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-sm ring-2 ring-[var(--nova-accent-color)]/30 ring-offset-2 ring-offset-[var(--nova-surface)]'
                         : 'border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)]'
                     }`}
                   >
@@ -308,60 +324,65 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   // Manage Tab Content
   const manageTabContent = (
     <div className="flex-1 overflow-y-auto no-scrollbar space-y-3">
-      <p className="text-[11px] text-[var(--nova-text-muted)] px-1">{t('foldersObj.manageDescription')}</p>
-
-      <div className="space-y-1.5">
-        {folders.map((f) => {
-          const count = f.id === 'all' ? chats.length : f.chatIds.length;
-          const FolderIconComp = ICON_BY_ID[f.icon as FolderIconId] || Folder;
-          return (
-            <div key={f.id} className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <SettingsTile
-                  icon={<FolderIconComp className="w-4 h-4" />}
-                  label={f.name}
-                  description={t('foldersObj.chatsIncluded', { count })}
-                  tone={f.isDefault ? 'default' : 'danger'}
-                  badge={f.isDefault ? t('foldersObj.defaultBadge') : undefined}
-                  onClick={() => !f.isDefault && onDelete(f.id)}
-                  disabled={f.isDefault}
-                  testId={`folder-manage-${f.id}`}
-                />
+      <SettingsSection
+        title={t('foldersObj.manageTab')}
+        description={t('foldersObj.manageDescription')}
+      >
+        <div className="space-y-1.5">
+          {folders.map((f) => {
+            const count = f.id === 'all' ? chats.length : f.chatIds.length;
+            const FolderIconComp = ICON_BY_ID[f.icon as FolderIconId] || Folder;
+            const isDefault = f.isDefault;
+            return (
+              <div key={f.id} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <SettingsTile
+                    icon={<FolderIconComp className="w-4 h-4" />}
+                    label={f.name}
+                    description={t('foldersObj.chatsIncluded', { count })}
+                    tone={isDefault ? 'default' : 'danger'}
+                    badge={isDefault ? t('foldersObj.defaultBadge') : undefined}
+                    onClick={() => !isDefault && onDelete(f.id)}
+                    disabled={isDefault}
+                    testId={`folder-manage-${f.id}`}
+                  />
+                </div>
+                {!isDefault && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(f.id)}
+                    title={t('foldersObj.deleteFolder')}
+                    aria-label={t('foldersObj.deleteFolder')}
+                    className="w-11 h-11 shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              {!f.isDefault && (
-                <button
-                  type="button"
-                  onClick={() => onDelete(f.id)}
-                  title={t('foldersObj.deleteFolder')}
-                  aria-label={t('foldersObj.deleteFolder')}
-                  className="w-11 h-11 shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <div className="pt-2">
-        <button
-          onClick={() => setActiveTab('create')}
-          className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-        >
-          <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
-          <span>{t('foldersObj.addAnother')}</span>
-        </button>
-      </div>
+        <div className="pt-2">
+          <button
+            onClick={() => setActiveTab('create')}
+            className="w-full py-2.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-primary)] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
+            <span>{t('foldersObj.addAnother')}</span>
+          </button>
+        </div>
+      </SettingsSection>
     </div>
   );
 
   // Notifications Tab Content
   const notificationsTabContent = (
     <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
-      <p className="text-[11px] text-[var(--nova-text-muted)] px-1">{t('foldersObj.notificationsDescription')}</p>
-
-      <div className="space-y-3">
+      <SettingsSection
+        title={t('foldersObj.notificationsTab')}
+        description={t('foldersObj.notificationsDescription')}
+      >
         {folders.filter((f) => !f.isDefault).map((folder) => {
           const level = getFolderNotificationLevel(folder.id);
           const muteUntil = getFolderMuteUntil(folder.id);
@@ -380,10 +401,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                   <p className="text-[10px] text-[var(--nova-text-muted)]">
                     {isMuted
                       ? t('foldersObj.mutedUntil', {
-                          time: new Date(muteUntil).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          }),
+                          time: formatMuteTime(muteUntil - Date.now()),
                         })
                       : t('foldersObj.notificationLevel', { level: effectiveLevel })}
                   </p>
@@ -391,62 +409,56 @@ export const FolderModal: React.FC<FolderModalProps> = ({
               </div>
 
               <SettingsSection title={t('foldersObj.notifyLevel')}>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="grid grid-cols-3 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('foldersObj.notifyLevel')}>
                   {NOTIFICATION_LEVELS.map((lvl) => (
-                    <button
+                    <IconCycleButton
                       key={lvl.value}
-                      type="button"
+                      icon={lvl.icon}
+                      label={t(`foldersObj.level.${lvl.value}`)}
+                      valueLabel={t(`foldersObj.level.${lvl.value}`)}
+                      selected={effectiveLevel === lvl.value}
                       onClick={() => setFolderNotificationLevel(folder.id, lvl.value)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                        effectiveLevel === lvl.value
-                          ? 'bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[var(--nova-accent-color)] shadow-sm'
-                          : 'bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]'
-                      }`}
-                    >
-                      {lvl.icon}
-                      <span>{t(`foldersObj.level.${lvl.value}`)}</span>
-                    </button>
+                      ariaLabel={t('foldersObj.notifyLevelAria', { level: t(`foldersObj.level.${lvl.value}`) })}
+                      testId={`folder-notify-${folder.id}-${lvl.value}`}
+                    />
                   ))}
                 </div>
               </SettingsSection>
 
               <SettingsSection title={isMuted ? t('foldersObj.muted') : t('foldersObj.muteFor')}>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="grid grid-cols-3 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('foldersObj.muteOptions')}>
                   {isMuted ? (
-                    <button
-                      type="button"
+                    <IconCycleButton
+                      icon={<BellOff className="w-4 h-4" />}
+                      label={t('foldersObj.unmute')}
                       onClick={() => muteFolder(folder.id, 0)}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 transition cursor-pointer"
-                    >
-                      {t('foldersObj.unmute')}
-                    </button>
+                      className="border-[var(--nova-danger)]/60 bg-[var(--nova-danger)]/15 text-[var(--nova-danger)] ring-2 ring-[var(--nova-danger)]/30 ring-offset-2 ring-offset-[var(--nova-surface)]"
+                      testId={`folder-unmute-${folder.id}`}
+                    />
                   ) : (
-                    <>
-                      {MUTE_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => muteFolder(folder.id, opt.value)}
-                          className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 transition cursor-pointer"
-                        >
-                          {t(`foldersObj.mute${opt.label.replace(' ', '')}`)}
-                        </button>
-                      ))}
-                    </>
+                    MUTE_OPTIONS.map((opt) => (
+                      <IconCycleButton
+                        key={opt.value}
+                        icon={<Bell className="w-4 h-4" />}
+                        label={t(`foldersObj.mute${opt.label.replace(' ', '')}`)}
+                        onClick={() => muteFolder(folder.id, opt.value)}
+                        testId={`folder-mute-${folder.id}-${opt.value}`}
+                      />
+                    ))
                   )}
                 </div>
               </SettingsSection>
             </div>
           );
         })}
-      </div>
 
-      {folders.filter((f) => !f.isDefault).length === 0 && (
-        <div className="text-center py-12 text-[var(--nova-text-muted)]">
-          <p className="text-sm font-medium mb-1">{t('foldersObj.noCustomFolders')}</p>
-          <p className="text-[11px]">{t('foldersObj.createFolderFirst')}</p>
-        </div>
-      )}
+        {folders.filter((f) => !f.isDefault).length === 0 && (
+          <div className="text-center py-12 text-[var(--nova-text-muted)]">
+            <p className="text-sm font-medium mb-1">{t('foldersObj.noCustomFolders')}</p>
+            <p className="text-[11px]">{t('foldersObj.createFolderFirst')}</p>
+          </div>
+        )}
+      </SettingsSection>
     </div>
   );
 
@@ -455,7 +467,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 pt-[max(0.75rem,var(--nova-safe-top))] pb-[max(0.75rem,var(--nova-safe-bottom))] animate-in fade-in duration-200"
     >
       <div
         ref={dialogRef}
@@ -463,25 +475,26 @@ export const FolderModal: React.FC<FolderModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="folder-modal-title"
-        className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-lg p-4 text-[var(--nova-text-primary)] shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
+        className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-lg text-[var(--nova-text-primary)] shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
       >
-        <div className="flex items-center justify-between border-b border-[var(--nova-border-subtle)] pb-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)]">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 pb-3 border-b border-[var(--nova-border-subtle)] shrink-0">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
               <FolderPlus className="w-4 h-4" />
             </div>
-            <div>
-              <h3 id="folder-modal-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight">
+            <div className="min-w-0">
+              <h3 id="folder-modal-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight truncate">
                 {editingFolder ? t('foldersObj.editTitle') : t('foldersObj.title')}
               </h3>
-              <p className="text-[10px] text-[var(--nova-text-muted)]">{t('foldersObj.subtitle')}</p>
+              <p className="text-[10.5px] text-[var(--nova-text-muted)] truncate">{t('foldersObj.subtitle')}</p>
             </div>
           </div>
-
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
             aria-label={t('common.close')}
+            title={t('common.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -496,9 +509,24 @@ export const FolderModal: React.FC<FolderModalProps> = ({
           />
         )}
 
-        {activeTab === 'create' && createTabContent}
-        {activeTab === 'manage' && manageTabContent}
-        {activeTab === 'notifications' && notificationsTabContent}
+        {/* Tab Panels - Fixed height, scroll inside */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab === 'create' && (
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              {createTabContent}
+            </div>
+          )}
+          {activeTab === 'manage' && (
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              {manageTabContent}
+            </div>
+          )}
+          {activeTab === 'notifications' && (
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              {notificationsTabContent}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

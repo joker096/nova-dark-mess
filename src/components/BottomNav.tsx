@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Users, Radio, Sparkles, Plus, User, X, UserPlus, Upload, Hand, FolderPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, Users, Radio, Sparkles, Plus, User, UserPlus, Upload, Hand, FolderPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { NovaIconButton } from '../lib/ui';
 import { createPortal } from 'react-dom';
 import type { BottomTab } from '../types/navigation';
 import { requestFolderManager, useChatFolders } from '../lib/chat/folders';
@@ -21,7 +20,6 @@ interface BottomNavProps {
   unreadChats?: number;
   unreadChannels?: number;
   unreadContacts?: number;
-  premium?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -32,7 +30,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   unreadChats = 0,
   unreadChannels = 0,
   unreadContacts = 0,
-  premium = false,
 }) => {
   const { t } = useLanguage();
   const { folders, activeFolderId, unreadByFolder, selectFolder: selectChatFolder } = useChatFolders();
@@ -50,7 +47,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'premium' as const, icon: Sparkles, label: t('premium.title'), unread: 0 },
   ];
 
-  const isCenterTab = activeTab === 'channels';
   const fabOffset = fabSide === 'right' ? 'pr-16' : 'pl-16';
 
   // Close FAB menu when clicking outside
@@ -304,7 +300,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
-                  <span className="text-[10px] font-medium">{tab.label}</span>
+                  <span className={`text-[10px] font-medium ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)]'}`}>{tab.label}</span>
                   {tab.unread > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">
                       {tab.unread > 99 ? '99+' : tab.unread}
@@ -324,7 +320,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 aria-current={isActive ? 'page' : undefined}
               >
                 <tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
-                <span className="text-[10px] font-medium">{tab.label}</span>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)]'}`}>{tab.label}</span>
                 {tab.unread > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">
                     {tab.unread > 99 ? '99+' : tab.unread}

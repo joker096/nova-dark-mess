@@ -64,7 +64,7 @@ import {
   registerCreatedGroups,
   saveCreatedGroups,
 } from '../data/mockMessengerData';
-import { LinkPreview, useLinkPreviews } from './LinkPreview';
+import { LinkPreview, extractUrls } from './LinkPreview';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { translateText, getUserPreferredLanguage } from '../lib/translation/translate';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
@@ -94,6 +94,7 @@ import { PollCreateModal } from './PollCreateModal';
 import { MessageInlineKeyboard } from './MessageInlineKeyboard';
 import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
+import { ChatTextInput, type ChatTextInputHandle } from './chat/ChatTextInput';
 import { ChatHeader } from './chat/ChatHeader';
 import {
   isNotificationsEnabled,
@@ -458,6 +459,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!secret) return;
     setOpenMiniApp({ botId: bId, webAppUrl, secret });
   }, [getBotSession]);
+
+  /** Handle inline_query from a Mini App (Phase B7). */
+  const handleMiniAppInlineQuery = useCallback((query: string) => {
+    setOpenMiniApp(null);
+    if (getBotSession) {
+      const session = getBotSession();
+      void session.deliverUpdate(openMiniApp!.botId, {
+        type: 'inline_query',
+        payload: {
+          id: `iq_${Date.now()}`,
+          chat: { id: chatId, kind: 'direct' },
+          query,
+          offset: '',
+          from: 'me',
+          timestamp: Date.now(),
+        },
+      });
+    }
+  }, [getBotSession, openMiniApp, chatId]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -1066,27 +1086,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       void fileManagerRef.current?.handleIncoming(event.detail.peerFingerprint, event.detail.message);
     };
 
-    window.addEventListener('nova:p2p:message', onMessage as EventListener);
-    window.addEventListener('nova:p2p:receipt', onReceipt as EventListener);
-    window.addEventListener('nova:p2p:file', onFile as EventListener);
-
-    // Handle scroll to thread message from sidebar
-    const onScrollToThread = (event: CustomEvent<{ msgId: string }>) => {
+    const handleScrollToThread = (event: CustomEvent<{ msgId: string }>) => {
       const msgId = event.detail.msgId;
       const el = document.getElementById(`msg-${msgId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setHighlightedMsgId(msgId);
-        setTimeout(() => setHighlightedMsgId((curr) => (curr === msgId ? null : curr)), 2200);
+        setHighlightedMsgIdRef.current(msgId);
+        setTimeout(() => setHighlightedMsgIdRef.current((curr) => (curr === msgId ? null : curr)), 2200);
       }
     };
-    window.addEventListener('nova:scrollToThreadMessage', onScrollToThread as EventListener);
+
+    window.addEventListener('nova:p2p:message', onMessage as EventListener);
+    window.addEventListener('nova:p2p:receipt', onReceipt as EventListener);
+    window.addEventListener('nova:p2p:file', onFile as EventListener);
+    window.addEventListener('nova:scrollToThreadMessage', handleScrollToThread as EventListener);
 
     return () => {
       window.removeEventListener('nova:p2p:message', onMessage as EventListener);
       window.removeEventListener('nova:p2p:receipt', onReceipt as EventListener);
       window.removeEventListener('nova:p2p:file', onFile as EventListener);
-      window.removeEventListener('nova:scrollToThreadMessage', onScrollToThread as EventListener);
+      window.removeEventListener('nova:scrollToThreadMessage', handleScrollToThread as EventListener);
     };
   }, [chatId, chatItem?.type, identity, botId, getBotSession, receiptManager]);
 
@@ -1144,10 +1163,46 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     };
   }, [chatId, triggerPinnedToast]);
 
-  const [inputText, setInputText] = useState(() => getDraft(chatId));
+  // The composer text lives inside ChatTextInput so a keystroke re-renders the
+  // input instead of this whole screen. The ref mirrors it for the code below,
+  // and `hasInputText` is the only piece the screen itself needs (send vs mic).
+  const inputTextRef = useRef(getDraft(chatId));
+  const [hasInputText, setHasInputText] = useState(() => getDraft(chatId).trim().length > 0);
+  const typingReceiptAtRef = useRef(0);
+
+  /** Writes the composer text from the outside (send, emoji, commands, edits). */
+  const setInputText = useCallback((value: string | ((prev: string) => string)) => {
+    const next = typeof value === 'function' ? value(inputTextRef.current) : value;
+    inputTextRef.current = next;
+    mainInputRef.current?.setText(next);
+    setHasInputText(next.trim().length > 0);
+  }, []);
+
+  /** Every keystroke in the composer lands here: mirror, draft, typing receipt. */
+  const handleComposerTextChange = useCallback(
+    (text: string) => {
+      inputTextRef.current = text;
+      setDraft(chatId, text);
+      if (!text.trim()) {
+        typingReceiptAtRef.current = 0;
+        void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
+        return;
+      }
+      // Throttle: one typing receipt per 2.5s of continuous typing.
+      const now = Date.now();
+      if (now - typingReceiptAtRef.current > 2500) {
+        typingReceiptAtRef.current = now;
+        void receiptManager.sendReceipt(chatId, chatId, 'typing');
+      }
+    },
+    [chatId],
+  );
 
   useEffect(() => {
-    setInputText(getDraft(chatId));
+    const draft = getDraft(chatId);
+    inputTextRef.current = draft;
+    setHasInputText(draft.trim().length > 0);
+    typingReceiptAtRef.current = 0;
   }, [chatId]);
 
   // One-handed Edge Swipe-to-Back gesture states
@@ -1420,7 +1475,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [deletedUndo, setDeletedUndo] = useState<{ message: ChatMessage; index: number } | null>(null);
   const undoDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setHighlightedMsgIdRef = useRef<(id: string | ((curr: string) => string)) => void>(() => {});
   const [activeHeaderTab, setActiveHeaderTab] = useState<'chat' | 'gallery'>('chat');
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
+    setHighlightedMsgIdRef.current = setHighlightedMsgId;
+  }, []);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [disappearAfter, setDisappearAfter] = useState(0);
 
@@ -1499,7 +1560,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const swipeOffsetRef = useRef(0);
   const swipingMsgIdRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
-  const mainInputRef = useRef<HTMLInputElement>(null);
+  const mainInputRef = useRef<ChatTextInputHandle>(null);
 
 const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressFiredRef = useRef(false);
@@ -2499,7 +2560,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   };
 
   const handleScheduleMessage = (targetDate: Date, formattedTime: string) => {
-    const text = inputText.trim();
+    const text = inputTextRef.current.trim();
     if (!text && !recordedVoiceNote) return;
 
     const newItem: ScheduledMessageItem = {
@@ -3385,7 +3446,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wrapSelection = (open: string, close: string) => {
     setInputText((prev) => {
-      const el = mainInputRef.current;
+      const el = mainInputRef.current?.getInput();
       if (el && typeof el.selectionStart === 'number') {
         const start = el.selectionStart;
         const end = el.selectionEnd;
@@ -3414,7 +3475,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   };
 
   const handleSendMessage = (customText?: string, forcedReplyTo?: ChatMessage | null) => {
-    const text = (customText ?? inputText).trim();
+    const text = (customText ?? inputTextRef.current).trim();
 
     const messageId = 'm-' + Date.now();
     const activeReply = forcedReplyTo !== undefined ? forcedReplyTo : replyingTo;
@@ -4900,7 +4961,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
                             {/* Link Previews */}
                             {msg.text && (() => {
-                              const urls = useLinkPreviews(msg.text);
+                              const urls = extractUrls(msg.text);
                               if (urls.length > 0) {
                                 return (
                                   <div className="mt-2 flex flex-col gap-1.5" role="list" aria-label={t('a11y.linkPreviews')}>
@@ -5661,45 +5722,24 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           </button>
 
           <div className="flex-1 bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
-            <input
+            <ChatTextInput
               ref={mainInputRef}
-              type="text"
-              value={inputText}
-              onChange={(e) => {
-                const val = e.target.value;
-                setInputText(val);
-                setDraft(chatId, val);
-                if (val) {
-                  void receiptManager.sendReceipt(chatId, chatId, 'typing');
-                } else {
-                  void receiptManager.sendReceipt(chatId, chatId, 'typing_stop');
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (commandMenuOpen) {
-                    e.preventDefault();
-                    return;
-                  }
-                  handleSendMessage();
-                }
-                if (e.key === '/' && !inputText && !commandMenuOpen && botId) {
-                  e.preventDefault();
-                  setCommandMenuOpen(true);
-                  return;
-                }
-                if (e.key === 'Escape' && commandMenuOpen) {
-                  e.preventDefault();
-                  setCommandMenuOpen(false);
-                  return;
-                }
-                if (commandMenuOpen && e.key === 'ArrowDown') {
-                  e.preventDefault();
-                }
-              }}
-              placeholder={replyingTo ? t('chat.replyingToName', { name: replyingTo.senderId === 'me' ? t('common.you') : profile.name }) : t('chat.typeMessage')}
-              data-inline-focus
-              className="w-full bg-transparent text-sm text-[color:var(--nova-text-primary)] placeholder-[color:var(--nova-text-muted)] focus:outline-none py-1 min-w-0"
+              resetKey={chatId}
+              initialValue={getDraft(chatId)}
+              placeholder={
+                replyingTo
+                  ? t('chat.replyingToName', {
+                      name: replyingTo.senderId === 'me' ? t('common.you') : profile.name,
+                    })
+                  : t('chat.typeMessage')
+              }
+              commandMenuOpen={commandMenuOpen}
+              enableSlash={!!botId}
+              onChangeText={handleComposerTextChange}
+              onHasTextChange={setHasInputText}
+              onEnter={() => handleSendMessage()}
+              onSlash={() => setCommandMenuOpen(true)}
+              onEscape={() => setCommandMenuOpen(false)}
             />
             {commandMenuOpen && botCommands?.length && (
               <CommandMenu
@@ -5757,7 +5797,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             </button>
           </div>
 
-          {inputText.trim() ? (
+          {hasInputText ? (
             <div className="relative shrink-0">
               {scheduledMessages.length > 0 && (
                 <span
@@ -6169,7 +6209,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       {/* SCHEDULE MESSAGE MODAL */}
       <ScheduleMessageModal
         isOpen={isScheduleModalOpen}
-        messageText={inputText || (recordedVoiceNote ? t('voiceMessage', { duration: recordedVoiceNote.duration }) : '')}
+        messageText={inputTextRef.current || (recordedVoiceNote ? t('voiceMessage', { duration: recordedVoiceNote.duration }) : '')}
         onSchedule={handleScheduleMessage}
         onClose={() => setIsScheduleModalOpen(false)}
       />
@@ -6862,24 +6902,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               userId="me"
               secret={openMiniApp.secret}
               onClose={() => setOpenMiniApp(null)}
-              onInlineQuery={(query) => {
-                setOpenMiniApp(null);
-                // Route inline_query to the bot runtime if a session is wired.
-                if (getBotSession) {
-                  const session = getBotSession();
-                  void session.deliverUpdate(openMiniApp.botId, {
-                    type: 'inline_query',
-                    payload: {
-                      id: `iq_${Date.now()}`,
-                      chat: { id: chatId, kind: 'direct' },
-                      query,
-                      offset: '',
-                      from: 'me',
-                      timestamp: Date.now(),
-                    },
-                  });
-                }
-              }}
+              onInlineQuery={handleMiniAppInlineQuery}
               onMainButtonClick={() => {
                 appendSystemMessage(`Mini App: ${openMiniApp.botId} main button pressed`);
               }}

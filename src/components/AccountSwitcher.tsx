@@ -6,12 +6,10 @@ import {
   LogOut,
   UserCheck,
   Trash2,
-  Edit2,
   Star,
-  MoreVertical,
 } from 'lucide-react';
 import { NovaModal } from '../lib/ui';
-import { removeAccount, setPrimaryAccount, switchAccount } from '../lib/account/multiAccount';
+import { removeAccount, setPrimaryAccount } from '../lib/account/multiAccount';
 import { OnboardingWizard } from './OnboardingWizard';
 import { useSecurity } from '../hooks/useSecurity';
 
@@ -27,26 +25,18 @@ export const AccountSwitcher: React.FC<AccountSwitcherProps> = ({
   onAccountAdded,
 }) => {
   const { t } = useLanguage();
-  const { accounts, activeAccount, switchAccount, addAccount, removeAccount: removeAccountHook, updateAccount } = useAccount();
-  const { disablePin } = useSecurity();
-  const [showAddAccount, setShowAddAccount] = useState(false);
+  const { accounts, activeAccount, switchAccount } = useAccount();
+  const { removePin } = useSecurity();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
-  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
-  const [editNickname, setEditNickname] = useState('');
 
   const handleSwitchAccount = (accountId: string) => {
-    // The PIN protects the vault of the account it was set for. Carrying it
-    // across a switch would unlock the other account with the first one's code,
-    // so the switch clears it and the new profile starts locked-out until it
-    // sets its own PIN again.
-    disablePin();
+    void removePin();
     switchAccount(accountId);
     onClose();
   };
 
   const handleAddAccount = () => {
-    setShowAddAccount(false);
     setShowOnboarding(true);
   };
 
@@ -56,7 +46,7 @@ export const AccountSwitcher: React.FC<AccountSwitcherProps> = ({
   };
 
   const handleRemoveAccount = (accountId: string) => {
-    if (accounts.length <= 1) return; // Prevent removing last account
+    if (accounts.length <= 1) return;
     const result = removeAccount(accountId);
     if (result) {
       setDeletingAccountId(null);
@@ -65,26 +55,6 @@ export const AccountSwitcher: React.FC<AccountSwitcherProps> = ({
 
   const handleSetPrimary = (accountId: string) => {
     setPrimaryAccount(accountId);
-  };
-
-  const handleEditNickname = (account: typeof accounts[0]) => {
-    setEditingAccountId(account.id);
-    setEditNickname(account.nickname.replace(/^@/, ''));
-  };
-
-  const handleSaveNickname = (accountId: string) => {
-    const normalized = editNickname.trim().replace(/^@/, '');
-    if (normalized && normalized !== accounts.find(a => a.id === accountId)?.nickname.replace(/^@/, '')) {
-      // Keep the stored profile in sync with the display name used across the UI.
-      updateAccount(accountId, { nickname: `@${normalized}`, displayName: normalized });
-    }
-    setEditingAccountId(null);
-    setEditNickname('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingAccountId(null);
-    setEditNickname('');
   };
 
   const primaryAccount = accounts.find(a => a.isPrimary);

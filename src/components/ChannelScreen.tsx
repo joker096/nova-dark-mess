@@ -963,7 +963,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
           <button
             type="button"
             onClick={() => setCreateChannelOpen(true)}
-            className="mt-4 flex items-center gap-1.5 rounded-full bg-[var(--nova-accent-color)] px-4 py-2 text-xs font-semibold text-[var(--nova-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
+            className="mt-4 flex items-center gap-1.5 rounded-2xl bg-[var(--nova-accent-color)] px-4 py-2 text-xs font-semibold text-[var(--nova-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
           >
             <Plus className="h-3.5 w-3.5" />
             {t('channel.createChannel')}
@@ -1009,8 +1009,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
             {searchOpen ? (
               <>
-                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--nova-accent-color)]/40 bg-[var(--nova-surface)] px-3 py-1.5">
-                  <Search className="h-3.5 w-3.5 shrink-0 text-[var(--nova-text-muted)]" />
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--nova-accent-color)]/40 bg-[var(--nova-surface)] px-3 py-1.5 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 shrink-0 text-[var(--nova-text-muted)] pointer-events-none" />
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1021,7 +1021,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     }}
                     placeholder={t('channel.searchFeedPlaceholder')}
                     aria-label={t('channel.searchFeedPlaceholder')}
-                    className="min-w-0 flex-1 bg-transparent text-xs text-[var(--nova-text-primary)] placeholder-white/35 focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent text-xs text-[var(--nova-text-primary)] placeholder-white/35 focus:outline-none pl-8"
                   />
                   {searchQuery && (
                     <button
@@ -1282,7 +1282,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   <button
                     type="button"
                     onClick={goToday}
-                    className={`min-h-10 rounded-full border px-3 py-1 text-[10px] font-semibold transition flex items-center justify-center ${
+                    className={`min-h-10 rounded-2xl border px-3 py-1 text-[10px] font-semibold transition flex items-center justify-center ${
                       selectedDay !== dayKey(now)
                         ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
                         : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] hover:border-[var(--nova-accent-color)]/40 hover:text-[var(--nova-text-primary)]'
@@ -1323,7 +1323,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="grid grid-cols-4 gap-1 overflow-x-auto no-scrollbar min-w-0">
                     {MONTHS.map((month) => {
                       const count = monthPostCounts.get(`${focusYear}-${month.value}`) ?? 0;
                       const intensity =
@@ -1476,7 +1476,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               setCommentingPostId(null);
               setCommentDraft('');
             }}
-            className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer shrink-0 active:scale-95"
+            className="px-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition flex items-center gap-1 text-[11px] font-semibold cursor-pointer active:bg-[var(--nova-overlay-strong)] shrink-0 active:scale-95"
             title={t('common.cancel')}
           >
             <X className="w-3.5 h-3.5 text-[var(--nova-text-secondary)]" />
@@ -1505,7 +1505,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   key={filter}
                   type="button"
                   onClick={() => setSearchFilter(filter)}
-                  className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold transition ${
+                  className={`rounded-2xl border px-2.5 py-0.5 text-[10px] font-semibold transition ${
                     searchFilter === filter
                       ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
                       : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
@@ -1556,7 +1556,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setPostComposerOpen(true)}
-                className="mt-3 flex items-center gap-1.5 rounded-full bg-[var(--nova-accent-color)] px-3.5 py-1.5 text-xs font-semibold text-[var(--nova-on-accent)] shadow-md shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
+                className="mt-3 flex items-center gap-1.5 rounded-2xl bg-[var(--nova-accent-color)] px-3.5 py-1.5 text-xs font-semibold text-[var(--nova-on-accent)] shadow-md shadow-[var(--nova-accent-color)]/25 transition hover:brightness-110 active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" />
                 {t('channel.newPost')}
@@ -1970,7 +1970,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                           }}
                           aria-haspopup="dialog"
                           aria-expanded={commentingPostId === post.id}
-                          className="flex items-center gap-1.5 rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] px-2.5 py-1 text-[11px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] active:scale-95"
+                          className="flex items-center gap-1.5 rounded-2xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] px-2.5 py-1 text-[11px] font-medium text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] active:scale-95"
                         >
                           <MessageCircle className="h-3.5 w-3.5 text-[var(--nova-text-muted)]" />
                           <span>{t('channel.commentsCount', { count: post.commentsCount })}</span>
@@ -2449,7 +2449,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 {t('common.close')}
               </button>
               <button
-                className="flex-1 px-4 py-2 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold hover:opacity-90"
+                className="flex-1 px-4 py-2 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold hover:opacity-90 min-h-[44px] min-w-[44px]"
                 onClick={() => {
                   // Export stats
                   showToast(t('channel.statsExported', 'Statistics exported'));

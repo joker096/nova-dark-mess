@@ -1,9 +1,8 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AccountSwitcher } from './AccountSwitcher';
-import { useAccount } from '../hooks/useAccount';
 import { MULTI_ACCOUNT_STORAGE_KEY, ACTIVE_ACCOUNT_KEY, StoredAccount } from '../lib/account/multiAccount';
 import { CURRENT_USER } from '../data/mockMessengerData';
 
