@@ -1,11 +1,11 @@
+import { IconTrash as TrashX, IconUserCircle as UserCircle } from '@tabler/icons-react';
 import React, {
   useState,
   useMemo,
   useRef,
   useEffect,
   forwardRef,
-  useImperativeHandle,
-} from "react";
+  useImperativeHandle} from "react";
 import { LazyMedia } from "./LazyMedia";
 import { useWheelScroll } from "../lib/ui/useWheelScroll";
 import {
@@ -16,38 +16,38 @@ import {
   loadFolders,
   notifyFoldersChanged,
   publishFolderUnreadCounts,
-  selectFolder,
-} from "../lib/chat/folders";
+  selectFolder} from "../lib/chat/folders";
 import { NovaContextMenu } from "../lib/ui/NovaContextMenu";
+import { NovaIconButton, NovaMenu } from "../lib/ui";
 import { useAccount } from "../hooks/useAccount";
 import {
-  Search,
-  Plus,
-  Users,
-  MessageSquare,
-  Settings,
-  Pin,
-  X,
-  FolderPlus,
-  Folder,
-  Clock,
-  MapPin,
-  Megaphone,
-  UserRound,
-  Sparkles,
-  Archive,
-  Cloud,
-  Trash2,
-  VolumeX,
-  Check,
-  BellOff,
-  ChevronRight,
-  GripVertical,
-  Loader2,
-  RotateCcw,
-  ArrowDown,
-  MoreVertical,
-} from "lucide-react";
+  IconSearch as Search,
+  IconPlus as Plus,
+  IconUsers as Users,
+  IconMessage2 as MessageSquare,
+  IconSettings as Settings,
+  IconPin as Pin,
+  IconX as X,
+  IconFolderPlus as FolderPlus,
+  IconFolder as Folder,
+  IconClock as Clock,
+  IconMapPin as MapPin,
+  IconSpeakerphone as Megaphone,
+  IconUserCircle as UserRound,
+  IconSparkles as Sparkles,
+  IconArchive as Archive,
+  IconCloud as Cloud,
+  IconTrash as Trash2,
+  IconVolumeOff as VolumeX,
+  IconCheck as Check,
+  IconBellOff as BellOff,
+  IconChevronRight as ChevronRight,
+  IconGripVertical as GripVertical,
+  IconLoader2 as Loader2,
+  IconRotate as RotateCcw,
+  IconArrowDown as ArrowDown,
+  IconDotsVertical as MoreVertical,
+  IconEdit as EditIcon} from "@tabler/icons-react";
 import { getAllDrafts, subscribeDraftChanges } from "../lib/messaging/drafts";
 
 import {
@@ -58,16 +58,14 @@ import {
   loadCreatedGroups,
   saveCreatedGroups,
   loadCreatedGroupHistories,
-  saveCreatedGroupHistories,
-} from "../data/mockMessengerData";
+  saveCreatedGroupHistories} from "../data/mockMessengerData";
 import {
   ChatItem,
   Story,
   MessageSearchResult,
   ChatFolder,
   ChannelInfo,
-  StoryDraft,
-} from "../types/messenger";
+  StoryDraft} from "../types/messenger";
 import { parseVCF, ParsedContact } from "../lib/contacts/vcfParser";
 import { FolderModal } from "./FolderModal";
 import { GroupModal } from "./GroupModal";
@@ -79,8 +77,7 @@ import {
   getGroupMembership,
   getPendingJoinRequests,
   type GroupJoinRequest,
-  type GroupMembership,
-} from "../lib/social/groupJoinRequests";
+  type GroupMembership} from "../lib/social/groupJoinRequests";
 import { isGroupAdmin, loadGroupRoles } from "../lib/social/groupRoles";
 import { decideJoinRequest } from "../lib/social/joinDecisions";
 import { JOIN_REQUESTS_CHANGED_EVENT } from "../lib/social/joinRequestRelay";
@@ -89,13 +86,11 @@ import { searchGlobal } from "../lib/search/globalSearch";
 import { useLanguage } from "../context/LanguageContext";
 import {
   muteContact,
-  getNotificationPrefs,
-} from "../lib/notifications/notificationPrefs";
+  getNotificationPrefs} from "../lib/notifications/notificationPrefs";
 import {
   CHAT_READ_EVENT,
   loadReadChats,
-  markChatRead,
-} from "../lib/messaging/unread";
+  markChatRead} from "../lib/messaging/unread";
 import { triggerHaptic, hapticLight, hapticMedium } from "../lib/ui/haptics";
 
 interface ChatsScreenProps {
@@ -350,7 +345,6 @@ export const ChatsScreen = forwardRef<
   const [isStoryComposerOpen, setIsStoryComposerOpen] = useState(false);
   const storyFeed = useMemo(() => getStoryFeed(stories, now), [stories, now]);
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const quickSearchChipsRef = useWheelScroll();
   const storiesRef = useWheelScroll();
@@ -816,93 +810,157 @@ export const ChatsScreen = forwardRef<
         </div>
       )}
 
-      {/* Top Header: Minimal title + Search + Menu */}
-      <div className="pt-2 px-4 pb-2 flex items-center justify-between shrink-0">
-        {/* Title - smaller, "Chats" on mobile, nickname on desktop */}
-        <h1 className="lg:hidden truncate text-[14px] font-semibold text-[var(--text-primary)] tracking-tight">
-          {t('common.chats')}
-        </h1>
-        <h1 className="hidden lg:block truncate text-[14px] font-medium text-[var(--text-secondary)] tracking-tight">
-          {account.nickname}
-        </h1>
-
-        {/* Action icons on right - Mobile: Search + Menu; Desktop: minimal */}
-        <div className="flex shrink-0 items-center gap-1">
-          {/* Search button (mobile only) */}
-          <button
-            onClick={() => searchInputRef.current?.focus()}
-            className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
-            aria-label={t('chats.search', { defaultValue: 'Search' })}
-            title={t('chats.search', { defaultValue: 'Search' })}
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          {/* Menu button (mobile only) - overflow for premium, select mode, etc. */}
-          <button
-            onClick={() => setHeaderMenuOpen(true)}
-            className="lg:hidden w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
-            aria-label={t('common.menu', { defaultValue: 'Menu' })}
-            title={t('common.menu', { defaultValue: 'Menu' })}
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-
-          {/* Desktop: Settings button (avatar/settings in sidebar) */}
-          <button
-            onClick={onOpenSettings}
-            className="hidden lg:flex w-9 h-9 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:scale-90"
-            aria-label={t('settings.title')}
-            title={t('settings.title')}
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Header Menu (overflow) */}
-      {headerMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={() => setHeaderMenuOpen(false)}>
-          <div className="fixed bottom-0 left-0 right-0 animate-in slide-in-from-bottom-5 duration-200 bg-[var(--nova-surface)] border-t border-[var(--nova-border-subtle)] rounded-t-2xl p-4 space-y-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">{t('common.more', { defaultValue: 'More' })}</h3>
-              <button onClick={() => setHeaderMenuOpen(false)} className="w-8 h-8 rounded-full hover:bg-[var(--nova-overlay-weak)] flex items-center justify-center text-[var(--text-secondary)] transition" aria-label={t('common.close')} title={t('common.close')}><X className="w-4 h-4" /></button>
-            </div>
-            <button onClick={() => { setHeaderMenuOpen(false); onOpenPremium(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-              <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></div>
-              <span>{t('premium.title')}</span>
-            </button>
-            <button onClick={() => { setHeaderMenuOpen(false); toggleSelectMode(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center"><Check className="w-4 h-4" /></div>
-              <span>{selectMode ? t('common.cancel', { defaultValue: 'Cancel' }) : t('common.select', { defaultValue: 'Select' })}</span>
-            </button>
-            {onOpenAnonymous && (
-              <button onClick={() => { setHeaderMenuOpen(false); onOpenAnonymous(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center"><UserRound className="w-4 h-4" /></div>
-                <span>{t('common.contacts')}</span>
-              </button>
-            )}
-            <button onClick={() => { setHeaderMenuOpen(false); setNewChatModalOpen(true); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-              <div className="w-8 h-8 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center"><Plus className="w-4 h-4" /></div>
-              <span>{t('chats.newChat')}</span>
-            </button>
-            <button onClick={() => { setHeaderMenuOpen(false); setEditingFolder(null); setIsFolderModalOpen(true); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center"><Folder className="w-4 h-4" /></div>
-              <span>{t('foldersObj.title')}</span>
-            </button>
-            <button onClick={() => { setHeaderMenuOpen(false); onOpenSettings(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--nova-overlay-weak)] transition">
-              <div className="w-8 h-8 rounded-xl bg-[var(--nova-border-color)]/20 text-[var(--text-secondary)] flex items-center justify-center"><Settings className="w-4 h-4" /></div>
-              <span>{t('settings.title')}</span>
-            </button>
+      {/* Telegram-style Top Bar (morphs into Selection Bar when selectMode is active) */}
+      {selectMode ? (
+        <header className="h-[52px] px-3 flex items-center justify-between gap-2 shrink-0 bg-[var(--nova-surface)]/92 backdrop-blur-xl border-b border-[var(--nova-border-subtle)] animate-in fade-in duration-150">
+          <div className="flex items-center gap-2 min-w-0">
+            <NovaIconButton
+              label={t('common.cancel', { defaultValue: 'Cancel' })}
+              icon={<X />}
+              size={36}
+              variant="ghost"
+              onClick={toggleSelectMode}
+            />
+            <span className="text-[15px] font-semibold text-[var(--text-primary)] tabular-nums truncate">
+              {selectedChatIds.size}
+            </span>
           </div>
-        </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <NovaIconButton
+              label={t('common.selectAll', { defaultValue: 'Select all' })}
+              icon={<Check />}
+              size={36}
+              variant="ghost"
+              onClick={selectedChatIds.size === categoryChats.length ? clearSelection : selectAllChats}
+            />
+            <NovaIconButton
+              label={t('chat.pinChat', { defaultValue: 'Pin' })}
+              icon={<Pin />}
+              size={36}
+              variant="ghost"
+              disabled={selectedChatIds.size === 0}
+              onClick={bulkPin}
+            />
+            <NovaIconButton
+              label={t('channel.disableNotifications', { defaultValue: 'Mute' })}
+              icon={<BellOff />}
+              size={36}
+              variant="ghost"
+              disabled={selectedChatIds.size === 0}
+              onClick={bulkMute}
+            />
+            <NovaIconButton
+              label={t('chats.archive', { defaultValue: 'Archive' })}
+              icon={<Archive />}
+              size={36}
+              variant="ghost"
+              disabled={selectedChatIds.size === 0}
+              onClick={bulkArchive}
+            />
+            <NovaIconButton
+              label={t('common.delete', { defaultValue: 'Delete' })}
+              icon={<Trash2 />}
+              size={36}
+              variant="danger"
+              disabled={selectedChatIds.size === 0}
+              onClick={bulkDelete}
+            />
+          </div>
+        </header>
+      ) : (
+        <header className="h-[52px] px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--bg-app)]/90 backdrop-blur-xl border-b border-[var(--nova-border-subtle)]/60">
+          <h1 className="lg:hidden truncate text-[18px] font-bold text-[var(--text-primary)] tracking-tight">
+            {t('common.chats')}
+          </h1>
+          <h1 className="hidden lg:block truncate text-[16px] font-semibold text-[var(--text-primary)] tracking-tight">
+            {account.nickname}
+          </h1>
+
+          <div className="flex shrink-0 items-center gap-0.5">
+            <NovaIconButton
+              label={t('chats.newChat')}
+              icon={<EditIcon />}
+              size={36}
+              variant="ghost"
+              onClick={() => setNewChatModalOpen(true)}
+            />
+
+            <NovaIconButton
+              label={t('chats.search', { defaultValue: 'Search' })}
+              icon={<Search />}
+              size={36}
+              variant="ghost"
+              className="lg:hidden"
+              onClick={() => searchInputRef.current?.focus()}
+            />
+
+            <NovaMenu
+              label={t('common.menu', { defaultValue: 'Menu' })}
+              align="end"
+              trigger={
+                <NovaIconButton
+                  label={t('common.menu', { defaultValue: 'Menu' })}
+                  icon={<MoreVertical />}
+                  size={36}
+                  variant="ghost"
+                />
+              }
+              items={[
+                {
+                  key: 'select',
+                  label: t('common.select', { defaultValue: 'Select' }),
+                  icon: <Check />,
+                  onSelect: toggleSelectMode,
+                },
+                {
+                  key: 'new-chat',
+                  label: t('chats.newChat'),
+                  icon: <Plus />,
+                  onSelect: () => setNewChatModalOpen(true),
+                },
+                {
+                  key: 'folders',
+                  label: t('foldersObj.title'),
+                  icon: <Folder />,
+                  onSelect: () => {
+                    setEditingFolder(null);
+                    setIsFolderModalOpen(true);
+                  },
+                },
+                ...(onOpenAnonymous
+                  ? [
+                      {
+                        key: 'contacts',
+                        label: t('common.contacts'),
+                        icon: <UserCircle />,
+                        onSelect: onOpenAnonymous,
+                      },
+                    ]
+                  : []),
+                {
+                  key: 'premium',
+                  label: t('premium.title'),
+                  icon: <Sparkles />,
+                  separatorBefore: true,
+                  onSelect: onOpenPremium,
+                },
+                {
+                  key: 'settings',
+                  label: t('settings.title'),
+                  icon: <Settings />,
+                  onSelect: onOpenSettings,
+                },
+              ]}
+            />
+          </div>
+        </header>
       )}
 
-      {/* PROMINENT TOP REAL-TIME CHAT SEARCH BAR */}
-      <div className="px-5 pt-1 pb-2 shrink-0">
+      {/* COMPACT TOP REAL-TIME CHAT SEARCH BAR */}
+      <div className="px-4 pt-2 pb-1.5 shrink-0">
         <div className="relative flex items-center">
-          <div className="absolute left-3.5 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
-            <Search className="w-4 h-4" />
+          <div className="absolute left-3 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
+            <Search className="w-3.5 h-3.5" />
           </div>
           <input
             ref={searchInputRef}
@@ -913,10 +971,10 @@ export const ChatsScreen = forwardRef<
               if (e.key === "Escape") setSearchQuery("");
             }}
             placeholder="Search conversations by contact name..."
-            className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-10 pr-24 py-2.5 transition-all shadow-inner focus:outline-none"
+            className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-20 py-2 transition-all shadow-inner focus:outline-none"
           />
 
-          <div className="absolute right-2.5 flex items-center gap-1">
+          <div className="absolute right-2 flex items-center gap-1">
             {searchQuery.trim() && (
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)] font-semibold border border-[var(--nova-accent-color)]/30 shrink-0">
                 {matchedChats.length}{" "}
@@ -942,18 +1000,18 @@ export const ChatsScreen = forwardRef<
 
         {/* Quick Search Keyword Chips */}
         <div
-          className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar"
+          className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar"
           ref={quickSearchChipsRef}
           data-testid="quick-search-chips"
         >
-          <span className="text-[10px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-0.5">
+          <span className="text-[9px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-0.5">
             Quick search:
           </span>
           {CHAT_SEARCH_CHIPS.map((chip) => (
             <button
               key={chip}
               onClick={() => setSearchQuery(chip)}
-              className={`min-h-6 px-2.5 py-0.5 rounded-full text-[10.5px] font-medium transition cursor-pointer shrink-0 ${
+              className={`min-h-5 px-2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
                 searchQuery.toLowerCase() === chip.toLowerCase()
                   ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
                   : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-strong)]"
@@ -966,7 +1024,7 @@ export const ChatsScreen = forwardRef<
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="min-h-6 px-2 py-0.5 rounded-full text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-2)]/30 transition cursor-pointer shrink-0"
+              className="min-h-5 px-1.5 py-0.5 rounded-full text-[9px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-2)]/30 transition cursor-pointer shrink-0"
               aria-label={t("common.reset") ?? "Reset"}
             >
               Reset
@@ -1271,21 +1329,21 @@ export const ChatsScreen = forwardRef<
         /* NORMAL VIEW: STORIES, CUSTOM FOLDER TABS, AND CHATS LIST */
         <>
           {/* Stories Row */}
-          <div className="pt-1 pb-3 px-5 shrink-0">
+          <div className="pt-1 pb-2 px-4 shrink-0">
             <div
               ref={storiesRef}
-              className="flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth"
+              className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth"
               data-testid="stories-row"
             >
               <button
                 onClick={() => setIsStoryComposerOpen(true)}
-                className="w-[84px] h-[116px] rounded-[20px] shrink-0 border border-dashed border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] flex flex-col items-center justify-center gap-2 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-accent-color)] active:scale-95 transition cursor-pointer"
+                className="w-[76px] h-[104px] rounded-[18px] shrink-0 border border-dashed border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] flex flex-col items-center justify-center gap-1.5 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-accent-color)] active:scale-95 transition cursor-pointer"
                 aria-label={t("stories.addStory")}
               >
-                <span className="w-8 h-8 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/50 flex items-center justify-center">
-                  <Plus className="w-4 h-4" />
+                <span className="w-7 h-7 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/50 flex items-center justify-center">
+                  <Plus className="w-3.5 h-3.5" />
                 </span>
-                <span className="text-[11px] font-medium text-center leading-tight max-w-[72px]">
+                <span className="text-[10px] font-medium text-center leading-tight max-w-[64px]">
                   {t("stories.addStory")}
                 </span>
               </button>
@@ -1293,7 +1351,7 @@ export const ChatsScreen = forwardRef<
                 <button
                   key={story.id}
                   onClick={() => setStoryViewerIndex(index)}
-                  className="w-[84px] h-[116px] rounded-[20px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-[var(--nova-border-subtle)] shadow-md shadow-black/40"
+                  className="w-[76px] h-[104px] rounded-[18px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-[var(--nova-border-subtle)] shadow-md shadow-black/40"
                   aria-label={`Story from ${story.name}`}
                 >
                   <LazyMedia
@@ -1302,27 +1360,25 @@ export const ChatsScreen = forwardRef<
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35" />
-                  {/* Extra band behind the avatar + name so labels stay legible on
-                      bright covers, where the full-card scrim is not enough. */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 via-black/55 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/90 via-black/55 to-transparent" />
 
-                  <div className="absolute top-2 left-2 h-5 min-w-5 px-1 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-semibold text-[var(--nova-text-primary)] flex items-center justify-center border border-[var(--nova-border-color)]">
+                  <div className="absolute top-1.5 left-1.5 h-4 min-w-4 px-1 rounded-full bg-black/50 backdrop-blur-md text-[9px] font-semibold text-[var(--nova-text-primary)] flex items-center justify-center border border-[var(--nova-border-color)]">
                     {isStoryScheduled(story, now) ? (
-                      <Clock className="w-3 h-3" />
+                      <Clock className="w-2.5 h-2.5" />
                     ) : (
                       story.unreadCount
                     )}
                   </div>
 
-                  <div className="absolute bottom-2 inset-x-0 flex flex-col items-center">
-                    <div className="w-6 h-6 rounded-full overflow-hidden border-[1.5px] border-[var(--nova-accent-color)] shadow-sm mb-1 bg-black/40">
+                  <div className="absolute bottom-1.5 inset-x-0 flex flex-col items-center">
+                    <div className="w-5 h-5 rounded-full overflow-hidden border-[1.5px] border-[var(--nova-accent-color)] shadow-sm mb-0.5 bg-black/40">
                       <LazyMedia
                         src={story.avatar}
                         alt=""
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <span className="text-[11px] font-medium text-[var(--nova-text-primary)] text-center truncate max-w-[76px] leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                    <span className="text-[10px] font-medium text-[var(--nova-text-primary)] text-center truncate max-w-[70px] leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
                       {story.name}
                     </span>
                   </div>
@@ -1331,10 +1387,10 @@ export const ChatsScreen = forwardRef<
             </div>
           </div>
 
-          {/* Chats List Filtered by Active Folder */}
+                  {/* Chats List Filtered by Active Folder */}
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-5 pt-2 pb-36 lg:pb-6 space-y-2.5 safe-area-bottom-min"
+            className="flex-1 overflow-y-auto px-4 pt-1.5 pb-36 lg:pb-6 space-y-2 safe-area-bottom-min"
             data-testid="chats-list"
             onTouchStart={handleListTouchStart}
             onTouchMove={handleListTouchMove}
@@ -1456,7 +1512,7 @@ export const ChatsScreen = forwardRef<
                       </div>
                     )}
 
-                    {/* Chat Row Content */}
+                      {/* Chat Row Content */}
                     <div
                       onClick={() =>
                         selectMode
@@ -1466,7 +1522,7 @@ export const ChatsScreen = forwardRef<
                       role="button"
                       aria-label={`Chat with ${chat.name}, ${chat.time}`}
                       tabIndex={0}
-                      className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-center gap-3 shadow-sm ${
+                      className={`group relative border rounded-xl p-2 transition-all duration-150 cursor-pointer flex items-center gap-2 shadow-sm ${
                         isSelected
                           ? "bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30"
                           : "bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]"
@@ -1475,7 +1531,7 @@ export const ChatsScreen = forwardRef<
                       {/* Avatar Slot */}
                       <div className="relative shrink-0">
                         {chat.isChannel ? (
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
                             <svg
                               className="w-5 h-5 fill-[var(--nova-text-primary)]"
                               viewBox="0 0 24 24"
@@ -1484,22 +1540,22 @@ export const ChatsScreen = forwardRef<
                             </svg>
                           </div>
                         ) : chat.groupAvatars ? (
-                          <div className="w-11 h-11 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
-                            <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
+                          <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
+                            <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
                               <LazyMedia
                                 src={chat.groupAvatars[0]}
                                 alt=""
                                 className="w-full h-full object-cover"
                               />
                             </div>
-                            <div className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
+                            <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
                               <LazyMedia
                                 src={chat.groupAvatars[1]}
                                 alt=""
                                 className="w-full h-full object-cover"
                               />
                             </div>
-                            <div className="absolute bottom-0.5 left-2.5 w-5 h-5 rounded-full overflow-hidden border border-[#17181e]">
+                            <div className="absolute bottom-0.5 left-2.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
                               <LazyMedia
                                 src={chat.groupAvatars[2]}
                                 alt=""
@@ -1508,7 +1564,7 @@ export const ChatsScreen = forwardRef<
                             </div>
                           </div>
                         ) : (
-                          <div className="w-11 h-11 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
                             <LazyMedia
                               src={chat.avatar}
                               alt={chat.name}
@@ -1524,23 +1580,23 @@ export const ChatsScreen = forwardRef<
                       {/* Middle Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <h2 className="font-semibold text-[var(--nova-text-primary)] text-[15px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
+                          <div className="flex items-center gap-1 truncate">
+                            <h2 className="font-semibold text-[var(--nova-text-primary)] text-[13px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
                               {chat.name}
                             </h2>
                             {isBotChat(chat.id) && (
-                              <span className="flex h-5 items-center rounded-full bg-[var(--color-info)]/10 px-1.5 text-[10px] text-[var(--nova-accent-color)] font-semibold border border-[var(--color-info)]/20 shrink-0">
+                              <span className="flex h-4 items-center rounded-full bg-[var(--color-info)]/10 px-1 text-[9px] text-[var(--nova-accent-color)] font-semibold border border-[var(--color-info)]/20 shrink-0">
                                 BOT
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] text-[var(--nova-text-muted)] font-normal shrink-0 ml-2">
+                          <span className="text-[10px] text-[var(--nova-text-muted)] font-normal shrink-0 ml-1.5">
                             {chat.time}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <p className="text-[13px] text-[var(--nova-text-muted)] truncate font-normal leading-snug pr-2">
+                          <p className="text-[11px] text-[var(--nova-text-muted)] truncate font-normal leading-snug pr-2">
                             {drafts[chat.id] ? (
                               <>
                                 <span className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">
@@ -1599,7 +1655,7 @@ export const ChatsScreen = forwardRef<
                                 e.stopPropagation();
                                 handleArchiveToggle(chat.id);
                               }}
-                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
+                              className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                               aria-label={
                                 archivedChatIds.has(chat.id)
                                   ? t("actions.unarchive", {
@@ -1631,7 +1687,7 @@ export const ChatsScreen = forwardRef<
                                 e.stopPropagation();
                                 handlePinToggle(chat.id);
                               }}
-                              className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
+                              className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
                               aria-label={
                                 pinnedChatIds.has(chat.id)
                                   ? t("common.unpin", { defaultValue: "Unpin" })
@@ -1774,7 +1830,7 @@ export const ChatsScreen = forwardRef<
               >
                 <span className="flex items-center gap-2.5">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]">
-                    <UserRound className="h-4 w-4" />
+                    <UserCircle className="h-4 w-4" />
                   </span>
                   <span>
                     <span className="block text-xs font-semibold text-[var(--nova-text-primary)]">
@@ -1914,7 +1970,7 @@ export const ChatsScreen = forwardRef<
             {
               key: "delete",
               label: t("common.delete"),
-              icon: <Trash2 className="w-5 h-5" />,
+              icon: <TrashX className="w-5 h-5" />,
               onClick: () => {
                 handleDeleteChat(chat.id);
                 closeContextMenu();
@@ -1934,3 +1990,13 @@ export const ChatsScreen = forwardRef<
     </div>
   );
 });
+
+
+
+
+
+
+
+
+
+

@@ -1,59 +1,68 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  createPortal } from 'react-dom';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
-import {
-  ArrowLeft,
-  Paperclip,
-  Send,
-  Mic,
-  Check,
-  CheckCheck,
-  Copy,
-  Reply,
-  Pin,
-  PinOff,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  ChevronDown,
-  ListFilter,
-  Lock,
-  X,
-  MoreHorizontal,
-  Palette,
-  Search,
-  Clock,
-  Video,
-  Phone,
-  Image as ImageIcon,
-  Smile,
-  Heart,
-  Sparkles,
-  MapPin,
-  FileText,
-  Camera,
-  Download,
-  Forward,
-  Eye,
-  BarChart2,
-  Pencil,
-  Trash2,
-  Users,
-  UserMinus,
-  ShieldCheck,
-  VolumeX,
-  RefreshCw,
-  Bell,
-  ShieldAlert,
-  Flag,
-  Bot,
-  Share2,
-  ZoomIn,
-  ZoomOut,
-  Languages,
-  Loader2,
-} from 'lucide-react';
+import {IconArrowBackUp as ArrowBackUp,
+  IconArrowForwardUp as ArrowForwardUp,
+  IconArrowLeft as ArrowLeft,
+  IconBell as Bell,
+  IconCamera as Camera,
+  IconChartBar as ChartBar,
+  IconCheck as Check,
+  IconChecks as Checks,
+  IconChecks as CheckCheck2,
+  IconChevronDown as ChevronDown,
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconChevronUp as ChevronUp,
+  IconClock as Clock,
+  IconCopy as Copy,
+  IconDots as Dots,
+  IconDownload as Download,
+  IconEye as Eye,
+  IconFileText as FileText,
+  IconFlag as Flag,
+  IconHeart as Heart,
+  IconLanguage as Language,
+  IconLoader2 as Loader2,
+  IconLock as Lock,
+  IconMapPin as MapPin,
+  IconMicrophone as Microphone,
+  IconMoodSmile as MoodSmile,
+  IconPalette as Palette,
+  IconPaperclip as Paperclip,
+  IconPencil as Pencil,
+  IconPhone as Phone,
+  IconPhoto as Photo,
+  IconPin as Pin,
+  IconPinnedOff as PinnedOff,
+  IconRefresh as Refresh,
+  IconRobot as Robot,
+  IconSearch as Search,
+  IconSend as Send,
+  IconShare as Share,
+  IconShieldCheck as ShieldCheck,
+  IconShieldExclamation as ShieldExclamation,
+  IconSparkles as Sparkles,
+  IconUserMinus as UserMinus,
+  IconUsers as Users,
+  IconVideo as Video,
+  IconVolumeOff as VolumeOff,
+  IconX as X,
+  IconZoomIn as ZoomIn,
+  IconZoomOut as ZoomOut,
+  IconChartBar as BarChart2,
+  IconRobot as Bot,
+  IconArrowForward as Forward,
+  IconPhoto as ImageIcon,
+  IconMicrophone as Mic,
+  IconDots as MoreHorizontal,
+  IconPinnedOff as PinOff,
+  IconArrowBackUp as Reply,
+  IconShare as Share2,
+  IconVolumeOff as VolumeX,
+} from '@tabler/icons-react';
 import {
   CONVERSATION_HISTORIES,
   appendConversationHistory,
@@ -62,8 +71,7 @@ import {
   MOCK_CHATS,
   loadCreatedGroups,
   registerCreatedGroups,
-  saveCreatedGroups,
-} from '../data/mockMessengerData';
+  saveCreatedGroups} from '../data/mockMessengerData';
 import { LinkPreview, extractUrls } from './LinkPreview';
 import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
 import { translateText, getUserPreferredLanguage } from '../lib/translation/translate';
@@ -75,8 +83,7 @@ import {
   loadBotGroupPeers,
   registerBotGroupPeer,
   syncBotGroupPeers,
-  unregisterBotGroupPeer,
-} from '../lib/bots/groupPeers';
+  unregisterBotGroupPeer} from '../lib/bots/groupPeers';
 import type { MessageSink } from '../lib/bots/runtime';
 import { HttpMessageSink } from '../lib/bots/httpSink';
 import { BOT_REPORT_REASONS, recordBotReport, type BotReportReason } from '../lib/bots/reports';
@@ -93,18 +100,14 @@ import { MiniAppIframe } from './MiniAppIframe';
 import { CommandMenu } from './chat/CommandMenu';
 import { ChatTextInput, type ChatTextInputHandle } from './chat/ChatTextInput';
 import { ChatHeader } from './chat/ChatHeader';
+import { FirstContactWarningWithCallbacks, PhishingWarning } from './FirstContactWarning';
+import { analyzeMessageForPhishing } from '../lib/security/socialEngineering';
 import { PollBubble } from './chat/PollBubble';
 import { LocationBubble } from './chat/LocationBubble';
 import { StickerMedia } from './chat/StickerMedia';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { LocationPickerModal } from './LocationPickerModal';
 import { MessageHoverActions } from './chat/MessageHoverActions';
-import { useChatGroupManagement } from '../hooks/useChatGroupManagement';
-import { useChatMediaCalls } from '../hooks/useChatMediaCalls';
-import { useChatFileTransfer } from '../hooks/useChatFileTransfer';
-import { useChatBotHandling } from '../hooks/useChatBotHandling';
-import { useChatMessageHandling } from '../hooks/useChatMessageHandling';
-import { useChatComposer } from '../hooks/useChatComposer';
 import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
@@ -115,8 +118,7 @@ const WallpaperSettingsModal = React.lazy(() => import('./WallpaperSettingsModal
 const ScheduleMessageModal = React.lazy(() => import('./ScheduleMessageModal').then(m => ({ default: m.ScheduleMessageModal })));
 import {
   isNotificationsEnabled,
-  setNotificationsEnabledForChannel,
-} from '../lib/social/channelSubscriptions';
+  setNotificationsEnabledForChannel} from '../lib/social/channelSubscriptions';
 import { renderMarkdown } from '../lib/markdown';
 import { suggestSmartReplies } from '../lib/chat/smartReplies';
 import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
@@ -127,8 +129,7 @@ import {
   MEDIA_PREFERENCES_EVENT,
   loadMediaPreferences,
   resolveStickerSize,
-  type MediaPreferences,
-} from '../lib/ui/mediaPreferences';
+  type MediaPreferences} from '../lib/ui/mediaPreferences';
 import { secureWipeMessage } from '../lib/security/secureWipe';
 import { getDraft, setDraft, clearDraft } from '../lib/messaging/drafts';
 import { dbInstance } from '../lib/storage/db';
@@ -136,8 +137,7 @@ import {
   WALLPAPER_OPTIONS,
   WALLPAPER_STORAGE_KEY,
   WALLPAPER_INTENSITY_KEY,
-  WallpaperId,
-} from '../data/wallpapers';
+  WallpaperId} from '../data/wallpapers';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
@@ -158,8 +158,7 @@ import {
   setJoinRequestStatus,
   upsertJoinRequest,
   type GroupJoinRequest,
-  type GroupMembership,
-} from '../lib/social/groupJoinRequests';
+  type GroupMembership} from '../lib/social/groupJoinRequests';
 import {
   ensureGroupRoles,
   getMemberRole,
@@ -168,8 +167,7 @@ import {
   mergeGroupRoles,
   removeMemberRole,
   setMemberRole,
-  type GroupRoles,
-} from '../lib/social/groupRoles';
+  type GroupRoles} from '../lib/social/groupRoles';
 import { FileTransferManager } from '../lib/p2p/fileTransfer';
 import { ReceiptManager, type ReceiptSignal } from '../lib/p2p/receipts';
 import { enqueueJoinPayload, JOIN_REQUESTS_CHANGED_EVENT } from '../lib/social/joinRequestRelay';
@@ -454,6 +452,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const messagesRef = useRef(messages);
   const [peerKeyChanges, setPeerKeyChanges] = useState<PeerKeyChange[]>([]);
   const [peerFingerprint, setLocalPeerFingerprint] = useState<string | null>(null);
+  const [isContactVerified, setIsContactVerified] = useState(false);
+  const [phishingAnalyses, setPhishingAnalyses] = useState<Record<string, ReturnType<typeof analyzeMessageForPhishing>>>({});
+  const [dismissedPhishingWarnings, setDismissedPhishingWarnings] = useState<Set<string>>(new Set());
   const [isDemo, setIsDemo] = useState<boolean | null>(() => {
     if (!identity || chatItem?.type !== 'direct') return null;
     return isDemoPeer(chatId);
@@ -1279,7 +1280,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   } | null>(null);
   const pickerTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [hoverActionsMsgId, setHoverActionsMsgId] = useState<string | null>(null);
-  const hoverActionsTriggerRef = useRef<HTMLDivElement | null>(null);
+  // One ref per message so the floating menu anchors to the bubble that opened it.
+  const hoverActionsTriggerRefs = useRef(new Map<string, { current: HTMLButtonElement | null }>());
+  const getHoverActionsTriggerRef = (messageId: string) => {
+    let ref = hoverActionsTriggerRefs.current.get(messageId);
+    if (!ref) {
+      ref = { current: null };
+      hoverActionsTriggerRefs.current.set(messageId, ref);
+    }
+    return ref;
+  };
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
@@ -3642,7 +3652,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             title={t('common.retry')}
             aria-label={`${t('common.retry')}: ${msg.text ?? ''}`}
           >
-            <RefreshCw className="w-3 h-3" />
+            <Refresh className="w-3 h-3" />
             <span className="text-[9px]">{t('common.retry')}</span>
           </button>
         ) : isSending ? (
@@ -3653,8 +3663,11 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         ) : (
           <>
             {isRead || isDelivered ? (
-              <span className={`inline-flex items-center animate-in zoom-in-75 duration-200 font-bold ${isRead ? 'text-sky-400/90' : 'text-[var(--nova-text-secondary)]'}`}>
-                <CheckCheck className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
+              <span
+                className={`inline-flex items-center animate-in zoom-in-75 duration-200 font-bold ${isRead ? 'text-sky-400/90' : 'text-[var(--nova-text-secondary)]'}`}
+                data-testid="status-checks"
+              >
+                <CheckCheck2 className="w-3.5 h-3.5 inline-block stroke-[2.5]" />
               </span>
             ) : (
               <span className="inline-flex items-center text-[var(--nova-text-secondary)] animate-in fade-in duration-150">
@@ -4223,6 +4236,15 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* Messages Scroll Area (virtualized) */}
       <div ref={messagesListWrapperRef} className="flex-1 flex flex-col min-h-0 relative z-10 safe-area-bottom-min">
+        {/* First contact / verification warning */}
+        {!isGroupChat && chatItem && (
+          <FirstContactWarningWithCallbacks
+            contactId={chatItem.id}
+            isVerified={isContactVerified}
+            onOpenSafetyNumber={handleOpenProtection}
+            className="mx-4 mt-2"
+          />
+        )}
         <VirtualizedList
           items={renderedMessages}
           itemHeight={72}
@@ -4455,7 +4477,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         title={t('common.copy')}
                       >
                         {copiedMsgId === msg.id ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
+                          <CheckCheck2 className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -4478,7 +4500,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         {translatingMsgId === msg.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--nova-accent-color)]" />
                         ) : (
-                          <Languages className="w-3.5 h-3.5" />
+                          <Language className="w-3.5 h-3.5" />
                         )}
                       </button>
                       <button
@@ -4552,16 +4574,59 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       : ''
                   }`}
                 >
-                  {/* Hover Actions Trigger - shows actions on hover/long press */}
+                  {/* Quick actions - revealed on hover/focus, always in the DOM for touch and a11y */}
                   <div
-                    ref={hoverActionsTriggerRef}
-                    className={`absolute -top-3 ${isMine ? 'left-2' : 'right-2'} z-20 hidden sm:block w-10 h-10 rounded-full bg-transparent hover:bg-[var(--nova-overlay-weak)] transition-colors cursor-pointer flex items-center justify-center opacity-0 group-hover/row:opacity-100`}
-                    onMouseEnter={() => setHoverActionsMsgId(msg.id)}
-                    onMouseLeave={() => setHoverActionsMsgId(null)}
+                    className={`absolute -top-3 ${isMine ? 'left-2' : 'right-2'} z-20 hidden sm:flex items-center gap-0.5 rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)]/95 px-1 py-0.5 shadow-md backdrop-blur-sm opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity`}
                     onPointerDown={(e) => e.stopPropagation()}
-                    aria-label={t('chat.messageActions.title', 'Message actions')}
+                    onPointerUp={(e) => e.stopPropagation()}
                   >
-                    <MoreHorizontal className="w-5 h-5 text-[var(--nova-text-muted)]" />
+                    <button
+                      type="button"
+                      title={t('a11y.replyToMessage')}
+                      aria-label={t('a11y.replyToMessage')}
+                      className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReplyMessage(msg);
+                      }}
+                    >
+                      <Reply className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title={t('a11y.forwardMessage')}
+                      aria-label={t('a11y.forwardMessage')}
+                      className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartForward(msg.id);
+                      }}
+                    >
+                      <Forward className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        getHoverActionsTriggerRef(msg.id).current = el;
+                      }}
+                      title={t('common.more')}
+                      aria-label={t('chat.messageActions.title', 'Message actions')}
+                      aria-haspopup="menu"
+                      aria-expanded={hoverActionsMsgId === msg.id}
+                      className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHoverActionsMsgId((prev) => (prev === msg.id ? null : msg.id));
+                      }}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
                   </div>
                   <MessageHoverActions
                     msg={{
@@ -4586,7 +4651,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       }
                     }}
                     hasThread={messages.some((m) => m.replyTo?.id === msg.id)}
-                    triggerRef={hoverActionsTriggerRef}
+                    triggerRef={getHoverActionsTriggerRef(msg.id)}
                     isOpen={hoverActionsMsgId === msg.id}
                     onClose={() => setHoverActionsMsgId(null)}
                   />
@@ -4654,7 +4719,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-[var(--nova-text-secondary)] mt-1 border border-[var(--nova-border-subtle)] shadow-md">
                           <span className="font-mono">{msg.time}</span>
                           {msg.isRead ? (
-                            <CheckCheck className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
+                            <CheckCheck2 className="w-3.5 h-3.5 inline text-sky-400 stroke-[2.5]" />
                           ) : (
                             <Check className="w-3.5 h-3.5 inline text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
@@ -4688,7 +4753,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           <span>{msg.time}</span>
 
                           {msg.isRead ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
+                            <CheckCheck2 className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
                           ) : (
                             <Check className="w-3.5 h-3.5 text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
@@ -4700,7 +4765,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-[var(--nova-text-secondary)] mt-2 font-mono">
                           <span>{msg.time}</span>
                           {msg.isRead ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
+                            <CheckCheck2 className="w-3.5 h-3.5 text-sky-400 stroke-[2.5]" />
                           ) : (
                             <Check className="w-3.5 h-3.5 text-[var(--nova-text-secondary)] stroke-[2]" />
                           )}
@@ -4874,7 +4939,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             {translationResult?.msgId === msg.id && translationResult.translatedText && (
                               <div className="mt-2 p-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)]/10 border border-[var(--nova-accent-color,#ff4e18)]/30 animate-in fade-in slide-in-from-top-1">
                                 <div className="flex items-center gap-1.5 mb-1">
-                                  <Languages className="w-3 h-3 text-[var(--nova-accent-color,#ff4e18)]" />
+                                  <Language className="w-3 h-3 text-[var(--nova-accent-color,#ff4e18)]" />
                                   <span className="text-[10px] font-semibold text-[var(--nova-accent-color,#ff4e18)]">
                                     {t('chat.translation', 'Translation')}
                                   </span>
@@ -4904,6 +4969,22 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                         <LinkPreview key={url} url={url} />
                                     ))}
                                   </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {/* Phishing warning for incoming messages from unverified contacts */}
+                            {!isMine && msg.text && !msg.system && !dismissedPhishingWarnings.has(msg.id) && (() => {
+                              const analysis = analyzeMessageForPhishing(msg.text, chatItem?.id || '', isContactVerified);
+                              if (analysis.isSuspicious) {
+                                return (
+                                  <PhishingWarning
+                                    key={`phish-${msg.id}`}
+                                    analysis={analysis}
+                                    onDismiss={() => setDismissedPhishingWarnings(prev => new Set(prev).add(msg.id))}
+                                    className="mt-2 mx-1"
+                                  />
                                 );
                               }
                               return null;
@@ -5375,7 +5456,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
       {/* BOTTOM INPUT AREA — pinned to the bottom of the column, carries the
           bottom safe area so it never sits under the gesture bar. */}
-      <div className="chat-composer p-3 pt-1 space-y-2">
+      <div className="chat-composer p-2 pt-0.5 space-y-1.5">
         {/* ATTACHMENT MENU DRAWER */}
         {isAttachmentMenuOpen && (
           <div ref={attachmentMenuRef} className="flex items-center gap-2 p-2 bg-[var(--nova-surface)]/95 backdrop-blur-xl border border-[var(--nova-accent-color,#ff4e18)]/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-2 duration-150 overflow-x-auto scrollbar-x">
@@ -5416,7 +5497,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               onClick={() => handleAttachItem('stickers')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer text-xs font-semibold shrink-0 active:scale-95 border border-[var(--nova-border-subtle)]"
             >
-              <Smile className="w-3.5 h-3.5 text-purple-400" />
+              <MoodSmile className="w-3.5 h-3.5 text-purple-400" />
               <span>{t('stickers.title', 'Stickers')}</span>
             </button>
             <button
@@ -5728,7 +5809,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               }`}
               title={t('common.react')}
             >
-              <Smile className="w-4 h-4" />
+              <MoodSmile className="w-4 h-4" />
             </button>
           </div>
 
@@ -6554,7 +6635,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition cursor-pointer"
                   >
-                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <ShieldExclamation className="w-3.5 h-3.5" />
                     <span>{t('chat.reportBot', { defaultValue: 'Report bot' })}</span>
                   </button>
                   <button
@@ -6643,9 +6724,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <video
                   src={mediaLightbox.urls[mediaLightbox.index]}
                   controls
+                  autoPlay
                   playsInline
                   aria-label={`Media ${mediaLightbox.index + 1}`}
-                  className="max-h-[85vh] max-w-[85vw] rounded-xl bg-black"
+                  className="max-h-[85vh] max-w-[85vw]"
                 />
               ) : (
                 <div
@@ -6829,7 +6911,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] rounded-lg cursor-pointer"
             >
-              <Languages className="w-4 h-4" />
+              <Language className="w-4 h-4" />
               <span>Translate</span>
             </button>
           </div>
@@ -6855,3 +6937,24 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

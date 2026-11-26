@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
-  MessageSquare,
-  Radio,
-  Settings,
-  Folder,
-  Users,
-  MapPin,
-  ArrowLeft,
-  Crown,
-} from 'lucide-react';
+  IconMessageCircle as MessageCircle,
+  IconRadio as Radio,
+  IconSettings as Settings,
+  IconFolder as Folder,
+  IconUsers as Users,
+  IconMapPin as MapPin,
+  IconArrowLeft as ArrowLeft,
+  IconCrown as Crown,
+  IconMessageCircle as MessageSquare,
+} from '@tabler/icons-react';
 import {
   NovaIconButton,
   NovaTooltip,
-  NovaBadge,
-} from './lib/ui';
+  NovaBadge} from './lib/ui';
 import { ChannelListPanel } from './components/ChannelListPanel';
 import { LazyMedia } from './components/LazyMedia';
 import { JoinRequestNotice, type JoinRequestNoticeData } from './components/JoinRequestNotice';
@@ -51,8 +51,8 @@ const AnalyticsScreen = lazy(() =>
 const MeshMapScreen = lazy(() =>
   import('./components/MeshMap').then((m) => ({ default: m.MeshMap })),
 );
-const SettingsModal = lazy(() =>
-  import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal })),
+const SettingsModalOptimized = lazy(() =>
+  import('./components/SettingsModalOptimized').then((m) => ({ default: m.SettingsModalOptimized })),
 );
 const AnonymousMessengerScreen = lazy(() =>
   import('./components/AnonymousMessengerScreen').then((m) => ({ default: m.AnonymousMessengerScreen })),
@@ -73,7 +73,7 @@ const preloadScreenChunks = () => {
     () => import('./components/ChatScreen'),
     () => import('./components/ChannelScreen'),
     () => import('./components/ProfileScreen'),
-    () => import('./components/SettingsModal'),
+    () => import('./components/SettingsModalOptimized'),
     () => import('./components/AnonymousMessengerScreen'),
     () => import('./components/AnalyticsScreen'),
     () => import('./features/sites/SitesScreen'),
@@ -154,8 +154,7 @@ import {
   applyFontSize,
   readAppTheme,
 
-  readFontSize,
-} from './lib/ui/appearance';
+  readFontSize} from './lib/ui/appearance';
 import { parseDeepLinkFromHash, parseDeepLink, type DeepLinkTarget } from './lib/network/deepLinks';
 import { subscribeTauriDeepLinks } from './lib/network/tauriDeepLinks';
 import { playSound } from './lib/notifications/sounds';
@@ -169,16 +168,15 @@ import { isGroupAdmin, loadGroupRoles } from './lib/social/groupRoles';
 import {
   JOIN_RETRY_MAX_MS,
   JoinRequestRelay,
-  nextJoinOutboxDelay,
-} from './lib/social/joinRequestRelay';
+  nextJoinOutboxDelay} from './lib/social/joinRequestRelay';
 import { MOCK_CHATS, CONTACT_PROFILES } from './data/mockMessengerData';
 import { isOnboardingComplete } from './lib/onboarding';
 import { useFocusTrap } from './lib/ui/useFocusTrap';
+import { BotSessionProvider } from './context/BotSessionContext';
 import {
   screenForBottomTab,
   type BottomTab,
-  type ScreenId,
-} from './types/navigation';
+  type ScreenId} from './types/navigation';
 
 const OnboardingWizard = lazy(() =>
   import('./components/OnboardingWizard').then((m) => ({ default: m.OnboardingWizard })),
@@ -1133,8 +1131,9 @@ export default function App() {
   }
 
   return (
-    <>
-      {isLocked && pinHash ? (
+    <BotSessionProvider getBotSession={getBotSession}>
+      <>
+        {isLocked && pinHash ? (
         <PinLockScreen onUnlock={unlock} />
       ) : (
         <SanctionGate>
@@ -1207,7 +1206,7 @@ export default function App() {
           {/* Settings Trigger (language switch moved into Settings) */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
+            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer active:bg-[var(--nova-overlay-strong)]"
             title={t('settings.title')}
           >
             <Settings className="w-5 h-5" />
@@ -1337,7 +1336,7 @@ export default function App() {
                 </KeepAlive>
               ))}
               {mobileScreen === 'settings' && (
-                <SettingsModal
+                <SettingsModalOptimized
                   isOpen={true}
                   onClose={() => setActiveBottomTab('chats')}
                   onOpenAnalytics={openAnalytics}
@@ -1350,6 +1349,7 @@ export default function App() {
                     navigate('chat', { chatId: botId });
                   }}
                   onOpenMeshMap={() => navigate('mesh-map')}
+                  navigate={navigate}
                 />
               )}
               {mobileScreen === 'premium' && (
@@ -1414,7 +1414,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setPendingInvite(null)}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-xs font-semibold text-[var(--nova-text-secondary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)]"
               >
                 {t('chat.joinDecline')}
               </button>
@@ -1426,7 +1426,7 @@ export default function App() {
                   navigate('chat', { chatId: pendingInvite.chatId });
                   setPendingInvite(null);
                 }}
-                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-xs font-semibold text-white transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)]"
+                className="px-3 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-xs font-semibold text-white transition cursor-pointer active:bg-[var(--nova-overlay-strong)]"
               >
                 {t('chat.joinAccept')}
               </button>
@@ -1438,7 +1438,7 @@ export default function App() {
       {/* App Settings Modal (language switch lives here) */}
       <PanelErrorBoundary name="settings">
         <Suspense fallback={null}>
-          <SettingsModal
+          <SettingsModalOptimized
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
             onOpenAnalytics={openAnalytics}
@@ -1451,6 +1451,7 @@ export default function App() {
               navigate('chat', { chatId: botId });
             }}
             onOpenMeshMap={() => navigate('mesh-map')}
+            navigate={navigate}
           />
         </Suspense>
       </PanelErrorBoundary>
@@ -1469,5 +1470,18 @@ export default function App() {
         </SanctionGate>
       )}
     </>
+    </BotSessionProvider>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
