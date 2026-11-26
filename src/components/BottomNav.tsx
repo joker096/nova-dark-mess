@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Users, Radio, Sparkles, Plus, User, UserPlus, Upload, Hand, FolderPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import {IconMessageCircle as MessageCircle, IconMessage2 as MessageSquare, IconUsers as Users, IconRadio as Radio, IconSparkles as Sparkles, IconPlus as Plus, IconUser as User, IconUserPlus as UserPlus, IconUpload as Upload, IconHandClick as Hand, IconFolderPlus as FolderPlus, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { createPortal } from 'react-dom';
 import type { BottomTab } from '../types/navigation';
@@ -9,8 +9,7 @@ import {
   isFabSide,
   readFabSide,
   saveFabSide,
-  type FabSide,
-} from '../lib/ui/appearance';
+  type FabSide} from '../lib/ui/appearance';
 
 interface BottomNavProps {
   activeTab: BottomTab;
@@ -43,11 +42,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'chats' as const, icon: MessageSquare, label: t('common.chats'), unread: unreadChats },
     { id: 'contacts' as const, icon: Users, label: t('common.contacts'), unread: unreadContacts },
     { id: 'channels' as const, icon: Radio, label: t('common.channels'), unread: unreadChannels },
-    { id: 'profile' as const, icon: User, label: t('common.profile'), unread: 0 },
     { id: 'premium' as const, icon: Sparkles, label: t('premium.title'), unread: 0 },
   ];
-
-  const fabOffset = fabSide === 'right' ? 'pr-16' : 'pl-16';
 
   // Close FAB menu when clicking outside
   useEffect(() => {
@@ -284,7 +280,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </div>
         )}
 
-        <div className={`flex items-center justify-around h-16 px-2 ${fabOffset}`}>
+        <div className="flex items-center justify-around h-16 px-2">
           {tabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
             const isCenter = index === 2; // Center position (channels)
@@ -364,3 +360,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 };
 
 export default BottomNav;
+
+
+
+
+
+
+
+
+
+
+

@@ -1,17 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Copy,
-  Download,
-  Globe,
-  KeyRound,
-  ShieldCheck,
-  Sparkles,
-  Upload,
-  UserRound,
-} from 'lucide-react';
+import {IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconCheck as Check, IconCopy as Copy, IconDownload as Download, IconGlobe as Globe, IconKey as KeyRound, IconShieldCheck as ShieldCheck, IconSparkles as Sparkles, IconUpload as Upload, IconUser as User, IconUserCircle as UserCircle, IconUserCircle as UserRound} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
@@ -19,14 +7,12 @@ import {
   MIN_FREE_NICKNAME_LENGTH,
   normalizeNickname,
   isShortNicknamePaid,
-  setShortNicknamePaid,
-} from '../lib/account/account';
+  setShortNicknamePaid} from '../lib/account/account';
 import {
   createAccountFromOnboarding,
   addAccount,
   switchAccount,
-  loadAllAccounts,
-} from '../lib/account/multiAccount';
+  loadAllAccounts} from '../lib/account/multiAccount';
 import { completeOnboarding, type OnboardingPath } from '../lib/onboarding';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { copyTextToClipboard, saveTextFile, type TextSaveOutcome } from '../lib/ui/download';
@@ -535,7 +521,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               </div>
               <div className="space-y-2">
                 <button type="button" className={primaryBtn} onClick={startCreate}>
-                  <UserRound className="w-4 h-4" />
+                  <UserCircle className="w-4 h-4" />
                   {t('onboarding.createOption')}
                 </button>
                 <button
@@ -1065,3 +1051,25 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
 };
 
 export default OnboardingWizard;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

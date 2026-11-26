@@ -1,21 +1,10 @@
 import React, { useState } from 'react';
-import {
-  X,
-  Check,
-  RotateCw,
-  Palette,
-  Layers,
-  Sparkles,
-  Sliders,
-  CheckCheck,
-  Lock,
-} from 'lucide-react';
+import {IconX as X, IconCheck as Check, IconRotate as Rotate, IconPalette as Palette, IconLayersOff as LayersOff, IconLayersOff as Layers, IconAdjustmentsHorizontal as Sliders, IconSparkles as Sparkles, IconSpider as Spider, IconChecks as CheckCheck2, IconLock as Lock} from '@tabler/icons-react';
 import {
   WALLPAPER_OPTIONS,
   WallpaperId,
   WallpaperOption,
-  WallpaperCategory,
-} from '../data/wallpapers';
+  WallpaperCategory} from '../data/wallpapers';
 import { DoodleBackground } from './DoodleBackground';
 import { usePremium } from '../hooks/usePremium';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -99,7 +88,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
               className="px-2.5 py-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-accent-color)] hover:text-[var(--nova-on-accent)] border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] transition flex items-center gap-1.5 text-[11px] font-medium cursor-pointer active:scale-95"
               title="Cycle to next wallpaper"
             >
-              <RotateCw className="w-3 h-3" />
+              <Rotate className="w-3 h-3" />
               <span>Cycle</span>
             </button>
 
@@ -141,7 +130,7 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
             <div className="flex justify-end">
               <div className="bg-gradient-to-r from-[var(--nova-accent-color, ff521a)] to-[var(--nova-accent-color, ff3b00)] text-[var(--nova-on-accent)] rounded-[14px] rounded-br-[2px] px-2.5 py-1 text-[11px] shadow-md shadow-[var(--nova-accent-color)]/20 flex items-center gap-1.5">
                 <span>Deal! See you there 🙌</span>
-                <CheckCheck className="w-3 h-3 text-[var(--nova-text-primary)]" />
+                <CheckCheck2 className="w-3 h-3 text-[var(--nova-text-primary)]" />
               </div>
             </div>
           </div>
@@ -311,3 +300,27 @@ export const WallpaperSettingsModal: React.FC<WallpaperSettingsModalProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

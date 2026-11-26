@@ -4,7 +4,7 @@
  * Stored per contact ID in localStorage.
  */
 
-import { CONTACT_PROFILES } from '../../data/mockMessengerData';
+import { CONTACT_PROFILES, MOCK_CHATS, CURRENT_USER } from '../../data/mockMessengerData';
 
 const SOCIAL_PRIVACY_KEY = 'nova_social_privacy_v1';
 
@@ -16,6 +16,7 @@ export interface SocialPrivacySettings {
   calls: PrivacyScope;
   groupsAndChannels: PrivacyScope;
   phoneNumber: PrivacyScope;
+  phoneAccess: string[]; // contact IDs explicitly granted access to phone number
   blockedUsers: string[]; // contact IDs
   exceptions: Record<string, PrivacyScope>; // contactId -> override scope (for "always allow" / "never allow")
 }
@@ -28,12 +29,13 @@ export interface ContactPrivacyOverride {
   phoneNumber?: PrivacyScope;
 }
 
-const DEFAULT_SOCIAL_PRIVACY: SocialPrivacySettings = {
+export const DEFAULT_SOCIAL_PRIVACY: SocialPrivacySettings = {
   lastSeen: 'contacts',
   profilePhoto: 'contacts',
   calls: 'contacts',
   groupsAndChannels: 'contacts',
-  phoneNumber: 'contacts',
+  phoneNumber: 'nobody',
+  phoneAccess: [],
   blockedUsers: [],
   exceptions: {},
 };
@@ -43,12 +45,34 @@ function readSocialPrivacy(): SocialPrivacySettings {
     const raw = localStorage.getItem(SOCIAL_PRIVACY_KEY);
     if (!raw) return { ...DEFAULT_SOCIAL_PRIVACY };
     const parsed = JSON.parse(raw) as Partial<SocialPrivacySettings>;
+    
+    // Migrate legacy exceptions['phoneNumber:<id>'] === 'everyone' into phoneAccess
+    let phoneAccess: string[] = [];
+    if (parsed.phoneAccess && Array.isArray(parsed.phoneAccess)) {
+      phoneAccess = [...new Set(parsed.phoneAccess.filter(id => typeof id === 'string'))];
+    }
+    // Also migrate from legacy exceptions
+    if (parsed.exceptions && typeof parsed.exceptions === 'object') {
+      for (const [key, scope] of Object.entries(parsed.exceptions)) {
+        if (key.startsWith('phoneNumber:') && scope === 'everyone') {
+          const contactId = key.slice('phoneNumber:'.length);
+          if (!phoneAccess.includes(contactId)) {
+            phoneAccess.push(contactId);
+          }
+        }
+      }
+    }
+    
+    // Phone number scope is always 'nobody' - access is controlled by phoneAccess allowlist
+    const phoneNumber = 'nobody';
+    
     return {
       lastSeen: parsed.lastSeen ?? DEFAULT_SOCIAL_PRIVACY.lastSeen,
       profilePhoto: parsed.profilePhoto ?? DEFAULT_SOCIAL_PRIVACY.profilePhoto,
       calls: parsed.calls ?? DEFAULT_SOCIAL_PRIVACY.calls,
       groupsAndChannels: parsed.groupsAndChannels ?? DEFAULT_SOCIAL_PRIVACY.groupsAndChannels,
-      phoneNumber: parsed.phoneNumber ?? DEFAULT_SOCIAL_PRIVACY.phoneNumber,
+      phoneNumber,
+      phoneAccess,
       blockedUsers: Array.isArray(parsed.blockedUsers) ? parsed.blockedUsers : [],
       exceptions: parsed.exceptions && typeof parsed.exceptions === 'object' ? parsed.exceptions : {},
     };
@@ -109,6 +133,16 @@ export function setContactException(
   setting: 'lastSeen' | 'profilePhoto' | 'calls' | 'groupsAndChannels' | 'phoneNumber',
   scope: PrivacyScope
 ): void {
+  // Phone number uses explicit allowlist, not the exception system
+  if (setting === 'phoneNumber') {
+    if (scope === 'everyone') {
+      grantPhoneAccess(contactId);
+    } else {
+      revokePhoneAccess(contactId);
+    }
+    return;
+  }
+  
   const settings = readSocialPrivacy();
   const key = `${setting}:${contactId}`;
   if (scope === 'contacts') {
@@ -131,26 +165,6 @@ export function getEffectiveScope(
     return settings.exceptions[exceptionKey];
   }
   return settings[setting];
-}
-
-/** Check if a contact can see a specific privacy setting for the current user. */
-export function canContactSee(
-  contactId: string,
-  setting: 'lastSeen' | 'profilePhoto' | 'calls' | 'groupsAndChannels' | 'phoneNumber',
-  isContact: boolean
-): boolean {
-  // Blocked users never see anything
-  if (isContactBlocked(contactId)) return false;
-
-  const scope = getEffectiveScope(setting, contactId);
-  switch (scope) {
-    case 'everyone':
-      return true;
-    case 'contacts':
-      return isContact;
-    case 'nobody':
-      return false;
-  }
 }
 
 /** Get the list of all known contact IDs (from MOCK_CHATS and CONTACT_PROFILES). */
@@ -183,4 +197,89 @@ export function getBlockedContactsWithProfiles(): Array<{ id: string; name: stri
       avatar: profile?.avatar,
     };
   });
+}
+
+/** Get the list of contact IDs that have explicit access to the user's phone number. */
+export function getPhoneAccess(): string[] {
+  return readSocialPrivacy().phoneAccess;
+}
+
+/** Set the full list of contact IDs that have access to the phone number. */
+export function setPhoneAccess(contactIds: string[]): void {
+  const settings = readSocialPrivacy();
+  settings.phoneAccess = [...new Set(contactIds.filter(id => typeof id === 'string'))];
+  writeSocialPrivacy(settings);
+}
+
+/** Check if a specific contact has been granted access to the phone number. */
+export function isPhoneAccessGranted(contactId: string): boolean {
+  return readSocialPrivacy().phoneAccess.includes(contactId);
+}
+
+/** Grant a contact access to the phone number. */
+export function grantPhoneAccess(contactId: string): void {
+  const settings = readSocialPrivacy();
+  if (!settings.phoneAccess.includes(contactId)) {
+    settings.phoneAccess.push(contactId);
+    writeSocialPrivacy(settings);
+  }
+}
+
+/** Revoke a contact's access to the phone number. */
+export function revokePhoneAccess(contactId: string): void {
+  const settings = readSocialPrivacy();
+  const idx = settings.phoneAccess.indexOf(contactId);
+  if (idx >= 0) {
+    settings.phoneAccess.splice(idx, 1);
+    writeSocialPrivacy(settings);
+  }
+}
+
+/** Get all direct contacts (from MOCK_CHATS with type 'direct') that have a phone number, for the phone access UI. */
+export function getPhoneAccessContacts(): Array<{ id: string; name: string; avatar?: string; nickname?: string; hasAccess: boolean }> {
+  const settings = readSocialPrivacy();
+  const contacts: Array<{ id: string; name: string; avatar?: string; nickname?: string; hasAccess: boolean }> = [];
+  
+  for (const chat of MOCK_CHATS) {
+    if (chat.type === 'direct' && chat.id !== CURRENT_USER.id) {
+      const profile = CONTACT_PROFILES[chat.id];
+      if (profile && profile.phone && profile.phone !== '—') {
+        contacts.push({
+          id: chat.id,
+          name: profile.name,
+          avatar: profile.avatar,
+          nickname: profile.nickname,
+          hasAccess: settings.phoneAccess.includes(chat.id),
+        });
+      }
+    }
+  }
+  
+  return contacts;
+}
+
+/** Check if a contact can see a specific privacy setting for the current user. */
+export function canContactSee(
+  contactId: string,
+  setting: 'lastSeen' | 'profilePhoto' | 'calls' | 'groupsAndChannels' | 'phoneNumber',
+  isContact: boolean
+): boolean {
+  // Blocked users never see anything
+  if (isContactBlocked(contactId)) return false;
+
+  // Phone number is special: only explicitly granted contacts can see it
+  if (setting === 'phoneNumber') {
+    const settings = readSocialPrivacy();
+    return settings.phoneAccess.includes(contactId);
+  }
+
+  const scope = getEffectiveScope(setting, contactId);
+  switch (scope) {
+    case 'everyone':
+      return true;
+    case 'contacts':
+      return isContact;
+    case 'nobody':
+      return false;
+  }
 }

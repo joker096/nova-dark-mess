@@ -94,10 +94,17 @@ vi.mock('./DoodleBackground', () => ({
   DoodleBackground: vi.fn(() => null),
 }));
 
-// Group members moved into the "..." menu -> "All chat actions" submenu.
+// The full chat actions list opens from the "moreActions" button in the header.
 const openChatActionsMenu = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'chat.moreActions' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'chat.chatActions' }));
+  // First click the more actions button (three dots) to open the dropdown menu
+  const moreActionsButton = screen.getByRole('button', { name: 'chat.moreActions' });
+  fireEvent.click(moreActionsButton);
+  
+  // Then find the info button in the opened menu
+  const infoButton =
+    screen.queryByRole('menuitem', { name: 'chat.groupInfo' }) ??
+    screen.getByRole('menuitem', { name: 'chat.contactInfo' });
+  fireEvent.click(infoButton);
 };
 
 const openGroupMembers = () => {
@@ -216,7 +223,7 @@ describe('ChatScreen - message rendering', () => {
     renderChat();
     const status = within(getBubble('m3')).getByTitle('common.read');
 
-    expect(status.querySelector('svg.lucide-check-check')).toBeTruthy();
+    expect(status.querySelector('[data-testid="status-checks"] svg')).toBeTruthy();
     expect(status.querySelector('img[alt="Seen"]')).toBeNull();
     expect(status.textContent).not.toContain('Seen');
   });
@@ -531,8 +538,7 @@ describe('ChatScreen - long press and double tap', () => {
 describe('ChatScreen - horizontal lists hide scrollbar', () => {
   it('quick search chips list uses no-scrollbar when search opened', () => {
     renderChat();
-    fireEvent.click(screen.getByRole('button', { name: 'chat.moreActions' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.search' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.search' }));
     const list = screen.getByTestId('quick-search-chips');
     expect(list.className).toContain('no-scrollbar');
     expect(list.className).not.toContain('scrollbar-x');

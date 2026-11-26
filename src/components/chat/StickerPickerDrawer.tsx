@@ -1,22 +1,24 @@
-﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
-  Smile,
-  Film,
-  X,
-  Search,
-  Sparkles,
-  Star,
-  Clock,
-  Lock,
-  Crown,
-  Upload,
-  Trash2,
-  LayoutGrid,
-  Rows3,
-  Type,
-  Loader2,
-  ChevronDown,
-} from 'lucide-react';
+  IconClock as Clock,
+  IconCrown as Crown,
+  IconLayoutGrid as LayoutGrid,
+  IconLayoutRows as LayoutRows,
+  IconLoader2 as Loader2,
+  IconLock as Lock,
+  IconMoodSmile as MoodSmile,
+  IconMovie as Movie,
+  IconGrid3x3 as Rows3,
+  IconSearch as Search,
+  IconSparkles as Sparkles,
+  IconStar as Star,
+  IconTrash as Trash,
+  IconTypography as Type,
+  IconTypography as Typography,
+  IconUpload as Upload,
+  IconX as X,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { STICKER_PACKS } from '../../data/stickers';
 import { StickerData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
@@ -25,8 +27,7 @@ import { LazyMedia } from '../LazyMedia';
 import {
   STICKER_SIZE_OPTIONS,
   loadMediaPreferences,
-  saveMediaPreferences,
-} from '../../lib/ui/mediaPreferences';
+  saveMediaPreferences} from '../../lib/ui/mediaPreferences';
 import type { StickerPickerDensity } from '../../lib/ui/mediaPreferences';
 import {
   addImportedStickerPack,
@@ -44,8 +45,7 @@ import {
   recordStickerUse,
   removeImportedStickerPack,
   sortStickerPacks,
-  toggleStickerFavorite,
-} from '../../lib/stickers';
+  toggleStickerFavorite} from '../../lib/stickers';
 import type { StickerEntry } from '../../lib/stickers';
 import { StickerMedia } from './StickerMedia';
 import { searchGifs, getTrendingGifs, GIF_CATEGORIES, type GifResult, configureGifApiKeys, getConfiguredGifApis } from '../../lib/gif/gifSearch';
@@ -436,7 +436,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 : 'text-white/60 hover:text-white'
             }`}
           >
-            <Smile className="w-3.5 h-3.5" />
+            <MoodSmile className="w-3.5 h-3.5" />
             <span>{t('common.emojis', 'Emojis')}</span>
           </button>
 
@@ -449,7 +449,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 : 'text-white/60 hover:text-white'
             }`}
           >
-            <Film className="w-3.5 h-3.5" />
+            <Movie className="w-3.5 h-3.5" />
             <span>{t('stickers.gifs', 'GIFs')}</span>
           </button>
         </div>
@@ -644,7 +644,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[9px] font-semibold text-red-300 hover:bg-red-500/20 transition cursor-pointer"
                 title={t('stickers.removePack', 'Remove imported pack')}
               >
-                <Trash2 className="w-3 h-3" />
+                <TrashX className="w-3 h-3" />
                 {t('stickers.removePack', 'Remove pack')}
               </button>
             </div>
@@ -704,7 +704,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                         />
                         {(sticker.animated || pack.animated) && !locked && !compact && (
                           <span className="absolute top-7 right-1 flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-fuchsia-500/20 text-fuchsia-300 text-[7px] font-bold tracking-wider">
-                            <Film className="w-2 h-2" />
+                            <Movie className="w-2 h-2" />
                             ANIM
                           </span>
                         )}
@@ -894,3 +894,23 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

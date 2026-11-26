@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {
-  Activity,
-  Globe,
-  ShieldAlert,
-  Link,
-  Minus,
-  Plus,
-} from 'lucide-react';
+import {IconActivity as Activity, IconGlobe as Globe, IconShieldExclamation as ShieldExclamation, IconShieldHeart as ShieldHeart, IconLink as Link, IconMinus as Minus, IconPlus as Plus} from '@tabler/icons-react';
 
 export interface MeshNode {
   id: string;
@@ -489,7 +482,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
           <span>{links.filter((l) => l.status === 'blocked').length} blocked</span>
         </div>
         <div className="flex items-center gap-1">
-          <ShieldAlert className="w-3 h-3" />
+          <ShieldExclamation className="w-3 h-3" />
           <span>E2EE mesh routing</span>
         </div>
         <div className="flex items-center gap-1">
@@ -508,3 +501,22 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
 };
 
 MeshRadar.displayName = 'MeshRadar';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import {IconLoader2 as Loader2} from '@tabler/icons-react';
 import { useShortcutLabel } from '../../hooks/useShortcuts';
 import { formatCount } from './formatCount';
 
@@ -15,6 +15,8 @@ export interface NovaIconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButto
   variant?: IconButtonVariant;
   /** Number shown in the corner badge; `0`/`undefined` hides it. */
   badge?: number;
+  /** Test ID for the badge element (for testing). */
+  badgeTestId?: string;
   /** Highlights the button as the current section. */
   active?: boolean;
   loading?: boolean;
@@ -25,26 +27,26 @@ export interface NovaIconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButto
 }
 
 const SIZES: Record<IconButtonSize, string> = {
-  32: 'w-8 h-8 min-w-[44px] min-h-[44px]',
-  36: 'w-9 h-9 min-w-[44px] min-h-[44px]',
+  32: 'w-8 h-8 min-w-[36px] min-h-[36px] sm:min-w-[32px] sm:min-h-[32px]',
+  36: 'w-9 h-9 min-w-[40px] min-h-[40px] sm:min-w-[36px] sm:min-h-[36px]',
   44: 'w-11 h-11 min-w-[44px] min-h-[44px]',
 };
 
 const ICON_SIZES: Record<IconButtonSize, string> = {
   32: 'w-4 h-4',
-  36: 'w-[18px] h-[18px]',
+  36: 'w-[19px] h-[19px]',
   44: 'w-5 h-5',
 };
 
 const ICON_WRAPPERS: Record<IconButtonSize, string> = {
   32: '[&>svg]:w-4 [&>svg]:h-4',
-  36: '[&>svg]:w-[18px] [&>svg]:h-[18px]',
+  36: '[&>svg]:w-[19px] [&>svg]:h-[19px]',
   44: '[&>svg]:w-5 [&>svg]:h-5',
 };
 
 const VARIANTS: Record<IconButtonVariant, string> = {
   ghost:
-    'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]',
+    'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--nova-overlay-medium)] active:bg-[var(--nova-overlay-strong)]',
   subtle:
     'bg-[var(--bg-surface-2)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
   primary:
@@ -60,6 +62,7 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
     size = 36,
     variant = 'ghost',
     badge,
+    badgeTestId,
     active = false,
     loading = false,
     shortcut,
@@ -107,6 +110,7 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
       {loading && <Loader2 className={`absolute animate-spin ${ICON_SIZES[size]}`} aria-hidden="true" />}
       {badge !== undefined && badge > 0 && (
         <span
+          data-testid={badgeTestId}
           className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] text-[9px] font-bold leading-4 text-center shadow-sm"
           aria-hidden="true"
         >
@@ -116,3 +120,13 @@ export const NovaIconButton = forwardRef<HTMLButtonElement, NovaIconButtonProps>
     </button>
   );
 });
+
+
+
+
+
+
+
+
+
+

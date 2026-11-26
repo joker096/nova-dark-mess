@@ -7,8 +7,7 @@ import { ProfileScreen } from './ProfileScreen';
 import {
   CONTACT_PROFILES,
   CURRENT_USER,
-  KATIE_SHARED_MEDIA,
-} from '../data/mockMessengerData';
+  KATIE_SHARED_MEDIA} from '../data/mockMessengerData';
 import { CONTACT_OVERRIDES_KEY } from '../lib/contacts/contactOverrides';
 import { loadAccount, saveAccount } from '../lib/account/account';
 import { loadAllAccounts, MULTI_ACCOUNT_STORAGE_KEY } from '../lib/account/multiAccount';
@@ -776,3 +775,4 @@ describe('ProfileScreen - horizontal lists', () => {
     expect(list.className).not.toContain('scrollbar-x');
   });
 });
+

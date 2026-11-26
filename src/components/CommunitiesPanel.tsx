@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Radio, MessagesSquare, ShieldCheck, X, Pencil, Trash2 } from 'lucide-react';
+import {IconPlus as Plus, IconRadio as Radio, IconMessageShare as MessageShare, IconShieldCheck as ShieldCheck, IconX as X, IconPencil as Pencil, IconTrashX as Trash2, IconTrash as Trash} from '@tabler/icons-react';
 import { ChannelInfo } from '../types/messenger';
 import { MOCK_CHATS, loadCreatedGroups } from '../data/mockMessengerData';
 import {
@@ -8,8 +8,7 @@ import {
   deleteCommunity,
   isAdmin,
   listCommunities,
-  updateCommunity,
-} from '../lib/social/communities';
+  updateCommunity} from '../lib/social/communities';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
@@ -139,7 +138,7 @@ export function CommunitiesPanel({
           type="button"
           onClick={openCreate}
           aria-label={t('communities.create')}
-          className="h-7 w-7 shrink-0 rounded-full bg-[#20222b] hover:bg-[var(--nova-accent-color)] text-white/70 hover:text-white flex items-center justify-center transition cursor-pointer"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white transition active:scale-95 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
@@ -227,7 +226,7 @@ export function CommunitiesPanel({
                       discussionNames.get(community.discussionGroupId) ?? community.discussionGroupId
                     }`}
                   >
-                    <MessagesSquare className="w-3 h-3" />
+                    <MessageShare className="w-3 h-3" />
                     {discussionNames.get(community.discussionGroupId) ??
                       community.discussionGroupId}
                   </button>
@@ -322,3 +321,23 @@ export function CommunitiesPanel({
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

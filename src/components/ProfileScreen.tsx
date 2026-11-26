@@ -1,40 +1,47 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ScrollableRow, NovaSelectableButton, NovaModal, NovaMenu } from '../lib/ui';
 import {
-  ArrowLeft,
-  Share2,
-  Edit2,
-  MessageSquare,
-  Phone,
-  Video,
-  MoreHorizontal,
-  QrCode,
-  FileText,
-  Key,
-  Link2,
-  Mic,
-  Check,
-  Copy,
-  Play,
-  Pause,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Download,
-  Volume2,
-  VolumeX,
-  Sparkles,
-  ShieldCheck,
-  Camera,
-  Crown,
-} from 'lucide-react';
+  ScrollableRow,
+  NovaSelectableButton,
+  NovaModal,
+  NovaMenu } from '../lib/ui';
+import {IconArrowLeft as ArrowLeft,
+  IconShare2 as Share2,
+  IconEdit as Edit,
+  IconMessageCircle as MessageCircle,
+  IconMessage2 as MessageSquare,
+  IconDots as MoreHorizontal,
+  IconPhone as Phone,
+  IconVideo as Video,
+  IconBorderHorizontal as BorderHorizontal,
+  IconQrcode as Qrcode,
+  IconFileText as FileText,
+  IconKey as Key,
+  IconLink as Link,
+  IconMicrophone as Mic,
+  IconCheck as Check,
+  IconCopy as Copy,
+  IconPlayerPlay as PlayCircle,
+  IconPlayerPause as Pause,
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconX as X,
+  IconDownload as Download,
+  IconVolume2 as Volume2,
+  IconVolumeOff as VolumeX,
+  IconSparkles as Sparkles,
+  IconShieldCheck as ShieldCheck,
+  IconCamera as Camera,
+  IconCrown as Crown,
+  IconLink as Link2,
+  IconPlayerPlay as Play,
+  IconQrcode as QrCode,
+} from '@tabler/icons-react';
 import { CONTACT_PROFILES, CURRENT_USER, CONVERSATION_HISTORIES } from '../data/mockMessengerData';
 import type { ChatMessage, SharedMediaItem } from '../types/messenger';
 import {
   loadContactOverrides,
   saveContactOverride,
-  type ContactOverride,
-} from '../lib/contacts/contactOverrides';
+  type ContactOverride} from '../lib/contacts/contactOverrides';
 import { VideoCallOverlay } from './VideoCallOverlay';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -47,8 +54,7 @@ import {
   encodeDeviceLinkOffer,
   encodeDeviceLinkResponse,
   parseDeviceLinkOffer,
-  parseDeviceLinkResponse,
-} from '../lib/p2p/deviceLinking';
+  parseDeviceLinkResponse} from '../lib/p2p/deviceLinking';
 import { createHandle } from '../lib/crypto/handles';
 import { isPremium } from '../lib/premium';
 import { LazyMedia } from './LazyMedia';
@@ -685,11 +691,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Top Header Bar */}
       <div
         data-testid="profile-header"
-        className="sticky top-0 z-30 bg-[var(--nova-canvas)]/92 backdrop-blur-md px-4 pt-3 pb-2 flex items-center justify-between shrink-0"
+        className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-between gap-2 border-b border-[var(--nova-border-subtle)] bg-[var(--nova-canvas)]/92 backdrop-blur-xl px-3 sm:px-4"
       >
         <button
           onClick={onBack}
-          className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer min-w-[44px] min-h-[44px]"
           title={t('common.back')}
           aria-label={t('common.back')}
         >
@@ -706,15 +712,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 openContactEdit();
               }
             }}
-            className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
             title={isOwnProfile ? t('profile.editProfile') : t('profile.editContact')}
             aria-label={isOwnProfile ? t('profile.editProfile') : t('profile.editContact')}
           >
-            <Edit2 className="w-5 h-5" />
+            <Edit className="w-5 h-5" />
           </button>
           <button
             onClick={() => setShareContactOpen(true)}
-            className="w-11 h-11 rounded-full bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] border border-[var(--nova-border-subtle)] flex items-center justify-center text-[var(--nova-text-primary)] active:scale-90 transition cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
             title={t('common.share')}
             aria-label={t('common.share')}
           >
@@ -910,7 +916,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {
                       key: 'edit',
                       label: t('profile.editContact'),
-                      icon: <Edit2 />,
+                      icon: <Edit />,
                       onSelect: openContactEdit,
                     },
                     {
@@ -1010,7 +1016,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                     title={t('common.edit')}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={openQr}
@@ -1215,7 +1221,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     className="p-2.5 text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
                     title={t('common.edit')}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit className="w-4 h-4" />
                   </button>
                 </>
               )}
@@ -1802,7 +1808,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 value={peerSafetyInput}
                 onChange={(e) => setPeerSafetyInput(e.target.value)}
                 placeholder="Paste contact safety number"
-                className="w-full rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-white/30 focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-white/30 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
               />
               {peerSafetyInput.trim() && (
                 <p
@@ -2147,3 +2153,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

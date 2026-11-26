@@ -4,18 +4,8 @@ import React, {
   useEffect,
   useCallback,
   useImperativeHandle,
-  forwardRef,
-} from 'react';
-import {
-  Mic,
-  Trash2,
-  Send,
-  Square,
-  RefreshCw,
-  ChevronUp,
-  Lock,
-  Unlock,
-} from 'lucide-react';
+  forwardRef} from 'react';
+import {IconMicrophone as Mic, IconTrashX as Trash2, IconTrash as Trash, IconSend as Send, IconSquare as Square, IconRefresh as Refresh, IconChevronUp as ChevronUp, IconLock as Lock, IconLockOpen as Unlock} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { VoiceNoteData } from '../types/messenger';
 import { AudioWaveformPlayer } from './AudioWaveformPlayer';
@@ -590,7 +580,7 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
           className="w-11 h-11 rounded-full bg-[var(--nova-surface-high)]/95 hover:bg-[var(--nova-overlay-medium)] border border-[var(--nova-border-color)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] flex items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0"
           title="Re-record voice note"
         >
-          <RefreshCw className="w-4 h-4" />
+          <Refresh className="w-4 h-4" />
         </button>
 
         {/* Send Button: tap sends now, long-press schedules */}
@@ -784,3 +774,26 @@ export const VoiceMemoInput = forwardRef<VoiceMemoInputHandle, VoiceMemoInputPro
 );
 
 VoiceMemoInput.displayName = 'VoiceMemoInput';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

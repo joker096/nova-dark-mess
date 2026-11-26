@@ -1,21 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  Check,
-  ChevronRight,
-  CircleHelp,
-  Clock3,
-  FileText,
-  KeyRound,
-  LifeBuoy,
-  Lock,
-  MessageSquare,
-  ShieldAlert,
-  ShieldCheck,
-  X,
-} from 'lucide-react';
+import {IconAlertTriangle as AlertTriangle, IconArrowRight as ArrowRight, IconCalendarClock as CalendarClock, IconCheck as Check, IconChevronRight as ChevronRight, IconHelpCircle as CircleHelp, IconClock as Clock3, IconFileText as FileText, IconKey as KeyRound, IconLifebuoy as Lifebuoy, IconLock as Lock, IconMessageCircle as MessageCircle, IconMessage2 as MessageSquare, IconShieldExclamation as ShieldExclamation, IconShieldHeart as ShieldHeart, IconShieldCheck as ShieldCheck, IconX as X} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import {
@@ -25,8 +9,7 @@ import {
   loadReports,
   loadAppealForSanction,
   submitAppeal,
-  type AppealError,
-} from '../lib/moderation/store';
+  type AppealError} from '../lib/moderation/store';
 import type { SanctionRecord } from '../types/moderation';
 
 interface SanctionScreenProps {
@@ -115,7 +98,7 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
         <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
-              <ShieldAlert className="h-4 w-4" />
+              <ShieldExclamation className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold leading-tight">{t('moderation.title')}</h3>
@@ -206,7 +189,7 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="flex items-center gap-1.5 text-sm font-semibold">
-                      <LifeBuoy className="h-4 w-4 text-[var(--nova-accent-color)]" />
+                      <Lifebuoy className="h-4 w-4 text-[var(--nova-accent-color)]" />
                       {t('moderation.appealTitle')}
                     </h4>
                     <p className="mt-1 text-[10.5px] leading-relaxed text-[var(--nova-text-secondary)]/45">
@@ -244,7 +227,7 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
                       rows={4}
                       placeholder={t('moderation.appealPlaceholder')}
                       aria-label={t('moderation.appealTitle')}
-                      className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)]/40 px-3 py-2.5 text-[12px] text-[var(--nova-text-primary)] placeholder:[var(--nova-text-secondary)]/25 outline-none focus:border-[var(--nova-accent-color)]/50"
+                      className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-secondary)]/25 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
                     />
                     <div className="flex items-center justify-between text-[10px]">
                       <span className={error ? 'text-red-400' : 'text-[var(--nova-text-secondary)]/30'}>
@@ -348,3 +331,26 @@ export const SanctionScreen: React.FC<SanctionScreenProps> = ({ onClose, mode = 
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

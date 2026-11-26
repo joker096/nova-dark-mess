@@ -1,5 +1,60 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2, Globe, UserRound, Users, Phone, Clock, ShieldCheck, MessageSquare, VolumeX, Star, Key, Bug } from 'lucide-react';
+import {
+  IconX as X,
+  IconCheck as Check,
+  IconBell as Bell,
+  IconLock as Lock,
+  IconDatabase as Database,
+  IconPalette as Palette,
+  IconInfoCircle as Info,
+  IconLanguage as Language,
+  IconDownload as Download,
+  IconUpload as Upload,
+  IconFileText as FileText,
+  IconMoon as Moon,
+  IconDeviceDesktop as Monitor,
+  IconSun as Sun,
+  IconCopy as Copy,
+  IconAlertTriangle as AlertTriangle,
+  IconSparkles as Sparkles,
+  IconCurrencyDollar as DollarSign,
+  IconSend as Send,
+  IconChartBar as BarChart,
+  IconChevronRight as ChevronRight,
+  IconShieldHeart as ShieldHeart,
+  IconSpeakerphone as Megaphone,
+  IconRotate as Rotate,
+  IconBan as Ban,
+  IconSettings as Settings,
+  IconHandClick as Hand,
+  IconMapPin as MapPin,
+  IconPlus as Plus,
+  IconMovie as Film,
+  IconRobot as Bot,
+  IconCloud as Cloud,
+  IconDeviceFloppy as HardDrive,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconGlobe as Globe,
+  IconUser as User,
+  IconUsers as Users,
+  IconUserCircle as UserRound,
+  IconPhone as Phone,
+  IconClock as Clock,
+  IconShieldCheck as ShieldCheck,
+  IconMessageCircle as MessageCircle,
+  IconVolumeOff as VolumeX,
+  IconStar as Star,
+  IconKey as Key,
+  IconBug as Bug,
+  IconChecks as CheckCheck2,
+  IconChartBar as BarChart3,
+  IconMessageCircle as MessageSquare,
+  IconRotate as RotateCcw,
+  IconShieldExclamation as ShieldExclamation,
+  IconTrash as TrashX,
+  IconUserCircle as UserCircle,
+} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -19,24 +74,24 @@ import {
   shouldEmitCoverTraffic,
   probeTor,
   type BatteryStatus,
-  type PrivacyPrefs,
-} from '../lib/network/privacyMode';
+  type PrivacyPrefs} from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
 import {
   getSocialPrivacy,
   setSocialPrivacy,
   setContactBlocked,
   getBlockedContactsWithProfiles,
+  getPhoneAccessContacts,
+  grantPhoneAccess,
+  revokePhoneAccess,
   type SocialPrivacySettings,
-  type PrivacyScope,
-} from '../lib/social/socialPrivacy';
+  type PrivacyScope} from '../lib/social/socialPrivacy';
 import {
   clearLocalAdPrefs,
   loadAdPreferences,
   restoreHiddenAd,
   unblockAdvertiser,
-  type LocalAdPreferences,
-} from '../lib/ads/localAds';
+  type LocalAdPreferences} from '../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import {
   getNotificationPrefs,
@@ -49,14 +104,18 @@ import {
   getPriorityContacts,
   type NotificationPrefs,
   type NotificationLevel,
-  type MuteDurationKey,
-} from '../lib/notifications/notificationPrefs';
+  type MuteDurationKey} from '../lib/notifications/notificationPrefs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import { LegalModal } from './LegalModal';
 import { SanctionScreen } from './SanctionScreen';
 import { AccountSwitcher } from './AccountSwitcher';
+import {
+  SettingsSheet,
+  SettingsTile,
+  SettingsSection,
+} from './settings/settingsPrimitives';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -68,8 +127,9 @@ import {
   readAppTheme,
   readFabSide,
   saveFabSide,
-  type FabSide,
-} from '../lib/ui/appearance';
+  isFabSide,
+  FAB_SIDE_EVENT,
+  type FabSide} from '../lib/ui/appearance';
 
 import type { BotSession } from '../lib/bots/session';
 import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest';
@@ -143,8 +203,8 @@ function ChatColorOption({
   chatColorTheme: string;
   premium: boolean;
   checkout: () => Promise<{ ok: boolean; error?: string }>;
-  t: (key: string, options?: { defaultValue?: string }) => string;
-  setChatColorTheme: (value: string) => void;
+  t: (...args: any[]) => any;
+  setChatColorTheme: (value: 'default' | 'sapphire' | 'amethyst' | 'emerald') => void;
   CHAT_THEME_KEY: string;
 }) {
   const label = opt.value === 'default'
@@ -211,7 +271,7 @@ const TAB_CONFIG: Array<{ id: SettingsTab; label: string; icon: React.ReactNode 
   { id: 'notifications', label: 'notifications', icon: <Bell className="w-4 h-4" /> },
   { id: 'privacy', label: 'privacy', icon: <Lock className="w-4 h-4" /> },
   { id: 'data', label: 'data', icon: <Database className="w-4 h-4" /> },
-  { id: 'advanced', label: 'advanced', icon: <ShieldAlert className="w-4 h-4" /> },
+  { id: 'advanced', label: 'advanced', icon: <ShieldExclamation className="w-4 h-4" /> },
   { id: 'about', label: 'about', icon: <Info className="w-4 h-4" /> },
 ];
 
@@ -275,8 +335,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
   onOpenMeshMap,
 }) => {
   const { t, language } = useLanguage();
-  const { isInitialized, identity, clearLocalEncryptedData, verifyPinWithFeedback, pinHash, pinEnabled } = useSecurity();
-  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, setCryptoModalOpen, loading } = usePremium();
+  const { isInitialized, identity, clearLocalEncryptedData, verifyPin, setPin, removePin, pinHash, pinEnabled } = useSecurity();
+  const { premium, checkout, minSubscriptionCost, freeDaysRemaining, loading } = usePremium();
   const { account } = (() => ({ account: { id: 'me', displayName: 'You', nickname: 'You', avatar: undefined } }))();
   const dialogRef = useRef<HTMLDivElement>(null);
   const focusTrap = useFocusTrap<HTMLDivElement>(isOpen, onClose);
@@ -289,10 +349,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
   const [fabSide, setFabSideState] = useState<FabSide>(() => readFabSide());
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
   const [socialPrivacy, setSocialPrivacyState] = useState<SocialPrivacySettings>(() => getSocialPrivacy());
+  const [phoneAccessSheetOpen, setPhoneAccessSheetOpen] = useState(false);
   const [battery, setBattery] = useState<BatteryStatus>({ level: null, charging: true });
   const [clearDataConfirm, setClearDataConfirm] = useState(false);
   const [clearDataPin, setClearDataPin] = useState('');
   const [aboutMsg, setAboutMsg] = useState<string | null>(null);
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
   const [seedPhraseCopied, setSeedPhraseCopied] = useState(false);
   const [adPrefs, setAdPrefs] = useState<LocalAdPreferences>(() => loadAdPreferences());
   const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>(() => getNotificationPrefs());
@@ -316,12 +378,20 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
   useEffect(() => { if (prefs.fontSize) { applyFontSize(prefs.fontSize); } }, [prefs.fontSize]);
   useEffect(() => { const sync = (e: Event) => { const d = (e as CustomEvent<unknown>).detail; setFabSideState(isFabSide(d) ? d : readFabSide()); }; window.addEventListener(FAB_SIDE_EVENT, sync); window.addEventListener('storage', () => setFabSideState(readFabSide())); return () => { window.removeEventListener(FAB_SIDE_EVENT, sync); window.removeEventListener('storage', () => setFabSideState(readFabSide())); }; }, []);
   useEffect(() => { setSocialPrivacyState(getSocialPrivacy()); }, [t]);
-  useEffect(() => { const b = readBatteryStatus(); setBattery(b); const i = window.setInterval(() => setBattery(readBatteryStatus()), 30_000); return () => window.clearInterval(i); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshBattery = () => {
+      void readBatteryStatus().then((b) => { if (!cancelled) setBattery(b); }).catch(() => {});
+    };
+    refreshBattery();
+    const i = window.setInterval(refreshBattery, 30_000);
+    return () => { cancelled = true; window.clearInterval(i); };
+  }, []);
   useEffect(() => { if (isOpen && !isInitialized) { const t = window.setTimeout(() => setAboutMsg('Initializing security…'), 3000); return () => window.clearTimeout(t); } }, [isOpen, isInitialized]);
 
   const handleExportMyData = async () => { try { const fn = await downloadMyDataExport(); setAboutMsg(`Exported: ${fn}`); } catch { setAboutMsg('Export failed'); } };
   const eraseAllData = async () => { await clearLocalEncryptedData(); };
-  const handleClearAllData = async () => { if (!clearDataConfirm) { setClearDataConfirm(true); setClearDataPin(''); return; } if (pinEnabled && clearDataPin.length < 4) return; const ok = await verifyPinWithFeedback(clearDataPin); if (!ok) { setClearDataPin(''); return; } await eraseAllData(); setClearDataConfirm(false); setClearDataPin(''); onClose(); };
+  const handleClearAllData = async () => { if (!clearDataConfirm) { setClearDataConfirm(true); setClearDataPin(''); return; } if (pinEnabled && clearDataPin.length < 4) return; const ok = await verifyPin(clearDataPin); if (!ok) { setClearDataPin(''); return; } await eraseAllData(); setClearDataConfirm(false); setClearDataPin(''); onClose(); };
   const handleCopySeedPhrase = async () => { const phrase = identity?.mnemonic ?? ''; if (!phrase) return; try { await navigator.clipboard.writeText(phrase); setSeedPhraseCopied(true); setTimeout(() => setSeedPhraseCopied(false), 2000); } catch {} };
   const retryJoinOutboxNow = async () => { setIsRetryingJoin(true); await import('../lib/social/joinRequestRelay').then(m => m.retryJoinOutboxNow()); setJoinOutbox(loadJoinOutbox()); setIsRetryingJoin(false); };
 
@@ -329,7 +399,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
     switch (tab) {
       case 'general': return (
         <>
-          <SectionHeader icon={<Languages className="w-3.5 h-3.5" />} title={t('settings.language')} />
+          <SectionHeader icon={<Language className="w-3.5 h-3.5" />} title={t('settings.language')} />
           <LanguageSwitcher />
           <SectionHeader icon={<Palette className="w-3.5 h-3.5" />} title={t('settings.appearance')} />
           <div className="py-1"><div className="text-[13px] text-[var(--nova-text-primary)] mb-1.5 px-1">{t('settings.theme')}</div>
@@ -382,17 +452,61 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
           <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1">{t('settings.metadataMinimizationDesc')}</p>
           <div className="space-y-2"><p className="text-[11px] font-medium text-[var(--nova-text-secondary)] px-1">{t('settings.presenceSharing')}</p>
             <ToggleRow label={t('settings.presenceShare')} enabled={privacyPrefs.presenceSharing} onToggle={() => updatePresencePref({ presenceSharing: !privacyPrefs.presenceSharing })} />
-            {privacyPrefs.presenceSharing && (<div className="px-1 py-1 space-y-2"><ToggleRow label={t('settings.presenceHashing')} enabled={privacyPrefs.presenceHashing} onToggle={() => updatePresencePref({ presenceHashing: !privacyPrefs.presenceHashing })} /><p className="text-[10px] text-[var(--nova-text-muted)] px-1">{t('settings.presenceHashingDesc')}</p><ToggleRow label={t('settings.presenceTtl')} enabled={privacyPrefs.presenceTtl} onToggle={() => updatePresencePref({ presenceTtl: !privacyPrefs.presenceTtl })} /><p className="text-[10px] text-[var(--nova-text-muted)] px-1">{t('settings.presenceTtlDesc')}</p></div>)}
+            {privacyPrefs.presenceSharing && (<div className="px-1 py-1 space-y-2"><ToggleRow label={t('settings.presenceHashing')} enabled={privacyPrefs.presenceHashing} onToggle={() => updatePresencePref({ presenceHashing: !privacyPrefs.presenceHashing })} /><p className="text-[10px] text-[var(--nova-text-muted)] px-1">{t('settings.presenceHashingDesc')}</p><ToggleRow label={t('settings.presenceTtl')} enabled={privacyPrefs.presenceTtl === 'short'} onToggle={() => updatePresencePref({ presenceTtl: privacyPrefs.presenceTtl === 'short' ? 'normal' : 'short' })} /><p className="text-[10px] text-[var(--nova-text-muted)] px-1">{t('settings.presenceTtlDesc')}</p></div>)}
           </div>
           <SectionHeader icon={<ShieldCheck className="w-3.5 h-3.5" />} title={t('settings.socialPrivacy')} />
           <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1 mb-2">{t('settings.socialPrivacyDesc')}</p>
-          <div className="space-y-2">{[{ key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-3.5 h-3.5" /> }, { key: 'lastSeen', label: t('settings.lastSeen'), icon: <Clock className="w-3.5 h-3.5" /> }, { key: 'profilePhoto', label: t('settings.profilePhoto'), icon: <UserRound className="w-3.5 h-3.5" /> }, { key: 'about', label: t('settings.about'), icon: <Info className="w-3.5 h-3.5" /> }, { key: 'groups', label: t('settings.groups'), icon: <Users className="w-3.5 h-3.5" /> }, { key: 'calls', label: t('settings.calls'), icon: <Phone className="w-3.5 h-3.5" /> }, { key: 'readReceipts', label: t('settings.readReceipts'), icon: <CheckCheck className="w-3.5 h-3.5" /> }].map((item) => (<div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">{item.icon}</div><span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{item.label}</span></div><PrivacyScopeSelector value={socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope} onChange={(v) => { setSocialPrivacy(item.key as keyof SocialPrivacySettings, v); setSocialPrivacyState(getSocialPrivacy()); }} /></div>))}</div>
-          <SectionHeader icon={<ShieldAlert className="w-3.5 h-3.5" />} title={t('settings.blockedContacts')} />
+          <div className="space-y-2">{[
+            { key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-3.5 h-3.5" /> },
+            { key: 'lastSeen', label: t('settings.lastSeen'), icon: <Clock className="w-3.5 h-3.5" /> },
+            { key: 'profilePhoto', label: t('settings.profilePhoto'), icon: <UserCircle className="w-3.5 h-3.5" /> },
+            { key: 'about', label: t('settings.about'), icon: <Info className="w-3.5 h-3.5" /> },
+            { key: 'groups', label: t('settings.groups'), icon: <Users className="w-3.5 h-3.5" /> },
+            { key: 'calls', label: t('settings.calls'), icon: <Phone className="w-3.5 h-3.5" /> },
+            { key: 'readReceipts', label: t('settings.readReceipts'), icon: <CheckCheck2 className="w-3.5 h-3.5" /> },
+          ].map((item) => {
+            if (item.key === 'phoneNumber') {
+              const grantedCount = getPhoneAccessContacts().filter(c => c.hasAccess).length;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setPhoneAccessSheetOpen(true)}
+                  className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer"
+                  data-testid="settings-who-sees-phoneNumber"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
+                      {item.icon}
+                    </div>
+                    <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.phoneAccessCount', { count: grantedCount })}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 text-[10px] font-medium text-[var(--nova-accent-color)]">{grantedCount}</span>
+                  </div>
+                </button>
+              );
+            }
+            return (
+              <div key={item.key} className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition group cursor-pointer">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]">
+                    {item.icon}
+                  </div>
+                  <span className="text-[13px] text-[var(--nova-text-primary)] group-hover:text-[var(--nova-text-primary)] transition">{item.label}</span>
+                </div>
+                <PrivacyScopeSelector value={socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope} onChange={(v) => { setSocialPrivacy(item.key as keyof SocialPrivacySettings, v); setSocialPrivacyState(getSocialPrivacy()); }} />
+              </div>
+            );
+          })}
+          </div>
+          <SectionHeader icon={<ShieldExclamation className="w-3.5 h-3.5" />} title={t('settings.blockedContacts')} />
           <div className="px-1 py-2 space-y-2">{/* Blocked contacts list - placeholder */}<p className="text-[11px] text-[var(--nova-text-muted)]">Blocked contacts management coming soon</p></div>
           <SectionHeader icon={<MapPin className="w-3.5 h-3.5" />} title={t('settings.torRouting')} />
           <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1 mb-2">{t('settings.torRoutingDesc')}</p>
           <ToggleRow label={t('settings.torEnabled')} enabled={privacyPrefs.torEnabled} onToggle={() => updatePresencePref({ torEnabled: !privacyPrefs.torEnabled })} />
-          {privacyPrefs.torEnabled && (<div className="px-1 py-1 space-y-2"><button onClick={async () => { const ok = await probeTor(); setAboutMsg(ok ? 'Tor reachable' : 'Tor not reachable'); }} className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] text-xs font-medium transition cursor-pointer">{t('settings.torTest')}</button><p className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.torTestDesc')}</p></div>)}
+          {privacyPrefs.torEnabled && (<div className="px-1 py-1 space-y-2"><button onClick={async () => { const result = await probeTor(privacyPrefs.torSocksPort); setAboutMsg(result.ok ? 'Tor reachable' : 'Tor not reachable'); }} className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] text-xs font-medium transition cursor-pointer">{t('settings.torTest')}</button><p className="text-[10px] text-[var(--nova-text-muted)]">{t('settings.torTestDesc')}</p></div>)}
           <SectionHeader icon={<RotateCcw className="w-3.5 h-3.5" />} title="TURN Servers for IP-Privacy Calls" />
           <p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1 mb-2">Configure TURN servers for WebRTC IP masking during calls.</p>
           <div className="px-1 py-1 space-y-2">{/* TURN config placeholder */}<p className="text-[11px] text-[var(--nova-text-muted)]">TURN server configuration coming soon</p></div>
@@ -403,11 +517,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
           <SectionHeader icon={<Database className="w-3.5 h-3.5" />} title={t('settings.dataExport')} />
           <div className="px-1 py-2 space-y-2"><button onClick={handleExportMyData} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><FileText className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.exportMyData')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.exportMyDataDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button></div>
           <SectionHeader icon={<Database className="w-3.5 h-3.5" />} title={t('settings.dataBackup')} />
-          <div className="px-1 py-2 space-y-2"><button onClick={async () => { try { await uploadEncryptedBackup(); setAboutMsg('Backup uploaded'); } catch { setAboutMsg('Backup failed'); }}} disabled={!identity} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Upload className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.backupNow')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.backupNowDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button><button onClick={async () => { try { await downloadEncryptedBackup(); setAboutMsg('Backup downloaded'); } catch { setAboutMsg('Download failed'); }}} disabled={!identity} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Download className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.restoreBackup')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.restoreBackupDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button></div>
+          <div className="px-1 py-2 space-y-2"><button onClick={() => setAboutMsg('Cloud backup is not configured yet')} disabled={!identity} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Upload className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.backupNow')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.backupNowDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button><button onClick={() => setAboutMsg('Cloud backup is not configured yet')} disabled={!identity} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Download className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.restoreBackup')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.restoreBackupDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button></div>
           <SectionHeader icon={<Cloud className="w-3.5 h-3.5" />} title="Google Drive" />
           <div className="px-1 py-2 space-y-2"><div className="flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Cloud className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">Google Drive Sync</span><span className="text-[10px] text-[var(--nova-text-muted)] block">Sync settings & backups to Google Drive</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></div></div>
           <SectionHeader icon={<AlertTriangle className="w-3.5 h-3.5" />} title={t('settings.dangerZone')} />
-          <div className="px-1 py-2 space-y-2"><button onClick={handleClearAllData} disabled={clearDataConfirm} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-red-500/10 border border-red-500/20 transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400"><Trash2 className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-red-400">{t('settings.clearAllData')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.clearAllDataDesc')}</span></div></div></button>{clearDataConfirm && (<div className="space-y-2 p-3 rounded-xl border border-red-500/30 bg-red-500/5"><input type="password" placeholder="Enter PIN to confirm" value={clearDataPin} onChange={(e) => setClearDataPin(e.target.value.replace(/\D/g, ''))} className="w-full px-3 py-2 rounded-xl border border-red-500/30 bg-[var(--nova-surface)] text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-red-500/60 focus:outline-none" maxLength={6} /><button onClick={handleClearAllData} disabled={pinEnabled && clearDataPin.length < 4} className="w-full py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition cursor-pointer disabled:opacity-50">{t('settings.confirmClearAll')}</button><button type="button" onClick={() => { setClearDataConfirm(false); setClearDataPin(''); }} className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] text-xs font-medium transition cursor-pointer">{t('common.cancel')}</button></div>)}</div>
+          <div className="px-1 py-2 space-y-2"><button onClick={handleClearAllData} disabled={clearDataConfirm} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-red-500/10 border border-red-500/20 transition cursor-pointer disabled:opacity-50"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-400"><TrashX className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-red-400">{t('settings.clearAllData')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('settings.clearAllDataDesc')}</span></div></div></button>{clearDataConfirm && (<div className="space-y-2 p-3 rounded-xl border border-red-500/30 bg-red-500/5"><input type="password" placeholder="Enter PIN to confirm" value={clearDataPin} onChange={(e) => setClearDataPin(e.target.value.replace(/\D/g, ''))} className="w-full px-3 py-2 rounded-xl border border-red-500/30 bg-[var(--nova-surface)] text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-red-500/60 focus:outline-none" maxLength={6} /><button onClick={handleClearAllData} disabled={pinEnabled && clearDataPin.length < 4} className="w-full py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition cursor-pointer disabled:opacity-50">{t('settings.confirmClearAll')}</button><button type="button" onClick={() => { setClearDataConfirm(false); setClearDataPin(''); }} className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] text-xs font-medium transition cursor-pointer">{t('common.cancel')}</button></div>)}</div>
         </>
       );
       case 'advanced': return (
@@ -417,9 +531,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
           <SectionHeader icon={<Send className="w-3.5 h-3.5" />} title={t('settings.joinOutbox')} />
           <div className="px-1 py-2 space-y-2">{joinOutbox.length === 0 ? <p className="text-[11px] text-[var(--nova-text-muted)] text-center py-4">{t('settings.joinOutboxEmpty')}</p> : joinOutbox.map((item) => (<div key={item.id} className="flex items-center justify-between p-2 rounded-xl bg-[var(--nova-overlay-weak)]"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)]"><Send className="w-3 h-3" /></div><div><span className="text-[12px] font-medium text-[var(--nova-text-primary)]">{item.groupName}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">Retry: {item.retryCount}/{item.maxRetries}</span></div></div><span className="text-[10px] text-[var(--nova-text-muted)]">Next: {new Date(item.nextRetryAt).toLocaleTimeString()}</span></div>))}<button onClick={retryJoinOutboxNow} disabled={isRetryingJoin} className="w-full py-2 rounded-xl border border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] text-xs font-medium transition cursor-pointer disabled:opacity-50">{isRetryingJoin ? t('settings.retrying') : t('settings.retryAll')}</button></div>
           <SectionHeader icon={<Lock className="w-3.5 h-3.5" />} title={t('settings.security')} />
-          <div className="px-1 py-2 space-y-2"><ToggleRow label={t('settings.pinEnabled')} enabled={pinEnabled} onToggle={async () => { if (!pinEnabled) { const { setPin } = await import('../context/SecurityContext'); setPin('1234'); } else { const { clearPin } = await import('../context/SecurityContext'); clearPin(); } }} /><p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1">{t('settings.pinDesc')}</p>
+          <div className="px-1 py-2 space-y-2"><ToggleRow label={t('settings.pinEnabled')} enabled={pinEnabled} onToggle={async () => { if (pinEnabled) { await removePin(); return; } const pin = window.prompt('Set a 4-digit PIN'); if (pin && /^\d{4}$/.test(pin)) await setPin(pin); }} /><p className="text-[11px] leading-relaxed text-[var(--nova-text-muted)] px-1">{t('settings.pinDesc')}</p>
             <button onClick={handleCopySeedPhrase} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><Key className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('settings.showSeedPhrase')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{seedPhraseCopied ? t('settings.copied') : t('settings.showSeedPhraseDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button></div>
-          <SectionHeader icon={<ShieldAlert className="w-3.5 h-3.5" />} title={t('bot.title')} />
+          <SectionHeader icon={<ShieldExclamation className="w-3.5 h-3.5" />} title={t('bot.title')} />
           <div className="px-1 py-2 space-y-2">{/* Bot management placeholder */}<p className="text-[11px] text-[var(--nova-text-muted)]">Bot management UI coming soon</p></div>
           <SectionHeader icon={<BarChart3 className="w-3.5 h-3.5" />} title={t('analytics.title')} />
           <div className="px-1 py-2 space-y-2"><button onClick={onOpenAnalytics} className="w-full flex items-center justify-between py-2 px-1 rounded-xl hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"><div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)]"><BarChart3 className="w-3.5 h-3.5" /></div><div><span className="text-[13px] text-[var(--nova-text-primary)]">{t('analytics.title')}</span><span className="text-[10px] text-[var(--nova-text-muted)] block">{t('analytics.openDesc')}</span></div></div><ChevronRight className="w-4 h-4 text-[var(--nova-text-muted)] shrink-0" /></button></div>
@@ -454,14 +568,123 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
           <div className="flex items-center gap-2.5 flex-1"><div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)]"><Palette className="w-4 h-4" /></div><div><h3 id="settings-title" className="font-bold text-sm text-[var(--nova-text-primary)] leading-tight">{t('settings.title')}</h3><p className="text-[10.5px] text-[var(--nova-text-muted)]">{t('app.name')}</p></div></div>
           <div className="flex gap-1">
             {TAB_CONFIG.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition cursor-pointer min-h-[44px] ${activeTab === tab.id ? 'bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] font-semibold' : 'text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'} min-w-[80px]`}><tab.icon /><span className="text-[11px]">{t(`settings.tab${tab.id.charAt(0).toUpperCase() + tab.id.slice(1)}`)}</span></button>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition cursor-pointer min-h-[44px] ${activeTab === tab.id ? 'bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] font-semibold' : 'text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'} min-w-[80px]`}>{tab.icon}<span className="text-[11px]">{t(`settings.tab${tab.id.charAt(0).toUpperCase() + tab.id.slice(1)}`)}</span></button>
             ))}
           </div>
         </div>
         <div className="overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 space-y-1 flex-1 min-h-0">{renderTab(activeTab)}</div>
       </div>
+        {/* Phone Access Sheet */}
+        <SettingsSheet
+          open={phoneAccessSheetOpen}
+          onClose={() => setPhoneAccessSheetOpen(false)}
+          title={t('settings.phoneAccessTitle', { defaultValue: 'Who can see your phone number' })}
+          description={t('settings.phoneAccessDesc', { defaultValue: 'Only people you explicitly grant access can see your phone number. Contacts do not get access automatically.' })}
+          testId="settings-phone-access-sheet"
+        >
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {(() => {
+              const contacts = getPhoneAccessContacts();
+              if (contacts.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 text-[var(--nova-text-muted)] text-[11px]">
+                    {t('settings.noContactsWithPhone', { defaultValue: 'No contacts with phone numbers' })}
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-1.5">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--nova-overlay-weak)] flex items-center justify-center shrink-0">
+                          {contact.avatar ? (
+                            <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-xs font-bold text-[var(--nova-accent-color)]">
+                              {contact.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-[var(--nova-text-primary)] truncate">{contact.name}</p>
+                          {contact.nickname && <p className="text-[10px] text-[var(--nova-text-muted)] truncate">@{contact.nickname}</p>}
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={contact.hasAccess}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              grantPhoneAccess(contact.id);
+                            } else {
+                              revokePhoneAccess(contact.id);
+                            }
+                            setSocialPrivacyState(getSocialPrivacy());
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 rounded-full border-2 transition-colors ${
+                          contact.hasAccess
+                            ? 'bg-[var(--nova-accent-color)] border-[var(--nova-accent-color)]'
+                            : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)]'
+                        }`}>
+                          <span className={`inline-block w-5 h-5 rounded-full bg-white transform transition-transform ${
+                            contact.hasAccess ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+          <div className="shrink-0 border-t border-[var(--nova-border-subtle)] p-4">
+            <button
+              type="button"
+              onClick={() => setPhoneAccessSheetOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-medium hover:opacity-90 transition cursor-pointer"
+            >
+              {t('common.done', { defaultValue: 'Done' })}
+            </button>
+          </div>
+        </SettingsSheet>
+
+      {cryptoModalOpen && (
+        <CryptoCheckoutModal
+          isOpen={cryptoModalOpen}
+          onClose={() => setCryptoModalOpen(false)}
+          onSuccess={() => setCryptoModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
 
 export default SettingsModalTabbed;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Gift, Paperclip, Phone, Send, ShieldCheck, Trash2, Video } from 'lucide-react';
+import {IconArrowLeft as ArrowLeft, IconCopy as Copy, IconGift as Gift, IconPaperclip as Paperclip, IconPhone as Phone, IconSend as Send, IconShieldCheck as ShieldCheck, IconTrashX as Trash2, IconTrash as Trash, IconVideo as Video} from '@tabler/icons-react';
 import { toDataURL } from 'qrcode';
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeDownloadMime } from '../lib/security/safeUrl';
@@ -26,8 +26,7 @@ import {
   sendContactOffer,
   sendContactMessage,
   type Contact,
-  type LocalInbox,
-} from '../lib/anon/pairing';
+  type LocalInbox} from '../lib/anon/pairing';
 import { decodeInvite, encodeInvite, isAllowedRelayUrl } from '../lib/anon/session';
 import { buildContactInviteUrl, buildNativeContactInviteUrl, parseDeepLink, parseDeepLinkFromHash } from '../lib/network/deepLinks';
 import { isTauriRuntime } from '../lib/network/tauriDeepLinks';
@@ -39,8 +38,7 @@ import {
   markAbuseReportUploaded,
   recordAbuseReport,
   unblockSender,
-  type AbuseCategory,
-} from '../lib/anon/blocks';
+  type AbuseCategory} from '../lib/anon/blocks';
 import { queueSigningPublicKey } from '../lib/anon/signing';
 import { createAnonTransport } from '../lib/anon/transport';
 import { createAutoTransport, LocalAnonTransport } from '../lib/anon/localTransport';
@@ -52,19 +50,16 @@ import {
   assembleFile,
   createFileEnvelopes,
   parseFileEnvelope,
-  type FileEnvelope,
-} from '../lib/anon/fileTransfer';
+  type FileEnvelope} from '../lib/anon/fileTransfer';
 import {
   DEFAULT_QUEUE_ROTATION_MS,
   shouldRotateQueue,
-  type RelayEndpoint,
-} from '../lib/anon/relays';
+  type RelayEndpoint} from '../lib/anon/relays';
 import {
   noteRelayFailure,
   noteRelaySuccess,
   shouldFailoverRelay,
-  type RelayFailureMap,
-} from '../lib/anon/relayHealth';
+  type RelayFailureMap} from '../lib/anon/relayHealth';
 import { DummyTrafficScheduler } from '../lib/anon/jitter';
 import { planRelayEndpoints, relayEndpointsFromEnv } from '../lib/anon/relayEndpoints';
 import {
@@ -73,8 +68,7 @@ import {
   readBatteryStatus,
   shouldEmitCoverTraffic,
   type BatteryStatus,
-  type PrivacyPrefs,
-} from '../lib/network/privacyMode';
+  type PrivacyPrefs} from '../lib/network/privacyMode';
 import { clearPendingPremiumGiftOrder, purchasePremiumGiftCode } from '../lib/premium';
 
 const STORAGE_KEY = 'anon_messenger_state_v1';
@@ -2038,7 +2032,7 @@ export const AnonymousMessengerScreen: React.FC<{
           type="button"
           onClick={onBack}
           aria-label={t('common.back')}
-          className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white transition active:scale-95"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
@@ -2183,7 +2177,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     readOnly
                     value={inviteLink}
                     rows={2}
-                    className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-2 font-mono text-xs text-white/80"
+                    className="w-full resize-none bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white/80 font-mono placeholder-white/40"
                   />
                 </label>
                 {webInviteLink && (
@@ -2193,7 +2187,7 @@ export const AnonymousMessengerScreen: React.FC<{
                       readOnly
                       value={webInviteLink}
                       rows={2}
-                      className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-2 font-mono text-xs text-white/80"
+                      className="w-full resize-none bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white/80 font-mono placeholder-white/40"
                     />
                   </label>
                 )}
@@ -2253,7 +2247,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 value={inviteInput}
                 onChange={(event) => setInviteInput(event.target.value)}
                 rows={2}
-                className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-2 font-mono text-xs text-white"
+                className="w-full resize-none bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
               />
             </label>
             <button
@@ -2329,7 +2323,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     placeholder={placeholder}
                     autoComplete="off"
                     spellCheck={false}
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-[var(--nova-accent-color)]"
+                    className="w-full bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
                   />
                 </label>
               ))}
@@ -2690,3 +2684,23 @@ export const AnonymousMessengerScreen: React.FC<{
     </main>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

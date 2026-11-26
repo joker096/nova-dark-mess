@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Check, Image as ImageIcon, Upload } from 'lucide-react';
+import {IconCheck as Check, IconPhoto as Photo, IconPhoto as ImageIcon, IconUpload as Upload} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { MEDIA_PRESETS, type MediaPreset } from '../data/mediaPresets';
 import { readImageFile } from '../lib/ui/image';
@@ -129,3 +129,13 @@ export const ImagePicker: React.FC<ImagePickerProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

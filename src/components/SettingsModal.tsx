@@ -1,5 +1,76 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Check, Bell, Lock, Database, Palette, Info, Languages, Download, Upload, FileText, Moon, Monitor, Sun, Copy, AlertTriangle, Sparkles, DollarSign, Send, BarChart3, ChevronRight, ShieldAlert, Megaphone, RotateCcw, Ban, Settings, Hand, MapPin, Plus, Film, Bot, Cloud, HardDrive, Trash2, Globe, UserRound, Users, Phone, Clock, ShieldCheck, MessageSquare, VolumeX, Star, SlidersHorizontal, Type, Vibrate, BellRing, BellOff, Eye, Shield, ShieldHalf, Wifi, Hash, HelpCircle, KeyRound, Volume2, Crown, LayoutGrid, Fingerprint } from 'lucide-react';
+import {
+  IconX as X,
+  IconCheck as Check,
+  IconBell as Bell,
+  IconLock as Lock,
+  IconDatabase as Database,
+  IconPalette as Palette,
+  IconInfoCircle as Info,
+  IconLanguage as Language,
+  IconDownload as Download,
+  IconUpload as Upload,
+  IconFileText as FileText,
+  IconMoon as Moon,
+  IconDeviceDesktop as Monitor,
+  IconSun as Sun,
+  IconCopy as Copy,
+  IconAlertTriangle as AlertTriangle,
+  IconSparkles as Sparkles,
+  IconCurrencyDollar as DollarSign,
+  IconSend as Send,
+  IconChartBar as BarChart,
+  IconChartBar as BarChart3,
+  IconChevronRight as ChevronRight,
+  IconShieldHeart as ShieldHeart,
+  IconSpeakerphone as Megaphone,
+  IconRotate as Rotate,
+  IconRotateClockwise as RotateCcw,
+  IconBan as Ban,
+  IconSettings as Settings,
+  IconHandClick as Hand,
+  IconMapPin as MapPin,
+  IconPlus as Plus,
+  IconMovie as Film,
+  IconRobot as Bot,
+  IconCloud as Cloud,
+  IconDeviceFloppy as HardDrive,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconGlobe as Globe,
+  IconUser as User,
+  IconUsers as Users,
+  IconUserCircle as UserRound,
+  IconUserCircle as UserCircle,
+  IconPhone as Phone,
+  IconClock as Clock,
+  IconShieldCheck as ShieldCheck,
+  IconMessageCircle as MessageCircle,
+  IconVolumeOff as VolumeX,
+  IconStar as Star,
+  IconAdjustmentsHorizontal as SlidersHorizontal,
+  IconTypography as Type,
+  IconDeviceMobileVibration as Vibrate,
+  IconBellRinging as BellRing,
+  IconBellOff as BellOff,
+  IconEye as Eye,
+  IconShield as Shield,
+  IconShieldHalf as ShieldHalf,
+  IconShieldExclamation as ShieldExclamation,
+  IconWifi as Wifi,
+  IconHash as Hash,
+  IconHelpCircle as HelpCircle,
+  IconKey as KeyRound,
+  IconVolume2 as Volume2,
+  IconCrown as Crown,
+  IconLayoutGrid as LayoutGrid,
+  IconFingerprint as Fingerprint,
+  IconChecks as CheckCheck2,
+  IconAlertCircle as AlertCircle,
+  IconLink as Link,
+  IconMessageCircle as MessageSquare,
+  IconMovie as Movie,
+} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -19,24 +90,28 @@ import {
   shouldEmitCoverTraffic,
   probeTor,
   type BatteryStatus,
-  type PrivacyPrefs,
-} from '../lib/network/privacyMode';
+  type PrivacyPrefs} from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
 import {
   getSocialPrivacy,
   setSocialPrivacy,
   setContactBlocked,
   getBlockedContactsWithProfiles,
+  getPhoneAccessContacts,
+  grantPhoneAccess,
+  revokePhoneAccess,
   type SocialPrivacySettings,
-  type PrivacyScope,
-} from '../lib/social/socialPrivacy';
+  type PrivacyScope} from '../lib/social/socialPrivacy';
+import {
+  getSocialEngineeringSettings,
+  setSocialEngineeringSetting,
+  type SocialEngineeringSettings} from '../lib/security/socialEngineering';
 import {
   clearLocalAdPrefs,
   loadAdPreferences,
   restoreHiddenAd,
   unblockAdvertiser,
-  type LocalAdPreferences,
-} from '../lib/ads/localAds';
+  type LocalAdPreferences} from '../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import {
   getNotificationPrefs,
@@ -49,14 +124,20 @@ import {
   getPriorityContacts,
   type NotificationPrefs,
   type NotificationLevel,
-  type MuteDurationKey,
-} from '../lib/notifications/notificationPrefs';
+  type MuteDurationKey} from '../lib/notifications/notificationPrefs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
 import { LegalModal } from './LegalModal';
 import { SanctionScreen } from './SanctionScreen';
 import { AccountSwitcher } from './AccountSwitcher';
+import { useSettings } from '../context/SettingsContext';
+import { GeneralTab } from './settings/tabs/GeneralTab';
+import { NotificationsTab } from './settings/tabs/NotificationsTab';
+import { PrivacyTab } from './settings/tabs/PrivacyTab';
+import { DataTab } from './settings/tabs/DataTab';
+import { AdvancedTab } from './settings/tabs/AdvancedTab';
+import { AboutTab } from './settings/tabs/AboutTab';
 import {
   SettingsTabs,
   SettingsTile,
@@ -66,8 +147,7 @@ import {
   InfoHint,
   SettingsSheet,
   HoldToConfirm,
-  SettingsSection,
-} from './settings/settingsPrimitives';
+  SettingsSection} from './settings/settingsPrimitives';
 import {
   ACCENT_COLORS,
   APP_THEME_KEY,
@@ -79,8 +159,7 @@ import {
   readAppTheme,
   readFabSide,
   saveFabSide,
-  type FabSide,
-} from '../lib/ui/appearance';
+  type FabSide} from '../lib/ui/appearance';
 
 import type { BotSession } from '../lib/bots/session';
 import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest';
@@ -282,6 +361,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenMeshMap,
 }) => {
   const { t, language, changeLanguage } = useLanguage();
+  const { state, updateAppSetting } = useSettings();
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen, onClose);
   const { premium, loading, checkout, canUse, freeDaysRemaining, minSubscriptionCost } = usePremium();
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -328,6 +408,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [cloudToken, setCloudToken] = useState('');
   const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(loadPrivacyPrefs);
   const [socialPrivacy, setSocialPrivacyState] = useState<SocialPrivacySettings>(() => getSocialPrivacy());
+  const [socialEngineering, setSocialEngineeringState] = useState<SocialEngineeringSettings>(() => getSocialEngineeringSettings());
   const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>(() => getNotificationPrefs());
   const [torStatus, setTorStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [newRelayUrl, setNewRelayUrl] = useState('');
@@ -409,12 +490,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const toastTimer = useRef<number | null>(null);
 
   // New tabbed settings state
-  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'privacy' | 'security' | 'data' | 'more'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'privacy' | 'advanced' | 'data' | 'about'>('general');
   const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
   const [melodySheetOpen, setMelodySheetOpen] = useState(false);
   const [premiumSheetOpen, setPremiumSheetOpen] = useState(false);
   const [privacyPresetSheetOpen, setPrivacyPresetSheetOpen] = useState(false);
   const [whoSeesSheetOpen, setWhoSeesSheetOpen] = useState<string | null>(null);
+  const [phoneAccessSheetOpen, setPhoneAccessSheetOpen] = useState(false);
   const [relaysSheetOpen, setRelaysSheetOpen] = useState(false);
   const [turnSheetOpen, setTurnSheetOpen] = useState(false);
   const [torSheetOpen, setTorSheetOpen] = useState(false);
@@ -1281,7 +1363,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const derivePrivacyPreset = (prefs: PrivacyPrefs, social: SocialPrivacySettings): 'basic' | 'enhanced' | 'maximum' | 'custom' => {
     const isBasic = !prefs.metadataMinimization && !prefs.presenceSharing && prefs.webrtcRelayOnly === false &&
       social.lastSeen === 'contacts' && social.profilePhoto === 'contacts' && social.calls === 'contacts' &&
-      social.groupsAndChannels === 'contacts' && social.phoneNumber === 'contacts' &&
+      social.groupsAndChannels === 'contacts' && social.phoneNumber === 'nobody' &&
       !prefs.torEnabled && prefs.relayEndpoints.length === 0 && prefs.turnServers.length === 0;
     const isEnhanced = prefs.metadataMinimization && prefs.presenceSharing === false && prefs.webrtcRelayOnly === true &&
       social.lastSeen === 'contacts' && social.profilePhoto === 'contacts' && social.calls === 'contacts' &&
@@ -1302,35 +1384,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const nextPrefs = { ...privacyPrefs, metadataMinimization: false, webrtcRelayOnly: false, torEnabled: false, relayEndpoints: [], turnServers: [] };
       setPrivacyPrefs(nextPrefs);
       savePrivacyPrefs(nextPrefs);
-      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'contacts' as PrivacyScope, blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
-      setSocialPrivacyState(nextSocial);
-      setSocialPrivacy('lastSeen', 'contacts');
-      setSocialPrivacy('profilePhoto', 'contacts');
-      setSocialPrivacy('calls', 'contacts');
-      setSocialPrivacy('groupsAndChannels', 'contacts');
-      setSocialPrivacy('phoneNumber', 'contacts');
-    } else if (name === 'enhanced') {
-      const nextPrefs = { ...privacyPrefs, metadataMinimization: true, webrtcRelayOnly: true, torEnabled: false, relayEndpoints: [{ id: 'relay_default', url: 'https://relay.example.com', operator: 'Example' }], turnServers: [] };
-      setPrivacyPrefs(nextPrefs);
-      savePrivacyPrefs(nextPrefs);
-      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope, blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
+      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope, phoneAccess: [] as string[], blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
       setSocialPrivacyState(nextSocial);
       setSocialPrivacy('lastSeen', 'contacts');
       setSocialPrivacy('profilePhoto', 'contacts');
       setSocialPrivacy('calls', 'contacts');
       setSocialPrivacy('groupsAndChannels', 'contacts');
       setSocialPrivacy('phoneNumber', 'nobody');
+      setSocialPrivacy('phoneAccess', []);
+    } else if (name === 'enhanced') {
+      const nextPrefs = { ...privacyPrefs, metadataMinimization: true, webrtcRelayOnly: true, torEnabled: false, relayEndpoints: [{ id: 'relay_default', url: 'https://relay.example.com', operator: 'Example' }], turnServers: [] };
+      setPrivacyPrefs(nextPrefs);
+      savePrivacyPrefs(nextPrefs);
+      const nextSocial = { lastSeen: 'contacts' as PrivacyScope, profilePhoto: 'contacts' as PrivacyScope, calls: 'contacts' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope, phoneAccess: [] as string[], blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
+      setSocialPrivacyState(nextSocial);
+      setSocialPrivacy('lastSeen', 'contacts');
+      setSocialPrivacy('profilePhoto', 'contacts');
+      setSocialPrivacy('calls', 'contacts');
+      setSocialPrivacy('groupsAndChannels', 'contacts');
+      setSocialPrivacy('phoneNumber', 'nobody');
+      setSocialPrivacy('phoneAccess', []);
     } else if (name === 'maximum') {
       const nextPrefs = { ...privacyPrefs, metadataMinimization: true, webrtcRelayOnly: true, torEnabled: true, relayEndpoints: [{ id: 'relay_default', url: 'https://relay.example.com', operator: 'Example' }], turnServers: [{ urls: 'turn:relay.example.com' }] };
       setPrivacyPrefs(nextPrefs);
       savePrivacyPrefs(nextPrefs);
-      const nextSocial = { lastSeen: 'nobody' as PrivacyScope, profilePhoto: 'nobody' as PrivacyScope, calls: 'nobody' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope, blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
+      const nextSocial = { lastSeen: 'nobody' as PrivacyScope, profilePhoto: 'nobody' as PrivacyScope, calls: 'nobody' as PrivacyScope, groupsAndChannels: 'contacts' as PrivacyScope, phoneNumber: 'nobody' as PrivacyScope, phoneAccess: [] as string[], blockedUsers: [] as string[], exceptions: {} as Record<string, PrivacyScope> };
       setSocialPrivacyState(nextSocial);
       setSocialPrivacy('lastSeen', 'nobody');
       setSocialPrivacy('profilePhoto', 'nobody');
       setSocialPrivacy('calls', 'nobody');
       setSocialPrivacy('groupsAndChannels', 'contacts');
       setSocialPrivacy('phoneNumber', 'nobody');
+      setSocialPrivacy('phoneAccess', []);
     }
     setPrivacyPresetSheetOpen(false);
     showToast(t('settings.presetApplied', { name: t(`settings.preset${name.charAt(0).toUpperCase() + name.slice(1)}`) }));
@@ -1460,9 +1545,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { key: 'general' as const, label: t('settings.tabGeneral'), icon: <SlidersHorizontal className="w-4 h-4" /> },
     { key: 'notifications' as const, label: t('settings.tabNotifications'), icon: <Bell className="w-4 h-4" /> },
     { key: 'privacy' as const, label: t('settings.tabPrivacy'), icon: <Shield className="w-4 h-4" /> },
-    { key: 'security' as const, label: t('settings.tabSecurity'), icon: <Lock className="w-4 h-4" /> },
+    { key: 'advanced' as const, label: t('settings.tabAdvanced'), icon: <LayoutGrid className="w-4 h-4" /> },
     { key: 'data' as const, label: t('settings.tabData'), icon: <Database className="w-4 h-4" /> },
-    { key: 'more' as const, label: t('settings.tabMore'), icon: <LayoutGrid className="w-4 h-4" /> },
+    { key: 'about' as const, label: t('settings.tabAbout'), icon: <Info className="w-4 h-4" /> },
   ];
 
   return (
@@ -1479,7 +1564,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         className="bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-3xl w-full max-w-md text-[var(--nova-text-primary)] shadow-2xl max-h-[calc(100dvh-2rem-var(--nova-safe-top)-var(--nova-safe-bottom))] sm:max-h-[88vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 pb-3 border-b border-[var(--nova-border-subtle)] shrink-0">
+        <div className="flex h-[52px] shrink-0 items-center justify-between gap-2 border-b border-[var(--nova-border-subtle)] px-4">
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <div className="w-9 h-9 rounded-2xl bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/30 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
               <Palette className="w-4 h-4" />
@@ -1502,7 +1587,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
               aria-label={t('common.close')}
               title={t('common.close')}
             >
@@ -1524,393 +1609,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* General Tab */}
           {activeTab === 'general' && (
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.general')}
-                description={t('settings.generalDesc')}
-              >
-                {/* Language Tile - full width navigation */}
-                <SettingsTile
-                  icon={<Languages className="w-5 h-5" />}
-                  label={t('settings.language')}
-                  description={t('settings.languageDesc')}
-                  badge={<span className="text-[11px] font-mono text-[var(--nova-text-muted)]">{t(`common.lang${language.charAt(0).toUpperCase() + language.slice(1)}`)}</span>}
-                  onClick={() => setLanguageSheetOpen(true)}
-                  testId="settings-language-tile"
-                />
-
-                {/* Inline cycle controls - 2 column grid */}
-                <div className="grid grid-cols-2 gap-2 pt-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.appearance')}>
-                  {/* Theme Cycle */}
-                  <IconCycleButton
-                    icon={appTheme === 'light' ? <Sun className="w-5 h-5" /> : appTheme === 'dark' ? <Moon className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-                    label={t('settings.theme')}
-                    valueLabel={appTheme === 'light' ? t('settings.themeLight') : appTheme === 'dark' ? t('settings.themeDark') : t('settings.themeSystem')}
-                    onClick={cycleTheme}
-                    ariaLabel={t('settings.themeAria', { value: appTheme })}
-                    testId="settings-theme-cycle"
-                  />
-
-                  {/* Font Size Cycle */}
-                  <IconCycleButton
-                    icon={<Type className="w-5 h-5" />}
-                    label={t('settings.fontSize')}
-                    valueLabel={prefs.fontSize === 'small' ? t('settings.fontSmall') : prefs.fontSize === 'medium' ? t('settings.fontMedium') : t('settings.fontLarge')}
-                    onClick={cycleFontSize}
-                    ariaLabel={t('settings.fontSizeAria', { value: t(`settings.font${prefs.fontSize.charAt(0).toUpperCase() + prefs.fontSize.slice(1)}`) })}
-                    testId="settings-font-cycle"
-                  />
-
-                  {/* Hand Toggle */}
-                  <IconCycleButton
-                    icon={<Hand className={`w-5 h-5 ${fabSide === 'left' ? '-scale-x-100' : ''}`} />}
-                    label={t('settings.fabSide', { defaultValue: 'One-handed button' })}
-                    valueLabel={fabSide === 'right' ? t('settings.fabHandRight', { defaultValue: 'Right' }) : t('settings.fabHandLeft', { defaultValue: 'Left' })}
-                    onClick={cycleFabSide}
-                    ariaLabel={t('settings.fabSideAria', { value: fabSide })}
-                    testId="settings-hand-cycle"
-                  />
-
-                  {/* Sound Mode Cycle (Sound → Vibration → Silent) */}
-                  <IconCycleButton
-                    icon={prefs.notificationSound ? (prefs.vibration ? <Vibrate className="w-5 h-5" /> : <BellRing className="w-5 h-5" />) : <BellOff className="w-5 h-5" />}
-                    label={t('settings.soundMode')}
-                    valueLabel={getSoundModeLabel()}
-                    onClick={cycleSoundMode}
-                    onLongPress={() => setMelodySheetOpen(true)}
-                    ariaLabel={t('settings.soundModeAria', { value: getSoundModeLabel() })}
-                    testId="settings-sound-cycle"
-                  />
-                </div>
-
-                {/* Privacy Preset Tile - full width navigation */}
-                <SettingsTile
-                  icon={currentPrivacyPreset === 'maximum' ? <ShieldCheck className="w-5 h-5" /> : currentPrivacyPreset === 'enhanced' ? <ShieldHalf className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
-                  label={t('settings.privacyPreset')}
-                  description={t('settings.privacyPresetDesc')}
-                  badge={
-                    <>
-                      {currentPrivacyPreset !== 'custom' ? (
-                        <span className="text-[11px] font-medium text-[var(--nova-accent-color)] capitalize">{t(`settings.preset${currentPrivacyPreset.charAt(0).toUpperCase() + currentPrivacyPreset.slice(1)}`)}</span>
-                      ) : (
-                        <span className="relative flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />
-                          <span className="text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.presetCustom')}</span>
-                        </span>
-                      )}
-                    </>
-                  }
-                  onClick={() => setPrivacyPresetSheetOpen(true)}
-                  testId="settings-privacy-preset-tile"
-                />
-
-                {/* Message Colors - 4 swatches */}
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[12px] font-medium text-[var(--nova-text-primary)]">{t('settings.chatColors')}</span>
-                    <InfoHint label={t('settings.chatColorsDesc')} />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 overflow-x-auto no-scrollbar min-w-0" role="radiogroup" aria-label={t('settings.chatColors')}>
-                    {CHAT_COLOR_OPTIONS.map((opt, idx) => {
-                      const label = opt.value === 'default' ? t('settings.chatColorDefault') : opt.value === 'sapphire' ? t('settings.chatColorSapphire') : opt.value === 'amethyst' ? t('settings.chatColorAmethyst') : t('settings.chatColorEmerald');
-                      const isPremiumLocked = opt.value !== 'default' && !canUse('chat_themes');
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={chatColorTheme === opt.value}
-                          aria-disabled={isPremiumLocked}
-                          aria-label={label}
-                          onClick={() => {
-                            if (isPremiumLocked) {
-                              checkout();
-                              return;
-                            }
-                            setChatColorTheme(opt.value);
-                            try {
-                              localStorage.setItem(CHAT_THEME_KEY, opt.value);
-                            } catch { void 0; }
-                          }}
-                          className={`relative flex flex-col items-center gap-1.5 flex-1 py-3 px-2 rounded-xl border transition cursor-pointer min-h-[56px] ${isPremiumLocked ? 'opacity-60' : ''} ${chatColorTheme === opt.value ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] hover:border-[var(--nova-accent-color)]/30'}`}
-                          style={{ minWidth: '56px' }}
-                        >
-                          <div className="relative w-10 h-10 rounded-full border border-[var(--nova-border-subtle)] shadow-sm overflow-hidden">
-                            <div className={`absolute inset-0 bg-gradient-to-tr ${opt.grad}`} />
-                            <div className="absolute inset-1 rounded-full bg-[var(--nova-overlay-strong)]" />
-                            {isPremiumLocked && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                                <Lock className="w-4 h-4 text-[var(--nova-text-primary)]" />
-                              </div>
-                            )}
-                            {chatColorTheme === opt.value && (
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <Check className="w-5 h-5 text-[var(--nova-accent-color)] drop-shadow-sm" />
-                              </div>
-                            )}
-                          </div>
-                          <span className={`text-[10px] font-medium ${isPremiumLocked ? 'text-[var(--nova-text-muted)]' : ''}`}>{label}</span>
-                          {isPremiumLocked && (
-                            <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-accent-color)] flex items-center justify-center text-[9px] font-bold">
-                              <Lock className="w-2 h-2 fill-[var(--nova-text-primary)]" />
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </SettingsSection>
+              <GeneralTab />
             </div>
           )}
 
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.notifications')}
-                description={t('settings.notificationsDesc')}
-              >
-                {/* Notification Matrix - 4 rows IconCycleButton in 2-col grid */}
-                <div className="grid grid-cols-2 gap-2" role="group" aria-label={t('settings.chatNotifications')}>
-                  {[
-                    { key: 'privateChats', label: t('settings.privateChats'), icon: <MessageSquare className="w-5 h-5" /> },
-                    { key: 'groups', label: t('settings.groupChats'), icon: <Users className="w-5 h-5" /> },
-                    { key: 'channels', label: t('settings.channelChats'), icon: <Megaphone className="w-5 h-5" /> },
-                    { key: 'bots', label: t('settings.botChats'), icon: <Bot className="w-5 h-5" /> },
-                  ].map((item) => {
-                    const current = notificationPrefs[item.key as keyof NotificationPrefs] as NotificationLevel;
-                    return (
-                      <IconCycleButton
-                        key={item.key}
-                        icon={item.icon}
-                        label={item.label}
-                        valueLabel={current === 'all' ? t('settings.notificationsAll') : current === 'mentions' ? t('settings.notificationsMentions') : t('settings.notificationsNone')}
-                        onClick={() => {
-                          const next = cycleNotificationLevel(current);
-                          setNotificationPref(item.key as keyof NotificationPrefs, next);
-                          setNotificationPrefsState(getNotificationPrefs());
-                        }}
-                        ariaLabel={t('settings.notificationLevelAria', { type: item.label, level: t(`settings.notifications${current.charAt(0).toUpperCase() + current.slice(1)}`) })}
-                        testId={`settings-notify-${item.key}`}
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* Apply All Button */}
-                <button
-                  type="button"
-                  onClick={() => setAllNotificationLevels('all')}
-                  className="w-full py-2 px-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[12px] font-medium text-[var(--nova-text-secondary)] hover:bg-[var(--nova-accent-color)]/20 hover:border-[var(--nova-accent-color)]/30 hover:text-[var(--nova-accent-color)] transition cursor-pointer"
-                >
-                  {t('settings.notificationsApplyAll')}
-                </button>
-
-                {/* Global Toggles - 2 column grid */}
-                <div className="grid grid-cols-2 gap-2 pt-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.globalToggles')}>
-                  <IconToggle
-                    icon={<Eye className="w-5 h-5" />}
-                    label={t('settings.previewMessages')}
-                    checked={prefs.previewMessages}
-                    onChange={(v) => updatePref('previewMessages', v)}
-                    ariaLabel={t('settings.previewMessagesAria', { value: prefs.previewMessages ? t('common.on') : t('common.off') })}
-                    testId="settings-preview-toggle"
-                  />
-                  <IconToggle
-                    icon={<Vibrate className="w-5 h-5" />}
-                    label={t('settings.vibration')}
-                    checked={prefs.vibration}
-                    onChange={(v) => updatePref('vibration', v)}
-                    ariaLabel={t('settings.vibrationAria', { value: prefs.vibration ? t('common.on') : t('common.off') })}
-                    testId="settings-vibration-toggle"
-                  />
-                  <IconToggle
-                    icon={<BellRing className="w-5 h-5" />}
-                    label={t('settings.pushNotifications')}
-                    checked={prefs.pushEnabled}
-                    onChange={handlePushToggle}
-                    ariaLabel={t('settings.pushNotificationsAria', { value: prefs.pushEnabled ? t('common.on') : t('common.off') })}
-                    badge={pushMsg && <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />}
-                    testId="settings-push-toggle"
-                  />
-                </div>
-
-                {/* Muted / Priority badge rows - full width navigation tiles */}
-                <div className="grid grid-cols-2 gap-2 pt-2 overflow-x-auto no-scrollbar min-w-0">
-                  <SettingsTile
-                    icon={<VolumeX className="w-5 h-5" />}
-                    label={t('settings.mutedContacts')}
-                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.contactsCount', { count: getMutedContacts().length })}</span>}
-                    onClick={openMutedContacts}
-                    testId="settings-muted-contacts"
-                  />
-                  <SettingsTile
-                    icon={<Star className="w-5 h-5" />}
-                    label={t('settings.priorityContacts')}
-                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.contactsCount', { count: getPriorityContacts().length })}</span>}
-                    onClick={openPriorityContacts}
-                    testId="settings-priority-contacts"
-                  />
-                </div>
-              </SettingsSection>
+              <NotificationsTab />
             </div>
           )}
 
           {/* Privacy Tab */}
           {activeTab === 'privacy' && (
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.privacyPreset')}
-                description={t('settings.privacyPresetDesc')}
-              >
-                {/* Privacy Preset Segmented */}
-                <IconSegmented<string>
-                  options={[
-                    { value: 'basic', label: t('settings.presetBasic'), icon: <Shield className="w-4 h-4" /> },
-                    { value: 'enhanced', label: t('settings.presetEnhanced'), icon: <ShieldHalf className="w-4 h-4" /> },
-                    { value: 'maximum', label: t('settings.presetMaximum'), icon: <ShieldCheck className="w-4 h-4" /> },
-                  ]}
-                  value={currentPrivacyPreset === 'custom' ? 'basic' : currentPrivacyPreset}
-                  onChange={(v) => applyPrivacyPreset(v as 'basic' | 'enhanced' | 'maximum')}
-                  ariaLabel={t('settings.privacyPresetAria')}
-                  testId="settings-privacy-preset-segmented"
-                />
-                {currentPrivacyPreset === 'custom' && (
-                  <p className="text-[11px] text-[var(--nova-text-muted)] text-center mt-2 flex items-center justify-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-accent-color)]" />
-                    <span>{t('settings.presetCustom')}</span>
-                    <InfoHint label={t('settings.presetHint')} />
-                  </p>
-                )}
-              </SettingsSection>
-
-              <SettingsSection
-                title={t('settings.whoSees')}
-                description={t('settings.whoSeesDesc')}
-              >
-                {/* Who Sees - 2 column grid */}
-                <div className="grid grid-cols-2 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.whoSees')}>
-                  {[
-                    { key: 'lastSeen', label: t('settings.lastSeen'), icon: <Clock className="w-5 h-5" /> },
-                    { key: 'profilePhoto', label: t('settings.profilePhoto'), icon: <UserRound className="w-5 h-5" /> },
-                    { key: 'calls', label: t('settings.calls'), icon: <Phone className="w-5 h-5" /> },
-                    { key: 'groupsAndChannels', label: t('settings.groups'), icon: <Users className="w-5 h-5" /> },
-                    { key: 'phoneNumber', label: t('settings.phoneNumber'), icon: <Phone className="w-5 h-5" /> },
-                  ].map((item) => {
-                    const current = socialPrivacy[item.key as keyof SocialPrivacySettings] as PrivacyScope;
-                    return (
-                      <IconCycleButton
-                        key={item.key}
-                        icon={item.icon}
-                        label={item.label}
-                        valueLabel={current === 'everyone' ? t('settings.everyone') : current === 'contacts' ? t('settings.contacts') : t('settings.nobody')}
-                        onClick={() => {
-                          const scopes: PrivacyScope[] = ['everyone', 'contacts', 'nobody'];
-                          const next = scopes[(scopes.indexOf(current) + 1) % 3];
-                          setSocialPrivacy(item.key as keyof SocialPrivacySettings, next);
-                          setSocialPrivacyState(getSocialPrivacy());
-                        }}
-                        ariaLabel={t('settings.whoSeesAria', { type: item.label, scope: t(`settings.${current}`) })}
-                        testId={`settings-who-sees-${item.key}`}
-                      />
-                    );
-                  })}
-                </div>
-              </SettingsSection>
-
-              <SettingsSection
-                title={t('settings.network')}
-                description={t('settings.networkDesc')}
-              >
-                {/* Network - 2 column grid with mixed controls */}
-                <div className="grid grid-cols-2 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.network')}>
-                  <IconToggle
-                    icon={<Shield className="w-5 h-5" />}
-                    label={t('settings.metadataMinimization')}
-                    checked={privacyPrefs.metadataMinimization}
-                    onChange={(v) => updatePrivacyPref(v)}
-                    ariaLabel={t('settings.metadataMinimizationAria', { value: privacyPrefs.metadataMinimization ? t('common.on') : t('common.off') })}
-                    testId="settings-metadata-toggle"
-                  />
-                  {privacyPrefs.metadataMinimization && (
-                    <>
-                      <p className="col-span-2 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] px-2 py-1.5 text-[11px] text-[var(--nova-text-secondary)]">{t('settings.metadataMinimizationHint')}</p>
-                      <p className="col-span-2 text-[11px] font-medium text-[var(--nova-text-secondary)]">{coverTrafficActive ? t('settings.coverTrafficActive') : t('settings.coverTrafficPaused')}</p>
-                    </>
-                  )}
-                  <IconToggle
-                    icon={<Globe className="w-5 h-5" />}
-                    label={t('settings.hideIP')}
-                    checked={privacyPrefs.webrtcRelayOnly}
-                    onChange={(v) => updatePresencePref({ webrtcRelayOnly: v })}
-                    ariaLabel={t('settings.hideIPAria', { value: privacyPrefs.webrtcRelayOnly ? t('common.on') : t('common.off') })}
-                    testId="settings-hide-ip-toggle"
-                  />
-                  <IconToggle
-                    icon={<Monitor className="w-5 h-5" />}
-                    label={t('settings.torMode')}
-                    checked={privacyPrefs.torEnabled}
-                    onChange={() => toggleTor()}
-                    ariaLabel={t('settings.torModeAria', { value: privacyPrefs.torEnabled ? t('common.on') : t('common.off') })}
-                    testId="settings-tor-toggle"
-                  />
-                  <IconCycleButton
-                    icon={<Send className="w-5 h-5" />}
-                    label={t('settings.relays')}
-                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.relayCount', { count: privacyPrefs.relayEndpoints.length })}</span>}
-                    onClick={() => setRelaysSheetOpen(true)}
-                    testId="settings-relays-tile"
-                  />
-                  <IconCycleButton
-                    icon={<ShieldAlert className="w-5 h-5" />}
-                    label={t('settings.turnServers')}
-                    badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.turnServersCount', { count: privacyPrefs.turnServers.length })}</span>}
-                    onClick={() => setTurnSheetOpen(true)}
-                    testId="settings-turn-tile"
-                  />
-                  <IconToggle
-                    icon={<Wifi className="w-5 h-5" />}
-                    label={t('settings.presenceSharing')}
-                    checked={privacyPrefs.presenceSharing}
-                    onChange={(v) => updatePresencePref({ presenceSharing: v })}
-                    ariaLabel={t('settings.presenceSharingAria', { value: privacyPrefs.presenceSharing ? t('common.on') : t('common.off') })}
-                    testId="settings-presence-toggle"
-                  />
-                </div>
-                <InfoHint label={t('settings.networkHint')} className="ml-2" />
-              </SettingsSection>
-
-              {/* Mesh Map, Blocked Users as tiles */}
-              <SettingsSection
-                title={t('settings.moreOptions')}
-                description={t('settings.moreOptionsDesc')}
-              >
-                {onOpenMeshMap && (
-                  <SettingsTile
-                    icon={<MapPin className="w-5 h-5" />}
-                    label={t('meshMap.title')}
-                    description={t('meshMap.subtitle', { defaultValue: 'Visual radar of nearby relay nodes' })}
-                    onClick={() => { onClose(); onOpenMeshMap?.(); }}
-                    testId="settings-mesh-map"
-                  />
-                )}
-                <SettingsTile
-                  icon={<Ban className="w-5 h-5" />}
-                  label={t('settings.blockedUsers')}
-                  onClick={() => setBlockedUsersOpen(true)}
-                  testId="settings-blocked-users"
-                />
-              </SettingsSection>
+              <PrivacyTab />
             </div>
           )}
 
-          {/* Security Tab */}
-          {activeTab === 'security' && (
+          {/* Advanced Tab (replaces Security + More) */}
+          {activeTab === 'advanced' && (
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.security')}
-                description={t('settings.securityDesc')}
-              >
+              <AdvancedTab
+                onOpenAnalytics={onOpenAnalytics}
+                onOpenSites={onOpenSites}
+                onOpenMeshMap={onOpenMeshMap}
+              />
+            </div>
+          )}
+
+          {/* About Tab */}
+          {activeTab === 'about' && (
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
+              <AboutTab />
+            </div>
+          )}
                 {!secureStorage && (
                   <div role="alert" className="mb-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
                     <div className="font-semibold">{t('settings.secureStorageUnavailable')}</div>
@@ -1977,236 +1710,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     testId="settings-accounts-tile"
                   />
                 </div>
-              </SettingsSection>
-            </div>
-          )}
-
-          {/* Data Tab */}
-          {activeTab === 'data' && (
+              {activeTab === 'data' && (
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.dataStorage')}
-                description={t('settings.dataStorageDesc')}
-              >
-                <div className="pt-2">
-                  <IconToggle
-                    icon={<Download className="w-5 h-5" />}
-                    label={t('settings.autoDownload')}
-                    checked={prefs.autoDownload}
-                    onChange={(v) => updatePref('autoDownload', v)}
-                    ariaLabel={t('settings.autoDownloadAria', { value: prefs.autoDownload ? t('common.on') : t('common.off') })}
-                    testId="settings-autodownload-toggle"
-                  />
-                </div>
-
-                {/* Storage Usage Bar */}
-                <div className="space-y-2 pt-2">
-                  <div className="flex justify-between text-[11px] font-medium text-[var(--nova-text-secondary)]">
-                    <span>{t('settings.memory')}</span>
-                    <span>{formatBytes(totalStorageBytes)}</span>
-                  </div>
-                  <div className="h-2 bg-[var(--nova-overlay-weak)] rounded-full overflow-hidden">
-                    {storageUsage.map((cat, idx) => (
-                      <div
-                        key={cat.category}
-                        className="h-full float-left transition-all duration-300"
-                        style={{ width: `${totalStorageBytes > 0 ? (cat.bytes / totalStorageBytes) * 100 : 0}%`, backgroundColor: `var(--nova-chart-${idx % 5})` }}
-                        title={`${cat.category}: ${formatBytes(cat.bytes)}`}
-                      />
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setStorageExpanded(!storageExpanded)}
-                    className="w-full text-left text-[11px] text-[var(--nova-text-muted)] py-1"
-                  >
-                    {storageExpanded ? t('common.less') : t('settings.storageDetails')} <ChevronRight className={`w-3 h-3 inline ${storageExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {storageExpanded && (
-                    <div className="space-y-1 mt-1 max-h-48 overflow-y-auto">
-                      {storageUsage.map((cat) => (
-                        <div key={cat.category} className="flex justify-between text-[11px] text-[var(--nova-text-muted)]">
-                          <span>{cat.category}</span>
-                          <span>{formatBytes(cat.bytes)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <InfoHint label={t('settings.memoryHint')} className="ml-2" />
-                </div>
-
-                <SettingsTile
-                  icon={<Trash2 className="w-5 h-5" />}
-                  label={t('settings.clearCache')}
-                  onClick={handleClearCache}
-                  testId="settings-clear-cache"
-                />
-                {cacheMsg && <p className="text-[11px] text-[var(--nova-accent-color)]" role="status">{cacheMsg}</p>}
-                {exportMsg && <p className="text-[11px] text-[var(--nova-accent-color)]" role="status">{exportMsg}</p>}
-              </SettingsSection>
-
-              <SettingsSection
-                title={t('settings.dataBackup')}
-                description={t('settings.dataBackupDesc')}
-              >
-                <div className="grid grid-cols-2 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.dataBackup')}>
-                  <SettingsTile
-                    icon={<FileText className="w-5 h-5" />}
-                    label={t('settings.exportData')}
-                    description={t('settings.exportDataDesc')}
-                    onClick={handleExportMyData}
-                    disabled={exporting}
-                    testId="settings-export-data"
-                  />
-                  <SettingsTile
-                    icon={<Download className="w-5 h-5" />}
-                    label={t('settings.exportBackupShort')}
-                    description={t('settings.exportBackupDesc')}
-                    onClick={() => { setCloudUrl(loadSavedCloudUrl()); setBackupModal({ open: true, mode: 'export' }); }}
-                    testId="settings-export-backup"
-                  />
-                  <SettingsTile
-                    icon={<Upload className="w-5 h-5" />}
-                    label={t('settings.importBackupShort')}
-                    description={t('settings.importBackupDesc')}
-                    onClick={() => { setCloudUrl(loadSavedCloudUrl()); setBackupModal({ open: true, mode: 'import' }); }}
-                    testId="settings-import-backup"
-                  />
-                  <SettingsTile
-                    icon={<Cloud className="w-5 h-5" />}
-                    label={t('settings.googleDrive')}
-                    description={gdriveConnected ? t('settings.gdriveConnected') : t('settings.gdriveNotConnected')}
-                    badge={gdriveConnected ? <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> : <span className="w-1.5 h-1.5 rounded-full bg-[var(--nova-text-muted)]" />}
-                    onClick={() => setDriveSheetOpen(true)}
-                    testId="settings-gdrive-tile"
-                  />
-                </div>
-              </SettingsSection>
-
-              <SettingsSection
-                title={t('settings.dangerZone')}
-                description={t('settings.dangerZoneDesc')}
-                divider
-              >
-                <SettingsTile
-                  icon={<Trash2 className="w-5 h-5" />}
-                  label={t('settings.deleteAll')}
-                  description={t('settings.deleteAllDesc')}
-                  tone="danger"
-                  onClick={() => setDeleteSheetOpen(true)}
-                  testId="settings-delete-all"
-                />
-              </SettingsSection>
-            </div>
-          )}
-
-          {/* More Tab */}
-          {activeTab === 'more' && (
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] p-4 space-y-4">
-              <SettingsSection
-                title={t('settings.joinRequests')}
-                description={t('settings.joinRequestsDesc')}
-              >
-                <div data-testid="join-outbox" className="rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] p-3 text-[12px] text-[var(--nova-text-secondary)]">
-                  <p>{joinOutboxCount > 0 ? t('settings.joinOutboxPending', { count: joinOutboxCount }) : t('settings.joinOutboxEmpty')}</p>
-                  {joinOutboxCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setJoinOutboxCount(retryJoinOutboxNow())}
-                      className="mt-2 w-full py-2 rounded-xl bg-[var(--nova-accent-color)]/10 border border-[var(--nova-accent-color)]/30 text-[var(--nova-accent-color)] text-[12px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition cursor-pointer"
-                    >
-                      {t('settings.joinOutboxRetry')}
-                    </button>
-                  )}
-                </div>
-              </SettingsSection>
-<SettingsSection
-                title={t('settings.moreOptions')}
-                description={t('settings.moreOptionsDesc')}
-              >
-                <div className="grid grid-cols-3 gap-2 overflow-x-auto no-scrollbar min-w-0" role="group" aria-label={t('settings.moreOptions')}>
-                  {getBotSession && (
-                    <IconCycleButton
-                      icon={<Bot className="w-5 h-5" />}
-                      label={t('settings.bots')}
-                      badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[11px] font-medium text-[var(--nova-text-secondary)]">{t('settings.botsCount', { count: getBots().length })}</span>}
-                      onClick={() => setBotsOpen(true)}
-                      testId="settings-bots-tile"
-                    />
-                  )}
-                  <IconCycleButton
-                    icon={<BarChart3 className="w-5 h-5" />}
-                    label={t('settings.analytics')}
-                    onClick={() => setAnalyticsSheetOpen(true)}
-                    testId="settings-analytics-tile"
-                  />
-                  <IconCycleButton
-                    icon={<Globe className="w-5 h-5" />}
-                    label={t('settings.widgets')}
-                    onClick={() => { onClose(); onOpenSites?.(); }}
-                    testId="settings-widgets-tile"
-                  />
-                  <IconCycleButton
-                    icon={<Megaphone className="w-5 h-5" />}
-                    label={t('settings.ads')}
-                    onClick={() => setAdsSheetOpen(true)}
-                    testId="settings-ads-tile"
-                  />
-                  {joinOutboxCount > 0 && (
-                    <IconCycleButton
-                      icon={<Send className="w-5 h-5" />}
-                      label={t('settings.joinRequests')}
-                      badge={<span className="px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/20 text-[11px] font-medium text-[var(--nova-accent-color)]">{t('settings.joinRequestsCount', { count: joinOutboxCount })}</span>}
-                      onClick={() => setJoinOutboxCount(retryJoinOutboxNow())}
-                      testId="settings-join-tile"
-                    />
-                  )}
-                  <IconCycleButton
-                    icon={<ShieldAlert className="w-5 h-5" />}
-                    label={t('settings.moderation')}
-                    onClick={() => setModerationOpen(true)}
-                    testId="settings-moderation-tile"
-                  />
-                </div>
-              </SettingsSection>
-
-              {/* Footer */}
-              <div className="border-t border-[var(--nova-border-subtle)] pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] text-[var(--nova-text-primary)]">{t('app.name')}</span>
-                  <span className="text-[11px] font-mono text-[var(--nova-text-muted)]">v1.0.0</span>
-                </div>
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setLegalDoc('terms')}
-                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
-                    aria-label={t('settings.termsOfService')}
-                  >
-                    <FileText className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLegalDoc('privacy')}
-                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
-                    aria-label={t('settings.privacyPolicy')}
-                  >
-                    <Lock className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!window.confirm(t('settings.rerunSetupConfirm'))) return;
-                      resetOnboarding();
-                      window.location.reload();
-                    }}
-                    className="flex items-center gap-1.5 text-[11px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition"
-                    aria-label={t('settings.rerunSetup')}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <DataTab />
             </div>
           )}
 
@@ -2667,9 +2173,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <KeyRound className="w-12 h-12 mx-auto text-[var(--nova-accent-color)]" />
             <p className="text-[13px] text-[var(--nova-text-secondary)]">{t('settings.recoveryGateDesc')}</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => { setRecoveryGateOpen(false); if (pinEnabled || biometricEnabled) { /* TODO: add biometric/PIN verify */ handleShowSeedPhrase(); } else { handleShowSeedPhrase(); } }} className="flex-1 py-3 rounded-xl bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 text-[var(--nova-on-accent)] text-[13px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95">{t('settings.revealRecovery')}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoveryGateOpen(false);
+                  if (pinEnabled || biometricEnabled) {
+                    handleShowSeedPhrase();
+                  } else {
+                    // Require PIN setup before revealing seed phrase
+                    setShowSeedPhraseModal(false);
+                    setRecoveryGateOpen(false);
+                    // Navigate to security section (advanced tab) for PIN setup
+                    setActiveTab('advanced');
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl bg-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/30 text-[var(--nova-on-accent)] text-[13px] font-medium hover:bg-[var(--nova-accent-color)]/20 transition active:scale-95"
+              >
+                {pinEnabled || biometricEnabled ? t('settings.revealRecovery') : t('settings.setupPinFirst')}
+              </button>
               <button type="button" onClick={() => setRecoveryGateOpen(false)} className="flex-1 py-3 rounded-xl bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[13px] font-medium text-[var(--nova-text-secondary)] hover:bg-white/[0.1] transition">{t('common.cancel')}</button>
             </div>
+            {!pinEnabled && !biometricEnabled && (
+              <p className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.setupPinToViewSeed')}</p>
+            )}
           </div>
         </SettingsSheet>
 
@@ -2713,6 +2239,84 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </SettingsSheet>
 
+        {/* Phone Access Sheet */}
+        <SettingsSheet
+          open={phoneAccessSheetOpen}
+          onClose={() => setPhoneAccessSheetOpen(false)}
+          title={t('settings.phoneAccessTitle', { defaultValue: 'Who can see your phone number' })}
+          description={t('settings.phoneAccessDesc', { defaultValue: 'Only people you explicitly grant access can see your phone number. Contacts do not get access automatically.' })}
+          testId="settings-phone-access-sheet"
+        >
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {(() => {
+              const contacts = getPhoneAccessContacts();
+              if (contacts.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 text-[var(--nova-text-muted)] text-[11px]">
+                    {t('settings.noContactsWithPhone', { defaultValue: 'No contacts with phone numbers' })}
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-1.5">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between px-2 py-2 rounded-xl border border-[var(--nova-border-subtle)] bg-white/[0.02]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--nova-overlay-weak)] flex items-center justify-center shrink-0">
+                          {contact.avatar ? (
+                            <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-xs font-bold text-[var(--nova-accent-color)]">
+                              {contact.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-[var(--nova-text-primary)] truncate">{contact.name}</p>
+                          {contact.nickname && <p className="text-[10px] text-[var(--nova-text-muted)] truncate">@{contact.nickname}</p>}
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={contact.hasAccess}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              grantPhoneAccess(contact.id);
+                            } else {
+                              revokePhoneAccess(contact.id);
+                            }
+                            setSocialPrivacyState(getSocialPrivacy());
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 rounded-full border-2 transition-colors ${
+                          contact.hasAccess
+                            ? 'bg-[var(--nova-accent-color)] border-[var(--nova-accent-color)]'
+                            : 'bg-[var(--nova-overlay-weak)] border-[var(--nova-border-subtle)]'
+                        }`}>
+                          <span className={`inline-block w-5 h-5 rounded-full bg-white transform transition-transform ${
+                            contact.hasAccess ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+          <div className="shrink-0 border-t border-[var(--nova-border-subtle)] p-4">
+            <button
+              type="button"
+              onClick={() => setPhoneAccessSheetOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-medium hover:opacity-90 transition cursor-pointer"
+            >
+              {t('common.done', { defaultValue: 'Done' })}
+            </button>
+          </div>
+        </SettingsSheet>
+
   </div>
 
       {/* Backup Export/Import Modal */}
@@ -2728,7 +2332,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </h3>
               <button
                 onClick={() => setBackupModal(null)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -2886,7 +2490,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('settings.showSeedPhrase')}</h3>
               <button
                 onClick={() => setShowSeedPhraseModal(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -2951,7 +2555,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('settings.blockedUsers')}</h3>
               <button
                 onClick={() => setBlockedUsersOpen(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3032,7 +2636,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.title')}</h3>
               <button
                 onClick={() => setBotsOpen(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3144,7 +2748,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-8 h-8 rounded-xl bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/25 flex items-center justify-center text-[var(--nova-accent-color)] shrink-0">
-                            {manifest.id === 'movie_catalog' && <Film className="w-4 h-4" />}
+                            {manifest.id === 'movie_catalog' && <Movie className="w-4 h-4" />}
                             {manifest.id === 'novafather' && <Bot className="w-4 h-4" />}
                             {manifest.id === 'echo' && <Settings className="w-4 h-4" />}
                           </div>
@@ -3211,7 +2815,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.install')}</h3>
               <button
                 onClick={() => setInstallOpen(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3299,7 +2903,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.devRegistryTitle', { defaultValue: 'Developer registry' })}</h3>
               <button
                 onClick={() => setDevRegistryOpen(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3376,7 +2980,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="font-bold text-sm text-[var(--nova-text-primary)]">{t('bot.installFileTitle', { defaultValue: 'Install from file' })}</h3>
               <button
                 onClick={() => setInstallFromFile(false)}
-                className="w-8 h-8 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
                 aria-label={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3442,4 +3046,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
