@@ -868,7 +868,8 @@ export const ChatsScreen = forwardRef<
           </div>
         </header>
       ) : (
-        <header className="h-[52px] px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--bg-app)]/90 backdrop-blur-xl border-b border-[var(--nova-border-subtle)]/60">
+        <header className="h-[52px] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--bg-app)]/90 backdrop-blur-xl border-b border-[var(--nova-border-subtle)]/60">
+          {/* Left: Title */}
           <h1 className="lg:hidden truncate text-[18px] font-bold text-[var(--text-primary)] tracking-tight">
             {t('common.chats')}
           </h1>
@@ -876,6 +877,7 @@ export const ChatsScreen = forwardRef<
             {account.nickname}
           </h1>
 
+          {/* Right: Actions */}
           <div className="flex shrink-0 items-center gap-0.5">
             <NovaIconButton
               label={t('chats.newChat')}
@@ -956,8 +958,8 @@ export const ChatsScreen = forwardRef<
         </header>
       )}
 
-      {/* COMPACT TOP REAL-TIME CHAT SEARCH BAR */}
-      <div className="px-4 pt-2 pb-1.5 shrink-0">
+      {/* INLINE SEARCH BAR (Telegram-style: expands in place when activated) */}
+      <div className={`px-3 sm:px-4 pb-2 shrink-0 transition-all duration-200 ${searchQuery ? 'opacity-100 h-auto' : 'opacity-0 h-0 overflow-hidden pointer-events-none'}`}>
         <div className="relative flex items-center">
           <div className="absolute left-3 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
             <Search className="w-3.5 h-3.5" />
@@ -970,7 +972,7 @@ export const ChatsScreen = forwardRef<
             onKeyDown={(e) => {
               if (e.key === "Escape") setSearchQuery("");
             }}
-            placeholder="Search conversations by contact name..."
+            placeholder={t('chats.searchPlaceholder', { defaultValue: 'Search conversations...' })}
             className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-20 py-2 transition-all shadow-inner focus:outline-none"
           />
 
@@ -999,29 +1001,29 @@ export const ChatsScreen = forwardRef<
         </div>
 
         {/* Quick Search Keyword Chips */}
-        <div
-          className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar"
-          ref={quickSearchChipsRef}
-          data-testid="quick-search-chips"
-        >
-          <span className="text-[9px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-0.5">
-            Quick search:
-          </span>
-          {CHAT_SEARCH_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => setSearchQuery(chip)}
-              className={`min-h-5 px-2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
-                searchQuery.toLowerCase() === chip.toLowerCase()
-                  ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
-                  : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-strong)]"
-              }`}
-              aria-label={chip}
-            >
-              {chip}
-            </button>
-          ))}
-          {searchQuery && (
+        {searchQuery && (
+          <div
+            className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar"
+            ref={quickSearchChipsRef}
+            data-testid="quick-search-chips"
+          >
+            <span className="text-[9px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-0.5">
+              Quick search:
+            </span>
+            {CHAT_SEARCH_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => setSearchQuery(chip)}
+                className={`min-h-5 px-2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
+                  searchQuery.toLowerCase() === chip.toLowerCase()
+                    ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
+                    : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-strong)]"
+                }`}
+                aria-label={chip}
+              >
+                {chip}
+              </button>
+            ))}
             <button
               onClick={() => setSearchQuery("")}
               className="min-h-5 px-1.5 py-0.5 rounded-full text-[9px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-2)]/30 transition cursor-pointer shrink-0"
@@ -1029,8 +1031,8 @@ export const ChatsScreen = forwardRef<
             >
               Reset
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* CONDITIONAL BODY: SEARCH RESULTS OR NORMAL FOLDER/STORIES VIEW */}

@@ -1,10 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Radio, Search, Star, Trash2, Check, Lock, ArrowLeft } from 'lucide-react';
+import {
+  IconPlus as Plus,
+  IconRadio as Radio,
+  IconSearch as Search,
+  IconStar as Star,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconCheck as Check,
+  IconLock as Lock,
+  IconArrowLeft as ArrowLeft,
+  IconTrash as TrashX,
+  IconDotsVertical as MoreVertical,
+} from '@tabler/icons-react';
 import type { ChannelDraft, ChannelInfo } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 import { Avatar } from '../lib/ui';
 import { ChannelCreateModal } from './ChannelCreateModal';
-import { NovaBadge } from '../lib/ui';
+import { NovaBadge, NovaIconButton, NovaMenu } from '../lib/ui';
 
 interface ChannelListPanelProps {
   channels: ChannelInfo[];
@@ -126,20 +138,16 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
 
   return (
     <div className="flex h-full flex-col bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] select-none">
-      <div className="flex shrink-0 items-center gap-3 px-4 pb-1.5 pt-3">
+      <header className="flex h-[52px] shrink-0 items-center gap-2 px-3 sm:px-4 border-b border-[var(--nova-border-color)]/60 bg-[var(--nova-canvas)]/90 backdrop-blur-xl">
         {onBack && (
-          <button
-            type="button"
+          <NovaIconButton
+            label={t('common.back', 'Back')}
+            icon={<ArrowLeft />}
+            size={36}
+            variant="ghost"
             onClick={onBack}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80 text-[var(--nova-text-secondary)] hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)] transition active:scale-95"
-            aria-label={t('common.back', 'Back')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          />
         )}
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]">
-          <Radio className="h-3.5 w-3.5" />
-        </div>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="truncate text-[16px] font-bold leading-tight tracking-tight text-[var(--nova-text-primary)]">
             {t('channel.channels')}
@@ -148,29 +156,55 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
             {channels.length}
           </span>
         </div>
-        {onDeleteChannels && ownedChannels.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              if (selectionMode) {
-                exitSelection();
-              } else {
-                setSelectionMode(true);
-                setSelectedIds([]);
-              }
-            }}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
-              selectionMode
-                ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)]'
-                : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80 text-[var(--nova-text-secondary)] hover:bg-[var(--nova-surface-high)] hover:text-red-400'
-            }`}
-            aria-label={t('channel.deleteChannel')}
-            title={selectionMode ? t('common.cancel') : t('channel.deleteChannel')}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <NovaIconButton
+            label={t('channel.searchChannels', 'Search channels')}
+            icon={<Search />}
+            size={36}
+            variant="ghost"
+            onClick={() => { /* Search handled by input below */ }}
+          />
+          <NovaIconButton
+            label={t('channel.createChannel')}
+            icon={<Plus />}
+            size={36}
+            variant="ghost"
+            onClick={() => setCreateOpen(true)}
+          />
+          <NovaMenu
+            label={t('common.menu', { defaultValue: 'Menu' })}
+            align="end"
+            trigger={
+              <NovaIconButton
+                label={t('common.menu', { defaultValue: 'Menu' })}
+                icon={<MoreVertical />}
+                size={36}
+                variant="ghost"
+              />
+            }
+            items={[
+              {
+                key: 'select',
+                label: t('common.select', { defaultValue: 'Select' }),
+                icon: <Check />,
+                onSelect: () => {
+                  if (onDeleteChannels && ownedChannels.length > 0) {
+                    setSelectionMode(true);
+                    setSelectedIds([]);
+                  }
+                },
+                disabled: !(onDeleteChannels && ownedChannels.length > 0),
+              },
+              {
+                key: 'create',
+                label: t('channel.createChannel'),
+                icon: <Plus />,
+                onSelect: () => setCreateOpen(true),
+              },
+            ]}
+          />
+        </div>
+      </header>
 
       {selectionMode ? (
         <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-3 pt-1.5">
@@ -250,7 +284,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
             placeholder={t('channel.searchChannels', 'Search channels...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 pl-10 py-1.5 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 pl-10 py-2 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] transition-all duration-200"
           />
         </div>
       </div>
@@ -396,7 +430,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
                 disabled={selectedIds.length === 0}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500/90 py-2 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <TrashX className="h-3.5 w-3.5" />
                 {t('common.delete')} ({selectedIds.length})
               </button>
               <button
@@ -430,3 +464,22 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
 };
 
 ChannelListPanel.displayName = 'ChannelListPanel';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

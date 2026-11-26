@@ -1,55 +1,63 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  ArrowLeft,
-  Search,
-  Share2,
-  Volume2,
-  VolumeX,
-  MessageCircle,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
-  Bell,
-  BellOff,
-  Clock,
-  Trash2,
-  Copy,
-  Check,
-  Radio,
-  MoreVertical,
-  SmilePlus,
-  PenSquare,
-  X,
-  Eye,
-  EyeOff,
-  Lock,
-  Bookmark,
-  Languages,
-  Flag,
-  Calendar,
-  Pin,
-  PinOff,
-  UserPlus,
-  UserMinus,
-  ShieldCheck,
-  BarChart3,
-  Users,
-  Settings as SettingsIcon,
-  Crown,
-  Heart,
-  ZoomIn,
-  ZoomOut,
-  Download,
-  MessagesSquare,
-  Play,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  MousePointerClick,
-} from 'lucide-react';
+  IconArrowLeft as ArrowLeft,
+  IconSearch as Search,
+  IconShare2 as Share2,
+  IconVolume2 as Volume2,
+  IconVolumeOff as VolumeX,
+  IconMessageCircle as MessageCircle,
+  IconPlus as Plus,
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconChevronDown as ChevronDown,
+  IconChevronUp as ChevronUp,
+  IconChevronsDown as ChevronsDown,
+  IconBell as Bell,
+  IconBellOff as BellOff,
+  IconClock as Clock,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconCopy as Copy,
+  IconCheck as Check,
+  IconRadio as Radio,
+  IconBorderVertical as BorderVertical,
+  IconMoodPlus as SmilePlus,
+  IconPencil as PenSquare,
+  IconX as X,
+  IconEye as Eye,
+  IconEyeOff as EyeOff,
+  IconLock as Lock,
+  IconBookmark as Bookmark,
+  IconLanguage as Language,
+  IconFlag as Flag,
+  IconCalendar as Calendar,
+  IconPin as Pin,
+  IconMapPinOff as PinOff,
+  IconUserPlus as UserPlus,
+  IconUserMinus as UserMinus,
+  IconShieldCheck as ShieldCheck,
+  IconChartBar as BarChart,
+  IconUsers as Users,
+  IconSettings as Settings,
+  IconCrown as Crown,
+  IconHeart as Heart,
+  IconZoomIn as ZoomIn,
+  IconZoomOut as ZoomOut,
+  IconDownload as Download,
+  IconMessageShare as MessageShare,
+  IconPlayerPlay as PlayCircle,
+  IconTrendingUp as TrendingUp,
+  IconTrendingDown as TrendingDown,
+  IconCurrencyDollar as DollarSign,
+  IconMouse as Mouse,
+  IconChartBar as BarChart3,
+  IconSelector as ChevronsUpDown,
+  IconDotsVertical as MoreVertical,
+  IconClick as MousePointerClick,
+  IconPlayerPlay as Play,
+  IconTrash as TrashX,
+  IconFilter as ListFilter,
+} from '@tabler/icons-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker, Avatar } from '../lib/ui';
 import { cachedFetch, invalidateCachePrefix } from '../lib/api';
@@ -60,8 +68,7 @@ import type {
   ChannelDraft,
   ChannelInfo,
   ChannelPost,
-  ChannelPostDraft,
-} from '../types/messenger';
+  ChannelPostDraft} from '../types/messenger';
 import type { AdCampaign } from '../lib/ads/types';
 import { DoodleBackground } from './DoodleBackground';
 import { useLanguage } from '../context/LanguageContext';
@@ -79,8 +86,7 @@ import { LazyMedia } from './LazyMedia';
 import {
   AD_PREFS_CHANGED_EVENT,
   isAdDismissed,
-  isAdvertiserBlocked,
-} from '../lib/ads/localAds';
+  isAdvertiserBlocked} from '../lib/ads/localAds';
 import type { ReportTarget } from '../types/moderation';
 import { PollBubble } from './chat/PollBubble';
 import { StickerMedia } from './chat/StickerMedia';
@@ -89,8 +95,7 @@ import {
   dayKey,
   isPostScheduled,
   startOfDay,
-  KYIV_CHANNEL_ID,
-} from '../lib/social/store';
+  KYIV_CHANNEL_ID} from '../lib/social/store';
 
 interface ChannelScreenProps {
   onBack: () => void;
@@ -986,31 +991,24 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] select-none" data-theme-preserve="dark">
-      {/* Floating Header Card with Date Scrubber */}
-      <div className="relative z-20 shrink-0 p-2">
-          <div
-            className={`relative overflow-hidden rounded-3xl border border-[var(--nova-border-subtle)] shadow-xl shadow-black/70 backdrop-blur-xl transition-all duration-300 ${
-              headerCollapsed || searchOpen ? 'p-2' : 'p-2.5'
-            } bg-[var(--nova-surface)]/70`}
-          >
-          {/* Channel Top row */}
-          <div
-            className={`flex items-center justify-between gap-2 ${
-              headerCollapsed || searchOpen ? '' : 'mb-1.5'
-            }`}
-          >
-            <button
+      {/* Inline Header (Telegram-style) */}
+      <header className="shrink-0 relative z-20 bg-[var(--nova-surface)]/92 backdrop-blur-xl border-b border-[var(--nova-border-subtle)] px-3 sm:px-4 py-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Back + Channel Info */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <NovaIconButton
+              label={t('common.back')}
+              icon={<ArrowLeft />}
+              size={36}
+              variant="ghost"
+              className="lg:hidden shrink-0"
               onClick={onBack}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)]/80 text-[var(--nova-text-primary)] transition active:scale-95 lg:hidden"
-              aria-label={t('common.back')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+            />
 
             {searchOpen ? (
               <>
-                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--nova-accent-color)]/40 bg-[var(--nova-surface)] px-3 py-1.5 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 shrink-0 text-[var(--nova-text-muted)] pointer-events-none" />
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)]/50 px-3 py-1.5 relative focus-within:border-[var(--nova-accent-color)] transition">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 text-[var(--nova-text-muted)] pointer-events-none" />
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1021,34 +1019,29 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     }}
                     placeholder={t('channel.searchFeedPlaceholder')}
                     aria-label={t('channel.searchFeedPlaceholder')}
-                    className="min-w-0 flex-1 bg-transparent text-xs text-[var(--nova-text-primary)] placeholder-white/35 focus:outline-none pl-8"
+                    className="min-w-0 flex-1 bg-transparent text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none pl-10"
                   />
                   {searchQuery && (
-                    <button
-                      type="button"
+                    <NovaIconButton
+                      label={t('common.reset')}
+                      icon={<X />}
+                      size={32}
+                      variant="ghost"
+                      className="shrink-0"
                       onClick={() => setSearchQuery('')}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]"
-                      aria-label={t('common.reset')}
-                      title={t('common.reset')}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   )}
                 </div>
-
-                <button
-                  type="button"
+                <NovaIconButton
+                  label={t('common.close')}
+                  icon={<X />}
+                  size={36}
+                  variant="ghost"
                   onClick={closeSearch}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)]/80 text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] active:scale-95"
-                  aria-label={t('common.close')}
-                  title={t('common.close')}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                />
               </>
             ) : (
               <>
-                {/* Same layout as the chat header: avatar, name, actions. */}
                 <button
                   type="button"
                   onClick={() => setSwitcherOpen(true)}
@@ -1084,49 +1077,41 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   label={t('common.search')}
                   icon={<Search />}
                   size={36}
-                  variant="subtle"
-                  className="border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)]/80"
+                  variant="ghost"
                   onClick={() => setSearchOpen(true)}
                 />
 
                 {/* Subscribe/Notifications button - like Telegram */}
-                <button
-                  type="button"
-                  onClick={subscribed ? toggleNotifications : toggleSubscription}
-                  aria-pressed={subscribed && notificationsEnabled}
-                  aria-label={!subscribed
+                <NovaIconButton
+                  label={!subscribed
                     ? t('channel.subscribe')
                     : notificationsEnabled
                     ? t('channel.disableNotifications')
                     : t('channel.enableNotifications')}
-                  className={`flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 transition active:scale-95 cursor-pointer ${
+                  icon={!subscribed ? <Bell /> : notificationsEnabled ? <Bell /> : <BellOff />}
+                  size={36}
+                  variant="ghost"
+                  className={`transition active:scale-95 cursor-pointer ${
                     !subscribed
-                      ? 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'
+                      ? 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
                       : notificationsEnabled
-                      ? 'border-[var(--nova-accent-color)] bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/25'
-                      : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-secondary)]'
+                      ? 'text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/15'
+                      : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-secondary)]'
                   }`}
-                >
-                  {!subscribed ? (
-                    <Bell className="h-4 w-4" />
-                  ) : notificationsEnabled ? (
-                    <Bell className="h-4 w-4 fill-current" />
-                  ) : (
-                    <BellOff className="h-4 w-4" />
-                  )}
-                </button>
+                  onClick={subscribed ? toggleNotifications : toggleSubscription}
+                  aria-pressed={subscribed && notificationsEnabled}
+                />
 
                 {/* Discussion Group link button */}
                 {channel.discussionGroupId && (
-                  <button
-                    type="button"
+                  <NovaIconButton
+                    label={t('channel.openDiscussionGroup', 'Open discussion group')}
+                    icon={<MessageShare />}
+                    size={36}
+                    variant="ghost"
+                    className="text-emerald-400 hover:bg-emerald-500/10"
                     onClick={openDiscussionGroup}
-                    className="flex h-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 px-2.5 transition active:scale-95 cursor-pointer hover:bg-emerald-500/20 hover:text-emerald-300"
-                    title={t('channel.openDiscussionGroup', 'Open discussion group')}
-                    aria-label={t('channel.openDiscussionGroup', 'Open discussion group')}
-                  >
-                    <MessagesSquare className="h-4 w-4" />
-                  </button>
+                  />
                 )}
 
                 <NovaMenu
@@ -1136,8 +1121,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       label={t('common.more')}
                       icon={<MoreVertical />}
                       size={36}
-                      variant="subtle"
-                      className="border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)]/80"
+                      variant="ghost"
                     />
                   }
                   items={[
@@ -1224,7 +1208,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                             label: channel.discussionGroupId
                               ? t('channel.editDiscussionGroup', 'Edit discussion group')
                               : t('channel.addDiscussionGroup', 'Add discussion group'),
-                            icon: <MessagesSquare />,
+                            icon: <MessageShare />,
                             onSelect: () => {
                               // Open communities panel or direct link
                               if (channel.discussionGroupId) {
@@ -1248,151 +1232,133 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   ]}
                 />
 
-                </>
+</>
             )}
           </div>
+        </div>
+        </header>
 
-          {/* Date Scrubber / Timeline Ruler */}
-          {!headerCollapsed && !searchOpen && (
-            <div id="channel-date-scrubber" className="w-full px-1">
-              <div className="mb-1 flex items-center justify-between px-1">
-                <button
-                  type="button"                    onClick={() => shiftMonth(-1)}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"
-                  aria-label={t('channel.previousMonth')}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-<div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleJumpToMonth}
-                    className="flex min-h-10 items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--nova-text-muted)] transition hover:text-[var(--nova-text-primary)] px-2"
-                    aria-label={t('channel.jumpToMonth')}
-                    disabled={!canUse('date_picker')}
-                  >
-                    {monthLabel}
-                    {canUse('date_picker') && (
-                      <ChevronDown className="h-3 w-3 text-[var(--nova-text-muted)]" />
-                    )}
-                    {!canUse('date_picker') && (
-                      <span className="text-[8px] opacity-70">(Premium)</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToday}
-                    className={`min-h-10 rounded-2xl border px-3 py-1 text-[10px] font-semibold transition flex items-center justify-center ${
-                      selectedDay !== dayKey(now)
-                        ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
-                        : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] hover:border-[var(--nova-accent-color)]/40 hover:text-[var(--nova-text-primary)]'
-                    }`}
-                  >
-                    {t('channel.today')}
-                  </button>
-                </div>
-
+        {/* Date Scrubber / Timeline Ruler (Telegram-style: separate section below header) */}
+        {!headerCollapsed && !searchOpen && (
+          <div id="channel-date-scrubber" className="shrink-0 px-3 sm:px-4 pb-2 bg-[var(--nova-canvas)] border-b border-[var(--nova-border-subtle)]/50">
+            <div className="mb-1 flex items-center justify-between px-1">
+              <NovaIconButton
+                label={t('channel.previousMonth')}
+                icon={<ChevronLeft />}
+                size={32}
+                variant="ghost"
+                onClick={() => shiftMonth(-1)}
+              />
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => shiftMonth(1)}
-                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)]"
-                  aria-label={t('channel.nextMonth')}
+                  onClick={handleJumpToMonth}
+                  className="flex min-h-10 items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--nova-text-muted)] transition hover:text-[var(--nova-text-primary)] px-2"
+                  aria-label={t('channel.jumpToMonth')}
+                  disabled={!canUse('date_picker')}
                 >
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  {monthLabel}
+                  {canUse('date_picker') && (
+                    <ChevronDown className="h-3 w-3 text-[var(--nova-text-muted)]" />
+                  )}
+                  {!canUse('date_picker') && (
+                    <span className="text-[8px] opacity-70">(Premium)</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={goToday}
+                  className={`min-h-10 rounded-2xl border px-3 py-1 text-[10px] font-semibold transition flex items-center justify-center ${
+                    selectedDay !== dayKey(now)
+                      ? 'border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)]'
+                      : 'border-[var(--nova-border-subtle)] bg-[var(--nova-overlay-weak)] text-[var(--nova-text-muted)] hover:border-[var(--nova-accent-color)]/40 hover:text-[var(--nova-text-primary)]'
+                  }`}
+                >
+                  {t('channel.today')}
                 </button>
               </div>
 
-              {canUse('date_picker') && isMonthPickerOpen && (
-                <div className="mt-1 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] p-2 shadow-2xl shadow-black/60">
-                  <div className="mb-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setFocusYear(focusYear - 1)}
-                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]"
-                      aria-label={t('channel.previousYear', 'Previous year')}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    <span className="text-[11px] font-semibold text-[var(--nova-text-primary)]">{focusYear}</span>
-                    <button
-                      type="button"
-                      onClick={() => setFocusYear(focusYear + 1)}
-                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]"
-                      aria-label={t('channel.nextYear', 'Next year')}
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1 overflow-x-auto no-scrollbar min-w-0">
-                    {MONTHS.map((month) => {
-                      const count = monthPostCounts.get(`${focusYear}-${month.value}`) ?? 0;
-                      const intensity =
-                        count >= 5 ? 'bg-[var(--nova-accent-color)]/40' : count >= 2 ? 'bg-[var(--nova-accent-color)]/25' : count >= 1 ? 'bg-[var(--nova-accent-color)]/12' : 'bg-[var(--nova-overlay-weak)]';
-                      return (
-                        <button
-                          key={month.value}
-                          type="button"
-                          onClick={() => {
-                            setFocusDate(dayKey(new Date(focusYear, month.value, 1)));
-                            setSelectedDay(dayKey(new Date(focusYear, month.value, 1)));
-                            setIsMonthPickerOpen(false);
-                          }}
-                          className={`rounded-lg px-2 py-2 text-[10px] font-semibold transition hover:bg-[var(--nova-overlay-medium)] min-h-[44px] flex items-center justify-center ${
-                            focusMonth === month.value && focusYear === focus.getFullYear()
-                              ? 'text-[var(--nova-text-primary)]'
-                              : 'text-[var(--nova-text-secondary)]'
-                          }`}
-                        >
-                          <span className="block truncate">{month.label.slice(0, 3)}</span>
-                          <span className={`mt-0.5 block h-1.5 w-full rounded-full ${intensity}`} />
-                        </button>
-                      );
-                    })}
-                  </div>
+              <NovaIconButton
+                label={t('channel.nextMonth')}
+                icon={<ChevronRight />}
+                size={32}
+                variant="ghost"
+                onClick={() => shiftMonth(1)}
+              />
+            </div>
+
+            {canUse('date_picker') && isMonthPickerOpen && (
+              <div className="mt-1 rounded-xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] p-2 shadow-2xl shadow-black/60">
+                <div className="mb-2 flex items-center justify-between">
+                  <NovaIconButton
+                    label={t('channel.previousYear', 'Previous year')}
+                    icon={<ChevronLeft />}
+                    size={36}
+                    variant="ghost"
+                    onClick={() => setFocusYear(focusYear - 1)}
+                  />
+                  <span className="text-[11px] font-semibold text-[var(--nova-text-primary)]">{focusYear}</span>
+                  <NovaIconButton
+                    label={t('channel.nextYear', 'Next year')}
+                    icon={<ChevronRight />}
+                    size={36}
+                    variant="ghost"
+                    onClick={() => setFocusYear(focusYear + 1)}
+                  />
                 </div>
-              )}
+                <div className="grid grid-cols-4 gap-1 overflow-x-auto no-scrollbar min-w-0">
+                  {MONTHS.map((month) => {
+                    const count = monthPostCounts.get(`${focusYear}-${month.value}`) ?? 0;
+                    const intensity =
+                      count >= 5 ? 'bg-[var(--nova-accent-color)]/40' : count >= 2 ? 'bg-[var(--nova-accent-color)]/25' : count >= 1 ? 'bg-[var(--nova-accent-color)]/12' : 'bg-[var(--nova-overlay-weak)]';
+                    return (
+                      <button
+                        key={month.value}
+                        type="button"
+                        onClick={() => {
+                          setFocusDate(dayKey(new Date(focusYear, month.value, 1)));
+                          setSelectedDay(dayKey(new Date(focusYear, month.value, 1)));
+                          setIsMonthPickerOpen(false);
+                        }}
+                        className={`rounded-lg px-2 py-2 text-[10px] font-semibold transition hover:bg-[var(--nova-overlay-medium)] min-h-[44px] flex items-center justify-center ${
+                          focusMonth === month.value && focusYear === focus.getFullYear()
+                            ? 'text-[var(--nova-text-primary)]'
+                            : 'text-[var(--nova-text-secondary)]'
+                        }`}
+                      >
+                        <span className="block truncate">{month.label.slice(0, 3)}</span>
+                        <span className={`mt-0.5 block h-1.5 w-full rounded-full ${intensity}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-              <div
-                ref={dateScrubberRef}
-                role="grid"
-                aria-label={monthLabel}
-                className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap pb-2"
-                onWheel={(e) => {
-                  if (e.deltaX === 0 && e.deltaY !== 0) {
-                    e.preventDefault();
-                    dateScrubberRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
-                  }
-                }}
-              >
-                {weekDays.map((date) => {
-                  const key = dayKey(date);
-                const isSelected = selectedDay === key;
-                const isToday = dayKey(now) === key;
+            <div
+              ref={dateScrubberRef}
+              role="grid"
+              aria-label={monthLabel}
+              className="w-full flex items-center gap-x-1 px-1 overflow-x-scroll no-scrollbar flex-nowrap pb-2"
+              onWheel={(e) => {
+                if (e.deltaX === 0 && e.deltaY !== 0) {
+                  e.preventDefault();
+                  dateScrubberRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
+                }
+              }}
+            >
+              {weekDays.map((date, index) => {
+                const key = dayKey(date);
                 const count = dayPostCounts.get(key) ?? 0;
-                const isFuture = key > dayKey(now);
-                const weekday = new Intl.DateTimeFormat(language, {
-                  weekday: 'short',
-                }).format(date);
-                const dots = count >= 5 ? 3 : count >= 2 ? 2 : count >= 1 ? 1 : 0;
-
+                const isSelected = key === selectedDay;
+                const isToday = key === dayKey(now);
+                const isFuture = date > new Date(now);
+                const weekday = new Intl.DateTimeFormat(language, { weekday: 'short' }).format(date);
+                const dots = Math.min(count, 3);
                 return (
                   <button
                     key={key}
                     type="button"
-                    role="gridcell"
-                    aria-label={new Intl.DateTimeFormat(language, {
-                      dateStyle: 'full',
-                    }).format(date)}
-                    aria-current={isToday ? 'date' : undefined}
-                    aria-selected={isSelected}
-                    aria-disabled={isFuture}
-                    disabled={isFuture}
-                    onClick={() => {
-                      if (isFuture) return;
-                      setSelectedDay(key);
-                      const node = dayHeaderRefs.current.get(key);
-                      node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'ArrowLeft') {
                         event.preventDefault();
@@ -1443,12 +1409,10 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                 );
               })}
             </div>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Reply Preview Bar - shows when composing a comment */}
+        {/* Reply Preview Bar - shows when composing a comment */}
       {commentingPost && commentDraft && (
         <div className="px-4 py-2 bg-[var(--nova-surface-raised)]/95 border-t border-b border-[var(--nova-accent-color,#ff4e18)]/40 flex items-center justify-between text-xs z-20 backdrop-blur-xl shadow-lg animate-in slide-in-from-bottom-2 duration-150">
           <div
@@ -1784,7 +1748,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                               }}
                               className="flex w-full items-center gap-2 rounded-lg px-3 py-3 text-[11px] text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-weak)] hover:text-[var(--nova-text-primary)] min-h-[44px]"
                             >
-                              <Languages className="h-4 w-4" />
+                              <Language className="h-4 w-4" />
                               {t('channel.translate', 'Translate')}
                             </button>
                             <div className="my-1 h-px bg-[var(--nova-overlay-weak)]" />
@@ -1827,7 +1791,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                                 }}
                                 className="flex w-full items-center gap-2 rounded-lg px-3 py-3 text-[11px] text-red-400 transition hover:bg-red-500/10 min-h-[44px]"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <TrashX className="h-4 w-4" />
                                 {t('channel.deletePost')}
                               </button>
                             )}
@@ -2323,7 +2287,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               <StatCard label={t('channel.statsSubscribers', 'Subscribers')} value={formatCount(channel?.subscribers ?? 0)} icon={<Users className="w-5 h-5" />} color="text-green-400" trend={subscribersTrend} />
               <StatCard label={t('channel.statsPosts', 'Posts')} value={formatCount(channelPosts.length)} icon={<MessageCircle className="w-5 h-5" />} color="text-purple-400" trend={postsTrend} />
               <StatCard label={t('channel.statsReactions', 'Reactions')} value={formatCount(totalReactions)} icon={<Heart className="w-5 h-5" />} color="text-red-400" trend={reactionsTrend} />
-              <StatCard label={t('channel.statsComments', 'Comments')} value={formatCount(totalComments)} icon={<MessagesSquare className="w-5 h-5" />} color="text-yellow-400" trend={commentsTrend} />
+              <StatCard label={t('channel.statsComments', 'Comments')} value={formatCount(totalComments)} icon={<MessageShare className="w-5 h-5" />} color="text-yellow-400" trend={commentsTrend} />
               <StatCard label={t('channel.statsForwards', 'Forwards')} value={formatCount(totalForwards)} icon={<Share2 className="w-5 h-5" />} color="text-cyan-400" trend={forwardsTrend} />
             </div>
 
@@ -2572,3 +2536,26 @@ const StatCard: React.FC<{
 );
 
 export default ChannelScreen;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -43,10 +43,12 @@ describe('ChatsScreen - header (localized)', () => {
     localStorage.removeItem('nova_read_chats_v1');
   });
 
-  it('renders a search bar with no menu button (settings via bottom nav)', () => {
+  it('renders a search bar with menu button', () => {
     renderChats();
-    expect(screen.getByPlaceholderText('Search conversations by contact name...')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'common.menu' })).toBeNull();
+    // Search input exists in DOM but is hidden when empty (opacity-0 h-0)
+    // i18n mock returns key, so placeholder is 'chats.searchPlaceholder'
+    expect(screen.getByPlaceholderText('chats.searchPlaceholder')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'common.menu' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'analytics.title' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'meshMap.title' })).toBeNull();
   });
@@ -294,9 +296,9 @@ describe('ChatsScreen - join request indicators', () => {
 });
 
 describe('ChatsScreen - horizontal lists hide scrollbar', () => {
-  it('quick search chips list uses no-scrollbar (no visible slider)', () => {
+  it('stories row uses no-scrollbar (no visible slider)', () => {
     renderChats();
-    const list = screen.getByTestId('quick-search-chips');
+    const list = screen.getByTestId('stories-row');
     expect(list.className).toContain('no-scrollbar');
     expect(list.className).not.toContain('scrollbar-x');
   });
