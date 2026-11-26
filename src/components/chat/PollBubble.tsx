@@ -1,5 +1,16 @@
 import React from 'react';
-import { BarChart3, HelpCircle, Check, X as XIcon, Lightbulb, RotateCcw } from 'lucide-react';
+import {
+  IconBulb as Bulb,
+  IconChartBar as ChartBar,
+  IconCheck as Check,
+  IconHelpCircle as HelpCircle,
+  IconRotate as Rotate,
+  IconX as X,
+  IconChartBar as BarChart3,
+  IconBulb as Lightbulb,
+  IconRotate as RotateCcw,
+  IconX as XIcon,
+} from '@tabler/icons-react';
 import { PollData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -186,3 +197,13 @@ export const PollBubble: React.FC<PollBubbleProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

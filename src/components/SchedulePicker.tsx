@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, Send } from 'lucide-react';
+import {IconCalendarClock as CalendarClock, IconSend as Send} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { NovaCalendar } from '../lib/ui/NovaCalendar';
 
@@ -143,3 +143,13 @@ export const SchedulePicker: React.FC<SchedulePickerProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

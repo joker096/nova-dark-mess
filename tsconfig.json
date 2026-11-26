@@ -24,6 +24,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-    "include": ["src", "src/test/vitest-env.d.ts"],
+  "include": ["src", "src/test/vitest-env.d.ts"],
   "exclude": ["dist", "node_modules", "tests", "e2e*.ts"]
 }

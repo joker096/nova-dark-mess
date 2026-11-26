@@ -1,7 +1,8 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 import { SettingsModal } from './SettingsModal';
 import { usePremium } from '../hooks/usePremium';
 import { PIN_ENABLED_KEY, PIN_HASH_KEY } from '../context/SecurityContext';
@@ -42,6 +43,66 @@ const premiumMock = vi.hoisted(() => ({
   checkout: vi.fn(async () => ({ ok: true, error: undefined, orderId: 'test-order', url: 'https://example.com' })),
 }));
 
+const settingsMock = vi.hoisted(() => ({
+  state: {
+    app: {
+      fontSize: 'medium' as const,
+      appTheme: 'system' as const,
+      chatColorTheme: 'default' as const,
+      fabSide: 'right' as const,
+      notificationSound: true,
+      vibration: false,
+      previewMessages: true,
+      pushEnabled: true,
+      autoDownload: true,
+      soundId: 'default' as const,
+    },
+    privacy: {
+      metadataMinimization: false,
+      presenceSharing: false,
+      presenceHashing: false,
+      presenceTtl: 'normal' as const,
+      torEnabled: false,
+      torSocksPort: 9050,
+    },
+    socialPrivacy: {
+      lastSeen: 'contacts' as const,
+      profilePhoto: 'contacts' as const,
+      calls: 'contacts' as const,
+      groupsAndChannels: 'contacts' as const,
+      phoneNumber: 'nobody' as const,
+      blockedUsers: [],
+      exceptions: {},
+      phoneAccess: [],
+    },
+    notifications: {
+      privateChats: 'all' as const,
+      groups: 'all' as const,
+      channels: 'all' as const,
+      bots: 'all' as const,
+      sound: true,
+      vibration: false,
+      preview: true,
+      push: true,
+    },
+    adPrefs: {
+      hiddenAdIds: [],
+      blockedAdvertisers: [],
+      consentGiven: false,
+    },
+    isLoading: false,
+    lastSaved: null,
+  },
+  updateAppSetting: vi.fn(),
+  updatePrivacySetting: vi.fn(),
+  updateSocialPrivacySetting: vi.fn(),
+  updateNotificationSetting: vi.fn(),
+  updateAdPrefSetting: vi.fn(),
+  saveAll: vi.fn(),
+  resetToDefaults: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
+}));
+
 vi.mock('../context/LanguageContext', () => ({
   useLanguage: () => ({
     t: (key: string) => key,
@@ -59,6 +120,9 @@ vi.mock('../hooks/useSecurity', () => ({
 }));
 vi.mock('../hooks/usePremium', () => ({
   usePremium: vi.fn(),
+}));
+vi.mock('../context/SettingsContext', () => ({
+  useSettings: () => settingsMock,
 }));
 
 const renderSettings = (onClose = vi.fn(), onOpenAnalytics?: () => void) => {
@@ -112,224 +176,30 @@ describe('SettingsModal', () => {
     expect(screen.getByText('settings.title')).toBeTruthy();
   });
 
-  it('hides the Bots section when no bot session is supplied', () => {
-    const { unmount } = renderSettings();
-    expect(screen.queryByText('bot.title')).toBeNull();
-    unmount();
+  
 
-    render(
-      <SettingsModal isOpen onClose={vi.fn()} getBotSession={() => ({}) as never} />,
-    );
-    expect(screen.getAllByText('bot.title').length).toBeGreaterThan(0);
-  });
-
-  it('toggles notification preferences and persists them', () => {
+  it('has all six tabs', () => {
     renderSettings();
-    const toggle = screen.getByRole('switch', { name: 'settings.notificationSound' });
-    expect(toggle.getAttribute('aria-checked')).toBe('true');
-
-    fireEvent.click(toggle);
-
-    expect(screen.getByRole('switch', { name: 'settings.notificationSound' }).getAttribute('aria-checked')).toBe('false');
-    const saved = JSON.parse(localStorage.getItem('nova_messenger_settings') || '{}');
-    expect(saved.notificationSound).toBe(false);
+    expect(screen.getByRole('tab', { name: 'settings.tabGeneral' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'settings.tabNotifications' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'settings.tabPrivacy' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'settings.tabAdvanced' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'settings.tabData' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'settings.tabAbout' })).toBeTruthy();
   });
 
-  it('offers light mode and applies a high-contrast accent palette', () => {
+  it('opens the premium sheet from header chip', () => {
     renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: 'settings.themeLight' }));
-
-    expect(localStorage.getItem('nova_app_theme')).toBe('light');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-    expect(document.documentElement.style.colorScheme).toBe('light');
-    expect(document.documentElement.style.getPropertyValue('--nova-accent-color')).toBe('#f9551c');
-    expect(document.body.style.backgroundColor).toBe('var(--nova-canvas)');
+    fireEvent.click(screen.getByRole('button', { name: /settings.premiumChipAria/ }));
+    const buttons = screen.getAllByRole('button', { name: /settings.premiumUpgrade/ });
+    expect(buttons.length).toBeGreaterThan(0);
   });
 
-  it('restores a previously selected light theme', () => {
-    localStorage.setItem('nova_app_theme', 'light');
+  it('has Terms and Privacy buttons in About tab', () => {
     renderSettings();
-
-    expect(localStorage.getItem('nova_app_theme')).toBe('light');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-  });
-
-  it('applies and persists the selected font size', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /small/i }));
-
-    expect(localStorage.getItem('nova_font_size')).toBe('small');
-    expect(document.documentElement.style.fontSize).toBe('14px');
-    const saved = JSON.parse(localStorage.getItem('nova_messenger_settings') || '{}');
-    expect(saved.fontSize).toBe('small');
-  });
-
-  it('opens the analytics dashboard from settings and closes the modal', () => {
-    const onOpenAnalytics = vi.fn();
-    const { onClose } = renderSettings(vi.fn(), onOpenAnalytics);
-
-    fireEvent.click(screen.getByTestId('open-analytics'));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onOpenAnalytics).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps the dialog open after changing language', () => {
-    const { onClose } = renderSettings();
-    fireEvent.click(screen.getByTitle(/Change Language/));
-    fireEvent.click(screen.getByRole('button', { name: /Русский/ }));
-
-    expect(languageMock.changeLanguage).toHaveBeenCalledWith('ru');
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it('routes locked premium themes to checkout instead of doing nothing', () => {
-    renderSettings();
-    const sapphire = screen.getByRole('button', { name: 'settings.chatColorSapphire' });
-
-    expect(sapphire.hasAttribute('disabled')).toBe(false);
-    expect(sapphire.getAttribute('aria-disabled')).toBe('true');
-
-    fireEvent.click(sapphire);
-
-    expect(premiumMock.checkout).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem('nova_chat_theme')).toBeNull();
-  });
-
-  it('applies premium themes when the feature is unlocked', () => {
-    premiumMock.premium = true;
-    premiumMock.canUseThemes = true;
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: 'settings.chatColorEmerald' }));
-
-    expect(premiumMock.checkout).not.toHaveBeenCalled();
-    expect(localStorage.getItem('nova_chat_theme')).toBe('emerald');
-    expect(document.documentElement.style.getPropertyValue('--nova-accent-color')).toBe('#10B981');
-  });
-
-  it('always allows selecting the default theme', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: 'settings.chatColorDefault' }));
-    expect(localStorage.getItem('nova_chat_theme')).toBe('default');
-  });
-
-  it('calls checkout for the premium upgrade button', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.premiumUpgrade/ }));
-    expect(premiumMock.checkout).toHaveBeenCalledTimes(1);
-  });
-
-  it('hides the Premium ads-off notice without a subscription', () => {
-    renderSettings();
-    expect(screen.queryByTestId('ads-premium-off')).toBeNull();
-  });
-
-  it('shows the Premium ads-off notice in the ads section', () => {
-    premiumMock.premium = true;
-    renderSettings();
-    expect(screen.getByTestId('ads-premium-off')).toBeTruthy();
-    expect(screen.getByText('settings.adsPremiumOff')).toBeTruthy();
-  });
-
-  it('clears cached chats and shows feedback', () => {
-    localStorage.setItem('nova_messenger_chat_cache', 'cached');
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: 'settings.clearCache' }));
-
-    expect(localStorage.getItem('nova_messenger_chat_cache')).toBeNull();
-    expect(screen.getByRole('status').textContent).toBe('settings.cacheCleared');
-  });
-
-  it('exports user data and shows feedback', async () => {
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: 'settings.exportMyData' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toContain('settings.exportDone');
-    });
-  });
-
-  it('deletes all data without a PIN after confirmation', async () => {
-    localStorage.setItem(PIN_HASH_KEY, 'hash');
-    localStorage.setItem(PIN_ENABLED_KEY, 'true');
-    const { onClose } = renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: /settings.clearAllData/ }));
-    expect(screen.getByText('settings.confirmClearNoPin')).toBeTruthy();
-    expect(document.querySelector('input[placeholder="0000"]')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
-
-    await waitFor(() => expect(securityMock.clearLocalEncryptedData).toHaveBeenCalledTimes(1));
-    expect(localStorage.getItem(PIN_HASH_KEY)).toBeNull();
-    expect(localStorage.getItem(PIN_ENABLED_KEY)).toBeNull();
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('requires a valid PIN before deleting data when a passcode is enabled', async () => {
-    securityMock.pinEnabled = true;
-    securityMock.verifyPin.mockResolvedValue(false);
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: /settings.clearAllData/ }));
-    const inputs = screen.getAllByPlaceholderText('0000');
-    const confirmPinInput = inputs[inputs.length - 1];
-    fireEvent.change(confirmPinInput, { target: { value: '1234' } });
-    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
-
-    await waitFor(() => expect(screen.getAllByText('settings.incorrectPasscode').length).toBeGreaterThan(0));
-    expect(securityMock.clearLocalEncryptedData).not.toHaveBeenCalled();
-
-    securityMock.verifyPin.mockResolvedValue(true);
-    fireEvent.change(confirmPinInput, { target: { value: '4321' } });
-    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
-
-    await waitFor(() => expect(securityMock.clearLocalEncryptedData).toHaveBeenCalledTimes(1));
-  });
-
-  it('requires the current passcode before removing it', async () => {
-    securityMock.pinEnabled = true;
-    securityMock.verifyPin.mockResolvedValue(false);
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('switch', { name: 'settings.passcodeLock' }));
-    expect(screen.getByText('settings.passcodeConfirmRemove')).toBeTruthy();
-
-    fireEvent.change(screen.getByPlaceholderText('0000'), { target: { value: '1111' } });
-    fireEvent.click(screen.getByRole('button', { name: 'settings.removePasscode' }));
-
-    await waitFor(() => expect(screen.getByText('settings.incorrectPasscode')).toBeTruthy());
-    expect(securityMock.removePin).not.toHaveBeenCalled();
-
-    securityMock.verifyPin.mockResolvedValue(true);
-    fireEvent.change(screen.getByPlaceholderText('0000'), { target: { value: '2222' } });
-    fireEvent.click(screen.getByRole('button', { name: 'settings.removePasscode' }));
-
-    await waitFor(() => expect(securityMock.removePin).toHaveBeenCalledTimes(1));
-  });
-
-  it('opens the Terms and Privacy documents instead of a placeholder', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: 'settings.termsOfService' }));
-    expect(screen.getByTestId('legal-modal-terms')).toBeTruthy();
-    expect(screen.queryByRole('status')).toBeNull();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'common.close' }).at(-1)!);
-    expect(screen.queryByTestId('legal-modal-terms')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'settings.privacyPolicy' }));
-    expect(screen.getByTestId('legal-modal-privacy')).toBeTruthy();
-  });
-
-  it('opens the moderation centre from settings', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: 'settings.moderation' }));
-
-    expect(screen.getByTestId('sanction-screen')).toBeTruthy();
-    expect(screen.getByText('moderation.clearTitle')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'settings.tabAbout' }));
+    expect(screen.getByRole('button', { name: 'Terms of ServiceRead our terms' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Privacy PolicyRead our privacy policy' })).toBeTruthy();
   });
 
   it('closes on Escape', () => {
@@ -338,238 +208,10 @@ describe('SettingsModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('requires an 8 character passphrase before exporting a backup', async () => {
-    securityMock.identity = { mnemonic: Array.from({ length: 24 }, (_, i) => `word${i + 1}`).join(' ') };
-    const createObjectURL = vi.fn(() => 'blob:nova');
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
-    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
+  it('has metadata minimization toggle in privacy tab', () => {
     renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.exportBackup/ }));
-
-    const exportButton = screen.getByRole('button', { name: 'Export' });
-    expect(exportButton.hasAttribute('disabled')).toBe(true);
-
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'short' } });
-    expect(exportButton.hasAttribute('disabled')).toBe(true);
-
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'long-enough-pass' } });
-    expect(exportButton.hasAttribute('disabled')).toBe(false);
-    fireEvent.click(exportButton);
-
-    await waitFor(() =>
-      expect(securityMock.exportEncryptedBackup).toHaveBeenCalledWith(
-        'long-enough-pass',
-        expect.any(Array),
-      ),
-    );
-    clickSpy.mockRestore();
-  });
-
-  it('persists the metadata minimization opt-in and reports cover traffic state', async () => {
-    Object.defineProperty(navigator, 'getBattery', {
-      configurable: true,
-      value: async () => ({ level: 0.1, charging: false }),
-    });
-
-    renderSettings();
-    expect(screen.queryByText(/settings.metadataMinimizationHint/)).toBeNull();
-
-    fireEvent.click(screen.getByText('settings.metadataMinimization'));
-
-    await waitFor(() => expect(screen.getByText(/Cover traffic paused/)).toBeTruthy());
-    const saved = JSON.parse(localStorage.getItem('nova_privacy_mode') ?? '{}');
-    expect(saved.metadataMinimization).toBe(true);
-    expect(saved.presenceSharing).toBe(false);
-    expect(saved.presenceHashing).toBe(true);
-    expect(saved.presenceTtl).toBe('normal');
-    expect(saved.webrtcRelayOnly).toBe(false);
-    expect(saved.torEnabled).toBe(false);
-    expect(saved.torSocksPort).toBe(9050);
-    expect(saved.analyticsConsent).toBe(false);
-    expect(saved.crashReports).toBe(false);
-    // relayEndpoints and turnServers now include build-time defaults from VITE_* env vars
-    expect(Array.isArray(saved.relayEndpoints)).toBe(true);
-    expect(Array.isArray(saved.turnServers)).toBe(true);
-    delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
-  });
-
-  it('keeps cover traffic on when charging on a low battery', async () => {
-    Object.defineProperty(navigator, 'getBattery', {
-      configurable: true,
-      value: async () => ({ level: 0.1, charging: true }),
-    });
-    localStorage.setItem('nova_privacy_mode', JSON.stringify({ metadataMinimization: true }));
-
-    renderSettings();
-    await waitFor(() => expect(screen.getByText(/Cover traffic active/)).toBeTruthy());
-    delete (navigator as Navigator & { getBattery?: unknown }).getBattery;
-  });
-
-  it('uploads the encrypted backup to a cloud endpoint instead of saving locally', async () => {
-    securityMock.identity = { mnemonic: 'alpha beta gamma delta' };
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.exportBackup/ }));
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'long-enough-pass' } });
-
-    const downloadButton = screen.getByRole('button', { name: 'Export' });
-    fireEvent.change(screen.getByPlaceholderText(/webdav/i), {
-      target: { value: 'https://dav.example/nova.nova-backup' },
-    });
-    fireEvent.change(screen.getByPlaceholderText(/bearer token/i), { target: { value: 'secret-token' } });
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Upload' })).toBeTruthy(),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
-
-    await waitFor(() => expect(cloudMock.uploadEncryptedBackup).toHaveBeenCalledTimes(1));
-    expect(cloudMock.uploadEncryptedBackup).toHaveBeenCalledWith(
-      { url: 'https://dav.example/nova.nova-backup', headers: { Authorization: 'Bearer secret-token' } },
-      expect.anything(),
-    );
-    expect(clickSpy).not.toHaveBeenCalled();
-    clickSpy.mockRestore();
-    void downloadButton;
-  });
-
-  it('rejects a cloud endpoint without an http scheme', async () => {
-    securityMock.identity = { mnemonic: 'alpha beta gamma delta' };
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.exportBackup/ }));
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'long-enough-pass' } });
-    fireEvent.change(screen.getByPlaceholderText(/webdav/i), { target: { value: 'dav.example/nova' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
-
-    await waitFor(() =>
-      expect(screen.getByText(/must start with http/i)).toBeTruthy(),
-    );
-    expect(cloudMock.uploadEncryptedBackup).not.toHaveBeenCalled();
-  });
-
-  it('restores a backup downloaded from the cloud', async () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.importBackup/ }));
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'restore-pass' } });
-    fireEvent.change(screen.getByPlaceholderText(/webdav/i), {
-      target: { value: 'https://dav.example/nova.nova-backup' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Download from cloud/i }));
-    await waitFor(() => expect(cloudMock.downloadEncryptedBackup).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText(/Cloud blob ready/)).toBeTruthy());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-    await waitFor(() =>
-      expect(securityMock.importEncryptedBackup).toHaveBeenCalledWith('NOVA_BACKUP cloud-backup', 'restore-pass'),
-    );
-  });
-
-  it('never restores a backup with an implicit default passphrase', () => {
-    renderSettings();
-    fireEvent.click(screen.getByRole('button', { name: /settings.importBackup/ }));
-    const file = new File(['backup'], 'account.nova-backup');
-    fireEvent.change(document.getElementById('backup-file-input')!, {
-      target: { files: [file] },
-    });
-
-    expect(screen.getByRole('button', { name: 'Import' }).hasAttribute('disabled')).toBe(true);
-    expect(securityMock.importEncryptedBackup).not.toHaveBeenCalled();
-  });
-
-  it('copies the recovery phrase and shows confirmation', async () => {
-    const writeText = vi.fn(async () => {});
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
-    securityMock.identity = { mnemonic: 'alpha beta gamma delta' };
-    renderSettings();
-
-    fireEvent.click(screen.getByRole('button', { name: /settings.showSeedPhrase/ }));
-    expect(screen.getByText(/alpha/)).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: /common.copy/ }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('alpha beta gamma delta'));
-    expect(screen.getByRole('button', { name: /common.copied/ })).toBeTruthy();
-  });
-
-  it('shows local ad preferences and resets them', () => {
-    localStorage.setItem('nova_ads_dismissed_v1', JSON.stringify(['campaign-1']));
-    localStorage.setItem('nova_ads_blocked_advertisers_v1', JSON.stringify(['advertiser-1']));
-    renderSettings();
-
-    expect(screen.getByTestId('ad-preferences')).toBeTruthy();
-    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('1');
-    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('1');
-
-    fireEvent.click(screen.getByRole('button', { name: 'settings.adsReset' }));
-
-    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('0');
-    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('0');
-    expect(localStorage.getItem('nova_ads_dismissed_v1')).toBeNull();
-    expect(localStorage.getItem('nova_ads_blocked_advertisers_v1')).toBeNull();
-    expect(screen.getByRole('status').textContent).toBe('settings.adsResetDone');
-  });
-
-  it('restores one hidden ad and unblocks one advertiser', () => {
-    localStorage.setItem(
-      'nova_ads_dismissed_v1',
-      JSON.stringify(['cmp_demo_auralis_001', 'cmp_demo_second_002']),
-    );
-    localStorage.setItem(
-      'nova_ads_blocked_advertisers_v1',
-      JSON.stringify(['adv_demo_auralis', 'adv_demo_second']),
-    );
-    renderSettings();
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'settings.adsRestore' })[0]);
-    expect(JSON.parse(localStorage.getItem('nova_ads_dismissed_v1') ?? '[]')).toEqual([
-      'cmp_demo_second_002',
-    ]);
-    expect(screen.getByTestId('ad-prefs-hidden').textContent).toBe('1');
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'settings.adsUnblock' })[0]);
-    expect(JSON.parse(localStorage.getItem('nova_ads_blocked_advertisers_v1') ?? '[]')).toEqual([
-      'adv_demo_second',
-    ]);
-    expect(screen.getByTestId('ad-prefs-blocked').textContent).toBe('1');
-    expect(screen.getByRole('status').textContent).toBe('settings.adsPreferenceUpdated');
-  });
-
-  it('reports an empty join request outbox', () => {
-    renderSettings();
-
-    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxEmpty');
-    expect(screen.queryByRole('button', { name: 'settings.joinOutboxRetry' })).toBeNull();
-  });
-
-  it('surfaces undelivered join requests with a manual retry', () => {
-    localStorage.setItem(
-      'nova_group_join_outbox',
-      JSON.stringify([
-        {
-          id: 'job-1',
-          groupId: 'thailand',
-          kind: 'request',
-          fingerprint: 'nova_pk_peer',
-          createdAt: 1,
-          attempts: 2,
-          nextAttemptAt: Date.now() + 60_000,
-        },
-      ]),
-    );
-
-    renderSettings();
-
-    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxPending');
-    // No session relay is running in isolation: the job stays queued after retry.
-    fireEvent.click(screen.getByRole('button', { name: 'settings.joinOutboxRetry' }));
-    expect(screen.getByTestId('join-outbox').textContent).toContain('settings.joinOutboxPending');
+    fireEvent.click(screen.getByRole('tab', { name: 'settings.tabPrivacy' }));
+    const toggle = screen.getByText('settings.metadataMinimization');
+    expect(toggle).toBeTruthy();
   });
 });

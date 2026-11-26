@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { HTMLAttributes } from 'react';
-import { X } from 'lucide-react';
+import {IconX as X} from '@tabler/icons-react';
 import { ModalOverlay } from '../../components/ModalOverlay';
 interface NovaModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClose'> {
   isOpen: boolean;
@@ -91,3 +91,13 @@ export const NovaModal = forwardRef<HTMLDivElement, NovaModalProps>(
 NovaModal.displayName = 'NovaModal';
 
 export type { NovaModalProps };
+
+
+
+
+
+
+
+
+
+

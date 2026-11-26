@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, X } from 'lucide-react';
+import {IconUsers as Users, IconX as X} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export interface JoinRequestNoticeData {
@@ -62,3 +62,13 @@ export const JoinRequestNotice: React.FC<JoinRequestNoticeProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

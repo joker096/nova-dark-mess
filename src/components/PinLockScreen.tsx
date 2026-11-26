@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Lock, AlertCircle, Delete, Fingerprint, ChevronRight, KeyRound, ArrowLeft } from 'lucide-react';
+import {IconLock as Lock, IconAlertCircle as AlertCircle, IconTrash as Delete, IconFingerprint as Fingerprint, IconChevronRight as ChevronRight, IconKey as KeyRound, IconArrowLeft as ArrowLeft} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 
@@ -562,3 +562,14 @@ return (
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+

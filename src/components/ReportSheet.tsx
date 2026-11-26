@@ -1,29 +1,32 @@
 import React, { useMemo, useState } from 'react';
 import {
-  AlertTriangle,
-  ArrowLeft,
-  BadgeCheck,
-  Ban,
-  Copyright,
-  Flag,
-  HeartCrack,
-  Lock,
-  Megaphone,
-  Pill,
-  Scale,
-  ShieldCheck,
-  Siren,
-  UserRoundX,
-  X,
-} from 'lucide-react';
+  IconAlertTriangle as AlertTriangle,
+  IconArrowLeft as ArrowLeft,
+  IconBadge as BadgeCheck,
+  IconBan as Ban,
+  IconCopyright as Copyright,
+  IconFlag as Flag,
+  IconHeartCheck as HeartCheck,
+  IconLock as Lock,
+  IconSpeakerphone as Megaphone,
+  IconPill as Pill,
+  IconScale as Scale,
+  IconShieldCheck as ShieldCheck,
+  IconSend as Send,
+  IconUser as UserRound,
+  IconUserX as UserRoundX,
+  IconX as X,
+  IconHeartBroken as HeartCrack,
+  IconAlertOctagon as Siren,
+  IconUserX as UserCircleX,
+} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { submitReport } from '../lib/moderation/store';
 import type {
   ModerationReport,
   ReportReasonId,
-  ReportTarget,
-} from '../types/moderation';
+  ReportTarget} from '../types/moderation';
 
 interface ReportSheetProps {
   target: ReportTarget;
@@ -38,7 +41,7 @@ const REASONS: Array<{
   { id: 'substances', icon: <Pill className="h-4 w-4" /> },
   { id: 'violence', icon: <Siren className="h-4 w-4" /> },
   { id: 'csam', icon: <ShieldCheck className="h-4 w-4" /> },
-  { id: 'hate', icon: <UserRoundX className="h-4 w-4" /> },
+  { id: 'hate', icon: <UserCircleX className="h-4 w-4" /> },
   { id: 'harassment', icon: <HeartCrack className="h-4 w-4" /> },
   { id: 'spam', icon: <Megaphone className="h-4 w-4" /> },
   { id: 'scam', icon: <AlertTriangle className="h-4 w-4" /> },
@@ -272,3 +275,26 @@ export const ReportSheet: React.FC<ReportSheetProps> = ({ target, onClose, onSub
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

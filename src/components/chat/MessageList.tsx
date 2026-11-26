@@ -20,8 +20,7 @@ import {
   shouldEmitCoverTraffic,
   probeTor,
   type BatteryStatus,
-  type PrivacyPrefs,
-} from '../../lib/network/privacyMode';
+  type PrivacyPrefs} from '../../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../../lib/social/joinRequestRelay';
 import {
   getSocialPrivacy,
@@ -29,15 +28,13 @@ import {
   setContactBlocked,
   getBlockedContactsWithProfiles,
   type SocialPrivacySettings,
-  type PrivacyScope,
-} from '../../lib/social/socialPrivacy';
+  type PrivacyScope} from '../../lib/social/socialPrivacy';
 import {
   clearLocalAdPrefs,
   loadAdPreferences,
   restoreHiddenAd,
   unblockAdvertiser,
-  type LocalAdPreferences,
-} from '../../lib/ads/localAds';
+  type LocalAdPreferences} from '../../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../../lib/notifications/sounds';
 import {
   getNotificationPrefs,
@@ -50,8 +47,7 @@ import {
   getPriorityContacts,
   type NotificationPrefs,
   type NotificationLevel,
-  type MuteDurationKey,
-} from '../../lib/notifications/notificationPrefs';
+  type MuteDurationKey} from '../../lib/notifications/notificationPrefs';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { useFocusTrap } from '../../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from '../../components/CryptoCheckoutModal';

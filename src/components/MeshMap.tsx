@@ -10,8 +10,7 @@ import {
   type MeshNode,
   type MeshLink,
   type MeshNodeStatus,
-  type MeshLinkType,
-} from './meshDemoData';
+  type MeshLinkType} from './meshDemoData';
 import { clearLastGpsFix, saveLastGpsFix } from '../lib/p2p/meshMapNodes';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -326,3 +325,4 @@ export const MeshMap: React.FC<MeshMapProps> = ({
 };
 
 export default MeshMap;
+

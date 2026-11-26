@@ -7,10 +7,13 @@ import {
   type RoutingRequest,
 } from './routing';
 import type { AbuseReportSubmission } from './blocks';
-import { generateQueueSigningKeyPair, signQueueCommand } from './signing';
 import { base64ToUint8 } from './packet';
 import type { PowChallenge, PowSolution } from './spam';
 import type { AnonTransport, CreatedQueue, EnqueueResult, PollResult } from './types';
+import {
+  generateQueueSigningKeyPair,
+  signQueueCommand,
+} from './crypto';
 
 /**
  * Two-hop proxy delivery.
@@ -54,6 +57,42 @@ const ENQUEUE_PADDED_BYTES: Record<number, number> = {
   16384: 26624,
   65536: 94208,
 };
+
+/**
+ * Fixed sizes for the `{ relay, envelope }` hop body. Must match
+ * `ANON_HOP_PADDED_BYTE_PROFILES` in `server.js`: the proxy rejects any other
+ * Content-Length and padding the sealed route is not enough because encryption
+ * changes the envelope size.
+ */
+const HOP_PADDED_BYTES: Record<number, number> = {
+  4096: 16384,
+  16384: 65536,
+  65536: 212992,
+};
+
+function hopTargetBytes(route: RoutingRequest): number {
+  if (route.action !== 'enqueue') return 16384;
+  try {
+    return HOP_PADDED_BYTES[base64ToUint8(route.packet).length] ?? 65536;
+  } catch {
+    return 65536;
+  }
+}
+
+function padHop(body: { relay: string; envelope: RoutingEnvelope }, targetBytes: number) {
+  const base = JSON.stringify({ ...body, pad: '' });
+  const remaining = targetBytes - new TextEncoder().encode(base).length;
+  if (remaining <= 0) return body;
+  const random = new Uint8Array(remaining);
+  // getRandomValues rejects requests over 64 KiB; the largest hop profile
+  // needs more padding than that.
+  for (let offset = 0; offset < remaining; offset += 65536) {
+    crypto.getRandomValues(random.subarray(offset, Math.min(offset + 65536, remaining)));
+  }
+  let pad = '';
+  for (let index = 0; index < remaining; index++) pad += PAD_ALPHABET[random[index] & 63];
+  return { ...body, pad };
+}
 
 function padRoute(route: RoutingRequest): RoutingRequest {
   let target = CONTROL_PADDED_BYTES;
@@ -159,11 +198,9 @@ export class ProxyAnonTransport implements AnonTransport {
   }
 
   private async sendRoute<T>(route: RoutingRequest): Promise<T | null> {
+    const targetBytes = hopTargetBytes(route);
     const envelope = await sealRoutingEnvelope(this.relayPublicKey, padRoute(route));
-    return this.sendViaProxies<T>({
-      relay: this.relayId,
-      envelope,
-    });
+    return this.sendViaProxies<T>(padHop({ relay: this.relayId, envelope }, targetBytes));
   }
 
   async createQueue(ttlMs?: number, pow?: PowChallenge): Promise<CreatedQueue | null> {

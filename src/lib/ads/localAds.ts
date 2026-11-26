@@ -79,6 +79,16 @@ export interface LocalAdPreferences {
   blockedAdvertisers: string[];
 }
 
+export const DEFAULT_AD_PREFS: LocalAdPreferences = {
+  hiddenAds: [],
+  blockedAdvertisers: [],
+};
+
+export function saveAdPreferences(prefs: LocalAdPreferences): void {
+  writeList(DISMISSED_KEY, prefs.hiddenAds);
+  writeList(BLOCKED_ADVERTISERS_KEY, prefs.blockedAdvertisers);
+}
+
 /** Reads the ad preferences kept on this device; nothing leaves the browser. */
 export function loadAdPreferences(): LocalAdPreferences {
   return {

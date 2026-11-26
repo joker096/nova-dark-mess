@@ -1,31 +1,34 @@
 import React, { useState, useMemo } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import {
-  X,
-  Check,
-  FolderPlus,
-  Trash2,
-  Folder,
-  User,
-  Briefcase,
-  Radio,
-  Star,
-  Users,
-  Shield,
-  Crown,
-  Gift,
-  Rocket,
-  Sparkles,
-  Heart,
-  Lock,
-  Bell,
-  BellOff,
-  VolumeX,
-  Volume2,
-  Plus,
-  MessageSquare,
-} from 'lucide-react';
+  useLanguage } from '../context/LanguageContext';
+import { useFocusTrap } from '../lib/ui/useFocusTrap';
+import {IconX as X,
+  IconCheck as Check,
+  IconFolderPlus as FolderPlus,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconFolder as Folder,
+  IconUser as User,
+  IconBriefcase as Briefcase,
+  IconRadio as Radio,
+  IconStar as Star,
+  IconUsers as Users,
+  IconShield as Shield,
+  IconCrown as Crown,
+  IconGift as Gift,
+  IconRocket as Rocket,
+  IconSparkles as Sparkles,
+  IconHeart as Heart,
+  IconLock as Lock,
+  IconBell as Bell,
+  IconBellOff as BellOff,
+  IconVolumeOff as VolumeX,
+  IconVolume2 as Volume2,
+  IconPlus as Plus,
+  IconMessageCircle as MessageCircle,
+  IconMessageCircle as MessageSquare,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { usePremium } from '../hooks/usePremium';
 import { ChatFolder, ChatItem } from '../types/messenger';
 import { LazyMedia } from './LazyMedia';
@@ -35,15 +38,13 @@ import {
   muteFolder,
   getFolderMuteUntil,
   getEffectiveFolderNotificationLevel,
-  type NotificationLevel,
-} from '../lib/notifications/notificationPrefs';
+  type NotificationLevel} from '../lib/notifications/notificationPrefs';
 import {
   SettingsTabs,
   SettingsSection,
   SettingsTile,
   IconCycleButton,
-  SettingsSheet,
-} from './settings/settingsPrimitives';
+  SettingsSheet} from './settings/settingsPrimitives';
 import { NovaIconButton } from '../lib/ui/NovaIconButton';
 
 const FOLDER_ICONS = [
@@ -205,7 +206,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
         title={t('foldersObj.iconLabel')}
         description={t('foldersObj.iconDesc')}
       >
-        <div data-testid="folder-icon-list" className="grid grid-cols-7 gap-2 pb-2 overflow-x-auto no-scrollbar min-w-0">
+        <div data-testid="folder-icon-list" className="grid grid-cols-7 gap-2 pb-2 overflow-x-auto no-scrollbar min-w-0 touch-pan-x">
           {FOLDER_ICONS.map((item) => {
             const IconComp = ICON_BY_ID[item.id];
             const isSelected = selectedIcon === item.id;
@@ -355,7 +356,7 @@ export const FolderModal: React.FC<FolderModalProps> = ({
                     aria-label={t('foldersObj.deleteFolder')}
                     className="w-11 h-11 shrink-0 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition cursor-pointer"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <TrashX className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -531,3 +532,24 @@ export const FolderModal: React.FC<FolderModalProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

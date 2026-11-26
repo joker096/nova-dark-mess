@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import {IconExternalLink as ExternalLink} from '@tabler/icons-react';
 import type { InlineKeyboard as KeyboardModel, InlineKeyboardButton } from '../lib/bots/types';
 import { useLanguage } from '../context/LanguageContext';
 import { toSafeExternalUrl } from '../lib/security/safeUrl';
@@ -108,3 +108,13 @@ export const MessageInlineKeyboard: React.FC<MessageInlineKeyboardProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

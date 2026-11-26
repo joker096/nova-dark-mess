@@ -27,8 +27,6 @@ pub fn run() {
       _ => tauri::webview::PermissionResponse::Default,
     })
     .plugin(tauri_plugin_deep_link::init())
-    .plugin(tauri_plugin_push::init())
-    .plugin(tauri_plugin_background_fetch::init())
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       if cfg!(debug_assertions) {

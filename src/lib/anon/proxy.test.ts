@@ -89,7 +89,7 @@ describe('proxy transport', () => {
     expect(calls[0].url).toBe('https://proxy.example/api/anon/hop');
 
     const body = JSON.parse(String(calls[0].init.body));
-    expect(Object.keys(body).sort()).toEqual(['envelope', 'relay']);
+    expect(Object.keys(body).sort()).toEqual(['envelope', 'pad', 'relay']);
     expect(body.relay).toBe('r1');
     expect(body.queueId).toBeUndefined();
     expect(body.senderToken).toBeUndefined();
@@ -319,7 +319,7 @@ describe('proxy transport', () => {
 
     await expect(transport.submitAbuseReport(report)).resolves.toBe(true);
     const body = JSON.parse(String(calls[0].init.body));
-    expect(Object.keys(body).sort()).toEqual(['envelope', 'relay']);
+    expect(Object.keys(body).sort()).toEqual(['envelope', 'pad', 'relay']);
     expect(JSON.stringify(body)).not.toContain(report.queueIdHash);
     expect(JSON.stringify(body)).not.toContain(report.signingKeyHash);
 

@@ -1,5 +1,5 @@
 import { forwardRef, type HTMLAttributes, type ReactNode, type Ref } from 'react';
-import { ChevronRight } from 'lucide-react';
+import {IconChevronRight as ChevronRight} from '@tabler/icons-react';
 import { Avatar } from './Avatar';
 import { NovaBadge } from './NovaBadge';
 
@@ -168,3 +168,12 @@ export const NovaListSectionHeader = forwardRef<HTMLDivElement, NovaListSectionH
 NovaListSectionHeader.displayName = 'NovaListSectionHeader';
 
 export type { NovaListGroupProps, NovaListRowProps, NovaListSectionHeaderProps };
+
+
+
+
+
+
+
+
+

@@ -15,6 +15,7 @@ type ScreenId =
 
 interface NavState {
   currentScreen: ScreenId;
+  activeBottomTab: 'chats' | 'contacts' | 'channels' | 'settings' | 'premium';
   activeChatId: string | null;
   activeProfileId: string | null;
   activeChannelId: string | null;
@@ -37,6 +38,7 @@ const NavigationContext = createContext<NavContextValue | null>(null);
 
 const initialState: NavState = {
   currentScreen: 'chats',
+  activeBottomTab: 'chats',
   activeChatId: null,
   activeProfileId: null,
   activeChannelId: null,

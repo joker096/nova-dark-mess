@@ -1,5 +1,18 @@
-import { forwardRef, type HTMLAttributes, useState, useRef, useEffect, useImperativeHandle } from 'react';
-import { Paperclip, Send, Mic, Smile, X, ChevronDown } from 'lucide-react';
+import {
+  forwardRef,
+  type HTMLAttributes,
+  useState,
+  useRef,
+  useEffect,
+  useImperativeHandle } from 'react';
+import {IconPaperclip as Paperclip,
+  IconSend as Send,
+  IconMicrophone as Mic,
+  IconMoodSmile as Smile,
+  IconX as X,
+  IconChevronDown as ChevronDown,
+  IconMoodSmile as MoodSmile,
+} from '@tabler/icons-react';
 
 interface NovaComposerHandle {
   focus: () => void;
@@ -170,7 +183,7 @@ export const NovaComposer = forwardRef<NovaComposerHandle, NovaComposerProps>(
                 className="p-1.5 rounded-full text-[var(--text-control-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-soft)] transition-colors"
                 aria-label="Emoji"
               >
-                <Smile className="w-5 h-5" />
+                <MoodSmile className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -230,3 +243,22 @@ export const NovaComposer = forwardRef<NovaComposerHandle, NovaComposerProps>(
 NovaComposer.displayName = 'NovaComposer';
 
 export type { NovaComposerProps };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

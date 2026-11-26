@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "1.0.58"
+version = "1.0.65"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -24,9 +24,8 @@ log = "0.4"
 tauri = { version = "2.12.5", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2.6.3"
-tauri-plugin-push = { version = "2", features = ["fcm", "apns"] }
-tauri-plugin-background-fetch = "2"
 tauri-plugin-notification = "2"
+tokio = { version = "1", features = ["full"] }
 
 # OS credential store for the vault key and PIN material (see src/keychain.rs).
 # Each desktop platform pulls only its native backend; mobile targets get an

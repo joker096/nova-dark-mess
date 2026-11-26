@@ -1,6 +1,20 @@
-import { createPortal } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
-import { X, Reply, Share2, Copy, Edit2, Trash2, Forward, Pin, Flag } from 'lucide-react';
+import {
+  createPortal } from 'react-dom';
+import { useEffect,
+  useRef,
+  useState } from 'react';
+import {IconX as X,
+  IconMessageReply as Reply,
+  IconShare2 as Share2,
+  IconCopy as Copy,
+  IconEdit as Edit,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconMessageForward as Forward,
+  IconPin as Pin,
+  IconFlag as Flag,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 
 interface ContextMenuItem {
   key: string;
@@ -159,7 +173,7 @@ export const MessageContextMenuItems = (
   isOwn && {
     key: 'edit',
     label: 'Edit',
-    icon: <Edit2 className="w-5 h-5" />,
+    icon: <Edit className="w-5 h-5" />,
     onClick: onEdit,
   },
   {
@@ -183,10 +197,29 @@ export const MessageContextMenuItems = (
   {
     key: 'delete',
     label: 'Delete',
-    icon: <Trash2 className="w-5 h-5" />,
+    icon: <TrashX className="w-5 h-5" />,
     onClick: onDelete,
     destructive: true,
   },
 ].filter(Boolean) as ContextMenuItem[];
 
 export type { ContextMenuItem, NovaContextMenuProps };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

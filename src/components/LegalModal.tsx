@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ExternalLink, ShieldCheck } from 'lucide-react';
+import {IconX as X, IconExternalLink as ExternalLink, IconShieldCheck as ShieldCheck} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { getLegalDocument, type LegalDocId } from '../lib/legal';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -98,3 +98,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({ docId, onClose }) => {
 };
 
 export default LegalModal;
+
+
+
+
+
+
+
+
+
+

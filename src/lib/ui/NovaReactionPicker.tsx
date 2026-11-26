@@ -5,11 +5,10 @@ import {
   useId,
   useLayoutEffect,
   useRef,
-  useState,
-} from 'react';
+  useState} from 'react';
 import type { ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus } from 'lucide-react';
+import {IconPlus as Plus} from '@tabler/icons-react';
 
 export interface NovaReactionPickerProps {
   /** Element that opens the picker; it receives the click and aria wiring. */
@@ -250,3 +249,13 @@ export function NovaReactionPicker({
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+

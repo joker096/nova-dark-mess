@@ -1,4 +1,4 @@
-import { x25519 } from '@noble/curves/ed25519.js';
+import { x25519, ed25519 } from '@noble/curves/ed25519.js';
 import { bufferToBase64 } from '../crypto/aes';
 import { isQueueId, isQueueToken } from './ids';
 import {
@@ -11,9 +11,6 @@ import {
 } from './session';
 import type { PacketProfile } from './types';
 import {
-  isQueuePrivateKey,
-  isQueuePublicKey,
-  queueSigningPublicKey,
   signIdentityBinding,
   verifyIdentityBinding,
 } from './signing';
@@ -31,6 +28,11 @@ import {
   DEFAULT_QUEUE_ROTATION_MS,
   type RelayEndpoint,
 } from './relays';
+import {
+  queueSigningPublicKey,
+  isQueuePrivateKey,
+  isQueuePublicKey,
+} from './crypto';
 
 export interface InboxTransport extends AnonTransport {
   createQueue(

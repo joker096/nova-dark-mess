@@ -1,5 +1,14 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Mic, Pin, PinOff, X } from 'lucide-react';
+import {
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconMicrophone as Microphone,
+  IconPin as Pin,
+  IconPinnedOff as PinnedOff,
+  IconX as X,
+  IconMicrophone as Mic,
+  IconPinnedOff as PinOff,
+} from '@tabler/icons-react';
 import { ChatMessage } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 import { LazyMedia } from '../LazyMedia';
@@ -179,3 +188,13 @@ export const PinnedMessagesCarousel: React.FC<PinnedMessagesCarouselProps> = ({
 </>
   );
 };
+
+
+
+
+
+
+
+
+
+

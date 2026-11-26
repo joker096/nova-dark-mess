@@ -1,3 +1,5 @@
+import React, { useCallback } from 'react';
+
 export type HapticType = 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error';
 
 export const hapticLight = () => triggerHaptic('light');

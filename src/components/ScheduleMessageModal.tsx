@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Calendar, X, Check, Send } from 'lucide-react';
+import {IconClock as Clock, IconCalendar as Calendar, IconX as X, IconCheck as Check, IconSend as Send} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 
@@ -204,7 +204,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
           {selectedPreset === 'custom' && (
             <div
               data-testid="schedule-custom-panel"
-              className="grid grid-cols-2 gap-2 mt-2 p-2 bg-[var(--nova-surface-high)] rounded-xl border border-[var(--nova-border-color)] animate-in fade-in"
+              className="grid grid-cols-2 gap-2 mt-2 p-2 bg-[var(--nova-surface-high)] rounded-xl animate-in fade-in"
             >
               <div>
                 <label className="text-[10px] text-[var(--nova-text-muted)] block mb-1">{t('schedule.date')}</label>
@@ -212,7 +212,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="w-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] rounded-lg p-1.5 text-xs text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]"
+                  className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
                 />
               </div>
               <div>
@@ -221,7 +221,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                   type="time"
                   value={customTime}
                   onChange={(e) => setCustomTime(e.target.value)}
-                  className="w-full bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] rounded-lg p-1.5 text-xs text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)]"
+                  className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
                 />
               </div>
             </div>
@@ -250,3 +250,13 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

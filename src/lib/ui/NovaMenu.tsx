@@ -13,6 +13,8 @@ export interface NovaMenuItemDef {
   disabled?: boolean;
   /** Shortcut combo shown on the right (`mod+c`). */
   shortcut?: string;
+  /** Optional count/status badge shown on the right. */
+  badge?: number | string;
   /** Draws a separator above this row. */
   separatorBefore?: boolean;
 }
@@ -154,7 +156,7 @@ export function NovaMenu({ trigger, items, align = 'end', label }: NovaMenuProps
             role="menu"
             aria-label={label}
             onKeyDown={onMenuKeyDown}
-            className="fixed z-[80] min-w-[180px] max-w-[260px] rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-2)]"
+            className="fixed z-[80] min-w-[200px] max-w-[280px] rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface)]/[0.97] backdrop-blur-xl p-1.5 shadow-[var(--shadow-2)] animate-in fade-in zoom-in-95 duration-100"
             style={{
               top: position.top,
               bottom: position.bottom,
@@ -189,14 +191,19 @@ function NovaMenuRow({ item, onClose }: { item: NovaMenuItemDef; onClose: (retur
           onClose(false);
           item.onSelect();
         }}
-        className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] disabled:opacity-40 disabled:cursor-not-allowed ${
+        className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] disabled:opacity-40 disabled:cursor-not-allowed ${
           item.danger
             ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
-            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
+            : 'text-[var(--text-primary)]/90 hover:text-[var(--text-primary)] hover:bg-[var(--nova-overlay-medium)]'
         }`}
       >
-        {item.icon && <span className="w-4 h-4 shrink-0 [&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>}
+        {item.icon && <span className="w-[18px] h-[18px] shrink-0 text-[var(--text-secondary)] [&>svg]:w-[18px] [&>svg]:h-[18px]">{item.icon}</span>}
         <span className="flex-1 truncate">{item.label}</span>
+        {item.badge !== undefined && (
+          <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] text-[10px] font-bold flex items-center justify-center">
+            {item.badge}
+          </span>
+        )}
         {shortcutLabel && <span className="text-[10px] text-[var(--text-tertiary)]">{shortcutLabel}</span>}
       </button>
     </>

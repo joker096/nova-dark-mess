@@ -1,14 +1,7 @@
 import { useState } from 'react';
 import { MeshRadar } from './MeshRadar';
 import { MeshMap } from './MeshMap';
-import {
-  Video,
-  Search,
-  Palette,
-  Pin,
-  Lock,
-  Folder,
-} from 'lucide-react';
+import {IconVideo as Video, IconSearch as Search, IconPalette as Palette, IconPin as Pin, IconLock as Lock, IconFolder as Folder} from '@tabler/icons-react';
 import {
   NovaButton,
   NovaInput,
@@ -19,8 +12,7 @@ import {
   NovaSelectableButton,
   NovaColorChip,
   NovaNavButton,
-  ScrollableRow,
-} from '../lib/ui';
+  ScrollableRow} from '../lib/ui';
 
 export const UIShowcase = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -303,3 +295,15 @@ export const UIShowcase = () => {
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+

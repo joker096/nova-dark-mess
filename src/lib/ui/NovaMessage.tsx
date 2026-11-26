@@ -1,5 +1,20 @@
-import { forwardRef, type HTMLAttributes, type ReactNode, useMemo } from 'react';
-import { ChevronRight, Download, Play, FileText, Image as ImageIcon, Link2, X, Reply, Share2 } from 'lucide-react';
+import {
+  forwardRef,
+  type HTMLAttributes,
+  type ReactNode,
+  useMemo } from 'react';
+import {IconChevronRight as ChevronRight,
+  IconDownload as Download,
+  IconPlayerPlay as PlayCircle,
+  IconFileText as FileText,
+  IconPhoto as Photo,
+  IconLink as Link,
+  IconX as X,
+  IconMessageReply as Reply,
+  IconShare2 as Share2,
+  IconPhoto as ImageIcon,
+  IconPlayerPlay as Play,
+} from '@tabler/icons-react';
 import { Avatar } from './Avatar';
 import { NovaBadge } from './NovaBadge';
 import { NovaReactionChips } from './NovaReactionChips';
@@ -373,3 +388,13 @@ export const NovaMessage = forwardRef<HTMLDivElement, NovaMessageProps>(
 );
 
 NovaMessage.displayName = 'NovaMessage';
+
+
+
+
+
+
+
+
+
+

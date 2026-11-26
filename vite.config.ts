@@ -10,10 +10,9 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
  * CSP is injected here instead of being hard-coded in index.html so dev can
  * allow Vite's inline/eval tooling while production builds do not.
  *
- * `script-src` keeps `'unsafe-inline'` in production because Tauri injects its
- * bootstrap script inline; the actual restriction comes from the Tauri CSP
- * header, which Tauri extends with a nonce/hash for that script.
- * `connect-src` must include the IPC origins or every Tauri command is blocked.
+ * Production: uses a generated nonce for inline scripts (removes 'unsafe-inline')
+ * Dev: keeps 'unsafe-inline' + 'unsafe-eval' for HMR
+ * Tauri: adds its own CSP header with nonce for bootstrap script.
  */
 /** Mini App hosts are an operator allowlist, never an arbitrary per-bot host. */
 function miniAppFrameOrigins(raw: string | undefined): string[] {
@@ -33,7 +32,7 @@ function miniAppFrameOrigins(raw: string | undefined): string[] {
     .filter((origin): origin is string => Boolean(origin));
 }
 
-function buildCsp(miniAppOrigins: string): string {
+function buildCspBase(miniAppOrigins: string): string {
   return [
     "default-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -47,20 +46,58 @@ function buildCsp(miniAppOrigins: string): string {
   ].join('; ');
 }
 
+function buildCsp(miniAppOrigins: string, nonce?: string): string {
+  const scriptSrc = nonce
+    ? `script-src 'self' 'nonce-${nonce}' blob:`
+    : "script-src 'self' 'unsafe-inline' blob:";
+  return `${buildCspBase(miniAppOrigins)}; ${scriptSrc}`;
+}
+
+function generateNonce(): string {
+  // Generate a random base64 nonce (128 bits = 16 bytes = 24 base64 chars)
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array));
+}
+
 function cspPlugin(prodCsp: string, devCsp: string): Plugin {
+  let prodNonce: string | undefined;
   return {
     name: 'nova-csp',
-    transformIndexHtml(_html, ctx) {
-      return [
-        {
-          tag: 'meta',
-          attrs: {
-            'http-equiv': 'Content-Security-Policy',
-            content: ctx.server ? devCsp : prodCsp,
-          },
-          injectTo: 'head-prepend',
-        },
-      ];
+    configResolved() {
+      // Generate nonce once at build time for production
+      prodNonce = generateNonce();
+    },
+    transformIndexHtml(html, ctx) {
+      const isDev = !!ctx.server;
+      const nonce = isDev ? undefined : prodNonce;
+      const frameOrigins = prodCsp.match(/frame-src 'self' blob:([^;]+)/)?.[1]?.trim() ?? '';
+      const csp = isDev ? devCsp : buildCsp(frameOrigins, nonce);
+
+      let transformedHtml = html;
+
+      // Remove any existing CSP meta tag to avoid duplicates
+      transformedHtml = transformedHtml.replace(
+        /<meta http-equiv="Content-Security-Policy"[^>]*>/g,
+        ''
+      );
+
+      // Inject new CSP meta tag at the start of head
+      transformedHtml = transformedHtml.replace(
+        '<head>',
+        `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}">`
+      );
+
+      // Add nonce to inline scripts in production
+      if (!isDev && nonce) {
+        // Add nonce to all inline script tags (those without src and without type="module")
+        transformedHtml = transformedHtml.replace(
+          /<script(?![^>]*\b(src|type="module")[^>]*)>/g,
+          `<script nonce="${nonce}">`
+        );
+      }
+
+      return transformedHtml;
     },
   };
 }
@@ -70,7 +107,8 @@ export default defineConfig(({ mode, command }) => {
   const frameOrigins = miniAppFrameOrigins(env.VITE_MINI_APP_ORIGINS ?? 'https://mess.cvr.name')
     .map((origin) => ` ${origin}`)
     .join('');
-  const sharedCsp = buildCsp(frameOrigins);
+  const sharedCsp = buildCspBase(frameOrigins);
+  // Production CSP: no 'unsafe-inline' for scripts (uses nonce), dev CSP: allows inline/eval for HMR
   const prodCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' blob:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost https: wss: data:`;
   const devCsp = `${sharedCsp}; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss: data:`;
 
@@ -182,7 +220,7 @@ export default defineConfig(({ mode, command }) => {
             if (/node_modules[\\/]ai[\\/]/.test(id)) return 'ai';
             // QR code
             if (/node_modules[\\/]qrcode[\\/]/.test(id)) return 'qrcode';
-            // Large internal modules
+            // Large internal modules - main screens
             if (/\/components\/ChatScreen\.tsx/.test(id)) return 'ChatScreen';
             if (/\/components\/ChatsScreen\.tsx/.test(id)) return 'ChatsScreen';
             if (/\/components\/MeshMap\.tsx/.test(id)) return 'MeshMap';
@@ -192,8 +230,66 @@ export default defineConfig(({ mode, command }) => {
             if (/\/lib\/bots\/runtime\.ts/.test(id)) return 'bots-runtime';
             if (/\/examples\/bots\/movie-catalog\//.test(id)) return 'movie-catalog';
             if (/\/examples\/bots\/novafather\//.test(id)) return 'novafather';
+// ChatScreen sub-components (split for caching, not lazy loaded at runtime)
+            if (/\/components\/chat\/StickerPickerDrawer\.tsx/.test(id)) return 'StickerPickerDrawer';
+            if (/\/components\/FileSelectionModal\.tsx/.test(id)) return 'FileSelectionModal';
+            if (/\/components\/PollCreateModal\.tsx/.test(id)) return 'PollCreateModal';
+            if (/\/components\/LocationPickerModal\.tsx/.test(id)) return 'LocationPickerModal';
+if (/\/components\/MiniAppIframe\.tsx/.test(id)) return 'MiniAppIframe';
+            if (/\/components\/VoiceMemoInput\.tsx/.test(id)) return 'VoiceMemoInput';
+            if (/\/components\/DoodleBackground\.tsx/.test(id)) return 'DoodleBackground';
+            if (/\/components\/AudioWaveformPlayer\.tsx/.test(id)) return 'AudioWaveformPlayer';
+            if (/\/components\/VirtualizedList\.tsx/.test(id)) return 'VirtualizedList';
+            if (/\/components\/chat\/MessageHoverActions\.tsx/.test(id)) return 'MessageHoverActions';
+            if (/\/components\/FirstContactWarning\.tsx/.test(id)) return 'FirstContactWarning';
+            if (/\/components\/chat\/PollBubble\.tsx/.test(id)) return 'PollBubble';
+            if (/\/components\/chat\/LocationBubble\.tsx/.test(id)) return 'LocationBubble';
+            if (/\/components\/chat\/StickerMedia\.tsx/.test(id)) return 'StickerMedia';
+            if (/\/components\/chat\/ChatTextInput\.tsx/.test(id)) return 'ChatTextInput';
+            if (/\/components\/chat\/ChatHeader\.tsx/.test(id)) return 'ChatHeader';
+            if (/\/components\/MessageInlineKeyboard\.tsx/.test(id)) return 'MessageInlineKeyboard';
+            if (/\/components\/MiniAppIframe\.tsx/.test(id)) return 'MiniAppIframe';
+            if (/\/components\/chat\/MessageBubble\.tsx/.test(id)) return 'MessageBubble';
+            if (/\/components\/chat\/MessageContent\.tsx/.test(id)) return 'MessageContent';
+            if (/\/components\/chat\/ReplyPreview\.tsx/.test(id)) return 'ReplyPreview';
+            if (/\/components\/chat\/ForwardTag\.tsx/.test(id)) return 'ForwardTag';
+            if (/\/components\/chat\/ViaBotTag\.tsx/.test(id)) return 'ViaBotTag';
+            if (/\/components\/chat\/Reactions\.tsx/.test(id)) return 'Reactions';
+            if (/\/components\/chat\/MessageStatus\.tsx/.test(id)) return 'MessageStatus';
+            if (/\/components\/chat\/MediaPreview\.tsx/.test(id)) return 'MediaPreview';
+            if (/\/components\/chat\/VideoPlayer\.tsx/.test(id)) return 'VideoPlayer';
+            if (/\/components\/LazyMedia\.tsx/.test(id)) return 'LazyMedia';
+            if (/\/components\/WallpaperSettingsModal\.tsx/.test(id)) return 'WallpaperSettingsModal';
+            if (/\/components\/ScheduleMessageModal\.tsx/.test(id)) return 'ScheduleMessageModal';
+            if (/\/components\/VideoCallOverlay\.tsx/.test(id)) return 'VideoCallOverlay';
+            if (/\/components\/GroupVideoCallOverlay\.tsx/.test(id)) return 'GroupVideoCallOverlay';
+            if (/\/components\/OnboardingWizard\.tsx/.test(id)) return 'OnboardingWizard';
+            if (/\/components\/ProfileScreen\.tsx/.test(id)) return 'ProfileScreen';
+            if (/\/components\/SanctionScreen\.tsx/.test(id)) return 'SanctionScreen';
+            if (/\/components\/BottomNav\.tsx/.test(id)) return 'BottomNav';
+            if (/\/components\/Sidebar\.tsx/.test(id)) return 'Sidebar';
+            if (/\/components\/ChannelScreen\.tsx/.test(id)) return 'ChannelScreen';
+            if (/\/components\/ContactsScreen\.tsx/.test(id)) return 'ContactsScreen';
+            if (/\/components\/SettingsModal\.tsx/.test(id)) return 'SettingsModal';
+            if (/\/components\/SharedMediaSection\.tsx/.test(id)) return 'SharedMediaSection';
+            if (/\/lib\/p2p\/mediaCall\.ts/.test(id)) return 'mediaCall';
+            if (/\/lib\/p2p\/groupCall\.ts/.test(id)) return 'groupCall';
+            if (/\/lib\/p2p\/fileTransfer\.ts/.test(id)) return 'fileTransfer';
+            if (/\/lib\/p2p\/signaling\.ts/.test(id)) return 'signaling';
+            if (/\/lib\/p2p\/roomChannel\.ts/.test(id)) return 'roomChannel';
+            if (/\/lib\/crypto\//.test(id)) return 'crypto';
+            if (/\/lib\/anon\/signing\.(js|ts)$/.test(id)) return 'signing';
+            if (/\/lib\/anon\//.test(id)) return 'anon';
+            if (/\/lib\/media\//.test(id)) return 'media';
+            if (/\/lib\/notifications\//.test(id)) return 'notifications';
+            if (/\/lib\/social\//.test(id)) return 'social';
+            if (/\/hooks\//.test(id)) return 'hooks';
             // Locales (loaded on demand)
-            if (/\/locales\//.test(id)) return 'locales';
+            if (/\/locales\//.test(id)) {
+              const match = id.match(/\/locales\/([^\/]+)\.json$/);
+              if (match) return `locale-${match[1]}`;
+              return 'locales';
+            }
             return undefined;
           },
         },
@@ -209,7 +305,8 @@ export default defineConfig(({ mode, command }) => {
     },
     server: {
       host: '0.0.0.0',
-      hmr: process.env.DISABLE_HMR !== 'true' ? { protocol: 'ws' } : false,
+      port: 3000,
+      hmr: process.env.DISABLE_HMR !== 'true' ? { protocol: 'ws', host: 'localhost', port: 3000, clientPort: 3000 } : false,
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
         '/api': { target: 'http://localhost:8080', changeOrigin: true },

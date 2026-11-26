@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import {IconCheck as Check, IconPlus as Plus, IconTrashX as Trash2, IconTrash as Trash, IconTrash as TrashX} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Avatar } from '../lib/ui';
@@ -228,7 +228,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                       : t('channel.deleteChannel')
                   }
                 >
-                  {confirmId === channel.id ? t('common.delete') : <Trash2 className="h-3.5 w-3.5" />}
+                  {confirmId === channel.id ? t('common.delete') : <TrashX className="h-3.5 w-3.5" />}
                 </button>
               )}
             </div>
@@ -266,7 +266,7 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
                 disabled={selectedIds.length === 0}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500/90 py-2 text-xs font-semibold text-white transition hover:bg-red-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <TrashX className="h-3.5 w-3.5" />
                 {t('common.delete')} ({selectedIds.length})
               </button>
               <button
@@ -292,3 +292,22 @@ export const ChannelSwitcherModal: React.FC<ChannelSwitcherModalProps> = ({
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

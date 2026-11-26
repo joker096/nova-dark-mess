@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Maximize, Send } from 'lucide-react';
+import {IconX as X, IconMaximize as Maximize, IconSend as Send} from '@tabler/icons-react';
 import type { FromMiniAppMessage, ToMiniAppMessage } from '../lib/bots/miniApp';
 import { createInitData, DEFAULT_THEME_PARAMS, iframeOrigin, serializeInitData } from '../lib/bots/miniApp';
 import { isAllowedMiniAppUrl } from '../lib/bots/miniAppOrigins';
@@ -205,3 +205,21 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
 };
 
 export type { MiniAppIframeProps };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

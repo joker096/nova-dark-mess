@@ -8,28 +8,24 @@ import {
   createSignedPreKey,
   deriveIdentityFromMnemonic,
   isValidMnemonic,
-  verifyPreKeyBundle,
-} from '../lib/crypto/identity';
+  verifyPreKeyBundle} from '../lib/crypto/identity';
 import {
   RatchetMessagePayload,
   RatchetState,
   X3DHHeader,
   createOutboundRatchetSession,
   ratchetDecryptMessage,
-  ratchetEncryptMessage,
-} from '../lib/crypto/ratchet';
+  ratchetEncryptMessage} from '../lib/crypto/ratchet';
 import { dbInstance } from '../lib/storage/db';
 import {
   createEncryptedBackupBlob,
   restoreEncryptedBackup,
-  BackupPayload,
-} from '../lib/storage/backup';
+  BackupPayload} from '../lib/storage/backup';
 import {
   clearStoredIdentity,
   hasStoredIdentityRecord,
   loadStoredIdentity,
-  saveStoredIdentity,
-} from '../lib/storage/identityStore';
+  saveStoredIdentity} from '../lib/storage/identityStore';
 import { deriveKeyFromRandomSecret } from '../lib/storage/kdf';
 import { isSecureStorageAvailable } from '../lib/storage/keychain';
 import { generateTOTPSecret, verifyTOTPCode } from '../lib/p2p/totp';
@@ -40,8 +36,7 @@ import {
   recordPinFailure,
   requestPinReset,
   isPinResetAllowed,
-  clearPinResetRequest,
-} from '../lib/security/pinAttemptLimiter';
+  clearPinResetRequest} from '../lib/security/pinAttemptLimiter';
 import { createKeychain } from '../lib/storage/keychain';
 import { checkPin, hashPin } from '../lib/security/pinHash';
 import {
@@ -49,8 +44,7 @@ import {
   unwrapMasterKey,
   storeWrappedMasterKey,
   removeWrappedMasterKey,
-  hasWrappedMasterKey,
-} from '../lib/security/vaultKey';
+  hasWrappedMasterKey} from '../lib/security/vaultKey';
 import { P2PManager } from '../lib/p2p/p2pManager';
 import { completeOnboarding, resetOnboarding } from '../lib/onboarding';
 
@@ -61,8 +55,7 @@ import {
   getBiometricCredentialId,
   isBiometricSupported,
   registerBiometricCredential,
-  verifyBiometricCredential,
-} from '../lib/security/biometric';
+  verifyBiometricCredential} from '../lib/security/biometric';
 
 export interface SecurityContextType {
   identity: UserIdentity | null;
@@ -998,3 +991,4 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     </SecurityContext.Provider>
   );
 };
+

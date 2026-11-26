@@ -1,21 +1,23 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import { localAnalytics } from '../lib/analytics/localAnalytics';
 import {
-  BarChart3,
-  TrendingUp,
-  MessageSquare,
-  HardDrive,
-  ShieldCheck,
-  Zap,
-  Users,
-  Mic,
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowLeft,
-  RefreshCw,
-  Activity,
-} from 'lucide-react';
+  useLanguage } from '../context/LanguageContext';
+import { localAnalytics } from '../lib/analytics/localAnalytics';
+import {IconChartBar as BarChart,
+  IconTrendingUp as TrendingUp,
+  IconMessageCircle as MessageCircle,
+  IconDeviceFloppy as HardDrive,
+  IconShieldCheck as ShieldCheck,
+  IconBolt as Zap,
+  IconUsers as Users,
+  IconMicrophone as Mic,
+  IconArrowUpRight as ArrowUpRight,
+  IconArrowDownRight as ArrowDownRight,
+  IconArrowLeft as ArrowLeft,
+  IconRefresh as Refresh,
+  IconActivity as Activity,
+  IconChartBar as BarChart3,
+  IconMessageCircle as MessageSquare,
+} from '@tabler/icons-react';
 
 interface AnalyticsScreenProps {
   onBack?: () => void;
@@ -135,7 +137,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="md:hidden p-1.5 rounded-lg hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+            className="md:hidden flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition active:scale-95 cursor-pointer"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -156,13 +158,13 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            className={`p-2.5 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:bg-[var(--nova-surface-high)] text-[var(--nova-text-secondary)] transition-all ${
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition-all ${
               isRefreshing ? 'animate-spin text-[var(--nova-accent-color)]' : ''
             }`}
             title={t('analytics.refresh')}
             aria-label={t('analytics.refresh')}
           >
-            <RefreshCw className="w-4 h-4" />
+            <Refresh className="w-4 h-4" />
           </button>
 
           <div className="flex items-center p-1 rounded-xl bg-[var(--nova-surface-raised)] border border-[var(--nova-border-color)] text-xs font-medium">
@@ -347,3 +349,27 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

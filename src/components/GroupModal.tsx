@@ -1,31 +1,32 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import {
+  useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
-import {
-  X,
-  Check,
-  Users,
-  UserPlus,
-  UserMinus,
-  Crown,
-  Shield,
-  Settings,
-  Trash2,
-  UserX,
-  Send,
-  MessageSquare,
-  Key,
-  RotateCcw,
-} from 'lucide-react';
+import {IconX as X,
+  IconCheck as Check,
+  IconUsers as Users,
+  IconUserPlus as UserPlus,
+  IconUserMinus as UserMinus,
+  IconCrown as Crown,
+  IconShield as Shield,
+  IconSettings as Settings,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconUserX as UserX,
+  IconSend as Send,
+  IconMessageCircle as MessageCircle,
+  IconKey as Key,
+  IconRotate as Rotate,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import {
   createGroupSession,
   rotateGroupSession,
   distributeGroupSession,
   sendEncryptedGroupMessage,
-  type GroupSession,
-} from '../lib/anon/groups';
+  type GroupSession} from '../lib/anon/groups';
 import { createAnonTransport } from '../lib/anon/transport';
 import { InMemoryAnonRelay } from '../lib/anon/relay';
 import { x25519 } from '@noble/curves/ed25519.js';
@@ -558,7 +559,7 @@ export const GroupModal: React.FC<GroupModalProps> = ({
                 }}
                 className="w-full py-2 bg-red-500/20 text-red-400 font-semibold text-sm rounded-xl transition hover:bg-red-500/30"
               >
-                <Trash2 className="w-4 h-4 inline mr-2" />
+                <TrashX className="w-4 h-4 inline mr-2" />
                 {t('group.deleteGroup')}
               </button>
             </div>
@@ -614,3 +615,24 @@ export const GroupModal: React.FC<GroupModalProps> = ({
 };
 
 export default GroupModal;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

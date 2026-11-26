@@ -122,7 +122,7 @@ export const ChatTextInput = forwardRef<ChatTextInputHandle, ChatTextInputProps>
         }}
         placeholder={placeholder}
         data-inline-focus
-        className="w-full bg-transparent text-sm text-[color:var(--nova-text-primary)] placeholder-[color:var(--nova-text-muted)] focus:outline-none py-1 min-w-0"
+        className="w-full bg-[var(--nova-overlay-weak)]/50 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] rounded-xl px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] min-w-0 transition-all duration-200"
       />
     );
   },

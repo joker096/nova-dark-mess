@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Copy, ShieldCheck, Share2 } from 'lucide-react';
+import {IconCheck as Check, IconCopy as Copy, IconShieldCheck as ShieldCheck, IconShare2 as Share2} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -185,3 +185,13 @@ export const ContactShareModal: React.FC<ContactShareModalProps> = ({
 };
 
 ContactShareModal.displayName = 'ContactShareModal';
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,5 @@
-import type { ChatItem, ContactProfile, Story, ChatMessage, ChannelPost } from '../types/messenger';
+import type { ChatItem, ContactProfile, Story, ChatMessage, ChannelPost, SharedMediaItem } from '../types/messenger';
+import { STICKER_PACKS } from './stickers';
 
 let mockDataPromise: Promise<{
   CURRENT_USER: { id: string; name: string; avatar: string; unreadTotal: number };
@@ -6,8 +7,8 @@ let mockDataPromise: Promise<{
   MOCK_CHATS: ChatItem[];
   CONTACT_PROFILES: Record<string, ContactProfile>;
   CONVERSATION_HISTORIES: Record<string, ChatMessage[]>;
-  KATIE_SHARED_MEDIA: { id: string; type: 'photo' | 'video'; url: string; thumbnail: string; timestamp: number }[];
-  STICKER_PACKS: any[];
+  KATIE_SHARED_MEDIA: SharedMediaItem[];
+  STICKER_PACKS: typeof STICKER_PACKS;
 } | null> = null;
 
 export async function loadDevMockData() {
@@ -21,7 +22,7 @@ export async function loadDevMockData() {
       CONTACT_PROFILES: module.CONTACT_PROFILES,
       CONVERSATION_HISTORIES: module.CONVERSATION_HISTORIES,
       KATIE_SHARED_MEDIA: module.KATIE_SHARED_MEDIA,
-      STICKER_PACKS: module.STICKER_PACKS,
+      STICKER_PACKS,
     }));
     return mockDataPromise;
   }
@@ -44,7 +45,7 @@ export function getDevMockDataSync() {
         CONTACT_PROFILES: module.CONTACT_PROFILES,
         CONVERSATION_HISTORIES: module.CONVERSATION_HISTORIES,
         KATIE_SHARED_MEDIA: module.KATIE_SHARED_MEDIA,
-        STICKER_PACKS: module.STICKER_PACKS,
+        STICKER_PACKS,
       };
     } catch {
       return null;

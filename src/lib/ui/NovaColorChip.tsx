@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { HTMLAttributes } from 'react';
-import { Lock } from 'lucide-react';
+import {IconLock as Lock} from '@tabler/icons-react';
 
 interface NovaColorChipProps extends HTMLAttributes<HTMLButtonElement> {
   gradient?: string;
@@ -80,3 +80,13 @@ export const NovaColorChip = forwardRef<HTMLButtonElement, NovaColorChipProps>(
 NovaColorChip.displayName = 'NovaColorChip';
 
 export type { NovaColorChipProps };
+
+
+
+
+
+
+
+
+
+

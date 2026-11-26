@@ -1,5 +1,41 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Lock, Info, Users, MessageSquare, Settings, ChevronLeft, ChevronRight, Sparkles, FolderPlus, Folder, X, Plus, Search, MapPin, Megaphone, BarChart3, Globe, Palette, Shield, Bell, Database, Send, Archive, Clock, Check, BellOff, VolumeX, Pin as PinIcon, Trash2, UserRound, Upload, Hand, Cloud, Hand as HandIcon, Sparkles as SparklesIcon } from 'lucide-react';
+import {
+  IconLayoutDashboard as LayoutDashboard,
+  IconLock as Lock,
+  IconInfoCircle as Info,
+  IconUsers as Users,
+  IconMessageCircle as MessageCircle,
+  IconSettings as Settings,
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconSparkles as Sparkles,
+  IconFolderPlus as FolderPlus,
+  IconFolder as Folder,
+  IconX as X,
+  IconPlus as Plus,
+  IconSearch as Search,
+  IconMapPin as MapPin,
+  IconSpeakerphone as Megaphone,
+  IconChartBar as BarChart,
+  IconGlobe as Globe,
+  IconPalette as Palette,
+  IconShield as Shield,
+  IconBell as Bell,
+  IconDatabase as Database,
+  IconSend as Send,
+  IconArchive as Archive,
+  IconClock as Clock,
+  IconCheck as Check,
+  IconBellOff as BellOff,
+  IconVolumeOff as VolumeX,
+  IconPin as Pin,
+  IconTrash as Trash,
+  IconUser as User,
+  IconUpload as Upload,
+  IconHandClick as Hand,
+  IconCloud as Cloud,
+  IconMessageCircle as MessageSquare,
+} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { pendingConsent, sanitizeManifest, type InstalledBot } from '../lib/bots/runtime';
@@ -19,8 +55,7 @@ import {
   shouldEmitCoverTraffic,
   probeTor,
   type BatteryStatus,
-  type PrivacyPrefs,
-} from '../lib/network/privacyMode';
+  type PrivacyPrefs} from '../lib/network/privacyMode';
 import { loadJoinOutbox, retryJoinOutboxNow } from '../lib/social/joinRequestRelay';
 import {
   getSocialPrivacy,
@@ -28,15 +63,13 @@ import {
   setContactBlocked,
   getBlockedContactsWithProfiles,
   type SocialPrivacySettings,
-  type PrivacyScope,
-} from '../lib/social/socialPrivacy';
+  type PrivacyScope} from '../lib/social/socialPrivacy';
 import {
   clearLocalAdPrefs,
   loadAdPreferences,
   restoreHiddenAd,
   unblockAdvertiser,
-  type LocalAdPreferences,
-} from '../lib/ads/localAds';
+  type LocalAdPreferences} from '../lib/ads/localAds';
 import { loadSoundId, playSound, saveSoundId, SOUND_IDS, SOUNDS, type SoundId } from '../lib/notifications/sounds';
 import {
   getNotificationPrefs,
@@ -49,8 +82,7 @@ import {
   getPriorityContacts,
   type NotificationPrefs,
   type NotificationLevel,
-  type MuteDurationKey,
-} from '../lib/notifications/notificationPrefs';
+  type MuteDurationKey} from '../lib/notifications/notificationPrefs';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { CryptoCheckoutModal } from './CryptoCheckoutModal';
@@ -71,8 +103,7 @@ import {
   saveFabSide,
   FAB_SIDE_EVENT,
   isFabSide,
-  type FabSide,
-} from '../lib/ui/appearance';
+  type FabSide} from '../lib/ui/appearance';
 
 import type { BotSession } from '../lib/bots/session';
 import { movieCatalogBotManifest } from '../../examples/bots/movie-catalog/manifest';
@@ -238,3 +269,16 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
 };
 
 export default DesktopLayout;
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Radio, Clock, Search, Check } from 'lucide-react';
+import {IconMapPin as MapPin, IconNavigation as Navigation, IconRadio as Radio, IconClock as Clock, IconSearch as Search, IconCheck as Check} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { LocationData } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
@@ -274,3 +274,13 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+

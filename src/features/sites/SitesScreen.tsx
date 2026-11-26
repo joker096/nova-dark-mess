@@ -5,9 +5,29 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLanguage } from '../../context/LanguageContext';
+import {
+  useLanguage } from '../../context/LanguageContext';
 import { useAccount } from '../../hooks/useAccount';
-import { ArrowLeft, Plus, Lock, ShieldAlert, CheckCheck, Clock, MessageSquare, MoreVertical, X, Ban, Bell, BarChart3, Bot, Link2 } from 'lucide-react';
+import {IconArrowLeft as ArrowLeft,
+  IconPlus as Plus,
+  IconLock as Lock,
+  IconShieldHeart as ShieldHeart,
+  IconChecks as CheckCheck2,
+  IconClock as Clock,
+  IconMessageCircle as MessageCircle,
+  IconBorderVertical as BorderVertical,
+  IconX as X,
+  IconBan as Ban,
+  IconBell as Bell,
+  IconChartBar as BarChart,
+  IconRobot as Bot,
+  IconLink as Link,
+  IconChartBar as BarChart3,
+  IconLink as Link2,
+  IconMessageCircle as MessageSquare,
+  IconDotsVertical as MoreVertical,
+  IconShieldExclamation as ShieldExclamation,
+} from '@tabler/icons-react';
 import {
   fetchSites, createSite, fetchThreads, fetchMessages, sendMessage, closeThread, blockGuest,
   fetchNotifications, fetchUnreadNotifications, markNotificationRead, type Notification,
@@ -15,8 +35,7 @@ import {
   createBotTokenApi, fetchBotTokens, deleteBotTokenApi, updateSiteSettings, type BotToken,
   buildOAuthAuthorizeUrl, generateCodeVerifier,
   connectWs, subscribeSites,
-  type Site, type Thread, type Message,
-} from './sitesApi';
+  type Site, type Thread, type Message} from './sitesApi';
 import { cachedFetch, invalidateCachePrefix } from '../../lib/api';
 import { x25519 } from '@noble/curves/ed25519.js';
 import { HandoffPrompt, type SiteHandoff } from './HandoffPrompt';
@@ -506,7 +525,7 @@ export default function SitesScreen({
             )}
             {!loading && !error && sites.length > 0 && !sites.some((s) => s.confirmed) && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <ShieldAlert className="w-12 h-12 text-[#ff4e18] mb-3" />
+                <ShieldExclamation className="w-12 h-12 text-[#ff4e18] mb-3" />
                 <h3 className="font-semibold text-[var(--text-primary)] mb-2">{t('sites.notConfirmed')}</h3>
                 <p className="text-[var(--text-tertiary)] text-xs max-w-xs text-center">{t('sites.notConfirmedDesc')}</p>
                 <button onClick={openWizard} className="mt-4 px-4 py-2 rounded-xl bg-[var(--nova-accent-color,#ff4e18)] text-[var(--text-on-accent)] text-xs font-semibold hover:opacity-90">
@@ -703,7 +722,7 @@ export default function SitesScreen({
             <div className="font-semibold text-[15px] truncate">{t('sites.guestChat', { site: selectedSite!.name })}</div>
             <div className="text-[11px] text-[var(--text-tertiary)]">{online ? t('sites.online') : t('sites.offline')}</div>
           </div>
-          {!online && <ShieldAlert className="w-5 h-5 text-[var(--text-tertiary)]" />}
+          {!online && <ShieldExclamation className="w-5 h-5 text-[var(--text-tertiary)]" />}
           <button onClick={() => setActionsOpen(!actionsOpen)} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]" aria-label={t('sites.threadActions')}>
             <MoreVertical size={18} />
           </button>
@@ -729,7 +748,7 @@ export default function SitesScreen({
                 <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] rounded-tr-none' : 'bg-[var(--nova-surface)] text-[var(--nova-text-primary)] rounded-tl-none'}`}>
                     {text}
-                    <div className="text-[10px] opacity-60 mt-1">{fmtTime(m.created_at)} {m.delivered_at ? <CheckCheck size={10} className="ml-1 inline" /> : <Clock size={10} className="ml-1 inline text-[#8c919d]" />}</div>
+                    <div className="text-[10px] opacity-60 mt-1">{fmtTime(m.created_at)} {m.delivered_at ? <CheckCheck2 size={10} className="ml-1 inline" /> : <Clock size={10} className="ml-1 inline text-[#8c919d]" />}</div>
                   </div>
                 </div>
               );
@@ -780,3 +799,25 @@ export default function SitesScreen({
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LazyMedia } from './LazyMedia';
-import { ExternalLink, X } from 'lucide-react';
+import {IconExternalLink as ExternalLink, IconX as X} from '@tabler/icons-react';
 import { cachedFetch } from '../lib/api';
 
 interface LinkPreviewProps {
@@ -179,10 +179,23 @@ export function LinkPreviewList({ urls, onRemove }: { urls: string[]; onRemove?:
   );
 }
 
-// Hook to extract URLs from text
-export function useLinkPreviews(text: string): string[] {
+// URLs in free text, deduplicated in first-seen order.
+export function extractUrls(text: string): string[] {
   const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g;
   const matches = text.match(urlRegex) || [];
-  // Deduplicate
   return [...new Set(matches)];
 }
+
+// Hook to extract URLs from text
+export function useLinkPreviews(text: string): string[] {
+  return extractUrls(text);
+}
+
+
+
+
+
+
+
+
+

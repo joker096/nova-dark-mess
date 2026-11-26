@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Navigation, Radio, ExternalLink } from 'lucide-react';
+import {IconExternalLink as ExternalLink, IconMapPin as MapPin, IconNavigation as Navigation, IconRadio as Radio} from '@tabler/icons-react';
 import { LocationData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -104,3 +104,13 @@ export const LocationBubble: React.FC<LocationBubbleProps> = ({ location }) => {
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

@@ -7,7 +7,7 @@
  * - Background sync for messages
  */
 
-const CACHE_NAME = 'nova-messenger-v1';
+const CACHE_NAME = 'nova-messenger-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -40,7 +40,9 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - network first, falling back to cache when offline.
+// Cache-first served stale JS/HTML after a new deploy and mixed old and new
+// React copies, which surfaces as "Invalid hook call".
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
@@ -50,26 +52,22 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        // Don't cache non-successful responses
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Cache only successful responses
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          void caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-
-        // Clone response for cache
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
         return networkResponse;
-      });
-    })
+      })
+      .catch(async () => {
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) return cachedResponse;
+        return Response.error();
+      })
   );
 });
 

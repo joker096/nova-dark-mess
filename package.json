@@ -1,7 +1,7 @@
 {
   "name": "nova-dark-messenger",
   "private": true,
-  "version": "1.0.58",
+  "version": "1.0.65",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -38,13 +38,13 @@
     "@noble/hashes": "^2.4.0",
     "@noble/post-quantum": "^0.7.1",
     "@scure/bip39": "^2.4.0",
+    "@tabler/icons-react": "^3.53.0",
     "@tauri-apps/plugin-deep-link": "^2.6.3",
     "ai": "^7.0.166",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "i18next": "^27.0.1",
     "leaflet": "^1.9.4",
-    "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "qrcode": "^1.5.4",
     "react": "^19.0.1",

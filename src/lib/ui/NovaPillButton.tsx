@@ -1,5 +1,5 @@
 import { forwardRef, type HTMLAttributes } from 'react';
-import { Check } from 'lucide-react';
+import {IconCheck as Check} from '@tabler/icons-react';
 
 interface NovaPillButtonProps extends HTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'invited';
@@ -54,3 +54,12 @@ export const NovaPillButton = forwardRef<HTMLButtonElement, NovaPillButtonProps>
 NovaPillButton.displayName = 'NovaPillButton';
 
 export type { NovaPillButtonProps };
+
+
+
+
+
+
+
+
+

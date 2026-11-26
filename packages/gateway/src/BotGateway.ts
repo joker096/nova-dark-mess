@@ -48,6 +48,29 @@ export interface GatewayCallbacks {
   onPeerConnected?: (fingerprint: string) => void;
   onPeerDisconnected?: (fingerprint: string) => void;
   onError?: (error: Error) => void;
+  onChatMemberBanned?: (chatId: string, userFingerprint: string, byFingerprint: string) => void;
+  onChatMemberUnbanned?: (chatId: string, userFingerprint: string, byFingerprint: string) => void;
+  onChatMemberRestricted?: (chatId: string, userFingerprint: string, permissions: ChatPermissions) => void;
+  onChatMemberPromoted?: (chatId: string, userFingerprint: string, isAdmin: boolean) => void;
+}
+
+export interface ChatPermissions {
+  canSendMessages?: boolean;
+  canSendMediaMessages?: boolean;
+  canSendPolls?: boolean;
+  canSendOtherMessages?: boolean;
+  canAddWebPagePreviews?: boolean;
+  canChangeInfo?: boolean;
+  canInviteUsers?: boolean;
+  canManageTopics?: boolean;
+}
+
+export interface ChatMemberStatus {
+  userFingerprint: string;
+  chatId: string;
+  status: 'member' | 'administrator' | 'creator' | 'restricted' | 'left' | 'kicked';
+  permissions?: ChatPermissions;
+  untilDate?: number;
 }
 
 export interface BotGatewayOptions {
@@ -108,6 +131,8 @@ export class BotGateway {
   private messageHandlers = new Map<string, (msg: any) => void>();
   private initialized = false;
   private shuttingDown = false;
+  private chatMembers = new Map<string, Map<string, ChatMemberStatus>>(); // chatId -> userFingerprint -> status
+  private chatAdmins = new Map<string, Set<string>>(); // chatId -> Set of admin fingerprints
 
   constructor(options: BotGatewayOptions) {
     this.options = {
@@ -252,6 +277,199 @@ export class BotGateway {
   /** Get connection state for a peer. */
   getPeerState(fingerprint: string): string | null {
     return this.manager?.getPeerState?.(fingerprint) ?? null;
+  }
+
+  /** Register a chat member (for tracking membership). */
+  registerChatMember(chatId: string, userFingerprint: string, status: ChatMemberStatus['status'] = 'member'): void {
+    let members = this.chatMembers.get(chatId);
+    if (!members) {
+      members = new Map();
+      this.chatMembers.set(chatId, members);
+    }
+    const existing = members.get(userFingerprint);
+    members.set(userFingerprint, {
+      userFingerprint,
+      chatId,
+      status,
+      permissions: existing?.permissions,
+      untilDate: existing?.untilDate,
+    });
+    if (status === 'administrator' || status === 'creator') {
+      let admins = this.chatAdmins.get(chatId);
+      if (!admins) {
+        admins = new Set();
+        this.chatAdmins.set(chatId, admins);
+      }
+      admins.add(userFingerprint);
+    }
+  }
+
+  /** Get chat member status. */
+  getChatMember(chatId: string, userFingerprint: string): ChatMemberStatus | null {
+    return this.chatMembers.get(chatId)?.get(userFingerprint) ?? null;
+  }
+
+  /** Check if user is admin of chat. */
+  isChatAdmin(chatId: string, userFingerprint: string): boolean {
+    return this.chatAdmins.get(chatId)?.has(userFingerprint) ?? false;
+  }
+
+  /** Ban a user from a chat. */
+  async banChatMember(chatId: string, userFingerprint: string, byFingerprint: string): Promise<boolean> {
+    if (!this.manager) throw new Error('Gateway not initialized');
+    
+    const members = this.chatMembers.get(chatId);
+    if (!members) return false;
+    
+    const member = members.get(userFingerprint);
+    if (!member) return false;
+    
+    // Update local state
+    member.status = 'kicked';
+    member.untilDate = Date.now() + 365 * 24 * 60 * 60 * 1000; // 1 year
+    
+    // Send ban notification via P2P to the banned user
+    try {
+      await this.manager.sendMessage(userFingerprint, {
+        type: 'chat_ban',
+        payload: {
+          chatId,
+          bannedUser: userFingerprint,
+          bannedBy: byFingerprint,
+          timestamp: Date.now(),
+        },
+      });
+    } catch (error) {
+      this.options.callbacks.onError?.(error as Error);
+    }
+    
+    // Notify callbacks
+    this.options.callbacks.onChatMemberBanned?.(chatId, userFingerprint, byFingerprint);
+    
+    return true;
+  }
+
+  /** Unban a user from a chat. */
+  async unbanChatMember(chatId: string, userFingerprint: string, byFingerprint: string): Promise<boolean> {
+    if (!this.manager) throw new Error('Gateway not initialized');
+    
+    const members = this.chatMembers.get(chatId);
+    if (!members) return false;
+    
+    const member = members.get(userFingerprint);
+    if (!member || member.status !== 'kicked') return false;
+    
+    // Update local state
+    member.status = 'left';
+    member.untilDate = undefined;
+    
+    // Send unban notification via P2P
+    try {
+      await this.manager.sendMessage(userFingerprint, {
+        type: 'chat_unban',
+        payload: {
+          chatId,
+          unbannedUser: userFingerprint,
+          unbannedBy: byFingerprint,
+          timestamp: Date.now(),
+        },
+      });
+    } catch (error) {
+      this.options.callbacks.onError?.(error as Error);
+    }
+    
+    // Notify callbacks
+    this.options.callbacks.onChatMemberUnbanned?.(chatId, userFingerprint, byFingerprint);
+    
+    return true;
+  }
+
+  /** Restrict a user's permissions in a chat. */
+  async restrictChatMember(
+    chatId: string,
+    userFingerprint: string,
+    permissions: ChatPermissions,
+    untilDate?: number
+  ): Promise<boolean> {
+    if (!this.manager) throw new Error('Gateway not initialized');
+    
+    const members = this.chatMembers.get(chatId);
+    if (!members) return false;
+    
+    const member = members.get(userFingerprint);
+    if (!member) return false;
+    
+    // Update local state
+    member.status = 'restricted';
+    member.permissions = permissions;
+    member.untilDate = untilDate ?? Date.now() + 365 * 24 * 60 * 60 * 1000;
+    
+    // Send restrict notification via P2P
+    try {
+      await this.manager.sendMessage(userFingerprint, {
+        type: 'chat_restrict',
+        payload: {
+          chatId,
+          restrictedUser: userFingerprint,
+          permissions,
+          untilDate: member.untilDate,
+          timestamp: Date.now(),
+        },
+      });
+    } catch (error) {
+      this.options.callbacks.onError?.(error as Error);
+    }
+    
+    // Notify callbacks
+    this.options.callbacks.onChatMemberRestricted?.(chatId, userFingerprint, permissions);
+    
+    return true;
+  }
+
+  /** Promote/demote a user to/from admin. */
+  async promoteChatMember(
+    chatId: string,
+    userFingerprint: string,
+    isAdmin: boolean
+  ): Promise<boolean> {
+    const members = this.chatMembers.get(chatId);
+    if (!members) return false;
+    
+    const member = members.get(userFingerprint);
+    if (!member) return false;
+    
+    // Update local state
+    member.status = isAdmin ? 'administrator' : 'member';
+    if (isAdmin) {
+      let admins = this.chatAdmins.get(chatId);
+      if (!admins) {
+        admins = new Set();
+        this.chatAdmins.set(chatId, admins);
+      }
+      admins.add(userFingerprint);
+    } else {
+      this.chatAdmins.get(chatId)?.delete(userFingerprint);
+    }
+    
+    // Notify callbacks
+    this.options.callbacks.onChatMemberPromoted?.(chatId, userFingerprint, isAdmin);
+    
+    return true;
+  }
+
+  /** Set default chat permissions. */
+  async setChatPermissions(chatId: string, permissions: ChatPermissions): Promise<boolean> {
+    // Store as default permissions for the chat
+    const members = this.chatMembers.get(chatId);
+    if (!members) return false;
+    
+    for (const member of members.values()) {
+      if (member.status === 'member') {
+        member.permissions = permissions;
+      }
+    }
+    
+    return true;
   }
 
   /** Shutdown the gateway gracefully. */

@@ -1,27 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  PhoneOff,
-  RefreshCw,
-  Volume2,
-  VolumeX,
-  Sparkles,
-  Maximize2,
-  Minimize2,
-  ShieldCheck,
-  Signal,
-  Radio,
-  Monitor,
-  MonitorOff,
-  Users,
-  UserX,
-  LayoutGrid,
-  Settings,
-  MoreHorizontal,
-} from 'lucide-react';
+import {IconVideo as Video, IconVideoOff as VideoOff, IconMicrophone as Mic, IconMicrophoneOff as MicOff, IconPhoneOff as PhoneOff, IconRefresh as Refresh, IconVolume2 as Volume2, IconVolumeOff as VolumeX, IconSparkles as Sparkles, IconMaximize as Maximize, IconMinimize as Minimize, IconShieldCheck as ShieldCheck, IconSignal5g as Signal, IconRadio as Radio, IconDeviceDesktop as Monitor, IconDeviceDesktopOff as MonitorOff, IconUsers as Users, IconUserX as UserX, IconLayoutGrid as LayoutGrid, IconSettings as Settings, IconBorderHorizontal as BorderHorizontal} from '@tabler/icons-react';
 import { useAccount } from '../hooks/useAccount';
 import { useLanguage } from '../context/LanguageContext';
 import { LazyMedia } from './LazyMedia';
@@ -236,7 +214,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
             {formatTime(callDuration)}
           </span>
           <button onClick={(e) => { e.stopPropagation(); onMaximize?.(); }} className="w-5 h-5 rounded-full bg-black/60 hover:bg-white/20 text-white flex items-center justify-center transition" title="Expand">
-            <Maximize2 className="w-2.5 h-2.5" />
+            <Maximize className="w-2.5 h-2.5" />
           </button>
         </div>
 
@@ -430,7 +408,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
               {cameraFacing === 'front' ? 'Front' : 'Back'}
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition active:scale-90" title={t('a11y.call.flipCamera')}>
-              <RefreshCw className="w-3 h-3" />
+              <Refresh className="w-3 h-3" />
             </button>
           </div>
         )}
@@ -452,7 +430,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
           <div className="flex items-center gap-2">
             {onMinimize && (
               <button onClick={(e) => { e.stopPropagation(); onMinimize(); }} className="w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer" title="Minimize">
-                <Minimize2 className="w-4 h-4" />
+                <Minimize className="w-4 h-4" />
               </button>
             )}
 
@@ -537,7 +515,7 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
           {/* Flip Camera */}
           {!isVoiceCall && (
             <button onClick={(e) => { e.stopPropagation(); handleFlipCamera(); }} disabled={!internalCameraOn} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 ${internalCameraOn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-white/5 text-white/30 cursor-not-allowed'}`} title={t('a11y.call.switchCamera')}>
-              <RefreshCw className="w-5 h-5" />
+              <Refresh className="w-5 h-5" />
             </button>
           )}
 
@@ -667,10 +645,35 @@ export const GroupVideoCallOverlay: React.FC<GroupVideoCallOverlayProps> = ({
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setExpandedParticipant(null)}>
           {mainParticipant && renderParticipantVideo(mainParticipant, true, 'main')}
           <button onClick={(e) => { e.stopPropagation(); setExpandedParticipant(null); }} aria-label={t('a11y.call.closeExpanded')} className="absolute top-4 right-4 w-12 h-12 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition">
-            <Maximize2 className="w-5 h-5" />
+            <Maximize className="w-5 h-5" />
           </button>
         </div>
       )}
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

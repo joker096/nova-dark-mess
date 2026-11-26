@@ -2,6 +2,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { LanguageProvider } from './context/LanguageContext';
 import { SecurityProvider } from './context/SecurityContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { NovaToastProvider } from './lib/ui';
 import { registerForPush, isPushSupported } from './lib/notifications/push';
 import { registerBackgroundFetch } from './lib/background/backgroundFetch';
@@ -10,13 +11,26 @@ import { initAccessibility } from './lib/accessibility/a11y';
 import './index.css';
 import i18n, { loadLanguage } from './i18n';
 
-// Register service worker for offline caching (web only)
+// Service worker is production-only. In dev it caches Vite modules cache-first,
+// so a reload can mix stale and fresh React copies and break the app with
+// "Invalid hook call". Clear any worker left behind by an older dev session.
 if ('serviceWorker' in navigator && !isTauri()) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // SW registration failed (e.g., offline), ignore
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // SW registration failed (e.g., offline), ignore
+      });
     });
-  });
+  } else {
+    void navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) void registration.unregister();
+    });
+    if ('caches' in window) {
+      void caches.keys().then((keys) => {
+        for (const key of keys) void caches.delete(key);
+      });
+    }
+  }
 }
 
 const bootstrap = async () => {
@@ -74,9 +88,11 @@ const bootstrap = async () => {
   root.render(
     <LanguageProvider>
       <SecurityProvider>
-        <NovaToastProvider>
-          <App />
-        </NovaToastProvider>
+        <SettingsProvider>
+          <NovaToastProvider>
+            <App />
+          </NovaToastProvider>
+        </SettingsProvider>
       </SecurityProvider>
     </LanguageProvider>
   );

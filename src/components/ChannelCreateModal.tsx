@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Globe, Lock, Plus, Radio } from 'lucide-react';
+import {IconGlobe as Globe, IconLock as Lock, IconPlus as Plus, IconRadio as Radio} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
@@ -81,7 +81,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
               setError(null);
             }}
             placeholder={t('channel.channelNamePlaceholder')}
-            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
         </div>
 
@@ -96,7 +96,7 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
             onChange={(event) => setDescription(event.target.value)}
             placeholder={t('channel.channelDescriptionPlaceholder')}
             rows={2}
-            className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
         </div>
 
@@ -181,3 +181,13 @@ export const ChannelCreateModal: React.FC<ChannelCreateModalProps> = ({
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+

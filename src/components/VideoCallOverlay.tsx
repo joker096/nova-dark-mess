@@ -1,20 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  PhoneOff,
-  RefreshCw,
-  Volume2,
-  VolumeX,
-  Sparkles,
-  Maximize2,
-  Minimize2,
-  ShieldCheck,
-  Signal,
-  Radio,
-} from 'lucide-react';
+import {IconVideo as Video, IconVideoOff as VideoOff, IconMicrophone as Mic, IconMicrophoneOff as MicOff, IconPhoneOff as PhoneOff, IconRefresh as Refresh, IconVolume2 as Volume2, IconVolumeOff as VolumeX, IconSparkles as Sparkles, IconMaximize as Maximize, IconMinimize as Minimize, IconShieldCheck as ShieldCheck, IconSignal5g as Signal, IconRadio as Radio} from '@tabler/icons-react';
 import { useAccount } from '../hooks/useAccount';
 import { useLanguage } from '../context/LanguageContext';
 import { LazyMedia } from './LazyMedia';
@@ -278,7 +263,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
             className="w-5 h-5 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-primary)] flex items-center justify-center transition"
             title="Expand to full screen"
           >
-            <Maximize2 className="w-2.5 h-2.5" />
+            <Maximize className="w-2.5 h-2.5" />
           </button>
         </div>
 
@@ -385,7 +370,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               className="w-9 h-9 rounded-full bg-[var(--nova-canvas)]/40 hover:bg-[var(--nova-canvas)]/60 backdrop-blur-md border border-[var(--nova-border-color)] text-[var(--nova-text-primary)]/80 hover:text-[var(--nova-text-primary)] flex items-center justify-center transition active:scale-95 cursor-pointer"
               title="Minimize to Picture-in-Picture"
             >
-              <Minimize2 className="w-4 h-4" />
+              <Minimize className="w-4 h-4" />
             </button>
           )}
 
@@ -497,7 +482,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
                 className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[var(--nova-canvas)]/60 hover:bg-[var(--nova-canvas)]/80 text-[var(--nova-text-primary)] flex items-center justify-center transition active:scale-90"
                 title={t('a11y.call.flipCamera')}
               >
-                <RefreshCw className="w-3 h-3" />
+                <Refresh className="w-3 h-3" />
               </button>
             </div>
           ) : (
@@ -606,7 +591,7 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
               }`}
               title="Switch front / rear camera"
             >
-              <RefreshCw className="w-5 h-5" />
+              <Refresh className="w-5 h-5" />
             </button>
           )}
 
@@ -664,3 +649,27 @@ export const VideoCallOverlay: React.FC<VideoCallOverlayProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

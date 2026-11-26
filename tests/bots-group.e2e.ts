@@ -13,9 +13,13 @@ test('gateway bot receives a group message through the encrypted peer session', 
       'nova_onboarding_v1',
       JSON.stringify({ version: 1, completedAt: 'e2e', path: 'create' }),
     );
+    localStorage.setItem('nova_app_theme', 'dark');
+    localStorage.setItem('nova_font_size', 'medium');
   });
   await app.open('/');
-  await expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible();
+  
+  // Wait for app to load
+  await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 60000 });
 
   const fingerprint = await browser.evaluate(async () => {
     const w = window;
@@ -41,10 +45,24 @@ test('gateway bot receives a group message through the encrypted peer session', 
 
   // Attach the live fingerprint to Echo through the product path NovaFather
   // uses, so the app's own bot session (not only this test's import) is updated.
-  await screen.getByRole('button', { name: 'Settings' }).click();
-  await screen.getByRole('button', { name: /^Bots/ }).click();
-  await expect(screen.getByText('Echo Bot')).toBeVisible();
-  await screen.getByRole('button', { name: 'Open chat' }).first().click();
+  
+  // Open Settings from sidebar
+  await screen.getByRole('button', { name: 'Settings' }).first().click();
+  await expect(screen.getByRole('dialog')).toBeVisible();
+  
+  // Navigate to Advanced tab (Bots is there now)
+  await screen.getByRole('tab', { name: 'Advanced' }).first().click();
+  
+  // Wait for bots section
+  await expect(screen.getByText('Bots')).toBeVisible({ timeout: 10000 });
+  
+  // Wait for bots to load
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  
+  await expect(screen.getByText('Echo Bot')).toBeVisible({ timeout: 10000 });
+  
+  // Open the Echo bot chat from its registry row and send /setpeer
+  await screen.getByTestId('bot-open-chat').first().click();
   const botInput = screen.getByRole('textbox', 'Type a message...');
   await botInput.fill('/setpeer');
   await botInput.press('Enter');

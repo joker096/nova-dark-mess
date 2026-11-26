@@ -41,7 +41,7 @@ export interface NotificationPrefs {
   folderMuteUntil: Record<string, number>;
 }
 
-const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   enabled: true,
   sound: true,
   vibration: false,
@@ -105,6 +105,10 @@ export function setNotificationPref<K extends keyof NotificationPrefs>(
   const current = readNotificationPrefs();
   const next = { ...current, [key]: value };
   writeNotificationPrefs(next);
+}
+
+export function setNotificationPrefs(prefs: NotificationPrefs): void {
+  writeNotificationPrefs(prefs);
 }
 
 /** Get the effective notification level for a contact, considering exceptions and mute. */

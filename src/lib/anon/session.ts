@@ -7,9 +7,9 @@ import {
   profileForPacketSize,
   uint8ToBase64,
 } from './packet';
-import { isQueuePrivateKey, isQueuePublicKey } from './signing';
 import { isInviteToken, isPowChallenge, solvePow, type PowChallenge, type PowSolution } from './spam';
 import type { AnonTransport, EnqueueResult, PacketProfile, PollResult } from './types';
+import { isQueuePrivateKey, isQueuePublicKey } from './crypto';
 
 export interface AnonInvite {
   v: 1;

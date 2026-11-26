@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Trash2, X } from 'lucide-react';
+import {
+  IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
+  IconClock as Clock,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconX as X,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { isStoryScheduled, storyPublishAt } from '../lib/social/store';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -194,7 +202,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 aria-label={t('stories.deleteStory')}
                 title={t('stories.deleteStory')}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <TrashX className="h-3.5 w-3.5" />
               </button>
             )}
             <button
@@ -289,3 +297,22 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

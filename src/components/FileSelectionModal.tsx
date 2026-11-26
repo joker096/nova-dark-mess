@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  X,
-  Image as ImageIcon,
-  FileText,
-  Check,
-  Upload,
-  Paperclip,
-  Send,
-} from 'lucide-react';
+  IconX as X,
+  IconPhoto as Photo,
+  IconFileText as FileText,
+  IconCheck as Check,
+  IconUpload as Upload,
+  IconPaperclip as Paperclip,
+  IconSend as Send,
+  IconPhoto as ImageIcon,
+} from '@tabler/icons-react';
 import { ModalOverlay } from './ModalOverlay';
 import { DocumentAttachment } from '../types/messenger';
 import { LazyMedia } from './LazyMedia';
@@ -538,3 +539,15 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
     </ModalOverlay>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+

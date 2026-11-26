@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage, LanguageItem, Language } from '../context/LanguageContext';
-import { Globe, Check, ChevronDown } from 'lucide-react';
+import {IconGlobe as Globe, IconCheck as Check, IconChevronDown as ChevronDown} from '@tabler/icons-react';
 
 const MENU_WIDTH = 208;
 const MENU_GAP = 6;
@@ -15,7 +15,9 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const currentLang = languages.find((l: LanguageItem) => l.code === language) || languages[0];
+  const currentLang =
+    languages.find((l: LanguageItem) => l.code === language) ||
+    languages[0] || { code: language, name: language, nativeName: language, flag: '🌐' };
 
   // Anchor the menu to the trigger but keep it fully inside the viewport, so it is
   // never clipped by a scrollable/overflow-hidden ancestor such as the settings modal.
@@ -136,3 +138,13 @@ export const LanguageSwitcher: React.FC<{ compact?: boolean }> = ({ compact = fa
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

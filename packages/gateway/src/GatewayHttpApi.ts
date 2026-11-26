@@ -24,7 +24,8 @@
  * "http://localhost:8080" (or your gateway URL) and use the bot token.
  */
 
-import { BotGateway, type GatewayMessage } from './BotGateway';
+import { BotGateway, type GatewayMessage, type ChatPermissions } from './BotGateway';
+import { checkHttpRateLimit, getHttpRateLimitKey, DEFAULT_HTTP_RATE_LIMIT_CONFIG } from './httpRateLimit';
 
 export interface GatewayHttpApiOptions {
   gateway: BotGateway;
@@ -225,6 +226,36 @@ export class GatewayHttpApi {
   private async handleRequest(req: any, res: any, path: string | null, query: any): Promise<void> {
     if (!path) {
       this.sendJson(res, 404, { ok: false, error_code: 404, description: 'Not found' });
+      return;
+    }
+
+    // Rate limiting - check IP + token
+    const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const rateLimitKey = getHttpRateLimitKey(clientIp, this.botToken);
+    const rateLimitResult = checkHttpRateLimit(rateLimitKey, DEFAULT_HTTP_RATE_LIMIT_CONFIG);
+
+    // Set rate limit headers
+    res.setHeader('X-RateLimit-Limit', DEFAULT_HTTP_RATE_LIMIT_CONFIG.maxRequests);
+    res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(rateLimitResult.resetAt / 1000));
+
+    if (!rateLimitResult.allowed) {
+      if (rateLimitResult.blocked) {
+        res.setHeader('Retry-After', Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+        this.sendJson(res, 429, {
+          ok: false,
+          error_code: 429,
+          description: 'Too Many Requests - IP temporarily blocked due to rate limit violations',
+          retry_after: Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000),
+        });
+      } else {
+        this.sendJson(res, 429, {
+          ok: false,
+          error_code: 429,
+          description: 'Too Many Requests - rate limit exceeded',
+          retry_after: Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000),
+        });
+      }
       return;
     }
 
@@ -964,28 +995,102 @@ export class GatewayHttpApi {
   }
 
   private async handleBanChatMember(data: any): Promise<boolean> {
-    console.log('[GatewayHttpApi] banChatMember:', data);
-    return true;
+    const chatId = String(data.chat_id);
+    const userId = String(data.user_id);
+    const untilDate = data.until_date ? Number(data.until_date) * 1000 : undefined;
+    
+    // Resolve userId to fingerprint (in real impl, this maps via session)
+    const userFingerprint = await this.resolveUserToFingerprint(userId);
+    const botFingerprint = this.gateway.getFingerprint();
+    
+    if (!userFingerprint) {
+      throw new Error('User not found');
+    }
+    
+    return this.gateway.banChatMember(chatId, userFingerprint, botFingerprint);
   }
 
   private async handleUnbanChatMember(data: any): Promise<boolean> {
-    console.log('[GatewayHttpApi] unbanChatMember:', data);
-    return true;
+    const chatId = String(data.chat_id);
+    const userId = String(data.user_id);
+    
+    const userFingerprint = await this.resolveUserToFingerprint(userId);
+    const botFingerprint = this.gateway.getFingerprint();
+    
+    if (!userFingerprint) {
+      throw new Error('User not found');
+    }
+    
+    return this.gateway.unbanChatMember(chatId, userFingerprint, botFingerprint);
   }
 
   private async handleRestrictChatMember(data: any): Promise<boolean> {
-    console.log('[GatewayHttpApi] restrictChatMember:', data);
-    return true;
+    const chatId = String(data.chat_id);
+    const userId = String(data.user_id);
+    const untilDate = data.until_date ? Number(data.until_date) * 1000 : undefined;
+    
+    const userFingerprint = await this.resolveUserToFingerprint(userId);
+    
+    if (!userFingerprint) {
+      throw new Error('User not found');
+    }
+    
+    const permissions: ChatPermissions = {
+      canSendMessages: data.permissions?.can_send_messages ?? false,
+      canSendMediaMessages: data.permissions?.can_send_media_messages ?? false,
+      canSendPolls: data.permissions?.can_send_polls ?? false,
+      canSendOtherMessages: data.permissions?.can_send_other_messages ?? false,
+      canAddWebPagePreviews: data.permissions?.can_add_web_page_previews ?? false,
+      canChangeInfo: data.permissions?.can_change_info ?? false,
+      canInviteUsers: data.permissions?.can_invite_users ?? false,
+      canManageTopics: data.permissions?.can_manage_topics ?? false,
+    };
+    
+    return this.gateway.restrictChatMember(chatId, userFingerprint, permissions, untilDate);
   }
 
   private async handlePromoteChatMember(data: any): Promise<boolean> {
-    console.log('[GatewayHttpApi] promoteChatMember:', data);
-    return true;
+    const chatId = String(data.chat_id);
+    const userId = String(data.user_id);
+    
+    const userFingerprint = await this.resolveUserToFingerprint(userId);
+    
+    if (!userFingerprint) {
+      throw new Error('User not found');
+    }
+    
+    const isAdmin = data.is_anonymous !== true && (
+      data.can_manage_chat === true ||
+      data.can_manage_video_chats === true ||
+      data.can_delete_messages === true ||
+      data.can_restrict_members === true ||
+      data.can_promote_members === true ||
+      data.can_change_info === true ||
+      data.can_invite_users === true ||
+      data.can_post_messages === true ||
+      data.can_edit_messages === true ||
+      data.can_pin_messages === true ||
+      data.can_manage_topics === true
+    );
+    
+    return this.gateway.promoteChatMember(chatId, userFingerprint, isAdmin);
   }
 
   private async handleSetChatPermissions(data: any): Promise<boolean> {
-    console.log('[GatewayHttpApi] setChatPermissions:', data);
-    return true;
+    const chatId = String(data.chat_id);
+    
+    const permissions: ChatPermissions = {
+      canSendMessages: data.permissions?.can_send_messages ?? true,
+      canSendMediaMessages: data.permissions?.can_send_media_messages ?? true,
+      canSendPolls: data.permissions?.can_send_polls ?? true,
+      canSendOtherMessages: data.permissions?.can_send_other_messages ?? true,
+      canAddWebPagePreviews: data.permissions?.can_add_web_page_previews ?? true,
+      canChangeInfo: data.permissions?.can_change_info ?? true,
+      canInviteUsers: data.permissions?.can_invite_users ?? true,
+      canManageTopics: data.permissions?.can_manage_topics ?? true,
+    };
+    
+    return this.gateway.setChatPermissions(chatId, permissions);
   }
 
   private async handleSetChatTitle(data: any): Promise<boolean> {
@@ -1035,6 +1140,16 @@ export class GatewayHttpApi {
     // In a real implementation, this would map chatId -> peer fingerprint
     // via the bot's session/registry. For now, return a placeholder.
     // The BotGateway would need a method to resolve this mapping.
+    return null;
+  }
+
+  private async resolveUserToFingerprint(userId: string): Promise<string | null> {
+    // In a real implementation, this would map Telegram userId -> peer fingerprint
+    // via the bot's session/registry. For now, treat userId as fingerprint if it looks like one.
+    if (userId.startsWith('nova_pk_') || /^[A-Za-z0-9_-]{40,64}$/.test(userId)) {
+      return userId;
+    }
+    // Could look up in a user registry: this.gateway.getUserFingerprint(userId)
     return null;
   }
 

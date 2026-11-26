@@ -68,8 +68,8 @@ vi.mock('./components/MeshMap', () => ({
     />
   )),
 }));
-vi.mock('./components/SettingsModal', () => ({
-  SettingsModal: vi.fn(
+vi.mock('./components/SettingsModalOptimized', () => ({
+  SettingsModalOptimized: vi.fn(
     ({
       isOpen,
       getBotSession,
@@ -208,14 +208,16 @@ describe('App - desktop navigation rail', () => {
     expect(mapScreens.every((screen) => screen.getAttribute('data-live-inputs') === 'true')).toBe(true);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'common.back' })[0]);
-    expect(screen.queryByTestId('mesh-map-screen')).toBeNull();
+    // The map screen stays mounted by KeepAlive but must be hidden after Back.
+    const maps = screen.queryAllByTestId('mesh-map-screen');
+    expect(maps.every((node) => node.closest('[data-keepalive="hidden"]'))).toBe(true);
   });
 
   it('keeps the chat list mounted under the channel list on the Channels screen', () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole('button', { name: 'common.channels' })[0]);
 
-    expect(screen.getByTestId('chats-screen')).toBeInTheDocument();
+    expect(screen.getAllByTestId('chats-screen').length).toBeGreaterThan(0);
     // Both the desktop panel and the mobile single-pane render the channel
     // list in jsdom, since responsive visibility is CSS-only.
     expect(screen.getAllByText('Real Kyiv Life').length).toBeGreaterThan(0);

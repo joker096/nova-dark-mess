@@ -1,7 +1,10 @@
-import { generateQueueSigningKeyPair, signQueueCommand } from './signing';
 import { base64ToUint8 } from './packet';
 import type { PowChallenge, PowSolution } from './spam';
 import type { CreatedQueue, EnqueueResult, PollResult } from './types';
+import {
+  generateQueueSigningKeyPair,
+  signQueueCommand,
+} from './crypto';
 
 export interface AnonHttpRelayConfig {
   baseUrl: string;
@@ -9,8 +12,8 @@ export interface AnonHttpRelayConfig {
 }
 
 const PAD_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-const CONTROL_BODY_BYTES = 4096;
-const ACK_BODY_BYTES = 8192;
+export const CONTROL_BODY_BYTES = 4096;
+export const ACK_BODY_BYTES = 8192;
 const ENQUEUE_BODY_BYTES: Record<number, number> = {
   4096: 8192,
   16384: 24576,
@@ -23,7 +26,7 @@ const ENQUEUE_BODY_BYTES: Record<number, number> = {
  * the semantic fields. Enqueue bodies are padded per packet profile, so their
  * size no longer reveals which optional fields were present.
  */
-function padJsonBody(body: Record<string, unknown>, targetBytes: number): Record<string, unknown> {
+export function padJsonBody(body: Record<string, unknown>, targetBytes: number): Record<string, unknown> {
   const base = JSON.stringify({ ...body, pad: '' });
   const remaining = targetBytes - new TextEncoder().encode(base).length;
   if (remaining <= 0) return body;

@@ -1,15 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ArrowUpRight,
-  AudioLines,
-  Ban,
-  EyeOff,
-  Flag,
-  Info,
-  ShieldCheck,
-  Sparkles,
-  X,
-} from 'lucide-react';
+import {IconArrowUpRight as ArrowUpRight, IconMusic as AudioLines, IconBan as Ban, IconEyeOff as EyeOff, IconFlag as Flag, IconInfoCircle as Info, IconShieldCheck as ShieldCheck, IconSparkles as Sparkles, IconX as X} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { toSafeExternalUrl } from '../lib/security/safeUrl';
@@ -19,8 +9,7 @@ import {
   dismissAd,
   isAdDismissed,
   isAdvertiserBlocked,
-  recordAdEvent,
-} from '../lib/ads/localAds';
+  recordAdEvent} from '../lib/ads/localAds';
 import type { AdCampaign } from '../lib/ads/types';
 import type { ModerationReport } from '../types/moderation';
 import { ReportSheet } from './ReportSheet';
@@ -343,3 +332,16 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
     </>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+

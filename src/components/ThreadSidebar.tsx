@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronLeft, MessageSquare } from 'lucide-react';
+import {IconChevronLeft as ChevronLeft, IconMessageCircle as MessageCircle, IconMessageCircle as MessageSquare} from '@tabler/icons-react';
 import { LazyMedia } from './LazyMedia';
 import { ChatMessage, ContactProfile } from '../types/messenger';
 import { CONVERSATION_HISTORIES } from '../data/mockMessengerData';
@@ -169,14 +169,13 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
   return (
     <aside className="fixed md:relative right-0 top-0 h-full w-[360px] md:w-[360px] bg-[var(--nova-canvas)] border-l border-[var(--nova-border-color)] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
       {/* Header */}
-      <header className="flex items-center justify-between p-3 border-b border-[var(--nova-border-color)] shrink-0">
+      <header className="flex h-[52px] shrink-0 items-center justify-between gap-2 border-b border-[var(--nova-border-color)] px-3">
         <div className="flex items-center gap-2">
           <NovaIconButton
             label={t('common.back')}
             icon={<ChevronLeft />}
             size={36}
-            variant="subtle"
-            className="border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/80"
+            variant="ghost"
             onClick={onClose}
           />
           <MessageSquare className="w-5 h-5 text-[var(--nova-accent-color)]" />
@@ -230,3 +229,12 @@ export const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
 };
 
 export default ThreadSidebar;
+
+
+
+
+
+
+
+
+

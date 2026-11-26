@@ -1,7 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Heart, Reply, Forward, Pin, MoreHorizontal, Trash2, Pencil, Copy, CheckCheck, Flag, ShieldAlert } from 'lucide-react';
-import { NovaIconButton, NovaMenu, NovaTooltip } from '../../lib/ui';
+import {
+  createPortal } from 'react-dom';
+import {IconArrowBackUp as ArrowBackUp,
+  IconArrowForwardUp as ArrowForwardUp,
+  IconCopy as Copy,
+  IconDots as Dots,
+  IconFlag as Flag,
+  IconHeart as Heart,
+  IconPencil as Pencil,
+  IconPin as Pin,
+  IconShieldExclamation as ShieldExclamation,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconArrowForward as Forward,
+  IconArrowBackUp as Reply,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
+import { NovaIconButton, NovaTooltip } from '../../lib/ui';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface MessageHoverActionsProps {
@@ -21,7 +36,7 @@ interface MessageHoverActionsProps {
   onReaction: () => void;
   onBlock: () => void;
   hasThread: boolean;
-  triggerRef: React.RefObject<HTMLDivElement | null>;
+  triggerRef: React.RefObject<HTMLElement | null>;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -139,7 +154,7 @@ export const MessageHoverActions: React.FC<MessageHoverActionsProps> = ({
           {
             key: 'delete',
             label: t('chat.messageActions.delete'),
-            icon: <Trash2 className="w-4 h-4" />,
+            icon: <TrashX className="w-4 h-4" />,
             danger: true,
             separatorBefore: true,
             onSelect: onDelete,
@@ -157,7 +172,7 @@ export const MessageHoverActions: React.FC<MessageHoverActionsProps> = ({
           {
             key: 'report',
             label: t('chat.messageActions.report'),
-            icon: <ShieldAlert className="w-4 h-4" />,
+            icon: <ShieldExclamation className="w-4 h-4" />,
             danger: true,
             onSelect: () => {
               onClose();
@@ -172,7 +187,7 @@ export const MessageHoverActions: React.FC<MessageHoverActionsProps> = ({
       ref={menuRef}
       role="menu"
       aria-label={t('chat.messageActions.title')}
-      className="fixed z-[80] bg-[var(--nova-surface)]/95 border border-[var(--nova-border-color)] backdrop-blur-xl rounded-2xl px-2 py-1.5 shadow-xl shadow-black/80 select-none animate-in fade-in-10 zoom-in-95 duration-150"
+      className="fixed z-[80] max-h-[calc(100dvh-1rem)] overflow-y-auto bg-[var(--nova-surface)]/95 border border-[var(--nova-border-color)] backdrop-blur-xl rounded-2xl px-2 py-1.5 shadow-xl shadow-black/80 select-none animate-in fade-in-10 zoom-in-95 duration-150"
       style={{ top: position.top, left: position.left }}
     >
       <div className="flex items-center gap-1">
@@ -225,22 +240,51 @@ export const MessageHoverActions: React.FC<MessageHoverActionsProps> = ({
             }}
           />
         </NovaTooltip>
-        <div className="w-[1px] h-5 bg-[var(--nova-overlay-medium)] mx-1" />
-        <NovaMenu
-          label={t('common.more')}
-          trigger={
-            <NovaIconButton
-              label={t('common.more')}
-              icon={<MoreHorizontal className="w-5 h-5" />}
-              size={36}
-              onClick={() => {}}
-            />
-          }
-          items={items}
-          align={isMine ? 'start' : 'end'}
-        />
+      </div>
+      <div className="mt-1 flex flex-col">
+        {items.map((item) => (
+          <React.Fragment key={item.key}>
+            {item.separatorBefore && (
+              <div className="h-px bg-[var(--nova-border-subtle)] mx-2 my-1" role="separator" />
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onClose();
+                item.onSelect();
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-[13px] font-medium transition cursor-pointer ${
+                item.danger
+                  ? 'text-red-400 hover:bg-red-500/10'
+                  : 'text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
+              }`}
+            >
+              <span className="w-4 h-4 flex items-center justify-center shrink-0">{item.icon}</span>
+              <span className="flex-1 truncate">{item.label}</span>
+            </button>
+          </React.Fragment>
+        ))}
       </div>
     </div>,
     document.body,
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

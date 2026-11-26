@@ -1,5 +1,13 @@
 import React from 'react';
-import { Phone, Video, Mic, MicOff, VideoOff, X, Settings, MoreHorizontal } from 'lucide-react';
+import {
+  IconMicrophone as Microphone,
+  IconMicrophoneOff as MicrophoneOff,
+  IconPhone as Phone,
+  IconVideo as Video,
+  IconVideoOff as VideoOff,
+  IconMicrophone as Mic,
+  IconMicrophoneOff as MicOff,
+} from '@tabler/icons-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface CallOverlayProps {
@@ -107,3 +115,12 @@ export const CallOverlay: React.FC<CallOverlayProps> = ({
 };
 
 export default CallOverlay;
+
+
+
+
+
+
+
+
+

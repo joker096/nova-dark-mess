@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart2, PenSquare, Plus, Smile, Trash2, X } from 'lucide-react';
+import {
+  IconChartBar as BarChart,
+  IconPencil as PenSquare,
+  IconPlus as Plus,
+  IconMoodSmile as Smile,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconX as X,
+  IconChartBar as BarChart2,
+  IconMoodSmile as MoodSmile,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
@@ -197,7 +208,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               setError(null);
             }}
             placeholder={t('channel.postTitlePlaceholder')}
-            className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
         </div>
 
@@ -220,7 +231,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             }}
             placeholder={t('channel.postTextPlaceholder')}
             rows={4}
-            className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs leading-relaxed text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm leading-relaxed text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
         </div>
 
@@ -251,7 +262,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                 : 'border-[var(--nova-border-color)] bg-[var(--nova-surface)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
           >
-            <Smile className="h-3.5 w-3.5" />
+            <MoodSmile className="h-3.5 w-3.5" />
             {t('stickers.title', 'Stickers')}
           </button>
         </div>
@@ -321,7 +332,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               }}
               maxLength={250}
               placeholder={t('poll.questionPlaceholder', 'Ask a question...')}
-              className="w-full rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+              className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
             />
 
             <div className="space-y-2">
@@ -335,7 +346,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                       count: index + 1,
                       defaultValue: `Option ${index + 1}`,
                     })}
-                    className="flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+                    className="flex-1 bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
                   />
                   {pollOptions.length > 2 && (
                     <button
@@ -344,7 +355,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                       title={t('common.remove', 'Remove')}
                       className="shrink-0 rounded-lg p-1.5 text-[var(--nova-text-muted)] transition hover:bg-red-500/10 hover:text-red-400"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <TrashX className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -423,3 +434,24 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

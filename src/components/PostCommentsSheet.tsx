@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MessageCircle, Send, X } from 'lucide-react';
+import {IconMessageCircle as MessageCircle, IconSend as Send, IconX as X} from '@tabler/icons-react';
 import type { ChannelComment, ChannelPost } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
@@ -74,7 +74,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
         }}
         className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-3xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] shadow-2xl shadow-black/80 md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl md:border-y-0 md:border-r-0"
       >
-        <header className="flex shrink-0 items-center gap-2 border-b border-[var(--nova-border-color)] px-4 py-3">
+        <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-[var(--nova-border-color)] px-4 backdrop-blur-xl">
           <MessageCircle className="h-4 w-4 shrink-0 text-[var(--nova-accent-color)]" aria-hidden="true" />
           <h2 id="post-comments-title" className="min-w-0 flex-1 truncate text-sm font-bold text-[var(--nova-text-primary)]">
             {t('channel.commentsCount', { count: comments.length })}
@@ -83,7 +83,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-muted)] transition hover:bg-[var(--nova-surface-high)] hover:text-[var(--nova-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--nova-text-secondary)] transition hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
             aria-label={t('common.close')}
             title={t('common.close')}
           >
@@ -139,7 +139,7 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
             }}
             placeholder={t('channel.commentPlaceholder')}
             aria-label={t('channel.commentPlaceholder')}
-            className="min-w-0 flex-1 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="min-w-0 flex-1 bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
           <button
             type="button"
@@ -156,3 +156,13 @@ export const PostCommentsSheet: React.FC<PostCommentsSheetProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useRef, useCallback, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Maximize, Minimize, Download } from 'lucide-react';
+import {IconX as X, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconMaximize as Maximize, IconMinimize as Minimize, IconDownload as Download} from '@tabler/icons-react';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { LazyMedia } from './LazyMedia';
 
@@ -280,4 +280,22 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     </ModalOverlay>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

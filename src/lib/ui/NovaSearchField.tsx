@@ -1,5 +1,5 @@
 import { forwardRef, type HTMLAttributes, useState, useRef, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import {IconSearch as Search, IconX as X} from '@tabler/icons-react';
 
 interface NovaSearchFieldProps extends Omit<HTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   placeholder?: string;
@@ -119,3 +119,12 @@ export const NovaSearchField = forwardRef<HTMLInputElement, NovaSearchFieldProps
 NovaSearchField.displayName = 'NovaSearchField';
 
 export type { NovaSearchFieldProps };
+
+
+
+
+
+
+
+
+

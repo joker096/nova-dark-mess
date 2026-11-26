@@ -1,7 +1,19 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  createPortal } from 'react-dom';
 import { hapticLight } from '../../lib/ui/haptics';
-import { Paperclip, Mic, Send, X, Smile, Paperclip as PaperclipIcon, Mic as MicIcon, Send as SendIcon, Clock, Eye, VolumeX } from 'lucide-react';
+import {IconClock as Clock,
+  IconEye as Eye,
+  IconMicrophone as Microphone,
+  IconMoodSmile as MoodSmile,
+  IconPaperclip as Paperclip,
+  IconSend as Send,
+  IconVolumeOff as VolumeOff,
+  IconMicrophone as MicIcon,
+  IconPaperclip as PaperclipIcon,
+  IconSend as SendIcon,
+  IconVolumeOff as VolumeX,
+} from '@tabler/icons-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { NovaTooltip } from '../../lib/ui';
 
@@ -195,7 +207,7 @@ export const Composer: React.FC<ComposerProps> = ({
             className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-weak)] active:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
             aria-label={t('chat.emoji')}
           >
-            <Smile className="w-4.5 h-4.5" />
+            <MoodSmile className="w-4.5 h-4.5" />
           </button>
         </div>
       </div>
@@ -241,3 +253,21 @@ export const Composer: React.FC<ComposerProps> = ({
 };
 
 export default Composer;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, HelpCircle, Check, BarChart2 } from 'lucide-react';
+import {
+  IconPlus as Plus,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconHelpCircle as HelpCircle,
+  IconCheck as Check,
+  IconChartBar as BarChart,
+  IconChartBar as BarChart2,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { PollData, PollOption } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
@@ -214,7 +223,7 @@ export const PollCreateModal: React.FC<PollCreateModalProps> = ({
                     className="p-2 rounded-xl text-white/40 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer shrink-0"
                     title={t('common.remove', 'Remove option')}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <TrashX className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -319,3 +328,22 @@ export const PollCreateModal: React.FC<PollCreateModalProps> = ({
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

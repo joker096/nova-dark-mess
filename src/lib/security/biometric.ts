@@ -76,7 +76,7 @@ async function setCredentialIdInDB(id: string): Promise<void> {
 async function removeCredentialIdFromDB(): Promise<void> {
   if (!dbInstance.isReady()) return;
   try {
-    await dbInstance.deleteRecord?.('settings', CREDENTIAL_ID_KEY);
+    await dbInstance.deleteSetting(CREDENTIAL_ID_KEY);
   } catch {
     /* ignore - best effort */
   }

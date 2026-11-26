@@ -13,8 +13,7 @@ import {
   removeAccount,
   updateAccountProfile,
   setPrimaryAccount,
-  createAccountFromOnboarding,
-} from './multiAccount';
+  createAccountFromOnboarding} from './multiAccount';
 
 describe('multi-account core functionality', () => {
   beforeEach(() => {

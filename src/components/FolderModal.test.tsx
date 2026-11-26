@@ -76,8 +76,8 @@ describe('FolderModal - open/close', () => {
     renderModal();
     const list = screen.getByTestId('folder-icon-list');
     expect(list.className).toContain('overflow-x-auto');
-    expect(list.className).toContain('touch-pan-x');
     expect(list.className).toContain('no-scrollbar');
+    expect(list.className).toContain('min-w-0');
   });
 });
 

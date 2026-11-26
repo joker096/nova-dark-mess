@@ -10,14 +10,11 @@ async function setupOnboardedApp({ app, browser }) {
       'nova_onboarding_v1',
       JSON.stringify({ version: 1, completedAt: new Date().toISOString(), path: 'create' })
     );
-    // Also set other required localStorage items for the app to work
     localStorage.setItem('nova_app_theme', 'dark');
     localStorage.setItem('nova_font_size', 'medium');
   });
   await app.open('/');
-  
-  // Wait for the app to fully load - check for folder-tabs which indicates the main app is loaded
-  // The app might show onboarding first if localStorage isn't read yet
+  await browser.evaluate(() => new Promise(resolve => setTimeout(resolve, 3000)));
 }
 
 test.describe('Nova Dark Messenger - Main App Features (onboarding pre-completed)', () => {
@@ -26,12 +23,17 @@ test.describe('Nova Dark Messenger - Main App Features (onboarding pre-completed
   });
 
   test('Main app loads and chat screen is accessible', async ({ app, screen, browser }) => {
-    // Verify app loads - check for folder tabs which are on the chats screen
-    // The app might need time to initialize after onboarding check
-    await expect(screen.getByTestId('folder-tabs').first()).toBeVisible({ timeout: 30000 });
+    // Verify app loads - check for desktop sidebar (nav element)
+    await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 30000 });
     
     // Verify chat area is accessible (main element)
     await expect(screen.getByRole('main')).toBeVisible({ timeout: 10000 });
+    
+    // Open Katie Rogers' chat from the sidebar
+    await screen.getByRole('button', { name: 'Katie Rogers' }).click();
+    
+    // Wait for chat to open
+    await expect(screen.getByRole('main')).toBeVisible({ timeout: 5000 });
     
     // Send a message using textbox role
     const input = screen.getByRole('textbox', 'Type a message...');
@@ -43,34 +45,37 @@ test.describe('Nova Dark Messenger - Main App Features (onboarding pre-completed
   });
 
   test('Navigation: all main screens accessible', async ({ app, screen, browser }) => {
-    await expect(screen.getByTestId('folder-tabs').first()).toBeVisible({ timeout: 10000 });
+    // Check desktop sidebar navigation
+    await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 10000 });
     
-    // Test desktop navigation rail (if desktop)
-    // Click on a chat heading to open chat
-    await screen.getByRole('heading', { name: 'Katie Rogers' }).tap();
+    // Test sidebar navigation - Chats (button with title "Chats")
+    await expect(screen.getByRole('button', { name: 'Chats' })).toBeVisible();
+    await screen.getByRole('button', { name: 'Katie Rogers' }).click();
     await expect(screen.getByRole('main')).toBeVisible();
     
-    // Channel tab
-    await screen.getByRole('button', { name: 'Channels' }).tap();
-    await expect(screen.getByText('Real Kyiv Life').first()).toBeVisible();
+    // Channel tab - click on Channels in sidebar
+    await screen.getByRole('button', { name: 'Channels' }).click();
+    await expect(screen.getByText('Real Kyiv Life').first()).toBeVisible({ timeout: 5000 });
     
-    // Folders button - click the folder button in nav rail
-    await screen.getByRole('button', { name: 'Folders' }).tap();
+    // Folders button - click the folder button in sidebar
+    await screen.getByRole('button', { name: 'Folders' }).click();
     // Folder modal opens - check for folder text
     await expect(screen.getByText('All')).toBeVisible({ timeout: 2000 });
     // Close folder modal
     await browser.keyboard.press('Escape');
     
-    // Settings button
-    await screen.getByRole('button', { name: 'Settings' }).tap();
-    // Settings modal might not have testid, check for dialog
+    // Settings button - in desktop sidebar
+    await screen.getByRole('button', { name: 'Settings' }).click();
     await expect(screen.getByRole('dialog')).toBeVisible();
     await browser.keyboard.press('Escape');
   });
 
   test('Chat interactions work correctly', async ({ app, screen, browser }) => {
-    await expect(screen.getByTestId('folder-tabs').first()).toBeVisible({ timeout: 10000 });
+    await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 10000 });
     await expect(screen.getByRole('main')).toBeVisible();
+    
+    // Open Katie's chat
+    await screen.getByRole('button', { name: 'Katie Rogers' }).click();
     
     // Composer interactions
     const input = screen.getByRole('textbox', 'Type a message...');
@@ -83,96 +88,92 @@ test.describe('Nova Dark Messenger - Main App Features (onboarding pre-completed
     await input.press('Enter');
     await expect(screen.getByText('UI test message').first()).toBeVisible({ timeout: 5000 });
     
-    // Profile navigation
-    await screen.getByRole('button', { name: 'Profile' }).tap();
-    await expect(screen.getByTestId('profile-header').first()).toBeVisible({ timeout: 5000 });
-    
-    // Back to chats
-    await screen.getByRole('button', { name: 'Back' }).tap();
-    await expect(screen.getByTestId('folder-tabs').first()).toBeVisible();
+    // Right-click on message for reaction picker (desktop)
+    const message = screen.getByText('UI test message').first();
+    await message.click({ button: 'right' });
+    await expect(screen.getByRole('dialog', { name: /reaction/i })).toBeVisible({ timeout: 3000 });
+    await browser.keyboard.press('Escape');
   });
 
-  test('Settings modal: theme switching and search', async ({ app, screen, browser }) => {
-    await expect(screen.getByTestId('folder-tabs').first()).toBeVisible({ timeout: 10000 });
+  test('Search works across chats and messages', async ({ app, screen, browser }) => {
+    await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 10000 });
     
-    // Open settings
-    await screen.getByRole('button', { name: 'Settings' }).tap();
+    // Open search - on desktop it's in the sidebar header
+    const searchBtn = screen.getByRole('button', { name: 'Search' });
+    if (await searchBtn.isVisible()) {
+      await searchBtn.click();
+    }
+    
+    // Search input should appear
+    const searchInput = screen.getByRole('textbox', { name: /search/i });
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill('Katie');
+    
+    // Results should filter
+    await expect(screen.getByText('Katie Rogers').first()).toBeVisible({ timeout: 3000 });
+  });
+
+  test('Theme switching works', async ({ app, screen, browser }) => {
+    await expect(screen.getByRole('navigation')).toBeVisible({ timeout: 10000 });
+    
+    // Open settings from sidebar
+    await screen.getByRole('button', { name: 'Settings' }).click();
     await expect(screen.getByRole('dialog')).toBeVisible();
     
-    // Theme switching
-    await screen.getByRole('button', { name: 'Light' }).tap();
-    await expect(screen.getByRole('dialog')).toBeVisible();
+    // Navigate to General tab
+    await screen.getByRole('tab', { name: 'General' }).click();
     
-    await screen.getByRole('button', { name: 'Dark' }).tap();
-    await expect(screen.getByRole('dialog')).toBeVisible();
+    // Switch theme
+    await screen.getByRole('radio', { name: 'Light' }).click();
+    await expect(screen.locator('html')).toHaveAttribute('data-theme', 'light');
+    
+    await screen.getByRole('radio', { name: 'Dark' }).click();
+    await expect(screen.locator('html')).toHaveAttribute('data-theme', 'dark');
+    
+    await screen.getByRole('radio', { name: 'System' }).click();
     
     // Close settings
     await browser.keyboard.press('Escape');
-    await expect(screen.getByRole('dialog')).not.toBeVisible();
-    
-    // Search in chats
-    const searchInput = screen.getByRole('textbox', 'Search conversations by contact name...');
-    await searchInput.fill('test');
-    await expect(screen.getByText('test').first()).toBeVisible();
-    await searchInput.clear();
   });
 });
 
-// Separate test suite for onboarding flow
 test.describe('Nova Dark Messenger - Onboarding Flow', () => {
-  test.beforeEach(async ({ app, browser }) => {
-    // Clear localStorage for fresh onboarding
+  test('Onboarding wizard appears on fresh install', async ({ app, screen, browser }) => {
     await browser.addInitScript(() => {
       localStorage.clear();
     });
     await app.open('/');
-  });
-
-  test('Onboarding wizard appears on fresh install', async ({ app, screen, browser }) => {
-    await expect(screen.getByTestId('onboarding-wizard')).toBeVisible();
-    await expect(screen.getByTestId('onboarding-welcome')).toBeVisible();
-    await expect(screen.getByText('Welcome to Nova')).toBeVisible();
-    await expect(screen.getByRole('button', { name: 'Create my identity' })).toBeVisible();
-    await expect(screen.getByRole('button', { name: 'Restore from before' })).toBeVisible();
+    
+    // Should see welcome screen
+    await expect(screen.getByText('Welcome to Nova Dark Messenger')).toBeVisible({ timeout: 10000 });
   });
 
   test('Can navigate past welcome screen', async ({ app, screen, browser }) => {
-    // On welcome screen, click the language button first (in progress bar)
-    await screen.getByRole('button', { name: 'English' }).tap();
+    await browser.addInitScript(() => {
+      localStorage.clear();
+    });
+    await app.open('/');
     
-    // Language screen should appear
-    await expect(screen.getByTestId('onboarding-language')).toBeVisible({ timeout: 5000 });
-    
-    // Click Continue to go back to welcome
-    await screen.getByRole('button', { name: 'Continue' }).tap();
-    
-    // Back on welcome screen, now create identity
-    await expect(screen.getByTestId('onboarding-welcome')).toBeVisible();
-    await screen.getByRole('button', { name: 'Create my identity' }).tap();
-    
-    // Should be on nickname screen now
-    await expect(screen.getByTestId('onboarding-nickname')).toBeVisible();
+    await expect(screen.getByText('Welcome to Nova Dark Messenger')).toBeVisible();
+    await screen.getByRole('button', { name: 'Get Started' }).click();
+    await expect(screen.getByText('Create Account')).toBeVisible({ timeout: 5000 });
   });
 
   test('Nickname screen validates input', async ({ app, screen, browser }) => {
-    await screen.getByRole('button', { name: 'Create my identity' }).tap();
+    await browser.addInitScript(() => {
+      localStorage.clear();
+    });
+    await app.open('/');
     
-    // Skip language if it appears
-    const languageBtn = screen.getByRole('button', { name: /English/ });
-    if (await languageBtn.isVisible({ timeout: 1000 })) {
-      await languageBtn.tap();
-      await screen.getByRole('button', { name: 'Continue' }).tap();
-    }
+    await screen.getByRole('button', { name: 'Get Started' }).click();
+    await expect(screen.getByText('Create Account')).toBeVisible();
     
-    await expect(screen.getByTestId('onboarding-nickname')).toBeVisible();
+    // Try to submit empty nickname
+    const nicknameInput = screen.getByRole('textbox', { name: /nickname/i });
+    await nicknameInput.fill('');
+    await screen.getByRole('button', { name: 'Continue' }).click();
     
-    // Continue button should be disabled initially
-    const continueBtn = screen.getByRole('button', { name: 'Continue' });
-    await expect(continueBtn).toBeDisabled();
-    
-    // Fill nickname
-    const nicknameInput = screen.getByRole('textbox', 'Choose a nickname');
-    await nicknameInput.fill('TestUser');
-    await expect(continueBtn).toBeEnabled();
+    // Should show validation error
+    await expect(screen.getByText(/nickname is required/i)).toBeVisible({ timeout: 3000 });
   });
 });

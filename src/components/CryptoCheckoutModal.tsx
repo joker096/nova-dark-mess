@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  X,
-  Check,
-  DollarSign,
-  Lock,
-  Clock,
-} from 'lucide-react';
+import {IconX as X, IconCheck as Check, IconCurrencyDollar as DollarSign, IconLock as Lock, IconClock as Clock} from '@tabler/icons-react';
 import { createPremiumCheckout, activatePremiumLicense, MIN_SUBSCRIPTION_COST } from '../lib/premium';
 import { NovaButton } from '../lib/ui';
 import { useLanguage } from '../context/LanguageContext';
@@ -187,3 +181,16 @@ export const CryptoCheckoutModal: React.FC<CryptoCheckoutModalProps> = ({
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+

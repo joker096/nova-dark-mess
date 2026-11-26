@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import {IconX as X} from '@tabler/icons-react';
 import { ModalOverlay } from '../../components/ModalOverlay';
 import { useFocusTrap } from './useFocusTrap';
 
@@ -52,7 +52,7 @@ export const NovaBottomSheet = forwardRef<HTMLDivElement, NovaBottomSheetProps>(
     ref
   ) => {
     const sheetRef = useRef<HTMLDivElement>(null);
-    const focusTrap = useFocusTrap<HTMLDivElement>(isOpen, onClose, sheetRef);
+    const focusTrap = useFocusTrap<HTMLDivElement>(isOpen, onClose);
 
     useEffect(() => {
       if (isOpen) {
@@ -78,6 +78,7 @@ export const NovaBottomSheet = forwardRef<HTMLDivElement, NovaBottomSheetProps>(
         <div
           ref={(el) => {
             sheetRef.current = el;
+            focusTrap.current = el;
             if (ref) {
               if (typeof ref === 'function') ref(el);
               else ref.current = el;
@@ -123,3 +124,12 @@ export const NovaBottomSheet = forwardRef<HTMLDivElement, NovaBottomSheetProps>(
 NovaBottomSheet.displayName = 'NovaBottomSheet';
 
 export type { NovaBottomSheetProps };
+
+
+
+
+
+
+
+
+

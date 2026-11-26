@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { useAccount } from '../hooks/useAccount';
-import { useLanguage } from '../context/LanguageContext';
 import {
-  Plus,
-  LogOut,
-  UserCheck,
-  Trash2,
-  Star,
-} from 'lucide-react';
+  useAccount } from '../hooks/useAccount';
+import { useLanguage } from '../context/LanguageContext';
+import {IconPlus as Plus,
+  IconLogout as Logout,
+  IconUserCheck as UserCheck,
+  IconTrashX as Trash2,
+  IconTrash as Trash,
+  IconStar as Star,
+  IconLogout as LogOut,
+  IconTrash as TrashX,
+} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui';
 import { removeAccount, setPrimaryAccount } from '../lib/account/multiAccount';
 import { OnboardingWizard } from './OnboardingWizard';
@@ -140,7 +143,7 @@ export const AccountSwitcher: React.FC<AccountSwitcherProps> = ({
                         className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition"
                         title={t('settings.accounts.remove')}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <TrashX className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -201,3 +204,23 @@ export const AccountSwitcher: React.FC<AccountSwitcherProps> = ({
 };
 
 export default AccountSwitcher;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

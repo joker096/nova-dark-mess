@@ -1,5 +1,15 @@
 import React from 'react';
-import { ChevronDown, ChevronUp, Clock, Forward, Reply, Search, X } from 'lucide-react';
+import {
+  IconArrowBackUp as ArrowBackUp,
+  IconArrowForwardUp as ArrowForwardUp,
+  IconChevronDown as ChevronDown,
+  IconChevronUp as ChevronUp,
+  IconClock as Clock,
+  IconSearch as Search,
+  IconX as X,
+  IconArrowForward as Forward,
+  IconArrowBackUp as Reply,
+} from '@tabler/icons-react';
 import { ChatMessage, VoiceNoteData } from '../../types/messenger';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -218,3 +228,13 @@ export const ChatStatusBanners: React.FC<ChatStatusBannersProps> = ({
 </>
   );
 };
+
+
+
+
+
+
+
+
+
+

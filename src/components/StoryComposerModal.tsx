@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import {IconSparkles as Sparkles} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { ImagePicker } from './ImagePicker';
@@ -104,7 +104,7 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
             onChange={(event) => setCaption(event.target.value)}
             placeholder={t('stories.captionPlaceholder')}
             rows={2}
-            className="w-full resize-none rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-high)] px-3 py-2 text-xs text-[var(--nova-text-primary)] placeholder-[var(--nova-text-secondary)]/30 transition focus:border-[var(--nova-accent-color)]/60 focus:outline-none"
+            className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-secondary)]/30 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
           />
         </div>
 
@@ -140,3 +140,13 @@ export const StoryComposerModal: React.FC<StoryComposerModalProps> = ({
     </NovaModal>
   );
 };
+
+
+
+
+
+
+
+
+
+

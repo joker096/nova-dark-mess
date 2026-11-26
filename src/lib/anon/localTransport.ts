@@ -7,7 +7,7 @@ import { CreatedQueue, EnqueueResult, PollResult, AnonPacket } from './types';
 import type { AbuseReportSubmission } from './blocks';
 import type { PowChallenge } from './spam';
 import { createAnonTransport, type AnonInboxTransport } from './transport';
-import { queueSigningPublicKey } from './signing';
+import { queueSigningPublicKey } from './crypto';
 
 const STORAGE_PREFIX = 'anon_local_queue_';
 const MAX_QUEUE_SIZE = 1000;

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import {IconX as X} from '@tabler/icons-react';
 
 export interface ToastUndo {
   label: string;
@@ -139,3 +139,13 @@ export function useToast(): ToastApi {
   if (!api) throw new Error('useToast must be used inside a NovaToastProvider');
   return api;
 }
+
+
+
+
+
+
+
+
+
+

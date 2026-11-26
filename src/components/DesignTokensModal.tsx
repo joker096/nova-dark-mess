@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Copy, Check, Palette, GitBranch, Terminal, FileCode2, Sparkles } from 'lucide-react';
+import {IconCopy as Copy, IconCheck as Check, IconPalette as Palette, IconGitBranch as GitBranch, IconTerminal as Terminal, IconFileCode2 as FileCode2, IconSparkles as Sparkles} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeHtml } from '../lib/security/sanitize';
 import { ScrollableRow } from '../lib/ui/ScrollableRow';
@@ -381,3 +381,13 @@ diff --git a/src/styles/messenger.css b/src/styles/messenger.css
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
