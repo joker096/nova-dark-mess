@@ -278,13 +278,14 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       {/* Channel Search */}
       <div className="px-4 pb-2">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--nova-text-muted)]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--nova-text-muted)] pointer-events-none" />
           <input
             type="text"
             placeholder={t('channel.searchChannels', 'Search channels...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 pl-10 py-2 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)] transition-all duration-200"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 pl-12 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none transition-all duration-200"
+            data-inline-focus
           />
         </div>
       </div>

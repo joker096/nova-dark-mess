@@ -1400,7 +1400,7 @@ export const ChatsScreen = forwardRef<
             onTouchEnd={handleListTouchEnd}
             onTouchCancel={handleListTouchEnd}
           >
-            {/* Mobile Search Bar - always visible on mobile */}
+{/* Mobile Search Bar - always visible on mobile */}
             <div className="lg:hidden mb-3">
               <div className="relative flex items-center">
                 <div className="absolute left-3 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
@@ -1413,13 +1413,14 @@ export const ChatsScreen = forwardRef<
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setSearchQuery("");
                   }}
-placeholder={t('chats.searchPlaceholderMobile', { defaultValue: 'Search chats...' })}
-                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none"
+                  placeholder={t('chats.searchPlaceholderMobile', { defaultValue: 'Search chats...' })}
+                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none data-[inline-focus]:focus-visible:ring-0"
+                  data-inline-focus
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer"
+                    className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                     aria-label={t("common.close")}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1557,6 +1558,7 @@ placeholder={t('chats.searchPlaceholderMobile', { defaultValue: 'Search chats...
                           ? "bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30"
                           : "bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]"
                       }`}
+                      data-testid={`chat-item-${chat.id}`}
                     >
                       {/* Avatar Slot */}
                       <div className="relative shrink-0">

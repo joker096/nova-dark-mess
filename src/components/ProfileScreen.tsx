@@ -1855,11 +1855,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     ? 'bg-[var(--nova-accent-color)]/20 text-[var(--nova-text-primary)]'
                     : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]'
                 }`}
-              >
+              data-testid="device-link-tab-this-device"
+                >
                 {t('profile.thisDevice')}
-              </button>
-              <button
-                data-testid="device-link-tab-this-device"
               </button>
               <button
                 data-testid="device-link-tab-new-device"

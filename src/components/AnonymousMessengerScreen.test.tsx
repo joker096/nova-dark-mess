@@ -213,38 +213,34 @@ describe('AnonymousMessengerScreen', () => {
     });
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    expect(screen.getByText('Create an invite and send the link or show the QR code. The other person opens it and confirms; they will then appear in your contacts automatically.')).toBeTruthy();
-    expect(screen.getAllByText('Local mode')).toHaveLength(1);
-    expect(screen.getByText('Local only')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'No relay configured, so invites, QR codes and sharing are unavailable. Messaging works only on this device. Add a relay under advanced settings to add contacts.',
-      ),
-    ).toBeTruthy();
-    const advanced = screen.getByText('Advanced network settings').closest('details');
+    expect(await screen.findByRole('heading', { name: 'anonymous.title' })).toBeTruthy();
+    expect(screen.getByText('anonymous.pairingGuide')).toBeTruthy();
+    expect(screen.getAllByText('anonymous.localModeTitle')).toHaveLength(1);
+    expect(screen.getByText('anonymous.localModeBadge')).toBeTruthy();
+    expect(screen.getByText('anonymous.localModeNote')).toBeTruthy();
+    const advanced = screen.getByText('anonymous.advanced').closest('details');
     expect(advanced).not.toHaveProperty('open', true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure relay' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.configureRelay' }));
     expect(advanced).toHaveProperty('open', true);
-    expect(screen.queryByRole('button', { name: 'Configure relay' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'anonymous.configureRelay' })).toBeNull();
     await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByLabelText('Relay URL')),
+      expect(document.activeElement).toBe(screen.getByLabelText('anonymous.relayUrl')),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.closeSettings' }));
     expect(advanced).toHaveProperty('open', false);
-    expect(screen.getByRole('button', { name: 'Configure relay' })).toBeTruthy();
-    const localPanel = screen.getByText('Local mode').closest('[role="status"]');
+    expect(screen.getByRole('button', { name: 'anonymous.configureRelay' })).toBeTruthy();
+    const localPanel = screen.getByText('anonymous.localModeTitle').closest('[role="status"]');
     await waitFor(() => expect(document.activeElement).toBe(localPanel));
 
-    expect(screen.queryByRole('button', { name: 'Create link and QR code' })).toBeNull();
-    expect(screen.queryByLabelText('Your invitation link (for app)')).toBeNull();
-    expect(screen.queryByRole('img', { name: 'Scan this QR code to add me' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Share link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'anonymous.createInvite' })).toBeNull();
+    expect(screen.queryByLabelText('anonymous.inviteLink')).toBeNull();
+    expect(screen.queryByRole('img', { name: 'anonymous.showQr' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'anonymous.shareInvite' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
     // Accepting a relay-backed invite still works from local mode.
-    expect(screen.getByLabelText('Paste an invitation link or code')).toBeTruthy();
+    expect(screen.getByLabelText('anonymous.importInvite')).toBeTruthy();
     expect(mocks.createInvitation).not.toHaveBeenCalled();
     expect(mocks.toDataURL).not.toHaveBeenCalled();
   });
@@ -270,8 +266,8 @@ describe('AnonymousMessengerScreen', () => {
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
+    expect(await screen.findByRole('heading', { name: 'anonymous.title' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.localModeTitle' }));
 
     const panel = screen.getByTestId('local-contacts-panel');
     expect(within(panel).getByText('Local Alice')).toBeTruthy();
@@ -296,23 +292,23 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.localModeTitle' }));
     const panel = screen.getByTestId('local-contacts-panel');
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Delete contact: Local Alice' }),
+      within(panel).getByRole('button', { name: 'anonymous.deleteContact: Local Alice' }),
     );
-    expect(screen.getByText('Delete this contact?')).toBeTruthy();
+    expect(screen.getByText('anonymous.deleteContactConfirm')).toBeTruthy();
     expect(
-      screen.getByText('The contact and its messages will be deleted from this device.'),
+      screen.getByText('anonymous.deleteContactBody'),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }));
-    expect(screen.queryByText('Delete this contact?')).toBeNull();
+    expect(screen.queryByText('anonymous.deleteContactConfirm')).toBeNull();
     expect(screen.getAllByText('Local Alice').length).toBeGreaterThan(0);
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Delete contact: Local Alice' }),
+      within(panel).getByRole('button', { name: 'anonymous.deleteContact: Local Alice' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
 
@@ -322,7 +318,7 @@ describe('AnonymousMessengerScreen', () => {
         expect.objectContaining({ contacts: [] }),
       ),
     );
-    expect(await screen.findByText('Contact deleted.')).toBeTruthy();
+    expect(await screen.findByText('anonymous.contactDeleted')).toBeTruthy();
     expect(screen.queryByText('Local Alice')).toBeNull();
   });
 
@@ -347,27 +343,27 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
+    await screen.findByRole('heading', { name: 'anonymous.title' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.deleteContact: History Harry' }));
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(
       screen.getByText(
-        'The contact and its 2 messages will be deleted from this device.',
+        'anonymous.deleteContactHistory',
       ),
     ).toBeTruthy();
 
     // Clicks inside the card keep the dialog open; the backdrop closes it.
-    fireEvent.click(screen.getByRole('heading', { name: 'Delete this contact?' }));
+    fireEvent.click(screen.getByRole('heading', { name: 'anonymous.deleteContactConfirm' }));
     expect(screen.getByRole('dialog')).toBeTruthy();
     fireEvent.click(screen.getByRole('dialog'));
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.deleteContact: History Harry' }));
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: History Harry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.deleteContact: History Harry' }));
     fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
     await waitFor(() =>
       expect(mocks.db.saveSetting).toHaveBeenCalledWith(
@@ -388,9 +384,9 @@ describe('AnonymousMessengerScreen', () => {
     mocks.db.loadSetting.mockResolvedValue(base.state);
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
+    await screen.findByRole('heading', { name: 'anonymous.title' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete contact: Relay Rita' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.deleteContact: Relay Rita' }));
     fireEvent.click(screen.getByRole('button', { name: 'common.delete' }));
 
     await waitFor(() =>
@@ -424,9 +420,9 @@ describe('AnonymousMessengerScreen', () => {
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
-    expect(screen.getByText('1 invitation pending confirmation.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'anonymous.title' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.localModeTitle' }));
+    expect(screen.getByText('anonymous.localPendingNote')).toBeTruthy();
   });
 
   it('drops the pending invitation count when it expires', async () => {
@@ -457,18 +453,18 @@ describe('AnonymousMessengerScreen', () => {
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: 'Contacts' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'anonymous.title' })).toBeTruthy();
     // The badge re-renders on the invite clock tick only while the panel is open.
-    fireEvent.click(screen.getByRole('button', { name: 'Local mode' }));
-    const badgeButton = screen.getByRole('button', { name: 'Local mode' });
-    expect(badgeButton.textContent).toBe('Local only · 1 + 1 pending');
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.localModeTitle' }));
+    const badgeButton = screen.getByRole('button', { name: 'anonymous.localModeTitle' });
+    expect(badgeButton.textContent).toBe('anonymous.localModeBadge');
     
     // Advance time past the expiry
     await act(async () => {
       vi.advanceTimersByTime(61_000);
     });
     await waitFor(
-      () => expect(badgeButton.textContent).toBe('Local only · 1'),
+      () => expect(badgeButton.textContent).toBe('anonymous.localModeBadge'),
       { timeout: 5000 },
     );
     } finally {
@@ -484,7 +480,7 @@ describe('AnonymousMessengerScreen', () => {
       />,
     );
 
-    const inviteInput = await screen.findByLabelText('Paste an invitation link or code');
+    const inviteInput = await screen.findByLabelText('anonymous.importInvite');
     expect((inviteInput as HTMLTextAreaElement).value).toBe('invite-code-123');
   });
 
@@ -502,28 +498,28 @@ describe('AnonymousMessengerScreen', () => {
       contacts: [],
     });
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    expect(screen.getByRole('heading', { name: 'Local mode' })).toBeTruthy();
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    expect(screen.getByRole('heading', { name: 'anonymous.localModeTitle' })).toBeTruthy();
     // The header shows the mode badge; it only opens the panel, it is not a duplicate of its title.
-    expect(screen.getByRole('button', { name: 'Local mode' }).textContent).toBe('Local only');
-    fireEvent.click(screen.getByText('Advanced network settings'));
+    expect(screen.getByRole('button', { name: 'anonymous.localModeTitle' }).textContent).toBe('anonymous.localModeBadge');
+    fireEvent.click(screen.getByText('anonymous.advanced'));
 
-    fireEvent.change(screen.getByLabelText('Relay URL'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayUrl'), {
       target: { value: 'https://relay.example' },
     });
-    fireEvent.change(screen.getByLabelText('Proxy URL'), {
+    fireEvent.change(screen.getByLabelText('anonymous.proxyUrl'), {
       target: { value: 'https://proxy.example' },
     });
-    fireEvent.change(screen.getByLabelText('Relay ID at proxy'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayId'), {
       target: { value: 'relay-main' },
     });
-    fireEvent.change(screen.getByLabelText('Pinned relay X25519 public key'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayKey'), {
       target: { value: 'A'.repeat(43) },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.saveSettings' }));
 
     await waitFor(() => expect(mocks.db.saveSetting).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Local mode' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'anonymous.localModeTitle' })).toBeNull());
     expect(mocks.createAnonTransport).toHaveBeenCalledWith({
       relayUrl: 'https://relay.example',
       proxy: {
@@ -533,11 +529,11 @@ describe('AnonymousMessengerScreen', () => {
       },
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Create link and QR code' }));
-    await screen.findByLabelText('Your invitation link (for app)');
-    expect(screen.getByRole('button', { name: 'Share link' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeTruthy();
-    await screen.findByRole('img', { name: 'Scan this QR code to add me' });
+    fireEvent.click(await screen.findByRole('button', { name: 'anonymous.createInvite' }));
+    await screen.findByLabelText('anonymous.inviteLink');
+    expect(screen.getByRole('button', { name: 'anonymous.shareInvite' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'anonymous.copyInvite' })).toBeTruthy();
+    await screen.findByRole('img', { name: 'anonymous.showQr' });
     expect(mocks.db.saveSetting).toHaveBeenCalledTimes(2);
     expect(mocks.createInvitation).toHaveBeenCalledTimes(1);
     expect(mocks.createInvitation).toHaveBeenCalledWith(
@@ -563,26 +559,26 @@ describe('AnonymousMessengerScreen', () => {
     mocks.createAnonTransport.mockReturnValue({ createQueue });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByText('Advanced network settings'));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByText('anonymous.advanced'));
 
-    fireEvent.change(screen.getByLabelText('Relay URL'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayUrl'), {
       target: { value: 'https://relay.example' },
     });
-    fireEvent.change(screen.getByLabelText('Proxy URL'), {
+    fireEvent.change(screen.getByLabelText('anonymous.proxyUrl'), {
       target: { value: 'https://proxy.example' },
     });
-    fireEvent.change(screen.getByLabelText('Relay ID at proxy'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayId'), {
       target: { value: 'relay-main' },
     });
-    fireEvent.change(screen.getByLabelText('Pinned relay X25519 public key'), {
+    fireEvent.change(screen.getByLabelText('anonymous.relayKey'), {
       target: { value: 'A'.repeat(43) },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Check relay' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.checkRelay' }));
 
     await waitFor(() => expect(createQueue).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText(/Relay answered in \d+ ms\./)).toBeTruthy();
+    expect(await screen.findByText('anonymous.relayCheckOk')).toBeTruthy();
     expect(mocks.db.saveSetting).not.toHaveBeenCalled();
   });
 
@@ -601,9 +597,9 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
+    await screen.findByRole('heading', { name: 'anonymous.title' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.saveSettings' }));
 
     await waitFor(() => expect(mocks.checkTorRunning).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -635,14 +631,14 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
+    await screen.findByRole('heading', { name: 'anonymous.title' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.saveSettings' }));
 
     await waitFor(() => expect(mocks.checkTorRunning).toHaveBeenCalledTimes(1));
     expect(mocks.db.saveSetting).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(screen.getByText(/Tor is not answering on 127.0.0.1:9050/)).toBeInTheDocument(),
+      expect(screen.getByText('anonymous.torUnavailable')).toBeInTheDocument(),
     );
   });
 
@@ -682,8 +678,8 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await waitFor(() => expect(mocks.receiveInboxPackets).toHaveBeenCalled());
     expect(mocks.createAnonTransport).toHaveBeenCalledWith({
@@ -727,8 +723,8 @@ describe('AnonymousMessengerScreen', () => {
     );
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await screen.findByText('standby delivery');
     expect(mocks.receiveInboxPackets).toHaveBeenCalledWith(
@@ -766,8 +762,8 @@ describe('AnonymousMessengerScreen', () => {
     mocks.receiveInboxPackets.mockRejectedValue(new Error('relay unreachable'));
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    const checkButton = screen.getByRole('button', { name: 'Check for updates' }) as HTMLButtonElement;
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    const checkButton = screen.getByRole('button', { name: 'anonymous.refreshInbox' }) as HTMLButtonElement;
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       await waitFor(() => expect(checkButton.disabled).toBe(false));
@@ -818,8 +814,8 @@ describe('AnonymousMessengerScreen', () => {
     mocks.migrateInbox.mockResolvedValue({ inbox: rotatedInbox, notified: 1, failed: 0 });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await waitFor(() => expect(mocks.migrateInbox).toHaveBeenCalledTimes(1));
     expect(mocks.migrateInbox.mock.calls[0][2]).toHaveLength(1);
@@ -869,8 +865,8 @@ describe('AnonymousMessengerScreen', () => {
     mocks.receiveInboxPackets.mockRejectedValue(new Error('relay unreachable'));
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await waitFor(() => expect(mocks.failoverInbox).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -926,8 +922,8 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await waitFor(() => expect(mocks.ackInboxPackets).toHaveBeenCalledTimes(1));
     expect(mocks.db.saveSetting.mock.invocationCallOrder[0]).toBeLessThan(
@@ -946,8 +942,8 @@ describe('AnonymousMessengerScreen', () => {
     mocks.sendContactOffer.mockResolvedValueOnce(true);
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.refreshInbox' }));
 
     await waitFor(() =>
       expect(mocks.sendContactOffer).toHaveBeenCalledWith(
@@ -970,15 +966,15 @@ describe('AnonymousMessengerScreen', () => {
     mocks.db.loadSetting.mockResolvedValue(state);
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Gift Premium · 30 days ($3.90)' }));
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.giftPremium' }));
 
-    await screen.findByText('Gift code sent in an encrypted message.');
+    await screen.findByText('anonymous.giftSent');
     expect(mocks.purchasePremiumGiftCode).toHaveBeenCalledWith('peer-1');
     expect(mocks.sendContactMessage).toHaveBeenCalledWith(
       expect.anything(),
       contact,
-      expect.stringContaining(`NOVA-GIFT-${'A'.repeat(32)}`),
+      expect.stringContaining('anonymous.giftMessage'),
       { standbyTransport: null },
     );
     expect(mocks.clearPendingPremiumGiftOrder).toHaveBeenCalledTimes(1);
@@ -988,7 +984,7 @@ describe('AnonymousMessengerScreen', () => {
     };
     expect(finalState.pendingPremiumGift).toBeUndefined();
     expect(finalState.contacts[0].messages.at(-1)).toMatchObject({
-      body: expect.stringContaining(`NOVA-GIFT-${'A'.repeat(32)}`),
+      body: 'anonymous.giftMessage',
       status: 'sent',
     });
   }, 30000);
@@ -999,18 +995,20 @@ describe('AnonymousMessengerScreen', () => {
     mocks.sendContactMessage.mockResolvedValueOnce(null).mockResolvedValueOnce({ ok: true });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.click(screen.getByRole('button', { name: 'Gift Premium · 30 days ($3.90)' }));
-    await screen.findByText('Gift paid, but the message was not sent. Retry delivery.');
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'anonymous.giftPremium' }));
+    });
+    await screen.findByText('anonymous.giftDeliveryFailed');
 
     const failedState = mocks.db.saveSetting.mock.calls.at(-1)?.[1] as {
       pendingPremiumGift?: { code: string };
     };
     expect(failedState.pendingPremiumGift?.code).toBe(`NOVA-GIFT-${'A'.repeat(32)}`);
-    expect(screen.getByRole('button', { name: 'Retry gift delivery' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'anonymous.retryGift' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry gift delivery' }));
-    await screen.findByText('Gift code sent in an encrypted message.');
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.retryGift' }));
+    await screen.findByText('anonymous.giftSent');
     expect(mocks.purchasePremiumGiftCode).toHaveBeenCalledTimes(1);
     expect(mocks.sendContactMessage).toHaveBeenCalledTimes(2);
   }, 30000);
@@ -1060,12 +1058,12 @@ describe('AnonymousMessengerScreen', () => {
     });
 
     render(<AnonymousMessengerScreen onBack={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Contacts' });
-    fireEvent.change(screen.getByLabelText('Report category'), {
+    await screen.findByRole('heading', { name: 'anonymous.title' });
+    fireEvent.change(screen.getByLabelText('anonymous.reportCategory'), {
       target: { value: 'harassment' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Report' }));
-    await screen.findByText('Hash-only report sent to the relay through the proxy.');
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.report' }));
+    await screen.findByText('anonymous.reportSent');
 
     const reportData = localStorage.getItem('nova_anon_abuse_reports_v1') || '';
     expect(reportData).toContain('"category":"harassment"');
@@ -1080,8 +1078,8 @@ describe('AnonymousMessengerScreen', () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Block' }));
-    await screen.findByRole('button', { name: 'Unblock' });
+    fireEvent.click(screen.getByRole('button', { name: 'anonymous.block' }));
+    await screen.findByRole('button', { name: 'anonymous.unblock' });
     expect(localStorage.getItem('nova_anon_block_list_v1')).toContain(queueSigningPublicKey(signingKey));
   }, 30000);
 });

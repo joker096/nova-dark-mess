@@ -588,12 +588,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
                 if (e.key === "Escape") setSettingsSearchQuery("");
               }}
               placeholder={t('settings.searchPlaceholder', { defaultValue: 'Search settings...' })}
-              className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none"
+              className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none"
+              data-inline-focus
             />
             {settingsSearchQuery && (
               <button
                 onClick={() => setSettingsSearchQuery("")}
-                className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer"
+                className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />

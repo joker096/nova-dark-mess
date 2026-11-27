@@ -638,6 +638,7 @@
     "media": "Media",
     "files": "Files",
     "links": "Links",
+    "mediaFilesLinks": "Media, Files & Links",
     "voiceMessages": "Voice Messages",
     "pinnedMessages": "Pinned Messages",
     "searchInChat": "Search in chat",
@@ -918,6 +919,7 @@
     "coverTrafficPaused": "Cover traffic paused",
     "presenceSharing": "Share presence with relay",
     "presenceSharingHint": "Announce your online status so peers appear on the mesh map. Off by default — nothing is sent until you enable it.",
+    "presenceShare": "Share presence on mesh map",
     "presenceHashing": "Hash fingerprint before sending",
     "presenceTtl_short": "45 s",
     "presenceTtl_normal": "2 min",
@@ -1939,6 +1941,17 @@
     "block": "Block",
     "unblock": "Unblock",
     "reportCategory": "Report reason",
-    "report": "Report"
+    "report": "Report",
+    "giftPremium": "Gift Premium",
+    "giftSent": "Gift code sent in an encrypted message.",
+    "giftDeliveryFailed": "Could not deliver gift. Retrying...",
+    "retryGift": "Retry gift delivery",
+    "giftPaymentPending": "Waiting for payment...",
+    "giftPaymentWindow": "Payment window blocked. Allow popups.",
+    "finishGiftFirst": "Finish current gift first.",
+    "giftPaymentFailed": "Payment failed. Try again.",
+    "copyInvite": "Link copied",
+    "copyInviteWeb": "Web link copied",
+    "giftMessage": "Gift: {{code}}"
   }
 }

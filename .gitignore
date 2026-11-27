@@ -15,6 +15,7 @@ DEPLOYMENT.local.md
 .open-mem/
 .andromity/
 .kilo/
+.codetree/
 
 # Build artifacts
 *.aab

@@ -272,9 +272,9 @@ describe('ProfileScreen - quick actions', () => {
   it('opens and closes the audio call overlay', () => {
     renderProfile('katie');
     fireEvent.click(screen.getByRole('button', { name: 'common.audio' }));
-    expect(screen.getByText('Calling...')).toBeTruthy();
+    expect(screen.getByText('profile.calling')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'common.close' }));
-    expect(screen.queryByText('Calling...')).toBeNull();
+    expect(screen.queryByText('profile.calling')).toBeNull();
   });
 
   it('opens the video call overlay', () => {
@@ -483,9 +483,9 @@ describe('ProfileScreen - QR and security modals', () => {
       fireEvent.click(screen.getByTitle('profile.safetyNumber'));
       await Promise.resolve();
     });
-    expect(screen.getByPlaceholderText('Paste contact safety number')).toBeTruthy();
+    expect(screen.getByPlaceholderText('profile.safetyNumberPlaceholder')).toBeTruthy();
     fireEvent.keyDown(document.documentElement, { key: 'Escape' });
-    expect(screen.queryByPlaceholderText('Paste contact safety number')).toBeNull();
+    expect(screen.queryByPlaceholderText('profile.safetyNumberPlaceholder')).toBeNull();
   });
 
   it('opens the share contact modal from the header', () => {
@@ -661,21 +661,21 @@ describe('ProfileScreen - device linking', () => {
     const offerUrl = link.textContent ?? '';
     expect(offerUrl).toContain('nova://device-link?');
 
-    fireEvent.click(screen.getByText('New device'));
+    fireEvent.click(screen.getByTestId('device-link-tab-new-device'));
     fireEvent.change(screen.getByLabelText('Device link offer'), {
       target: { value: offerUrl },
     });
-    fireEvent.click(screen.getByText('Create reply code'));
+    fireEvent.click(screen.getByTestId('device-link-create-reply'));
 
     const reply = screen.getByTestId('device-link-reply').textContent ?? '';
     expect(reply).toContain('nova://device-link-response?');
 
-    fireEvent.click(screen.getByText('This device'));
+    fireEvent.click(screen.getByTestId('device-link-tab-this-device'));
     fireEvent.change(screen.getByLabelText('Device link reply'), { target: { value: reply } });
-    fireEvent.click(screen.getByText('Complete linking'));
+    fireEvent.click(screen.getByTestId('device-link-complete'));
 
-    expect(screen.getByText(/Handshake complete/)).toBeTruthy();
-    fireEvent.click(screen.getAllByText('Close')[0]);
+    expect(screen.getByText(/profile\.deviceLinkHandshakeComplete/)).toBeTruthy();
+    fireEvent.click(screen.getAllByText('profile.deviceLinkClose')[0]);
     expect(screen.getByText('2 devices')).toBeTruthy();
   });
 
@@ -755,7 +755,7 @@ describe('ProfileScreen - device linking', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Handshake complete/)).toBeTruthy();
+    expect(screen.getByText(/profile\.deviceLinkHandshakeComplete/)).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('device-link-tab-new-device'));
     await act(async () => {
@@ -763,7 +763,7 @@ describe('ProfileScreen - device linking', () => {
       await Promise.resolve();
     });
 
-    expect(await screen.findByText(/History synced/, {}, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByText(/profile\.deviceLinkHistorySynced/, {}, { timeout: 5000 })).toBeTruthy();
   });
 });
 
