@@ -245,12 +245,12 @@ export const AdvancedTab = React.memo(function AdvancedTab({
                       {item.name ?? item.groupId}
                     </span>
                     <span className="text-[10px] text-[var(--nova-text-muted)] block">
-                      Retry: {item.attempts ?? 0}
+                      {t('bot.retryPlaceholder', { count: item.attempts ?? 0 })}
                     </span>
                   </div>
                 </div>
                 <span className="text-[10px] text-[var(--nova-text-muted)]">
-                  Next: {new Date(item.nextAttemptAt ?? item.createdAt).toLocaleTimeString()}
+                  {t('bot.nextAttempt', { time: new Date(item.nextAttemptAt ?? item.createdAt).toLocaleTimeString() })}
                 </span>
               </div>
             ))
@@ -330,20 +330,20 @@ export const AdvancedTab = React.memo(function AdvancedTab({
 
               <div className="space-y-3 text-[11px]">
                 <div>
-                  <span className="text-[var(--nova-text-secondary)]">Version:</span>
+                  <span className="text-[var(--nova-text-secondary)]">{t('bot.version')}:</span>
                   <span className="text-[var(--nova-text-primary)] ml-2 font-mono">
                     {selectedBotData.manifest.version}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[var(--nova-text-secondary)]">Description:</span>
-                  <p className="text-[var(--nova-text-primary)] mt-1">{selectedBotData.manifest.description || 'No description'}</p>
+                  <span className="text-[var(--nova-text-secondary)]">{t('bot.description')}:</span>
+                  <p className="text-[var(--nova-text-primary)] mt-1">{selectedBotData.manifest.description || t('bot.noDescription')}</p>
                 </div>
 
                 {/* Permissions */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[var(--nova-text-secondary)]">Permissions ({selectedBotData.grantedPermissions.length})</span>
+                    <span className="text-[var(--nova-text-secondary)]">{t('bot.permissions', { count: selectedBotData.grantedPermissions.length })}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {selectedBotData.grantedPermissions.map((perm) => (
@@ -357,7 +357,7 @@ export const AdvancedTab = React.memo(function AdvancedTab({
                 {/* Commands */}
                 {selectedBotData.manifest.commands?.length > 0 && (
                   <div>
-                    <span className="text-[var(--nova-text-secondary)]">Commands ({selectedBotData.manifest.commands.length})</span>
+                    <span className="text-[var(--nova-text-secondary)]">{t('bot.commands', { count: selectedBotData.manifest.commands.length })}</span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {selectedBotData.manifest.commands.map((cmd: BotCommand) => (
                         <span key={cmd.command} className="px-2 py-0.5 rounded-full bg-[var(--nova-accent-color)]/15 border border-[var(--nova-accent-color)]/30 text-[10px] text-[var(--nova-accent-color)] font-mono">
@@ -373,20 +373,20 @@ export const AdvancedTab = React.memo(function AdvancedTab({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[var(--nova-text-secondary)]">
                       <FingerprintIcon className="w-3 h-3 inline mr-1" />
-                      Mesh Fingerprint
+                      {t('bot.meshFingerprint')}
                     </span>
                     {selectedBotData.peerFingerprint ? (
                       <span className="text-[10px] text-emerald-400 flex items-center gap-1">
                         <ShieldCheckIcon className="w-3 h-3" />
-                        Set
+                        {t('bot.fingerprintSet')}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-[var(--nova-text-muted)]">Not set</span>
+                      <span className="text-[10px] text-[var(--nova-text-muted)]">{t('bot.fingerprintNotSet')}</span>
                     )}
                   </div>
                   {selectedBotData.manifest.gatewayUrl && (
                     <div className="mb-2">
-                      <span className="text-[var(--nova-text-secondary)]">Gateway URL: </span>
+                      <span className="text-[var(--nova-text-secondary)]">{t('bot.gatewayUrl')}: </span>
                       <a href={selectedBotData.manifest.gatewayUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--nova-accent-color)] text-[10px] truncate block">
                         {selectedBotData.manifest.gatewayUrl}
                       </a>
@@ -397,7 +397,7 @@ export const AdvancedTab = React.memo(function AdvancedTab({
                       type="text"
                       value={peerFingerprintInput}
                       onChange={(e) => setPeerFingerprintInput(e.target.value)}
-                      placeholder="Enter mesh fingerprint (8-128 chars)"
+                      placeholder={t('bot.placeholderFingerprint')}
                       className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--nova-border-subtle)] bg-[var(--nova-surface)] text-[var(--nova-text-primary)] text-[11px] focus:border-[var(--nova-accent-color)] focus:outline-none"
                       maxLength={128}
                     />

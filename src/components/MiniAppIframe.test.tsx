@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { MiniAppIframe } from './MiniAppIframe';
+import { LanguageProvider } from '../context/LanguageContext';
 
 const baseProps = {
   botId: 'echo_bot',
@@ -20,6 +21,8 @@ const baseProps = {
 const getIframe = (container: HTMLElement) =>
   container.querySelector('iframe') as HTMLIFrameElement | null;
 
+const renderWithLanguage = (ui: React.ReactElement) => render(<LanguageProvider>{ui}</LanguageProvider>);
+
 describe('MiniAppIframe', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +33,7 @@ describe('MiniAppIframe', () => {
   });
 
   it('renders iframe with sandbox without allow-same-origin', () => {
-    const { container } = render(<MiniAppIframe {...baseProps} />);
+    const { container } = renderWithLanguage(<MiniAppIframe {...baseProps} />);
     const iframe = getIframe(container);
     expect(iframe).not.toBeNull();
     const sandbox = iframe!.getAttribute('sandbox') ?? '';
@@ -40,19 +43,19 @@ describe('MiniAppIframe', () => {
   });
 
   it('includes bot id and mini app title in header', () => {
-    const { container } = render(<MiniAppIframe {...baseProps} />);
+    const { container } = renderWithLanguage(<MiniAppIframe {...baseProps} />);
     expect(screen.getByText('Mini App · echo_bot')).toBeInTheDocument();
     expect(getIframe(container)).not.toBeNull();
   });
 
   it('calls onClose when close button is clicked', () => {
-    render(<MiniAppIframe {...baseProps} />);
+    renderWithLanguage(<MiniAppIframe {...baseProps} />);
     fireEvent.click(screen.getByTitle('Close'));
     expect(baseProps.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('passes initData in iframe src fragment', () => {
-    const { container } = render(<MiniAppIframe {...baseProps} />);
+    const { container } = renderWithLanguage(<MiniAppIframe {...baseProps} />);
     const iframe = getIframe(container)!;
     expect(iframe.src).toContain('bot_id=echo_bot');
     expect(iframe.src).toContain('user_id=user_1');
@@ -60,7 +63,7 @@ describe('MiniAppIframe', () => {
   });
 
   it('does not render an iframe for a non-HTTPS URL', () => {
-    const { container } = render(
+    const { container } = renderWithLanguage(
       <MiniAppIframe {...baseProps} webAppUrl="javascript:alert(1)" />,
     );
     expect(getIframe(container)).toBeNull();
@@ -68,7 +71,7 @@ describe('MiniAppIframe', () => {
   });
 
   it('refuses a remote URL whose origin is not allowlisted', () => {
-    const { container } = render(
+    const { container } = renderWithLanguage(
       <MiniAppIframe {...baseProps} webAppUrl="https://evil.example/miniapp" />,
     );
     expect(getIframe(container)).toBeNull();
@@ -77,7 +80,7 @@ describe('MiniAppIframe', () => {
 
   it('renders without onInlineQuery / onMainButtonClick handlers', () => {
     const { botId, webAppUrl, userId, secret, onClose } = baseProps;
-    const { container } = render(
+    const { container } = renderWithLanguage(
       <MiniAppIframe botId={botId} webAppUrl={webAppUrl} userId={userId} secret={secret} onClose={onClose} />,
     );
     expect(getIframe(container)).not.toBeNull();

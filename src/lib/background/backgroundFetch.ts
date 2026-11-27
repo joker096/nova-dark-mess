@@ -117,9 +117,16 @@ async function registerWebBackgroundFetch(): Promise<boolean> {
     // Background Fetch rejects an empty request list. A tiny same-origin
     // request is enough to wake the worker; the sync itself does not depend on
     // the response body.
+    const faviconUrl = new URL('/favicon.ico', window.location.href);
+    const request = new Request(faviconUrl.toString(), { 
+      cache: 'no-store',
+      credentials: 'same-origin',
+      mode: 'same-origin'
+    });
+    
     await bgFetch.fetch(
       'nova-sync',
-      [new Request(new URL('/favicon.ico', window.location.href), { cache: 'no-store' })],
+      [request],
       {
         title: 'Nova Messenger Sync',
         icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
@@ -162,6 +169,13 @@ async function registerPeriodicSync(): Promise<boolean> {
       return false;
     }
 
+    // Check if periodic sync is allowed before registering
+    const permission = await navigator.permissions.query({ name: 'periodic-background-sync' as PermissionName });
+    if (permission.state === 'denied') {
+      console.warn('[BackgroundFetch] Periodic sync permission denied');
+      return false;
+    }
+
     await periodicSync.register('nova-sync', {
       minInterval: 24 * 60 * 60 * 1000, // 24 hours
     });
@@ -169,7 +183,12 @@ async function registerPeriodicSync(): Promise<boolean> {
     backgroundFetchRegistered = true;
     return true;
   } catch (error) {
-    console.error('[BackgroundFetch] Periodic sync registration failed:', error);
+    // NotAllowedError is expected if permission hasn't been granted yet
+    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      console.warn('[BackgroundFetch] Periodic sync permission not granted (expected until user grants permission)');
+    } else {
+      console.error('[BackgroundFetch] Periodic sync registration failed:', error);
+    }
     return false;
   }
 }

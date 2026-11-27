@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {IconX as X, IconMaximize as Maximize, IconSend as Send} from '@tabler/icons-react';
+import { useLanguage } from '../context/LanguageContext';
 import type { FromMiniAppMessage, ToMiniAppMessage } from '../lib/bots/miniApp';
 import { createInitData, DEFAULT_THEME_PARAMS, iframeOrigin, serializeInitData } from '../lib/bots/miniApp';
 import { isAllowedMiniAppUrl } from '../lib/bots/miniAppOrigins';
@@ -47,6 +48,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
   onInlineQuery,
   onMainButtonClick,
 }) => {
+  const { t } = useLanguage();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const targetOriginRef = useRef<string | null>(null);
   const [state, setState] = useState<MiniAppIframeState>({ loaded: false, error: null });
@@ -118,18 +120,18 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
   // Build initData + target origin when the URL changes.
   useEffect(() => {
     if (!origin) {
-      setState({ loaded: false, error: 'Mini App URL must be HTTPS' });
+      setState({ loaded: false, error: t('miniApp.urlMustBeHttps') });
       return;
     }
     if (!isAllowedMiniAppUrl(webAppUrl)) {
       targetOriginRef.current = null;
-      setState({ loaded: false, error: 'Mini App origin is not allowed' });
+      setState({ loaded: false, error: t('miniApp.originNotAllowed') });
       return;
     }
     targetOriginRef.current = origin;
     readyRef.current = false;
     setState({ loaded: false, error: null });
-  }, [webAppUrl, origin]);
+  }, [webAppUrl, origin, t]);
 
   // Expose main-button control to the parent (imperative handle not needed;
   // parent calls post() directly via a ref if desired). Keep simple: parent
@@ -142,7 +144,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
           <span className="text-xs font-medium text-[#f1f2f6]">
-            Mini App · {botId}
+            {t('miniApp.header', { botId })}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -150,11 +152,11 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
             type="button"
             onClick={() => post({ type: 'mini_app.main_button', action: 'hide' })}
             className="p-1.5 rounded hover:bg-white/10 text-white/60 disabled:opacity-40"
-            title="Hide main button"
+            title={t('miniApp.hideMainButton')}
           >
             <Maximize size={16} strokeWidth={2} />
           </button>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white/60" title="Close">
+          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-white/10 text-white/60" title={t('common.close')}>
             <X size={16} strokeWidth={2} />
           </button>
         </div>
@@ -167,7 +169,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
             ref={iframeRef}
             className="w-full h-full block"
             src={`${webAppUrl}#${serializeInitData(createInitData(botId, userId, secret))}`}
-            title={`Nova Mini App: ${botId}`}
+            title={t('miniApp.iframeTitle', { botId })}
             sandbox="allow-scripts allow-forms"
             referrerPolicy="no-referrer"
             loading="eager"
@@ -175,7 +177,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
         ) : null}
         {!state.loaded && !state.error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60">
-            <span className="animate-pulse">Loading Mini App…</span>
+            <span className="animate-pulse">{t('miniApp.loading')}</span>
           </div>
         )}
         {state.error && (
@@ -197,7 +199,7 @@ export const MiniAppIframe: React.FC<MiniAppIframeProps> = ({
           disabled={!readyRef.current}
         >
           <Send size={16} strokeWidth={2} />
-          <span>Main Button</span>
+          <span>{t('miniApp.mainButton')}</span>
         </button>
       </div>
     </div>

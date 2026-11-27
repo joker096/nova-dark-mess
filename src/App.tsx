@@ -1365,6 +1365,8 @@ export default function App() {
             activeTab={activeBottomTab}
             onTabChange={setActiveBottomTab}
             onNewChat={() => void 0}
+            onNewChannel={() => openChannel()}
+            onOpenContacts={() => setActiveBottomTab('contacts')}
             unreadChats={totalUnreadChats}
             unreadChannels={totalUnreadChannels}
             unreadContacts={0}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {IconMessageCircle as MessageCircle, IconMessage2 as MessageSquare, IconUsers as Users, IconRadio as Radio, IconSparkles as Sparkles, IconPlus as Plus, IconUser as User, IconUserPlus as UserPlus, IconUpload as Upload, IconHandClick as Hand, IconFolderPlus as FolderPlus, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight} from '@tabler/icons-react';
+import {IconMessageCircle as MessageCircle, IconMessage2 as MessageSquare, IconUsers as Users, IconSpeakerphone as Megaphone, IconSparkles as Sparkles, IconPlus as Plus, IconUser as User, IconUserPlus as UserPlus, IconUpload as Upload, IconHandClick as Hand, IconFolderPlus as FolderPlus, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconUserCircle as UserCircle} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { createPortal } from 'react-dom';
 import type { BottomTab } from '../types/navigation';
@@ -16,6 +16,8 @@ interface BottomNavProps {
   onTabChange: (tab: BottomNavProps['activeTab']) => void;
 
   onNewChat?: () => void;
+  onNewChannel?: () => void;
+  onOpenContacts?: () => void;
   unreadChats?: number;
   unreadChannels?: number;
   unreadContacts?: number;
@@ -26,6 +28,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onTabChange,
 
   onNewChat,
+  onNewChannel,
+  onOpenContacts,
   unreadChats = 0,
   unreadChannels = 0,
   unreadContacts = 0,
@@ -41,7 +45,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const tabs = [
     { id: 'chats' as const, icon: MessageSquare, label: t('common.chats'), unread: unreadChats },
     { id: 'contacts' as const, icon: Users, label: t('common.contacts'), unread: unreadContacts },
-    { id: 'channels' as const, icon: Radio, label: t('common.channels'), unread: unreadChannels },
+    { id: 'channels' as const, icon: Megaphone, label: t('common.channels'), unread: unreadChannels },
     { id: 'premium' as const, icon: Sparkles, label: t('premium.title'), unread: 0 },
   ];
 
@@ -151,11 +155,39 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           type="button"
           onClick={() => {
             setIsFabMenuOpen(false);
-            document.getElementById('vcf-file-input')?.click();
+            onNewChannel?.();
+          }}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] active:scale-95 transition cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
+            <Megaphone className="w-4 h-4" />
+          </div>
+          <span>{t('chats.newChannel', { defaultValue: 'New Channel' })}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsFabMenuOpen(false);
+            onOpenContacts?.();
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] active:scale-95 transition cursor-pointer"
         >
           <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+            <UserCircle className="w-4 h-4" />
+          </div>
+          <span>{t('chats.openContacts', { defaultValue: 'Open Contacts' })}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsFabMenuOpen(false);
+            document.getElementById('vcf-file-input')?.click();
+          }}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left text-xs font-semibold text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] active:scale-95 transition cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
             <Upload className="w-4 h-4" />
           </div>
           <span>{t('contacts.import', { defaultValue: 'Import VCF' })}</span>

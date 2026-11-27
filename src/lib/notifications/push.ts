@@ -112,7 +112,47 @@ async function registerWebPush(): Promise<string | null> {
       console.warn('[Push] Web Push disabled: VITE_VAPID_PUBLIC_KEY is not a valid P-256 key');
       return null;
     }
+
+    // Wait for service worker to be fully ready (not just registered)
     const registration = await navigator.serviceWorker.ready;
+    
+    // Additional check: ensure active worker exists
+    if (!registration.active) {
+      console.warn('[Push] Service worker not active yet, waiting...');
+      await new Promise<void>((resolve) => {
+        const checkActive = () => {
+          if (registration.active) {
+            resolve();
+          } else {
+            setTimeout(checkActive, 100);
+          }
+        };
+        checkActive();
+      });
+    }
+
+    // Verify pushManager is available
+    if (!registration.pushManager) {
+      console.error('[Push] pushManager not available on service worker registration');
+      return null;
+    }
+
+    // Check if already subscribed
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      const token = JSON.stringify(existingSubscription.toJSON());
+      console.log('[Push] Using existing Web Push subscription:', token);
+      
+      // Set up message listener
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && pushListener) {
+          pushListener(event.data);
+        }
+      });
+      
+      return token;
+    }
+
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey as unknown as BufferSource,
@@ -130,7 +170,24 @@ async function registerWebPush(): Promise<string | null> {
 
     return token;
   } catch (error) {
-    console.error('[Push] Web Push registration failed:', error);
+    // Provide more specific error messages
+    if (error instanceof DOMException) {
+      switch (error.name) {
+        case 'InvalidAccessError':
+          console.error('[Push] Invalid VAPID key or service worker registration. Ensure VITE_VAPID_PUBLIC_KEY is a valid P-256 key and SW is properly registered.', error);
+          break;
+        case 'NotAllowedError':
+          console.error('[Push] Permission denied for push notifications. User must grant permission.', error);
+          break;
+        case 'NotSupportedError':
+          console.error('[Push] Push not supported in this context (requires HTTPS/localhost).', error);
+          break;
+        default:
+          console.error('[Push] Web Push registration failed:', error);
+      }
+    } else {
+      console.error('[Push] Web Push registration failed:', error);
+    }
     return null;
   }
 }

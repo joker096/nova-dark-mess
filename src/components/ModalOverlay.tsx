@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect, useRef, useCallback, useState } from 'reac
 import {IconX as X, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconMaximize as Maximize, IconMinimize as Minimize, IconDownload as Download} from '@tabler/icons-react';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
 import { LazyMedia } from './LazyMedia';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ModalOverlayProps {
   isOpen: boolean;
@@ -22,8 +23,10 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
-  ariaLabel = 'Modal',
+  ariaLabel,
 }) => {
+  const { t } = useLanguage();
+  const defaultAriaLabel = t('common.menu');
   const overlayRef = useFocusTrap<HTMLDivElement>(
     isOpen,
     closeOnEscape ? onClose : undefined
@@ -39,7 +42,7 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
       className={`fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200 ${className}`}
       role="dialog"
       aria-modal="true"
-      aria-label={ariaLabel}
+      aria-label={ariaLabel || defaultAriaLabel}
     >
       {showCloseButton && (
         <button
@@ -48,7 +51,7 @@ export const ModalOverlay: React.FC<ModalOverlayProps> = ({
             onClose();
           }}
           className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white text-base hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--nova-accent-color)]"
-          aria-label="Close modal"
+          aria-label={t('common.close')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -90,6 +93,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   onPrev,
   onNext,
 }) => {
+  const { t } = useLanguage();
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -207,7 +211,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                 onPrev?.();
               }}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-              aria-label="Previous"
+              aria-label={t('common.previous')}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -219,7 +223,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                 onDownload();
               }}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-              aria-label="Download"
+              aria-label={t('common.download') || 'Download'}
             >
               <Download className="w-5 h-5" />
             </button>
@@ -232,7 +236,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                   onZoomOut?.();
                 }}
                 className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-                aria-label="Zoom out"
+                aria-label={t('common.zoomOut') || 'Zoom out'}
               >
                 <Minimize className="w-5 h-5" />
               </button>
@@ -242,7 +246,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                   onZoomIn?.();
                 }}
                 className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-                aria-label="Zoom in"
+                aria-label={t('common.zoomIn') || 'Zoom in'}
               >
                 <Maximize className="w-5 h-5" />
               </button>
@@ -255,7 +259,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                 onNext?.();
               }}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-              aria-label="Next"
+              aria-label={t('common.next')}
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -271,10 +275,10 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
         {/* Keyboard hints */}
         <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4 text-white/60 text-xs pointer-events-none">
-          <span>← → navigate</span>
-          <span>Scroll to zoom</span>
-          <span>Double-click reset</span>
-          <span>Esc close</span>
+          <span>{t('common.navigate') || '← → navigate'}</span>
+          <span>{t('common.scrollToZoom') || 'Scroll to zoom'}</span>
+          <span>{t('common.doubleClickReset') || 'Double-click reset'}</span>
+          <span>{t('common.escClose') || 'Esc close'}</span>
         </div>
       </div>
     </ModalOverlay>

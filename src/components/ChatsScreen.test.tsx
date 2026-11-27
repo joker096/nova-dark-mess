@@ -67,7 +67,7 @@ describe('ChatsScreen - header (localized)', () => {
     renderChats({ onSelectChat });
 
     expect(screen.getByTestId('unread-katie').textContent).toBe('1');
-    fireEvent.click(screen.getByRole('button', { name: /Chat with Katie Rogers/ }));
+    fireEvent.click(screen.getByTestId('chat-item-katie'));
 
     expect(screen.queryByTestId('unread-katie')).toBeNull();
     expect(localStorage.getItem('nova_read_chats_v1')).toContain('katie');

@@ -25,7 +25,7 @@ export const AboutTab = React.memo(function AboutTab() {
   const copyAppLink = useCallback(() => {
     try {
       navigator.clipboard.writeText(window.location.href);
-      setAboutMsg('App link copied to clipboard');
+      setAboutMsg(t('about.copyAppLinkCopied'));
     } catch {}
   }, []);
 
@@ -55,30 +55,30 @@ export const AboutTab = React.memo(function AboutTab() {
           <SettingsTile
             icon={<InfoIcon className="w-4 h-4" />}
             label={t('settings.version')}
-            description="v1.0.59"
+            description={t('about.version', { version: '1.0.59' })}
             onClick={() => {}}
             testId="settings-version"
           />
           <SettingsTile
             icon={<GitBranchIcon className="w-4 h-4" />}
-            label="Source Code"
-            description="View on GitHub"
+            label={t('about.sourceCode')}
+            description={t('about.sourceCodeDesc')}
             onClick={openGitHub}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-github"
           />
           <SettingsTile
             icon={<ShieldCheckIcon className="w-4 h-4" />}
-            label="Privacy Policy"
-            description="Read our privacy policy"
+            label={t('about.privacyPolicy')}
+            description={t('about.privacyPolicyDesc')}
             onClick={openPrivacy}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-privacy"
           />
           <SettingsTile
             icon={<BugIcon className="w-4 h-4" />}
-            label="Report a Bug"
-            description="Help us improve"
+            label={t('about.reportBug')}
+            description={t('about.reportBugDesc')}
             onClick={reportBug}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-report-bug"
@@ -87,30 +87,30 @@ export const AboutTab = React.memo(function AboutTab() {
       </SettingsSection>
 
       <SettingsSection
-        title="Legal & Compliance"
+        title={t('about.legalCompliance')}
         icon={<ShieldCheckIcon className="w-3.5 h-3.5" />}
       >
         <div className="px-1 py-2 space-y-2">
           <SettingsTile
             icon={<ShieldCheckIcon className="w-4 h-4" />}
-            label="Terms of Service"
-            description="Read our terms"
+            label={t('about.termsOfService')}
+            description={t('about.termsOfServiceDesc')}
             onClick={() => window.open('/terms.html', '_blank', 'noopener,noreferrer')}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-terms"
           />
           <SettingsTile
             icon={<InfoIcon className="w-4 h-4" />}
-            label="Licenses"
-            description="Open source licenses"
+            label={t('about.licenses')}
+            description={t('about.licensesDesc')}
             onClick={() => window.open('/licenses.html', '_blank', 'noopener,noreferrer')}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-licenses"
           />
           <SettingsTile
             icon={<SecurityIcon className="w-4 h-4" />}
-            label="Security"
-            description="Security policy & disclosures"
+            label={t('about.security')}
+            description={t('about.securityDesc')}
             onClick={openSecurity}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-security"
@@ -119,22 +119,22 @@ export const AboutTab = React.memo(function AboutTab() {
       </SettingsSection>
 
       <SettingsSection
-        title="Community"
+        title={t('about.community')}
         icon={<HeartIcon className="w-3.5 h-3.5" />}
       >
         <div className="px-1 py-2 space-y-2">
           <SettingsTile
             icon={<SparklesIcon className="w-4 h-4" />}
-            label="Discord Community"
-            description="Join our Discord"
+            label={t('about.discordCommunity')}
+            description={t('about.discordCommunityDesc')}
             onClick={() => window.open('https://discord.gg/nova-messenger', '_blank', 'noopener,noreferrer')}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-discord"
           />
           <SettingsTile
             icon={<HeartIcon className="w-4 h-4" />}
-            label="Contribute"
-            description="Help translate or develop"
+            label={t('about.contribute')}
+            description={t('about.contributeDesc')}
             onClick={() => window.open('https://github.com/nova-messenger/nova-dark-messenger/blob/main/CONTRIBUTING.md', '_blank', 'noopener,noreferrer')}
             badge={<ExternalLinkIcon className="w-4 h-4" />}
             testId="settings-contribute"
@@ -143,22 +143,22 @@ export const AboutTab = React.memo(function AboutTab() {
       </SettingsSection>
 
       <SettingsSection
-        title="App Info"
+        title={t('about.appInfo')}
         icon={<InfoIcon className="w-3.5 h-3.5" />}
       >
         <div className="px-1 py-2 space-y-2">
           <SettingsTile
             icon={<CopyIcon className="w-4 h-4" />}
-            label={t('settings.copyAppLink')}
-            description={t('settings.copyAppLinkDesc')}
+            label={t('about.copyAppLink')}
+            description={t('about.copyAppLinkDesc')}
             onClick={copyAppLink}
             badge={<ChevronRightIcon className="w-4 h-4" />}
             testId="settings-copy-link"
           />
           <div className="px-1 py-2 text-center text-[11px] text-[var(--nova-text-muted)] border-t border-[var(--nova-border-subtle)]">
-            <p>Nova Dark Messenger v1.0.59</p>
-            <p className="mt-1">Built with React, TypeScript, Tauri & ❤️</p>
-            <p className="mt-1">© 2024 Nova Messenger Team</p>
+            <p>{t('about.appVersion', { version: '1.0.59' })}</p>
+            <p className="mt-1">{t('about.builtWith')}</p>
+            <p className="mt-1">{t('about.copyright')}</p>
           </div>
         </div>
       </SettingsSection>

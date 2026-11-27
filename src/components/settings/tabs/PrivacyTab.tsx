@@ -193,7 +193,7 @@ export const PrivacyTab = React.memo(function PrivacyTab() {
         icon={<ShieldExclamationIcon className="w-3.5 h-3.5" />}
       >
         <div className="px-1 py-2 space-y-2">
-          <p className="text-[11px] text-[var(--nova-text-muted)]">Blocked contacts management coming soon</p>
+          <p className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.blockedContactsComingSoon')}</p>
         </div>
       </SettingsSection>
 
@@ -230,12 +230,12 @@ export const PrivacyTab = React.memo(function PrivacyTab() {
       </SettingsSection>
 
       <SettingsSection
-        title="TURN Servers for IP-Privacy Calls"
+        title={t('settings.turnServersTitle')}
         icon={<AlertTriangleIcon className="w-3.5 h-3.5" />}
-        description="Configure TURN servers for WebRTC IP masking during calls."
+        description={t('settings.turnServersDesc')}
       >
         <div className="px-1 py-2 space-y-2">
-          <p className="text-[11px] text-[var(--nova-text-muted)]">TURN server configuration coming soon</p>
+          <p className="text-[11px] text-[var(--nova-text-muted)]">{t('settings.turnServersComingSoon')}</p>
         </div>
       </SettingsSection>
     </>

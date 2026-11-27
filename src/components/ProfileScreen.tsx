@@ -1508,11 +1508,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           ref={qrDialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label="QR code"
+          aria-label={t('profile.qrCodeTitle', { name: profile.name })}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{profile.name}'s QR Code</h3>
+            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{t('profile.qrCodeTitle', { name: profile.name })}</h3>
             <div className="bg-[var(--nova-on-accent)] p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 rounded-lg" />
@@ -1523,13 +1523,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </div>
             <p className="text-xs text-[var(--nova-text-muted)]">
-              Scan to add {profile.nickname} to your contact list
+              {t('profile.qrCodeSubtitle', { nickname: profile.nickname })}
             </p>
             <button
               onClick={() => setShowQrModal(false)}
               className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
             >
-              Close
+              {t('profile.qrCodeClose')}
             </button>
           </div>
         </div>
@@ -1550,7 +1550,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <h2 className="text-2xl font-bold text-[var(--nova-text-primary)] tracking-tight">
               {profile.name}
             </h2>
-            <p className="text-sm text-[var(--nova-accent-color)] font-medium">Calling...</p>
+            <p className="text-sm text-[var(--nova-accent-color)] font-medium">{t('profile.calling')}</p>
           </div>
 
           <div className="flex items-center gap-6 mb-8">
@@ -1785,11 +1785,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           ref={safetyDialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label={t('profile.safetyNumber')}
+          aria-label={t('profile.safetyNumberTitle')}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in"
         >
           <div className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-6 text-center max-w-xs w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">Safety number</h3>
+            <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{t('profile.safetyNumberTitle')}</h3>
             <div className="bg-[var(--nova-on-accent)] p-4 rounded-2xl inline-block shadow-inner flex items-center justify-center">
               {safetyQrUrl ? (
                 <img src={safetyQrUrl} alt="Safety QR" className="w-44 h-44 rounded-lg" />
@@ -1800,14 +1800,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </div>
             <p className="text-xs text-[var(--nova-text-muted)]">
-              Compare this safety number with your contact: {safetyEmoji}
+              {t('profile.safetyNumberCompare', { emoji: safetyEmoji })}
             </p>
             <div className="space-y-2">
               <input
                 data-testid="safety-compare-input"
                 value={peerSafetyInput}
                 onChange={(e) => setPeerSafetyInput(e.target.value)}
-                placeholder="Paste contact safety number"
+                placeholder={t('profile.safetyNumberPlaceholder')}
                 className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-white/30 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
               />
               {peerSafetyInput.trim() && (
@@ -1820,8 +1820,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   }`}
                 >
                   {peerSafetyInput.replace(/\s+/g, '') === safetyEmoji.replace(/\s+/g, '')
-                    ? 'Match'
-                    : 'Mismatch'}
+                    ? t('profile.safetyNumberMatch')
+                    : t('profile.safetyNumberMismatch')}
                 </p>
               )}
             </div>
@@ -1829,7 +1829,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               onClick={() => setShowSafetyModal(false)}
               className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
             >
-              Close
+              {t('profile.safetyNumberClose')}
             </button>
           </div>
         </div>
@@ -1859,6 +1859,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 {t('profile.thisDevice')}
               </button>
               <button
+                data-testid="device-link-tab-this-device"
+              </button>
+              <button
+                data-testid="device-link-tab-new-device"
                 onClick={() => {
                   setDeviceLinkMode('join');
                   setDeviceLinkError(null);
@@ -1885,12 +1889,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   )}
                 </div>
                 <p className="text-xs text-[var(--nova-text-muted)]">
-                  Scan this QR on your new device, or enter code: {deviceLinkCode}
+                  {t('profile.deviceLinkScanQr', { code: deviceLinkCode })}
                 </p>
                 {deviceLinkUrl && (
                   <div className="space-y-1 text-left">
                     <p className="text-[11px] text-[var(--nova-text-muted)]">
-                      Or send this link to the new device:
+                      {t('profile.deviceLinkSendLink')}
                     </p>
                     <p
                       className="text-[10px] text-[var(--nova-text-secondary)] break-all font-mono"
@@ -1901,35 +1905,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </div>
                 )}
                 <p className="text-[11px] text-[var(--nova-text-muted)]">
-                  Then paste the reply code shown on the new device.
+                  {t('profile.deviceLinkPasteReply')}
                 </p>
                 <input
                   value={deviceLinkReplyInput}
                   onChange={(e) => setDeviceLinkReplyInput(e.target.value)}
-                  placeholder="nova://device-link-response?…"
+                  placeholder={t('profile.deviceLinkPlaceholderReply')}
                   aria-label="Device link reply"
                   className="w-full px-3 py-2 bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl text-[11px] text-[var(--nova-text-primary)] placeholder:text-[var(--nova-text-muted)] outline-none focus:border-[var(--nova-accent-color)]/60"
                 />
                 <button
                   onClick={handleDeviceLinkReply}
                   className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+                  data-testid="device-link-complete"
                 >
-                  Complete linking
+                  {t('profile.deviceLinkComplete')}
                 </button>
                 {linkedDeviceCount > 0 && (
                   <div className="space-y-1">
                     <p className="text-[11px] text-emerald-400">
-                      Handshake complete — {linkedDeviceCount} device
-                      {linkedDeviceCount === 1 ? '' : 's'} linked.
+                      {t('profile.deviceLinkHandshakeComplete', { count: linkedDeviceCount, count_plural: linkedDeviceCount === 1 ? '' : 's' })}
                     </p>
                     {historySyncStatus === 'syncing' && (
                       <p className="text-[10.5px] text-[var(--nova-text-muted)] animate-pulse">
-                        Transferring encrypted history...
+                        {t('profile.deviceLinkSyncingHistory')}
                       </p>
                     )}
                     {historySyncStatus === 'synced' && historySyncCount && (
                       <p className="text-[10.5px] text-emerald-400/90 font-medium">
-                        ✓ History synced ({historySyncCount.chats} chats, {historySyncCount.messages} messages)
+                        {t('profile.deviceLinkHistorySynced', { chats: historySyncCount.chats, messages: historySyncCount.messages })}
                       </p>
                     )}
                   </div>
@@ -1970,19 +1974,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         className="absolute bottom-2 px-4 py-2 bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg shadow-md cursor-pointer min-h-[44px] flex items-center"
                         data-testid="capture-qr-button"
                       >
-                        Capture QR
+                        {t('profile.deviceLinkCaptureQr')}
                       </button>
                     </div>
                   )}
                 </div>
 
                 <p className="text-xs text-[var(--nova-text-muted)]">
-                  Or paste the link shown on your primary device:
+                  {t('profile.deviceLinkOrPasteLink')}
                 </p>
                 <textarea
                   value={deviceLinkOfferInput}
                   onChange={(e) => setDeviceLinkOfferInput(e.target.value)}
-                  placeholder="nova://device-link?…"
+                  placeholder={t('profile.deviceLinkPlaceholderOffer')}
                   aria-label="Device link offer"
                   rows={3}
                   className="w-full px-3 py-2 bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl text-[11px] text-[var(--nova-text-primary)] placeholder:text-[var(--nova-text-muted)] outline-none focus:border-[var(--nova-accent-color)]/60 resize-none"
@@ -1990,13 +1994,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <button
                   onClick={handleJoinDeviceLink}
                   className="w-full py-2.5 bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-accent-color, ff5f2e)] transition cursor-pointer"
+                  data-testid="device-link-create-reply"
                 >
-                  Create reply code
+                  {t('profile.deviceLinkCreateReply')}
                 </button>
                 {deviceLinkReply && (
                   <div className="space-y-2 text-left bg-[var(--nova-surface)] border border-[var(--nova-border-subtle)] rounded-xl p-3">
                     <p className="text-[11px] text-[var(--nova-text-muted)]">
-                      Paste this reply code on the primary device to finish linking:
+                      {t('profile.deviceLinkPasteReplyPrimary')}
                     </p>
                     <p className="text-[10px] text-[var(--nova-text-primary)] break-all font-mono" data-testid="device-link-reply">
                       {deviceLinkReply}
@@ -2005,14 +2010,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       onClick={() => {
                         try {
                           void navigator.clipboard?.writeText(deviceLinkReply);
-                          triggerToast('Reply code copied');
+                          triggerToast(t('profile.deviceLinkReplyCopied'));
                         } catch {
-                          triggerToast('Copy the reply code manually');
+                          triggerToast(t('profile.deviceLinkCopyManually'));
                         }
                       }}
                       className="w-full py-3 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer min-h-[44px] flex items-center justify-center"
                     >
-                      Copy reply code
+                      {t('profile.deviceLinkCopyReplyCode')}
                     </button>
                     <button
                       type="button"
@@ -2025,11 +2030,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       className="w-full py-3 bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30 text-[var(--nova-text-primary)] text-[11px] font-semibold rounded-lg transition cursor-pointer border border-[var(--nova-accent-color,#ff4e18)]/40 min-h-[44px] flex items-center justify-center"
                       data-testid="sync-history-secondary"
                     >
-                      Sync history stream
+                      {t('profile.deviceLinkSyncHistory')}
                     </button>
                     {historySyncStatus === 'synced' && historySyncCount && (
                       <p className="text-[10.5px] text-emerald-400 font-medium text-center">
-                        ✓ History synced ({historySyncCount.chats} chats, {historySyncCount.messages} messages)
+                        {t('profile.deviceLinkHistorySynced', { chats: historySyncCount.chats, messages: historySyncCount.messages })}
                       </p>
                     )}
                   </div>
@@ -2052,7 +2057,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               }}
               className="w-full py-3 bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] font-semibold text-xs rounded-xl hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer min-h-[44px] flex items-center justify-center"
             >
-              Close
+              {t('profile.deviceLinkClose')}
             </button>
           </div>
         </div>

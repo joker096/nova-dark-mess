@@ -1,3 +1,5 @@
+import { useLanguage } from '../context/LanguageContext';
+
 export type AppIconVariant = 'dark' | 'light';
 
 export interface AppIconProps {
@@ -15,6 +17,7 @@ const R_PATH =
 const VIEWBOX = '-2 -2 213 179';
 
 export function AppIcon({ size = 24, variant = 'dark', className }: AppIconProps) {
+  const { t } = useLanguage();
   const isDark = variant === 'dark';
   const primary = isDark ? '#000000' : '#FFFFFF';
   const accent = isDark ? '#FF0000' : '#FF3B30';
@@ -26,10 +29,10 @@ export function AppIcon({ size = 24, variant = 'dark', className }: AppIconProps
       width={size}
       height={size}
       role="img"
-      aria-label="BlaBla icon"
+      aria-label={t('app.name')}
       className={className}
     >
-      <title>BlaBla</title>
+      <title>{t('app.name')}</title>
       <path fillRule="evenodd" clipRule="evenodd" fill={primary} d={D_PATH} />
       <path fillRule="evenodd" clipRule="evenodd" fill={accent} d={R_PATH} />
     </svg>

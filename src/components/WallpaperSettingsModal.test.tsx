@@ -2,8 +2,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 import { WallpaperSettingsModal } from './WallpaperSettingsModal';
 import { WALLPAPER_OPTIONS } from '../data/wallpapers';
+import { LanguageProvider } from '../context/LanguageContext';
 
 const premiumState = { allowed: false };
 const checkout = vi.fn();
@@ -22,8 +24,10 @@ vi.mock('../hooks/usePremium', () => ({
 const premiumWallpaper = WALLPAPER_OPTIONS.find((option) => option.premium)!;
 const freeWallpaper = WALLPAPER_OPTIONS.find((option) => !option.premium)!;
 
+const renderWithLanguage = (ui: React.ReactElement) => render(<LanguageProvider>{ui}</LanguageProvider>);
+
 const renderModal = (onSelect = vi.fn()) => {
-  render(
+  renderWithLanguage(
     <WallpaperSettingsModal
       isOpen
       currentWallpaper="neon-nebula"

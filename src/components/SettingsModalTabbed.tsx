@@ -54,6 +54,7 @@ import {
   IconShieldExclamation as ShieldExclamation,
   IconTrash as TrashX,
   IconUserCircle as UserCircle,
+  IconSearch as Search,
 } from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
@@ -334,6 +335,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
   onOpenBotChat,
   onOpenMeshMap,
 }) => {
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
   const { t, language } = useLanguage();
   const { isInitialized, identity, clearLocalEncryptedData, verifyPin, setPin, removePin, pinHash, pinEnabled } = useSecurity();
   const { premium, checkout, minSubscriptionCost, freeDaysRemaining, loading } = usePremium();
@@ -570,6 +572,33 @@ export const SettingsModalTabbed: React.FC<SettingsModalTabbedProps> = ({
             {TAB_CONFIG.map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition cursor-pointer min-h-[44px] ${activeTab === tab.id ? 'bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] font-semibold' : 'text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)]'} min-w-[80px]`}>{tab.icon}<span className="text-[11px]">{t(`settings.tab${tab.id.charAt(0).toUpperCase() + tab.id.slice(1)}`)}</span></button>
             ))}
+          </div>
+        </div>
+        {/* Settings Search Bar */}
+        <div className="px-4 pb-3 shrink-0">
+          <div className="relative flex items-center">
+            <div className="absolute left-3 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
+              <Search className="w-3.5 h-3.5" />
+            </div>
+            <input
+              type="text"
+              value={settingsSearchQuery}
+              onChange={(e) => setSettingsSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSettingsSearchQuery("");
+              }}
+              placeholder={t('settings.searchPlaceholder', { defaultValue: 'Search settings...' })}
+              className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none"
+            />
+            {settingsSearchQuery && (
+              <button
+                onClick={() => setSettingsSearchQuery("")}
+                className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer"
+                aria-label={t("common.close")}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
         <div className="overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 space-y-1 flex-1 min-h-0">{renderTab(activeTab)}</div>

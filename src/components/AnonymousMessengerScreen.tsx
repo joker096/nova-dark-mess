@@ -346,212 +346,6 @@ export const AnonymousMessengerScreen: React.FC<{
   const { t, language } = useLanguage();
   const { isInitialized } = useSecurity();
   const { account } = useAccount();
-  const isRussian = language === 'ru';
-  const labels = isRussian
-    ? {
-      title: 'Контакты',
-      subtitle: 'Добавьте человека по ссылке или QR-коду.',
-      setupTitle: 'Как это работает',
-      pairingGuide:
-        'Создайте приглашение и отправьте ссылку или покажите QR-код. Контакт откроет его и подтвердит добавление; после этого он появится у вас автоматически.',
-      privacyNote:
-        'Переписка зашифрована между устройствами. Relay видит IP-адрес, но не содержимое сообщений; имя контакта указано им самим.',
-      localModeTitle: 'Локальный режим',
-      localModeNote:
-        'Relay не настроен, поэтому приглашения, QR-код и шаринг недоступны. Переписка работает только на этом устройстве. Укажите relay в дополнительных настройках, чтобы добавлять контакты.',
-      configureRelay: 'Настроить relay',
-      closeSettings: 'Закрыть настройки',
-      localContactsTitle: 'Локальные контакты',
-      noLocalContacts: 'Локальных контактов пока нет.',
-      localPendingNote: (count: number) => `Ожидают подтверждения: ${count}.`,
-      deleteContact: 'Удалить контакт',
-      deleteContactConfirm: 'Удалить контакт?',
-      deleteContactBody: 'Контакт и его сообщения будут удалены с этого устройства.',
-      deleteContactHistory: (count: number) =>
-        `Контакт и история сообщений (${count}) будут удалены с этого устройства.`,
-      contactDeleted: 'Контакт удалён.',
-      localModeBadge: (contacts: number, pending: number) => {
-        if (contacts === 0 && pending === 0) return 'Локально';
-        if (contacts === 0) return `Локально · ${pending} ждёт`;
-        return pending > 0
-          ? `Локально · ${contacts} + ${pending} ждёт`
-          : `Локально · ${contacts}`;
-      },
-        relayUrl: 'URL relay',
-        extraRelays: 'Дополнительные relay (через запятую или с новой строки)',
-        relayMoved: 'Relay не отвечает — очередь перенесена на другой relay.',
-        queueRotated: 'Очередь ротирована на следующий relay.',
-        proxyUrl: 'URL proxy',
-        relayId: 'ID relay для proxy',
-        relayKey: 'Закреплённый публичный ключ X25519 relay',
-        pushToken: 'Push-токен (необязательно)',
-        pushTokenHint:
-          'Только токен провайдера. Уведомление пустое («проверьте relay»), без отправителя и текста. Один токен на очередь; с proxy и Tor push отключён.',
-        torRouting: 'Подключение через Tor (.onion)',
-        torHint:
-          'Все адреса relay и proxy должны быть http://…onion. Нужен запущенный Tor (порт 9050) и нативное приложение Tauri.',
-        torUnavailable:
-          'Tor не отвечает на 127.0.0.1:9050. Запустите Tor (Tor Browser, Orbot или демон) и повторите сохранение.',
-        attachFile: 'Отправить файл',
-        fileFailed: 'Файл повреждён или не прошёл проверку SHA-256.',
-        fileTooLarge: 'Файл слишком большой для анонимной передачи (до 2 МБ).',
-      advanced: 'Дополнительные сетевые настройки',
-      advancedNote: 'Для собственного relay или proxy. Обычно менять это не нужно.',
-        saveSettings: 'Сохранить подключение',
-      useDefaultRelay: 'Сбросить на локальный режим',
-      createInvite: 'Создать ссылку и QR-код',
-      inviteLink: 'Ваша ссылка-приглашение (для приложения)',
-      inviteLinkWeb: 'Ссылка для браузера',
-      showQr: 'QR-код для добавления',
-      importInvite: 'Вставьте ссылку или код приглашения',
-      acceptInvite: 'Добавить контакт',
-      refreshInbox: 'Проверить сообщения',
-      contacts: 'Контакты',
-      emptyContacts: 'Контактов пока нет. Создайте ссылку или примите приглашение.',
-        messagePlaceholder: 'Сообщение…',
-      copyInvite: 'Копировать ссылку',
-      copyInviteWeb: 'Копировать веб-ссылку',
-      shareInvite: 'Поделиться ссылкой',
-        loading: 'Загрузка зашифрованного хранилища…',
-      saved: 'Контакт добавлен.',
-      pollSaved: 'Новый контакт добавлен.',
-      ackFailed: 'Контакт добавлен, но подтверждение доставки не прошло.',
-      offerNotSent: 'Контакт сохранён, но не удалось отправить подтверждение. Попробуйте позже.',
-      emptyInbox: 'Новых приглашений нет.',
-      copyFailed: 'Не удалось скопировать ссылку.',
-      pending: 'Ожидаем подтверждение — оставьте экран открытым, проверяем автоматически',
-      inviteReady: 'Приглашение готово. Отправьте ссылку или покажите QR-код.',
-      differentRelay: 'У этого приглашения другой relay. Для текущих контактов смена relay недоступна.',
-      relayUnavailable: 'Не удалось подключиться к relay. Попробуйте позже.',
-      checkRelay: 'Проверить relay',
-      checkingRelay: 'Проверяем relay…',
-      relayCheckOk: (ms: number) => `Relay отвечает (${ms} мс).`,
-      relayCheckLocal: 'Relay не задан: будет использован локальный режим.',
-      relayCheckInvalid: 'Сначала заполните настройки корректно.',
-      relayCheckFailed: 'Relay не отвечает.',
-      qrFailed: 'Не удалось создать QR-код.',
-      qrLoading: 'Создаём QR-код…',
-      alreadyAdded: 'Этот контакт уже добавлен.',
-        block: 'Заблокировать',
-        unblock: 'Разблокировать',
-        reportCategory: 'Причина жалобы',
-        report: 'Пожаловаться',
-        reportSent: 'Хешированная жалоба отправлена relay через proxy.',
-        reportUploadFailed: 'Жалоба сохранена на устройстве. Для отправки требуется дополнительная маршрутизация.',
-        reportPrivacy: 'Жалобы сохраняются локально; отправка доступна только при настройке proxy.',
-        giftPremium: 'Подарить Premium · 30 дней ($3.90)',
-        retryGift: 'Повторить отправку подарка',
-        finishGiftFirst: 'Сначала завершите доставку предыдущего подарка',
-        giftPaymentPending: 'Ожидается подтверждение оплаты подарка.',
-        giftPaymentFailed: 'Не удалось создать или проверить оплату подарка.',
-        giftPaymentWindow: 'Не удалось открыть окно оплаты. Разрешите всплывающие окна и повторите.',
-        giftDeliveryFailed: 'Подарок оплачен, но сообщение не отправлено. Повторите отправку.',
-        giftSent: 'Подарочный код отправлен зашифрованным сообщением.',
-        giftMessage: (code: string) =>
-          `🎁 Вам подарили Nova Premium на 30 дней. Для активации вставьте этот одноразовый код в Настройки → Premium: ${code}`,
-      }
-    : {
-        title: 'Contacts',
-        subtitle: 'Add someone with a link or QR code.',
-        setupTitle: 'How it works',
-        pairingGuide:
-          'Create an invite and send the link or show the QR code. The other person opens it and confirms; they will then appear in your contacts automatically.',
-        privacyNote:
-          'Messages are encrypted between devices. The relay can see your IP address, but not message contents; contact names are self-declared.',
-        localModeTitle: 'Local mode',
-        localModeNote:
-          'No relay configured, so invites, QR codes and sharing are unavailable. Messaging works only on this device. Add a relay under advanced settings to add contacts.',
-        configureRelay: 'Configure relay',
-        closeSettings: 'Close settings',
-        localContactsTitle: 'Local contacts',
-        noLocalContacts: 'No local contacts yet.',
-        localPendingNote: (count: number) => `${count} invitation pending confirmation.`,
-        deleteContact: 'Delete contact',
-        deleteContactConfirm: 'Delete this contact?',
-        deleteContactBody: 'The contact and its messages will be deleted from this device.',
-        deleteContactHistory: (count: number) =>
-          `The contact and its ${count} ${count === 1 ? 'message' : 'messages'} will be deleted from this device.`,
-        contactDeleted: 'Contact deleted.',
-        localModeBadge: (contacts: number, pending: number) => {
-          if (contacts === 0 && pending === 0) return 'Local only';
-          if (contacts === 0) return `Local only · ${pending} pending`;
-          return pending > 0
-            ? `Local only · ${contacts} + ${pending} pending`
-            : `Local only · ${contacts}`;
-        },
-        relayUrl: 'Relay URL',
-        extraRelays: 'Extra relays (comma-separated or one per line)',
-        relayMoved: 'The relay stopped answering, so the queue moved to another relay.',
-        queueRotated: 'Queue rotated to the next relay.',
-        proxyUrl: 'Proxy URL',
-        relayId: 'Relay ID at proxy',
-        relayKey: 'Pinned relay X25519 public key',
-        pushToken: 'Push token (optional)',
-        pushTokenHint:
-          'Provider token only. The notification is empty ("check the relay") with no sender or text. One token per queue; disabled with a proxy or Tor.',
-        torRouting: 'Route through Tor (.onion)',
-        torHint:
-          'All relay and proxy URLs must be http://…onion. Requires a running Tor (port 9050) and the native Tauri app.',
-        torUnavailable:
-          'Tor is not answering on 127.0.0.1:9050. Start Tor (Tor Browser, Orbot, or a local daemon) and retry saving.',
-        attachFile: 'Send a file',
-        fileFailed: 'The file was corrupted or failed its SHA-256 check.',
-        fileTooLarge: 'File is too large for anonymous transfer (2 MB max).',
-        advanced: 'Advanced network settings',
-        advancedNote: 'For a custom relay or proxy. Most people do not need to change this.',
-        saveSettings: 'Save connection',
-        useDefaultRelay: 'Reset to local mode',
-        createInvite: 'Create link and QR code',
-        inviteLink: 'Your invitation link (for app)',
-        inviteLinkWeb: 'Web link (for browser)',
-        showQr: 'Scan this QR code to add me',
-        importInvite: 'Paste an invitation link or code',
-        acceptInvite: 'Add contact',
-        refreshInbox: 'Check for updates',
-        contacts: 'Contacts',
-        emptyContacts: 'No contacts yet. Create a link or accept an invitation.',
-        messagePlaceholder: 'Message…',
-        copyInvite: 'Copy link',
-        copyInviteWeb: 'Copy web link',
-        shareInvite: 'Share link',
-        loading: 'Loading encrypted storage…',
-        saved: 'Contact added.',
-        pollSaved: 'New contact added.',
-        ackFailed: 'Contact added, but delivery confirmation failed.',
-        offerNotSent: 'Contact saved, but the confirmation could not be sent. Try again later.',
-        emptyInbox: 'No new invitations.',
-        copyFailed: 'Could not copy the link.',
-        pending: 'Waiting for confirmation — keep this screen open while we check automatically',
-        inviteReady: 'Invite ready. Send the link or show the QR code.',
-        differentRelay: 'This invite uses a different relay. Existing contacts prevent switching relays.',
-        relayUnavailable: 'Could not connect to the relay. Try again later.',
-        checkRelay: 'Check relay',
-        checkingRelay: 'Checking relay…',
-        relayCheckOk: (ms: number) => `Relay answered in ${ms} ms.`,
-        relayCheckLocal: 'No relay configured — local mode will be used.',
-        relayCheckInvalid: 'Fill in valid settings first.',
-        relayCheckFailed: 'The relay did not answer.',
-        qrFailed: 'Could not create the QR code.',
-        qrLoading: 'Creating QR code…',
-        alreadyAdded: 'This contact is already added.',
-        block: 'Block',
-        unblock: 'Unblock',
-        reportCategory: 'Report category',
-        report: 'Report',
-        reportSent: 'Hash-only report sent to the relay through the proxy.',
-        reportUploadFailed: 'Report saved on this device. Extra routing is required to send it.',
-        reportPrivacy: 'Reports are saved locally; sending is available only when a proxy is configured.',
-        giftPremium: 'Gift Premium · 30 days ($3.90)',
-        retryGift: 'Retry gift delivery',
-        finishGiftFirst: 'Finish delivering the previous gift first',
-        giftPaymentPending: 'Waiting for gift payment confirmation.',
-        giftPaymentFailed: 'Could not create or verify gift payment.',
-        giftPaymentWindow: 'Could not open the payment window. Allow pop-ups and try again.',
-        giftDeliveryFailed: 'Gift paid, but the message was not sent. Retry delivery.',
-        giftSent: 'Gift code sent in an encrypted message.',
-        giftMessage: (code: string) =>
-          `🎁 You received Nova Premium for 30 days. To activate, paste this one-time code in Settings → Premium: ${code}`,
-      };
 
   const [state, setState] = useState<AnonymousMessengerState>(EMPTY_STATE);
   const stateRef = useRef(state);
@@ -798,21 +592,21 @@ export const AnonymousMessengerScreen: React.FC<{
     setRelayCheck(null);
     const nextSettings = trimmedSettings(settingsForm);
     if (!isValidSettings(nextSettings)) {
-      setRelayCheck({ ok: false, message: labels.relayCheckInvalid });
+      setRelayCheck({ ok: false, message: t('anonymous.relayCheckInvalid') });
       return;
     }
     const hasProxySettings = Boolean(
       nextSettings.proxyUrl || nextSettings.relayId || nextSettings.relayPublicKey,
     );
     if (!nextSettings.relayUrl && !hasProxySettings) {
-      setRelayCheck({ ok: true, message: labels.relayCheckLocal });
+      setRelayCheck({ ok: true, message: t('anonymous.relayCheckLocal') });
       return;
     }
     setIsBusy(true);
     try {
       if (nextSettings.tor) {
         const torCheck = await checkTorRunning({});
-        if (!torCheck.ok) throw new Error(labels.torUnavailable);
+        if (!torCheck.ok) throw new Error(t('anonymous.torUnavailable'));
       }
       // Probe with a direct transport, never createAutoTransport: its local
       // fallback would report success for a relay that is actually unreachable.
@@ -821,7 +615,7 @@ export const AnonymousMessengerScreen: React.FC<{
       );
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const queue = await checkTransport.createQueue(60_000);
-      if (!queue) throw new Error(labels.relayCheckFailed);
+      if (!queue) throw new Error(t('anonymous.relayCheckFailed'));
       // The probe queue is not an invite; drop it so repeated checks do not
       // leave garbage queues behind (and burn the relay's create rate limit).
       void Promise.resolve(
@@ -831,12 +625,12 @@ export const AnonymousMessengerScreen: React.FC<{
         (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt;
       setRelayCheck({
         ok: true,
-        message: labels.relayCheckOk(Math.max(0, Math.round(elapsed))),
+        message: t('anonymous.relayCheckOk', { ms: Math.max(0, Math.round(elapsed)) }),
       });
     } catch (checkError) {
       setRelayCheck({
         ok: false,
-        message: `${labels.relayCheckFailed} ${friendlyError(checkError)}`,
+        message: `${t('anonymous.relayCheckFailed')} ${friendlyError(checkError)}`,
       });
     } finally {
       setIsBusy(false);
@@ -857,7 +651,7 @@ export const AnonymousMessengerScreen: React.FC<{
     if (nextSettings.tor) {
       const torCheck = await checkTorRunning({});
       if (!torCheck.ok) {
-        setError(labels.torUnavailable);
+        setError(t('anonymous.torUnavailable'));
         return;
       }
     }
@@ -870,7 +664,7 @@ export const AnonymousMessengerScreen: React.FC<{
           : undefined;
       await persist({ ...current, pendingInbox, settings: nextSettings });
       setSettingsForm(nextSettings);
-      setStatus(labels.saved);
+      setStatus(t('anonymous.saved'));
     } catch (saveError) {
       setError(friendlyError(saveError));
     } finally {
@@ -880,7 +674,7 @@ export const AnonymousMessengerScreen: React.FC<{
 
   const createInvite = async () => {
     if (!configuredSettings || !transport) {
-      setError(labels.relayUnavailable);
+      setError(t('anonymous.relayUnavailable'));
       return;
     }
     setIsBusy(true);
@@ -915,7 +709,7 @@ export const AnonymousMessengerScreen: React.FC<{
         account.nickname,
         standby,
       );
-      if (!invitation) throw new Error(labels.relayUnavailable);
+      if (!invitation) throw new Error(t('anonymous.relayUnavailable'));
       const inbox = {
         ...invitation.inbox,
         displayName: account.nickname,
@@ -930,7 +724,7 @@ export const AnonymousMessengerScreen: React.FC<{
         settings: configuredSettings,
         pendingInbox: inbox,
       });
-      setStatus(labels.inviteReady);
+      setStatus(t('anonymous.inviteReady'));
     } catch (createError) {
       setError(friendlyError(createError));
     } finally {
@@ -947,13 +741,13 @@ export const AnonymousMessengerScreen: React.FC<{
       if (!invite) throw new Error('Invite is invalid or expired.');
       const current = stateRef.current;
       if (current.contacts.some((entry) => entry.id === invite.queueId)) {
-        throw new Error(labels.alreadyAdded);
+        throw new Error(t('anonymous.alreadyAdded'));
       }
       let settings = current.settings ?? {
         ...EMPTY_SETTINGS,
         relayUrl: defaultRelayUrl(),
       };
-      if (!isValidSettings(settings)) throw new Error(labels.relayUnavailable);
+      if (!isValidSettings(settings)) throw new Error(t('anonymous.relayUnavailable'));
       // The invite's queue lives on its own relay, so accepting it never
       // switches the relay used for the user's own invite and existing queues.
       const inviteTransport = transportFor(settings, invite.relayUrl);
@@ -1017,7 +811,7 @@ export const AnonymousMessengerScreen: React.FC<{
           ),
         });
       }
-      setStatus(offerSent ? labels.saved : labels.offerNotSent);
+      setStatus(offerSent ? t('anonymous.saved') : t('anonymous.offerNotSent'));
     } catch (acceptError) {
       setError(friendlyError(acceptError));
     } finally {
@@ -1042,7 +836,7 @@ export const AnonymousMessengerScreen: React.FC<{
       migration = await failoverInbox(
         (relayUrl) => {
           const relayTransport = getTransport(relayUrl);
-          if (!relayTransport) throw new Error(labels.relayUnavailable);
+          if (!relayTransport) throw new Error(t('anonymous.relayUnavailable'));
           return relayTransport;
         },
         inbox,
@@ -1100,7 +894,7 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!selectedContact || selectedContactBlocked) return;
     const session = ensureCallSession(selectedContact);
     if (!session) {
-      setError(labels.relayUnavailable);
+      setError(t('anonymous.relayUnavailable'));
       return;
     }
     void session.start(mode);
@@ -1179,7 +973,7 @@ export const AnonymousMessengerScreen: React.FC<{
       for (const { inbox, owner, contactId, standby } of batches.values()) {
         const inboxTransport = getTransport(inbox.relayUrl);
         if (!inboxTransport) {
-          setError(labels.relayUnavailable);
+          setError(t('anonymous.relayUnavailable'));
           continue;
         }
         let packets: Awaited<ReturnType<typeof receiveInboxPackets>>;
@@ -1250,7 +1044,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 envelopes.push(fileEnvelope);
               }
               if (previous && previous.total !== fileEnvelope.total) {
-                setError(labels.fileFailed);
+                setError(t('anonymous.fileFailed'));
                 continue;
               }
               const pendingTransfers = { ...(next.pendingTransfers ?? {}) };
@@ -1286,7 +1080,7 @@ export const AnonymousMessengerScreen: React.FC<{
                   };
                 } else {
                   next = { ...next, pendingTransfers };
-                  setError(labels.fileFailed);
+                  setError(t('anonymous.fileFailed'));
                 }
               } else {
                 pendingTransfers[fileEnvelope.transferId] = {
@@ -1388,11 +1182,11 @@ export const AnonymousMessengerScreen: React.FC<{
       }
       const rotated = await rotateQueuesIfDue(Date.now());
       await persistFailures(relayFailuresRef.current);
-      if (rotated) setStatus(labels.queueRotated);
-      else if (moved) setStatus(labels.relayMoved);
-      else if (!ackSucceeded) setStatus(labels.ackFailed);
-      else if (changed) setStatus(labels.pollSaved);
-      else setStatus(labels.emptyInbox);
+      if (rotated) setStatus(t('anonymous.queueRotated'));
+      else if (moved) setStatus(t('anonymous.relayMoved'));
+      else if (!ackSucceeded) setStatus(t('anonymous.ackFailed'));
+      else if (changed) setStatus(t('anonymous.pollSaved'));
+      else setStatus(t('anonymous.emptyInbox'));
     } catch (pollError) {
       setError(friendlyError(pollError));
     } finally {
@@ -1430,7 +1224,7 @@ export const AnonymousMessengerScreen: React.FC<{
       const migration = await migrateInbox(
         (relayUrl) => {
           const relayTransport = getTransport(relayUrl);
-          if (!relayTransport) throw new Error(labels.relayUnavailable);
+          if (!relayTransport) throw new Error(t('anonymous.relayUnavailable'));
           return relayTransport;
         },
         inbox,
@@ -1631,7 +1425,7 @@ export const AnonymousMessengerScreen: React.FC<{
       return;
     }
     setError('');
-    setStatus(selectedContactBlocked ? labels.unblock : labels.block);
+    setStatus(selectedContactBlocked ? t('anonymous.unblock') : t('anonymous.block'));
   };
 
   const reportSelectedContact = async () => {
@@ -1651,21 +1445,21 @@ export const AnonymousMessengerScreen: React.FC<{
       });
       if (!report) throw new Error('Could not create an anonymous abuse report.');
       if (!report.reportId || !transport?.submitAbuseReport) {
-        setStatus(labels.reportUploadFailed);
+        setStatus(t('anonymous.reportUploadFailed'));
         return;
       }
       const submission = await createAbuseReportSubmission(report);
       if (!submission) {
-        setStatus(labels.reportUploadFailed);
+        setStatus(t('anonymous.reportUploadFailed'));
         return;
       }
       const uploaded = await transport.submitAbuseReport(submission);
       if (!uploaded) {
-        setStatus(labels.reportUploadFailed);
+        setStatus(t('anonymous.reportUploadFailed'));
         return;
       }
       markAbuseReportUploaded(report.reportId);
-      setStatus(labels.reportSent);
+      setStatus(t('anonymous.reportSent'));
     } catch (reportError) {
       setError(friendlyError(reportError));
     } finally {
@@ -1678,7 +1472,7 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!selectedContact || selectedContactBlocked || !draft.trim()) return;
     const peerTransport = getTransport(selectedContact.contact.peerInvite.relayUrl);
     if (!peerTransport) {
-      setError(labels.relayUnavailable);
+      setError(t('anonymous.relayUnavailable'));
       return;
     }
     const body = draft.trim();
@@ -1753,7 +1547,7 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!file || !selectedContact || selectedContactBlocked || isBusy) return;
     const peerTransport = getTransport(selectedContact.contact.peerInvite.relayUrl);
     if (!peerTransport) {
-      setError(labels.relayUnavailable);
+      setError(t('anonymous.relayUnavailable'));
       return;
     }
     setError('');
@@ -1816,11 +1610,11 @@ export const AnonymousMessengerScreen: React.FC<{
             : entry,
         ),
       });
-      if (!sentAll) setError(labels.fileFailed);
+      if (!sentAll) setError(t('anonymous.fileFailed'));
     } catch (error) {
       setError(
         error instanceof Error && error.message.includes('too large')
-          ? labels.fileTooLarge
+          ? t('anonymous.fileTooLarge')
           : friendlyError(error),
       );
     } finally {
@@ -1835,11 +1629,11 @@ export const AnonymousMessengerScreen: React.FC<{
       ? getTransport(entry.contact.peerInvite.relayUrl)
       : null;
     if (!entry || !peerTransport) {
-      setError(labels.giftDeliveryFailed);
+      setError(t('anonymous.giftDeliveryFailed'));
       return;
     }
 
-    const body = labels.giftMessage(gift.code);
+    const body = t('anonymous.giftMessage', { code: gift.code });
     const existing = entry.messages.find((message) => message.id === gift.messageId);
     const queued: StoredMessage = existing
       ? { ...existing, status: 'queued' }
@@ -1899,8 +1693,8 @@ export const AnonymousMessengerScreen: React.FC<{
       );
       return;
     }
-    if (sent) setStatus(labels.giftSent);
-    else setError(sendError ? friendlyError(sendError) : labels.giftDeliveryFailed);
+    if (sent) setStatus(t('anonymous.giftSent'));
+    else setError(sendError ? friendlyError(sendError) : t('anonymous.giftDeliveryFailed'));
   };
 
   const giftPremiumToSelectedContact = async () => {
@@ -1912,7 +1706,7 @@ export const AnonymousMessengerScreen: React.FC<{
       const pendingGift = stateRef.current.pendingPremiumGift;
       if (pendingGift) {
         if (pendingGift.contactId !== selectedContact.id) {
-          setError(labels.finishGiftFirst);
+          setError(t('anonymous.finishGiftFirst'));
           return;
         }
         await deliverPremiumGift(pendingGift);
@@ -1921,10 +1715,10 @@ export const AnonymousMessengerScreen: React.FC<{
 
       const result = await purchasePremiumGiftCode(selectedContact.id);
       if (!result.ok || !result.giftCode) {
-        if (result.error === 'payment window blocked') setError(labels.giftPaymentWindow);
-        else if (result.error === 'waiting for payment') setStatus(labels.giftPaymentPending);
-        else if (result.error === 'another gift pending') setError(labels.finishGiftFirst);
-        else setError(labels.giftPaymentFailed);
+        if (result.error === 'payment window blocked') setError(t('anonymous.giftPaymentWindow'));
+        else if (result.error === 'waiting for payment') setStatus(t('anonymous.giftPaymentPending'));
+        else if (result.error === 'another gift pending') setError(t('anonymous.finishGiftFirst'));
+        else setError(t('anonymous.giftPaymentFailed'));
         return;
       }
 
@@ -1948,9 +1742,9 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!inviteLink) return;
     try {
       await navigator.clipboard.writeText(inviteLink);
-      setStatus(labels.copyInvite);
+      setStatus(t('anonymous.copyInvite'));
     } catch {
-      setError(labels.copyFailed);
+      setError(t('anonymous.copyFailed'));
     }
   };
 
@@ -1958,9 +1752,9 @@ export const AnonymousMessengerScreen: React.FC<{
     if (!webInviteLink) return;
     try {
       await navigator.clipboard.writeText(webInviteLink);
-      setStatus(labels.copyInviteWeb);
+      setStatus(t('anonymous.copyInviteWeb'));
     } catch {
-      setError(labels.copyFailed);
+      setError(t('anonymous.copyFailed'));
     }
   };
 
@@ -1994,7 +1788,7 @@ export const AnonymousMessengerScreen: React.FC<{
       await persist({ ...current, contacts, pendingPremiumGift });
       if (selectedContactId === contactId) setSelectedContactId(contacts[0]?.id ?? null);
       setContactPendingDeleteId(null);
-      setStatus(labels.contactDeleted);
+      setStatus(t('anonymous.contactDeleted'));
       // Drop the mailbox after the contact is gone: local queues live in
       // localStorage, relay queues are removed through the same relay (or
       // proxy/Tor route) the contact was using, so no direct IP leak.
@@ -2022,7 +1816,7 @@ export const AnonymousMessengerScreen: React.FC<{
   };
 
   if (!isLoaded) {
-    return <div className="flex h-full items-center justify-center bg-[#090a0e] text-sm text-white/60" data-theme-preserve="dark">{labels.loading}</div>;
+    return <div className="flex h-full items-center justify-center bg-[#090a0e] text-sm text-white/60" data-theme-preserve="dark">{t('anonymous.loading')}</div>;
   }
 
   return (
@@ -2038,8 +1832,8 @@ export const AnonymousMessengerScreen: React.FC<{
         </button>
         <ShieldCheck className="h-5 w-5 text-[var(--nova-accent-color)]" />
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold">{labels.title}</h1>
-          <p className="text-xs text-white/50">{labels.subtitle}</p>
+          <h1 className="truncate text-base font-semibold">{t('anonymous.title')}</h1>
+          <p className="text-xs text-white/50">{t('anonymous.subtitle')}</p>
         </div>
         {usesLocalMode && (
           <button
@@ -2049,11 +1843,11 @@ export const AnonymousMessengerScreen: React.FC<{
             aria-controls="local-contacts-panel"
             // The badge text only says "Local only"; the title carries the full
             // explanation, so name the control after the mode itself.
-            aria-label={labels.localModeTitle}
-            title={labels.localModeNote}
+            aria-label={t('anonymous.localModeTitle')}
+            title={t('anonymous.localModeNote')}
             className="ml-auto shrink-0 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-[10px] font-medium text-sky-200 hover:bg-sky-400/20"
           >
-            {labels.localModeBadge(localOnlyContacts.length, localPendingInvitesCount)}
+            {t('anonymous.localModeBadge', { contacts: localOnlyContacts.length, pending: localPendingInvitesCount })}
           </button>
         )}
       </header>
@@ -2061,13 +1855,13 @@ export const AnonymousMessengerScreen: React.FC<{
       {usesLocalMode && localContactsOpen && (
         <section
           id="local-contacts-panel"
-          aria-label={labels.localContactsTitle}
+          aria-label={t('anonymous.localContactsTitle')}
           data-testid="local-contacts-panel"
           className="shrink-0 border-b border-white/10 bg-[#0d0f15] px-4 py-3"
         >
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-xs font-semibold text-white/80">
-              {labels.localContactsTitle}
+              {t('anonymous.localContactsTitle')}
             </h2>
             <button
               type="button"
@@ -2079,7 +1873,7 @@ export const AnonymousMessengerScreen: React.FC<{
             </button>
           </div>
           {localOnlyContacts.length === 0 ? (
-            <p className="pt-2 text-[11px] text-white/45">{labels.noLocalContacts}</p>
+            <p className="pt-2 text-[11px] text-white/45">{t('anonymous.noLocalContacts')}</p>
           ) : (
             <ul className="mt-2 space-y-1">
               {localOnlyContacts.map((entry) => {
@@ -2101,7 +1895,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     <button
                       type="button"
                       onClick={() => setContactPendingDeleteId(entry.id)}
-                      aria-label={`${labels.deleteContact}: ${name}`}
+                      aria-label={`${t('anonymous.deleteContact')}: ${name}`}
                       className="rounded-lg p-1.5 text-white/35 hover:bg-red-500/10 hover:text-red-300"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -2113,7 +1907,7 @@ export const AnonymousMessengerScreen: React.FC<{
           )}
           {localPendingInvitesCount > 0 && (
             <p className="pt-2 text-[11px] text-sky-200/70">
-              {labels.localPendingNote(localPendingInvitesCount)}
+              {t('anonymous.localPendingNote', { count: localPendingInvitesCount })}
             </p>
           )}
         </section>
@@ -2122,9 +1916,9 @@ export const AnonymousMessengerScreen: React.FC<{
       <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 xl:grid-cols-[minmax(280px,360px)_1fr]">
         <section className="space-y-3">
           <div className="space-y-1 rounded-2xl border border-[var(--nova-accent-color)]/25 bg-[var(--nova-accent-color)]/[0.06] p-3">
-            <h2 className="text-xs font-semibold text-white">{labels.setupTitle}</h2>
-            <p className="text-xs leading-relaxed text-white/60">{labels.pairingGuide}</p>
-            <p className="pt-1 text-[11px] leading-relaxed text-amber-200/75">{labels.privacyNote}</p>
+            <h2 className="text-xs font-semibold text-white">{t('anonymous.setupTitle')}</h2>
+            <p className="text-xs leading-relaxed text-white/60">{t('anonymous.pairingGuide')}</p>
+            <p className="pt-1 text-[11px] leading-relaxed text-amber-200/75">{t('anonymous.privacyNote')}</p>
           </div>
           <div className="space-y-3 rounded-2xl border border-white/10 bg-[#11131a] p-3">
             {usesLocalMode ? (
@@ -2134,9 +1928,9 @@ export const AnonymousMessengerScreen: React.FC<{
                 tabIndex={-1}
                 className="rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
               >
-                <h2 className="text-xs font-semibold text-sky-100">{labels.localModeTitle}</h2>
+                <h2 className="text-xs font-semibold text-sky-100">{t('anonymous.localModeTitle')}</h2>
                 <p className="pt-1 text-[11px] leading-relaxed text-sky-100/80">
-                  {labels.localModeNote}
+                  {t('anonymous.localModeNote')}
                 </p>
                 {!advancedOpen && (
                   <button
@@ -2151,7 +1945,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     }}
                     className="mt-2 w-full rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-2 text-xs font-medium text-sky-100 hover:bg-sky-300/20"
                   >
-                    {labels.configureRelay}
+                    {t('anonymous.configureRelay')}
                   </button>
                 )}
               </div>
@@ -2166,13 +1960,13 @@ export const AnonymousMessengerScreen: React.FC<{
                 }
                 className="w-full rounded-xl bg-[var(--nova-accent-color)] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {labels.createInvite}
+                {t('anonymous.createInvite')}
               </button>
             )}
             {inviteLink && !usesLocalMode && (
               <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
                 <label className="block space-y-1 text-xs text-white/60">
-                  <span>{labels.inviteLink}</span>
+                  <span>{t('anonymous.inviteLink')}</span>
                   <textarea
                     readOnly
                     value={inviteLink}
@@ -2182,7 +1976,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 </label>
                 {webInviteLink && (
                   <label className="block space-y-1 text-xs text-white/60">
-                    <span>{labels.inviteLinkWeb}</span>
+                    <span>{t('anonymous.inviteLinkWeb')}</span>
                     <textarea
                       readOnly
                       value={webInviteLink}
@@ -2197,7 +1991,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     onClick={() => void shareInvite()}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
                   >
-                    {labels.shareInvite}
+                    {t('anonymous.shareInvite')}
                   </button>
                   <button
                     type="button"
@@ -2205,7 +1999,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
                   >
                     <Copy className="h-4 w-4" />
-                    {labels.copyInvite}
+                    {t('anonymous.copyInvite')}
                   </button>
                   {webInviteLink && (
                     <button
@@ -2214,7 +2008,7 @@ export const AnonymousMessengerScreen: React.FC<{
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
                     >
                       <Copy className="h-4 w-4" />
-                      {labels.copyInviteWeb}
+                      {t('anonymous.copyInviteWeb')}
                     </button>
                   )}
                 </div>
@@ -2222,27 +2016,27 @@ export const AnonymousMessengerScreen: React.FC<{
                 {inviteQr ? (
                   <LazyMedia
                     src={inviteQr}
-                    alt={labels.showQr}
+                    alt={t('anonymous.showQr')}
                     eager
                     className="h-48 w-48 max-w-full"
                   />
                 ) : (
                     <p role={qrError ? 'alert' : 'status'} className="text-center text-xs text-red-600">
-                      {qrError ? labels.qrFailed : labels.qrLoading}
+                      {qrError ? t('anonymous.qrFailed') : t('anonymous.qrLoading')}
                     </p>
                   )}
                   {qrError && <p className="text-center text-[10px] text-red-600">{qrError}</p>}
-                  <p className="text-center text-xs text-black/70">{labels.showQr}</p>
+                  <p className="text-center text-xs text-black/70">{t('anonymous.showQr')}</p>
                 </div>
               </div>
             )}
             {state.pendingInbox && state.pendingInbox.expiresAt > Date.now() && (
               <p role="status" className="text-center text-xs text-amber-200/80">
-                {labels.pending}
+                {t('anonymous.pending')}
               </p>
             )}
             <label className="block space-y-1 text-xs text-white/60">
-              <span>{labels.importInvite}</span>
+              <span>{t('anonymous.importInvite')}</span>
               <textarea
                 value={inviteInput}
                 onChange={(event) => setInviteInput(event.target.value)}
@@ -2256,7 +2050,7 @@ export const AnonymousMessengerScreen: React.FC<{
               disabled={isBusy || !inviteInput.trim()}
               className="w-full rounded-xl bg-white/10 px-3 py-2 text-sm hover:bg-white/15 disabled:opacity-50"
             >
-              {labels.acceptInvite}
+              {t('anonymous.acceptInvite')}
             </button>
             {(state.pendingInbox || state.contacts.length > 0) && (
               <button
@@ -2265,7 +2059,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 disabled={isBusy}
                 className="w-full rounded-xl border border-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/10 disabled:opacity-50"
               >
-                {labels.refreshInbox}
+                {t('anonymous.refreshInbox')}
               </button>
             )}
           </div>
@@ -2280,10 +2074,10 @@ export const AnonymousMessengerScreen: React.FC<{
               ref={advancedSummaryRef}
               className="min-h-6 cursor-pointer py-1 text-xs font-medium text-white/70"
             >
-              {labels.advanced}
+              {t('anonymous.advanced')}
             </summary>
             <form onSubmit={saveSettings} className="mt-3 space-y-2">
-              <p className="text-xs leading-relaxed text-white/50">{labels.advancedNote}</p>
+              <p className="text-xs leading-relaxed text-white/50">{t('anonymous.advancedNote')}</p>
               <button
                 type="button"
                 onClick={() => {
@@ -2301,15 +2095,15 @@ export const AnonymousMessengerScreen: React.FC<{
                 }}
                 className="w-full rounded-xl border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/10 px-3 py-2 text-xs font-medium text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/20"
               >
-                {labels.useDefaultRelay}
+                {t('anonymous.useDefaultRelay')}
               </button>
               {([
-                ['relayUrl', labels.relayUrl, 'https://relay.example'],
-                ['extraRelays', labels.extraRelays, 'https://relay2.example, https://relay3.example'],
-                ['proxyUrl', labels.proxyUrl, 'https://proxy.example'],
-                ['relayId', labels.relayId, 'relay-main'],
-                ['relayPublicKey', labels.relayKey, 'base64url X25519 key'],
-                ['pushToken', labels.pushToken, 'unifiedpush-endpoint-or-token'],
+                ['relayUrl', t('anonymous.relayUrl'), 'https://relay.example'],
+                ['extraRelays', t('anonymous.extraRelays'), 'https://relay2.example, https://relay3.example'],
+                ['proxyUrl', t('anonymous.proxyUrl'), 'https://proxy.example'],
+                ['relayId', t('anonymous.relayId'), 'relay-main'],
+                ['relayPublicKey', t('anonymous.relayKey'), 'base64url X25519 key'],
+                ['pushToken', t('anonymous.pushToken'), 'unifiedpush-endpoint-or-token'],
               ] as const).map(([field, label, placeholder]) => (
                 <label key={field} className="block space-y-1 text-xs text-white/60">
                   <span>{label}</span>
@@ -2327,7 +2121,7 @@ export const AnonymousMessengerScreen: React.FC<{
                   />
                 </label>
               ))}
-              <p className="text-[11px] leading-relaxed text-white/45">{labels.pushTokenHint}</p>
+              <p className="text-[11px] leading-relaxed text-white/45">{t('anonymous.pushTokenHint')}</p>
               <label className="flex items-center gap-2 text-xs text-white/60">
                 <input
                   type="checkbox"
@@ -2338,16 +2132,16 @@ export const AnonymousMessengerScreen: React.FC<{
                   }}
                   className="h-4 w-4 rounded border-white/20 bg-black/30"
                 />
-                <span>{labels.torRouting}</span>
+                <span>{t('anonymous.torRouting')}</span>
               </label>
-              <p className="text-[11px] leading-relaxed text-white/45">{labels.torHint}</p>
+              <p className="text-[11px] leading-relaxed text-white/45">{t('anonymous.torHint')}</p>
               <button
                 type="button"
                 onClick={() => void checkRelayConnection()}
                 disabled={isBusy}
                 className="w-full rounded-xl border border-white/15 px-3 py-2 text-sm font-medium text-white/80 hover:bg-white/10 disabled:opacity-50"
               >
-                {isBusy ? labels.checkingRelay : labels.checkRelay}
+                {isBusy ? t('anonymous.checkingRelay') : t('anonymous.checkRelay')}
               </button>
               {relayCheck && (
                 <p
@@ -2362,7 +2156,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 disabled={isBusy}
                 className="w-full rounded-xl bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-50"
               >
-                {labels.saveSettings}
+                {t('anonymous.saveSettings')}
               </button>
               <button
                 type="button"
@@ -2377,7 +2171,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 }}
                 className="w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-white/60 hover:bg-white/5"
               >
-                {labels.closeSettings}
+                {t('anonymous.closeSettings')}
               </button>
             </form>
           </details>
@@ -2388,7 +2182,7 @@ export const AnonymousMessengerScreen: React.FC<{
 
         <section className="flex min-h-[360px] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#11131a]">
           <div className="border-b border-white/10 px-3 py-2 text-xs font-semibold text-white/70">
-            {labels.contacts}
+            {t('anonymous.contacts')}
           </div>
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <div className="max-h-36 shrink-0 overflow-y-auto border-b border-white/10 md:max-h-none md:w-56 md:border-b-0 md:border-r">
@@ -2417,7 +2211,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     <button
                       type="button"
                       onClick={() => setContactPendingDeleteId(entry.id)}
-                      aria-label={`${labels.deleteContact}: ${name}`}
+                      aria-label={`${t('anonymous.deleteContact')}: ${name}`}
                       className="mr-1 shrink-0 rounded-lg p-1.5 text-white/30 hover:bg-red-500/10 hover:text-red-300"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -2426,10 +2220,10 @@ export const AnonymousMessengerScreen: React.FC<{
                 );
               })}
               {state.pendingInbox && (
-                <div className="px-3 py-3 text-xs text-amber-200/70">{labels.pending}</div>
+                <div className="px-3 py-3 text-xs text-amber-200/70">{t('anonymous.pending')}</div>
               )}
               {state.contacts.length === 0 && !state.pendingInbox && (
-                <p className="p-3 text-xs leading-relaxed text-white/40">{labels.emptyContacts}</p>
+                <p className="p-3 text-xs leading-relaxed text-white/40">{t('anonymous.emptyContacts')}</p>
               )}
             </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -2440,8 +2234,8 @@ export const AnonymousMessengerScreen: React.FC<{
                       type="button"
                       onClick={() => startAnonCall('voice')}
                       disabled={isBusy || selectedContactBlocked || !isConfigured}
-                      title={isRussian ? 'Аудиозвонок' : 'Voice call'}
-                      aria-label={isRussian ? 'Аудиозвонок' : 'Voice call'}
+                      title={language === 'ru' ? 'Аудиозвонок' : 'Voice call'}
+                      aria-label={language === 'ru' ? 'Аудиозвонок' : 'Voice call'}
                       className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 hover:bg-white/10 disabled:opacity-40"
                     >
                       <Phone className="h-4 w-4" />
@@ -2450,8 +2244,8 @@ export const AnonymousMessengerScreen: React.FC<{
                       type="button"
                       onClick={() => startAnonCall('video')}
                       disabled={isBusy || selectedContactBlocked || !isConfigured}
-                      title={isRussian ? 'Видеозвонок' : 'Video call'}
-                      aria-label={isRussian ? 'Видеозвонок' : 'Video call'}
+                      title={language === 'ru' ? 'Видеозвонок' : 'Video call'}
+                      aria-label={language === 'ru' ? 'Видеозвонок' : 'Video call'}
                       className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 hover:bg-white/10 disabled:opacity-40"
                     >
                       <Video className="h-4 w-4" />
@@ -2464,13 +2258,13 @@ export const AnonymousMessengerScreen: React.FC<{
                     >
                       <Gift className="h-4 w-4" />
                       {state.pendingPremiumGift?.contactId === selectedContact.id
-                        ? labels.retryGift
+                        ? t('anonymous.retryGift')
                         : state.pendingPremiumGift
-                          ? labels.finishGiftFirst
-                          : labels.giftPremium}
+                          ? t('anonymous.finishGiftFirst')
+                          : t('anonymous.giftPremium')}
                     </button>
                     <select
-                      aria-label={labels.reportCategory}
+                      aria-label={t('anonymous.reportCategory')}
                       value={reportCategory}
                       onChange={(event) => {
                         if (isAbuseCategory(event.target.value)) {
@@ -2488,7 +2282,7 @@ export const AnonymousMessengerScreen: React.FC<{
                       onClick={toggleSelectedContactBlock}
                       className="rounded-xl border border-white/10 px-3 py-2 text-xs hover:bg-white/10"
                     >
-                      {selectedContactBlocked ? labels.unblock : labels.block}
+                      {selectedContactBlocked ? t('anonymous.unblock') : t('anonymous.block')}
                     </button>
                     <button
                       type="button"
@@ -2496,10 +2290,10 @@ export const AnonymousMessengerScreen: React.FC<{
                       disabled={isBusy}
                       className="rounded-xl border border-white/10 px-3 py-2 text-xs hover:bg-white/10 disabled:opacity-50"
                     >
-                      {labels.report}
+                      {t('anonymous.report')}
                     </button>
                   </div>
-                  <p className="text-[10px] text-white/40">{labels.reportPrivacy}</p>
+                  <p className="text-[10px] text-white/40">{t('anonymous.reportPrivacy')}</p>
                 </div>
               )}
               <div className="flex-1 space-y-2 overflow-y-auto p-3">
@@ -2534,7 +2328,7 @@ export const AnonymousMessengerScreen: React.FC<{
                   </div>
                 ))}
                 {!selectedContact && (
-                  <p className="pt-4 text-center text-xs text-white/35">{labels.emptyContacts}</p>
+                  <p className="pt-4 text-center text-xs text-white/35">{t('anonymous.emptyContacts')}</p>
                 )}
               </div>
               <form onSubmit={sendMessage} className="flex gap-2 border-t border-white/10 p-2">
@@ -2547,8 +2341,8 @@ export const AnonymousMessengerScreen: React.FC<{
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  aria-label={labels.attachFile}
-                  title={labels.attachFile}
+                  aria-label={t('anonymous.attachFile')}
+                  title={t('anonymous.attachFile')}
                   disabled={!selectedContact || selectedContactBlocked || isBusy}
                   className="rounded-full bg-white/10 p-2.5 text-white/80 hover:bg-white/15 disabled:opacity-40"
                 >
@@ -2558,7 +2352,7 @@ export const AnonymousMessengerScreen: React.FC<{
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   disabled={!selectedContact || selectedContactBlocked || isBusy}
-                  placeholder={labels.messagePlaceholder}
+                  placeholder={t('anonymous.messagePlaceholder')}
                   className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white outline-none focus:border-[var(--nova-accent-color)] disabled:opacity-40"
                 />
                 <button
@@ -2581,14 +2375,14 @@ export const AnonymousMessengerScreen: React.FC<{
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={isRussian ? 'Входящий звонок' : 'Incoming call'}
+          aria-label={language === 'ru' ? 'Входящий звонок' : 'Incoming call'}
         >
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#11131a] p-5 text-center">
             <p className="text-sm font-semibold text-white">{anonCall.contactName}</p>
             <p className="mt-1 text-xs text-white/50">
               {anonCall.mode === 'video'
-                ? isRussian ? 'Видеозвонок' : 'Video call'
-                : isRussian ? 'Аудиозвонок' : 'Voice call'}
+                ? language === 'ru' ? 'Видеозвонок' : 'Video call'
+                : language === 'ru' ? 'Аудиозвонок' : 'Voice call'}
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -2596,14 +2390,14 @@ export const AnonymousMessengerScreen: React.FC<{
                 onClick={() => void callSessionRef.current?.decline()}
                 className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/5"
               >
-                {isRussian ? 'Отклонить' : 'Decline'}
+                {language === 'ru' ? 'Отклонить' : 'Decline'}
               </button>
               <button
                 type="button"
                 onClick={() => void callSessionRef.current?.accept()}
                 className="flex-1 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-400"
               >
-                {isRussian ? 'Принять' : 'Accept'}
+                {language === 'ru' ? 'Принять' : 'Accept'}
               </button>
             </div>
           </div>
@@ -2654,12 +2448,12 @@ export const AnonymousMessengerScreen: React.FC<{
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id="delete-contact-title" className="text-sm font-semibold text-white">
-              {labels.deleteContactConfirm}
+              {t('anonymous.deleteContactConfirm')}
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-white/60">
               {contactPendingDelete.messages.length > 0
-                ? labels.deleteContactHistory(contactPendingDelete.messages.length)
-                : labels.deleteContactBody}
+                ? t('anonymous.deleteContactHistory', { count: contactPendingDelete.messages.length })
+                : t('anonymous.deleteContactBody')}
             </p>
             <div className="mt-4 flex gap-2">
               <button

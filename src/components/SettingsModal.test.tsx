@@ -198,8 +198,9 @@ describe('SettingsModal', () => {
   it('has Terms and Privacy buttons in About tab', () => {
     renderSettings();
     fireEvent.click(screen.getByRole('tab', { name: 'settings.tabAbout' }));
-    expect(screen.getByRole('button', { name: 'Terms of ServiceRead our terms' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Privacy PolicyRead our privacy policy' })).toBeTruthy();
+    // Check by testId since label+description are now localized
+    expect(screen.getByTestId('settings-terms')).toBeTruthy();
+    expect(screen.getByTestId('settings-privacy')).toBeTruthy();
   });
 
   it('closes on Escape', () => {

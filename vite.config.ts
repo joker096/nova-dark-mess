@@ -304,12 +304,12 @@ if (/\/components\/MiniAppIframe\.tsx/.test(id)) return 'MiniAppIframe';
       chunkSizeWarningLimit: 300,
     },
     server: {
-      host: '0.0.0.0',
-      port: 3000,
-      hmr: process.env.DISABLE_HMR !== 'true' ? { protocol: 'ws', host: 'localhost', port: 3000, clientPort: 3000 } : false,
+      host: '127.0.0.1',
+      port: 3001,
+      hmr: process.env.DISABLE_HMR !== 'true' ? { protocol: 'ws', host: '127.0.0.1', port: 3001, clientPort: 0 } : false,
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
-        '/api': { target: 'http://localhost:8080', changeOrigin: true },
+        '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       },
     },
     test: {

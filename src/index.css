@@ -482,7 +482,7 @@ html.native-safe-insets .safe-bottom-nav {
 }
 
 /* SVG icons inside buttons inherit text color from parent.
-   Lucide icons are stroke-based and must keep fill:none, otherwise the
+   Lucide/Tabler icons are stroke-based and must keep fill:none, otherwise the
    shape becomes a solid block of the button colour. */
 button svg,
 [role="button"] svg {
@@ -490,8 +490,45 @@ button svg,
   fill: none;
 }
 
+/* Ensure all SVG icons are constrained to their container size and don't overflow.
+   This applies to both Lucide and Tabler icons, and any inline SVGs.
+   Tabler/Lucide icons have width/height attributes that must not override CSS. */
+svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Tabler icons: force CSS sizing to win over inline width/height attributes.
+   Tabler icons have class "tabler-icon" or class*="tabler-icon" */
+.tabler-icon,
+[class*="tabler-icon"] {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Lucide icons */
+.lucide {
+  width: 100%;
+  height: 100%;
+}
+
+/* When Tailwind size classes are applied directly to SVG, respect them */
+svg[class*="w-"],
+svg[class*="h-"],
+svg[class*="size-"] {
+  width: auto !important;
+  height: auto !important;
+}
+
 /* Ensure lucide icons render correctly */
 .lucide {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Tabler icons don't have the .lucide class, apply same stroke styling */
+[class*="Icon"] {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;

@@ -6458,7 +6458,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-[var(--nova-border-subtle)] flex items-center justify-between">
-              <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">Forward to</h3>
+              <h3 className="font-bold text-lg text-[var(--nova-text-primary)]">{t('chat.forwardTo')}</h3>
               <button
                 onClick={() => setIsForwardModalOpen(false)}
                 className="p-1.5 rounded-full text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
@@ -6468,26 +6468,63 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               </button>
             </div>
             <div className="max-h-[300px] overflow-y-auto">
-              {MOCK_CHATS.filter((c) => c.id !== chatId && c.type !== 'channel').map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => handleForwardToChat(chat.id)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
-                >
-                  <LazyMedia
-                    src={chat.avatar}
-                    alt=""
-                    className="w-10 h-10 rounded-full object-cover ring-1 ring-[var(--nova-border-subtle)]"
-                  />
-                  <div className="text-left min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[var(--nova-text-primary)] truncate">{chat.name}</p>
-                    <p className="text-[11px] text-[var(--nova-text-muted)]">
-                      {chat.type === 'group' ? 'Group' : 'Direct'}
-                    </p>
-                  </div>
-                  <Forward className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
-                </button>
-              ))}
+              {/* Recent chats first */}
+              {(() => {
+                const recentChats = MOCK_CHATS.filter((c) => c.id !== chatId && c.type !== 'channel' && c.unreadCount && c.unreadCount > 0);
+                const otherChats = MOCK_CHATS.filter((c) => c.id !== chatId && c.type !== 'channel' && (!c.unreadCount || c.unreadCount === 0));
+                return (
+                  <>
+                    {recentChats.length > 0 && (
+                      <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)]">
+                        {t('chat.recent', { defaultValue: 'Recent' })}
+                      </div>
+                    )}
+                    {recentChats.map((chat) => (
+                      <button
+                        key={chat.id}
+                        onClick={() => handleForwardToChat(chat.id)}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+                      >
+                        <LazyMedia
+                          src={chat.avatar}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover ring-1 ring-[var(--nova-border-subtle)]"
+                        />
+                        <div className="text-left min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-[var(--nova-text-primary)] truncate">{chat.name}</p>
+                          <p className="text-[11px] text-[var(--nova-text-muted)]">
+                            {chat.type === 'group' ? t('chat.group') : t('chat.direct')}
+                          </p>
+                        </div>
+                        <Forward className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+                      </button>
+                    ))}
+                    {(recentChats.length > 0 || otherChats.length > 0) && (
+                      <div className="h-px bg-[var(--nova-border-subtle)] my-1" />
+                    )}
+                    {otherChats.map((chat) => (
+                      <button
+                        key={chat.id}
+                        onClick={() => handleForwardToChat(chat.id)}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+                      >
+                        <LazyMedia
+                          src={chat.avatar}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover ring-1 ring-[var(--nova-border-subtle)]"
+                        />
+                        <div className="text-left min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-[var(--nova-text-primary)] truncate">{chat.name}</p>
+                          <p className="text-[11px] text-[var(--nova-text-muted)]">
+                            {chat.type === 'group' ? t('chat.group') : t('chat.direct')}
+                          </p>
+                        </div>
+                        <Forward className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)] shrink-0" />
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

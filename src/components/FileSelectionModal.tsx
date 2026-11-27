@@ -332,15 +332,15 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               <Paperclip className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base leading-tight">Attach Media or Document</h3>
-              <p className="text-[11px] text-[#8e93a0]">Select files to share in chat</p>
+              <h3 className="font-bold text-white text-base leading-tight">{t('fileSelection.attachTitle')}</h3>
+              <p className="text-[11px] text-[#8e93a0]">{t('fileSelection.attachSubtitle')}</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/60 hover:text-white flex items-center justify-center transition cursor-pointer"
-            title="Close"
+            title={t('common.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -358,7 +358,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               }`}
             >
               <ImageIcon className="w-3.5 h-3.5" />
-              <span>Photos ({SIMULATED_IMAGES.length})</span>
+              <span>{t('fileSelection.photosTab', { count: SIMULATED_IMAGES.length })}</span>
             </button>
             <button
               onClick={() => setActiveTab('documents')}
@@ -369,7 +369,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Documents ({SIMULATED_DOCS.length})</span>
+              <span>{t('fileSelection.documentsTab', { count: SIMULATED_DOCS.length })}</span>
             </button>
           </div>
 
@@ -387,10 +387,10 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-[var(--nova-accent-color)]/20 border border-white/10 hover:border-[var(--nova-accent-color)]/40 text-xs font-medium text-white/80 hover:text-white transition cursor-pointer active:scale-95 shrink-0"
-            title="Browse genuine file from device"
+            title={t('fileSelection.browseDevice')}
           >
             <Upload className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
-            <span className="hidden sm:inline">Browse Device</span>
+            <span className="hidden sm:inline">{t('fileSelection.browseDevice')}</span>
           </button>
         </div>
 
@@ -505,12 +505,12 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
             <div className="text-[11px] text-[#8e93a0] truncate">
               {selectedImageIds.length > 0 ? (
                 <span className="text-[var(--nova-accent-color)] font-semibold">
-                  {selectedImageIds.length} {selectedImageIds.length === 1 ? 'photo' : 'photos'} selected
+                  {t('fileSelection.selectedPhotos', { count: selectedImageIds.length })}
                 </span>
               ) : selectedDocId ? (
-                <span className="text-[var(--nova-accent-color)] font-semibold">1 document selected</span>
+                <span className="text-[var(--nova-accent-color)] font-semibold">{t('fileSelection.selectedDocument')}</span>
               ) : (
-                <span>No files selected</span>
+                <span>{t('fileSelection.noFilesSelected')}</span>
               )}
             </div>
 
@@ -521,7 +521,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                 disabled={!hasSelected}
                 className="px-3.5 py-1.5 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
               >
-                Attach
+                {t('fileSelection.attach')}
               </button>
               <button
                 type="button"
@@ -529,7 +529,7 @@ export const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
                 disabled={!hasSelected}
                 className="px-4 py-1.5 rounded-xl bg-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color, ff5d2b)] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-[var(--nova-accent-color)]/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
               >
-                <span>Send</span>
+                <span>{t('fileSelection.send')}</span>
                 <Send className="w-3 h-3" />
               </button>
             </div>

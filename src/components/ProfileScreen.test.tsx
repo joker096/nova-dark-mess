@@ -28,6 +28,8 @@ vi.mock('../context/LanguageContext', () => ({
       if (key === 'profile.scanQrWithCamera') return 'Scan QR with camera';
       if (key === 'profile.stopCameraScan') return 'Stop camera scan';
       if (key === 'profile.linkNewDevice') return 'Link a new device';
+      if (key === 'profile.deviceLinkCreateReply') return 'Create reply code';
+      if (key === 'profile.deviceLinkReplyCopied') return 'Reply code copied';
       return key;
     },
     language: 'en',
@@ -737,25 +739,25 @@ describe('ProfileScreen - device linking', () => {
     const link = await screen.findByTestId('device-link-url');
     const offerUrl = link.textContent ?? '';
 
-    fireEvent.click(screen.getByText('New device'));
+    fireEvent.click(screen.getByTestId('device-link-tab-new-device'));
     fireEvent.change(screen.getByLabelText('Device link offer'), {
       target: { value: offerUrl },
     });
-    fireEvent.click(screen.getByText('Create reply code'));
+    fireEvent.click(screen.getByTestId('device-link-create-reply'));
 
     const reply = screen.getByTestId('device-link-reply').textContent ?? '';
 
-    fireEvent.click(screen.getByText('This device'));
+    fireEvent.click(screen.getByTestId('device-link-tab-this-device'));
     fireEvent.change(screen.getByLabelText('Device link reply'), { target: { value: reply } });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Complete linking'));
+      fireEvent.click(screen.getByTestId('device-link-complete'));
       await Promise.resolve();
     });
 
     expect(screen.getByText(/Handshake complete/)).toBeTruthy();
 
-    fireEvent.click(screen.getByText('New device'));
+    fireEvent.click(screen.getByTestId('device-link-tab-new-device'));
     await act(async () => {
       fireEvent.click(screen.getByTestId('sync-history-secondary'));
       await Promise.resolve();

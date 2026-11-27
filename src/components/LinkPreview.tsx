@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LazyMedia } from './LazyMedia';
 import {IconExternalLink as ExternalLink, IconX as X} from '@tabler/icons-react';
 import { cachedFetch } from '../lib/api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LinkPreviewProps {
   url: string;
@@ -37,6 +38,7 @@ function extractDomain(url: string): string {
 }
 
 export function LinkPreview({ url, onClose }: LinkPreviewProps) {
+  const { t } = useLanguage();
   const [data, setData] = useState<LinkPreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -136,7 +138,7 @@ export function LinkPreview({ url, onClose }: LinkPreviewProps) {
           type="button"
           onClick={(e) => { e.stopPropagation(); onClose?.(); }}
           className="absolute right-2 top-2 z-10 rounded-full bg-black/50 p-1 text-white/60 hover:text-white hover:bg-black/70 cursor-pointer opacity-0 group-hover:opacity-100 transition"
-          aria-label="Remove link preview"
+          aria-label={t('linkPreview.remove')}
         >
           <X className="h-3.5 w-3.5" />
         </button>

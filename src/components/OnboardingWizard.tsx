@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconCheck as Check, IconCopy as Copy, IconDownload as Download, IconGlobe as Globe, IconKey as KeyRound, IconShieldCheck as ShieldCheck, IconSparkles as Sparkles, IconUpload as Upload, IconUser as User, IconUserCircle as UserCircle, IconUserCircle as UserRound} from '@tabler/icons-react';
+import {IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconAlertTriangle as AlertTriangle, IconCheck as Check, IconCopy as Copy, IconDownload as Download, IconGlobe as Globe, IconKey as KeyRound, IconShieldCheck as ShieldCheck, IconSparkles as Sparkles, IconUpload as Upload, IconUser as User, IconUserCircle as UserCircle, IconUserCircle as UserRound} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { useAccount } from '../hooks/useAccount';
@@ -444,6 +444,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
     setStep(nextAfterSecurity());
   };
 
+  const skipPhraseCheck = () => {
+    setQuizRound(0);
+    setError('');
+    setStep('security');
+  };
+
+  const skipBackup = () => {
+    setBackupPassphrase('');
+    setBackupPassphraseConfirm('');
+    setError('');
+    setStep('done');
+  };
+
   const primaryBtn =
     // `text-[#ffffff]`, not `text-white`: the light theme remaps white text to
     // dark ink, which would disappear on this accent fill.
@@ -632,6 +645,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                 aria-label={t('onboarding.nameLabel')}
               />
               <p className="text-[11px] text-white/50">{t('onboarding.nicknameHint')}</p>
+              {normalizedNickname && normalizedNickname.slice(1).length < 5 && !isShortNicknamePaid() && (
+                <p className="text-[11px] text-amber-400/90 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {t('onboarding.shortNicknameWarning', { defaultValue: 'Short nicknames (< 5 chars) require a one-time $50 payment' })}
+                </p>
+              )}
               <button
                 type="button"
                 className={primaryBtn}
@@ -840,6 +859,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
                   {error}
                 </p>
               )}
+              <button type="button" className={ghostBtn} onClick={skipPhraseCheck}>
+                {t('onboarding.skipPhraseCheck', { defaultValue: 'Skip verification' })}
+              </button>
             </div>
           )}
 
@@ -995,14 +1017,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onDone }) =>
               <button
                 type="button"
                 className={ghostBtn}
-                onClick={() => {
-                  setBackupPassphrase('');
-                  setBackupPassphraseConfirm('');
-                  setError('');
-                  setStep('done');
-                }}
+                onClick={skipBackup}
               >
-                {t('onboarding.skip')}
+                {t('onboarding.skipBackup', { defaultValue: 'Remind me later' })}
               </button>
             </div>
           )}

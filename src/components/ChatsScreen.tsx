@@ -1008,13 +1008,13 @@ export const ChatsScreen = forwardRef<
             data-testid="quick-search-chips"
           >
             <span className="text-[9px] text-[var(--nova-text-muted)] shrink-0 font-medium pl-0.5">
-              Quick search:
+              {t('chats.quickSearch')}
             </span>
             {CHAT_SEARCH_CHIPS.map((chip) => (
               <button
                 key={chip}
                 onClick={() => setSearchQuery(chip)}
-                className={`min-h-5 px-2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
+                className={`min-h-5 px_2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
                   searchQuery.toLowerCase() === chip.toLowerCase()
                     ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
                     : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-strong)]"
@@ -1049,7 +1049,7 @@ export const ChatsScreen = forwardRef<
                     ? "bg-[var(--bg-surface-2)] text-[var(--text-primary)] shadow-sm"
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
-                aria-label={`All filter, ${totalResults} results`}
+                aria-label={t('chats.searchFilterAll', { count: totalResults })}
               >
                 All ({totalResults})
               </button>
@@ -1060,7 +1060,7 @@ export const ChatsScreen = forwardRef<
                     ? "bg-[var(--bg-surface-2)] text-[var(--text-primary)] shadow-sm"
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                 }`}
-                aria-label={`Chats filter, ${matchedChats.length} results`}
+                aria-label={t('chats.searchFilterChats', { count: matchedChats.length })}
               >
                 Chats ({matchedChats.length})
               </button>
@@ -1071,7 +1071,7 @@ export const ChatsScreen = forwardRef<
                     ? "bg-[var(--nova-surface-high)] text-[var(--nova-text-primary)] shadow-sm"
                     : "text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)]"
                 }`}
-                aria-label={`Messages filter, ${matchedMessages.length} results`}
+                aria-label={t('chats.searchFilterMessages', { count: matchedMessages.length })}
               >
                 Messages ({matchedMessages.length})
               </button>
@@ -1141,13 +1141,14 @@ export const ChatsScreen = forwardRef<
                                 handleChatClick(chat.id, chat.isChannel)
                               }
                               role="button"
-                              aria-label={`Chat with ${chat.name}`}
+                              aria-label={t('chats.chatWith', { name: chat.name })}
                               tabIndex={0}
                               className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-center gap-3 shadow-sm ${
                                 isSelected
                                   ? "bg-[var(--bg-surface-2)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30"
                                   : "bg-[var(--bg-app)] hover:bg-[var(--bg-surface-2)] active:bg-[var(--bg-hover)] border border-[var(--border)]"
                               }`}
+                              data-testid={`chat-item-${chat.id}`}
                             >
                               {/* Avatar Slot */}
                               <div className="relative shrink-0">
@@ -1285,7 +1286,7 @@ export const ChatsScreen = forwardRef<
                             handleChatClick(match.chatId, match.isChannel)
                           }
                           role="button"
-                          aria-label={`Message from ${match.chatName} by ${match.senderName}`}
+                          aria-label={t('chats.messageFrom', { chatName: match.chatName, senderName: match.senderName })}
                           tabIndex={0}
                           className="group bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-raised)] active:bg-[var(--nova-surface-high)] border border-[var(--nova-border-color)] rounded-2xl p-3 transition cursor-pointer flex items-start gap-3 shadow-sm"
                         >
@@ -1354,7 +1355,7 @@ export const ChatsScreen = forwardRef<
                   key={story.id}
                   onClick={() => setStoryViewerIndex(index)}
                   className="w-[76px] h-[104px] rounded-[18px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-[var(--nova-border-subtle)] shadow-md shadow-black/40"
-                  aria-label={`Story from ${story.name}`}
+                  aria-label={t('chats.storyFrom', { name: story.name })}
                 >
                   <LazyMedia
                     src={story.coverImage}
@@ -1399,6 +1400,33 @@ export const ChatsScreen = forwardRef<
             onTouchEnd={handleListTouchEnd}
             onTouchCancel={handleListTouchEnd}
           >
+            {/* Mobile Search Bar - always visible on mobile */}
+            <div className="lg:hidden mb-3">
+              <div className="relative flex items-center">
+                <div className="absolute left-3 text-[var(--nova-accent-color)] pointer-events-none flex items-center justify-center">
+                  <Search className="w-3.5 h-3.5" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setSearchQuery("");
+                  }}
+placeholder={t('chats.searchPlaceholderMobile', { defaultValue: 'Search chats...' })}
+                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer"
+                    aria-label={t("common.close")}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
             {/* Pull-to-refresh indicator */}
             {pullDistance > 0 && (
               <div
@@ -1458,7 +1486,7 @@ export const ChatsScreen = forwardRef<
                     setIsFolderModalOpen(true);
                   }}
                   className="mt-3 px-3.5 py-1.5 rounded-2xl bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold hover:bg-[var(--nova-accent-color, ff5d2b)] transition shadow-md shadow-[var(--nova-accent-color)]/25 cursor-pointer active:bg-[var(--nova-overlay-strong)]"
-                  aria-label={`Manage folder ${currentFolder.name} chats`}
+                  aria-label={t('chats.manageFolderChats', { name: currentFolder.name })}
                 >
                   Manage Folder Chats
                 </button>
@@ -1509,7 +1537,7 @@ export const ChatsScreen = forwardRef<
                           }}
                           onClick={(e) => e.stopPropagation()}
                           className="w-4 h-4 rounded border-2 border-[var(--nova-accent-color)] bg-transparent appearance-none cursor-pointer checked:bg-[var(--nova-accent-color)] checked:border-[var(--nova-accent-color)] checked:after:content-['✓'] checked:after:text-white checked:after:flex checked:after:items-center checked:after:justify-center transition-all duration-150"
-                          aria-label="Select chat"
+                          aria-label={t('chats.selectChat')}
                         />
                       </div>
                     )}
@@ -1522,7 +1550,7 @@ export const ChatsScreen = forwardRef<
                           : handleChatClick(chat.id, chat.isChannel)
                       }
                       role="button"
-                      aria-label={`Chat with ${chat.name}, ${chat.time}`}
+                      aria-label={t('chats.chatWith', { name: chat.name })}
                       tabIndex={0}
                       className={`group relative border rounded-xl p-2 transition-all duration-150 cursor-pointer flex items-center gap-2 shadow-sm ${
                         isSelected
@@ -1815,10 +1843,10 @@ export const ChatsScreen = forwardRef<
             className="bg-[var(--nova-surface-raised)] border border-[var(--nova-border-subtle)] rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4"
           >
             <h3 className="font-bold text-base text-[var(--nova-text-primary)]">
-              Start New Conversation
+              {t('chats.startNewConversation')}
             </h3>
             <p className="text-xs text-[var(--nova-text-muted)]">
-              Add someone with a link or QR code, or create a group:
+              {t('chats.addContactOrGroup')}
             </p>
             {onOpenAnonymous && (
               <button
@@ -1828,7 +1856,7 @@ export const ChatsScreen = forwardRef<
                   onOpenAnonymous();
                 }}
                 className="w-full rounded-xl border border-[var(--nova-accent-color)]/40 bg-[var(--nova-accent-color)]/10 p-3 text-left transition hover:bg-[var(--nova-accent-color)]/20"
-                aria-label="Add a new contact with a link or QR code"
+                aria-label={t('chats.addContactWithLink')}
               >
                 <span className="flex items-center gap-2.5">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--nova-accent-color)]/20 text-[var(--nova-accent-color)]">
@@ -1836,10 +1864,10 @@ export const ChatsScreen = forwardRef<
                   </span>
                   <span>
                     <span className="block text-xs font-semibold text-[var(--nova-text-primary)]">
-                      Add a new contact
+                      {t('chats.addContact')}
                     </span>
                     <span className="mt-0.5 block text-[10px] font-normal text-[var(--nova-text-secondary)]">
-                      Share a link or QR code — no setup required
+                      {t('chats.shareLinkOrQr')}
                     </span>
                   </span>
                 </span>
@@ -1852,7 +1880,7 @@ export const ChatsScreen = forwardRef<
                   onSelectChat("katie");
                 }}
                 className="w-full p-2.5 rounded-xl bg-[var(--nova-surface-high)] hover:bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold flex items-center gap-2.5 transition text-left"
-                aria-label="Start conversation with Katie Rogers"
+                aria-label={t('chats.startConversationWith', { name: 'Katie Rogers' })}
               >
                 <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)] flex items-center justify-center text-[10px]">
                   KR
@@ -1867,12 +1895,12 @@ export const ChatsScreen = forwardRef<
                 setGroupModalOpen(true);
               }}
               className="w-full p-2.5 rounded-xl bg-[var(--nova-surface-high)] hover:bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold flex items-center gap-2.5 transition text-left"
-              aria-label="Create group chat"
+              aria-label={t('chats.createGroupChat')}
             >
               <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[10px]">
                 <Users className="w-3.5 h-3.5" />
               </div>
-              <span>Create Group Chat</span>
+              <span>{t('chats.createGroupChatTitle')}</span>
             </button>
             <button
               type="button"
@@ -1881,12 +1909,12 @@ export const ChatsScreen = forwardRef<
                 document.getElementById("vcf-file-input")?.click();
               }}
               className="w-full p-2.5 rounded-xl bg-[var(--nova-surface-high)] hover:bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-xs font-semibold flex items-center gap-2.5 transition text-left"
-              aria-label="Import contacts from VCF file"
+              aria-label={t('chats.importContactsVcf')}
             >
               <div className="w-6 h-6 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[10px]">
                 <Cloud className="w-3.5 h-3.5" />
               </div>
-              <span>Import Contacts (VCF)</span>
+              <span>{t('chats.importContactsVcfTitle')}</span>
             </button>
             <input
               id="vcf-file-input"

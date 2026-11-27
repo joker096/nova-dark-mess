@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {IconActivity as Activity, IconGlobe as Globe, IconShieldExclamation as ShieldExclamation, IconShieldHeart as ShieldHeart, IconLink as Link, IconMinus as Minus, IconPlus as Plus} from '@tabler/icons-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export interface MeshNode {
   id: string;
@@ -71,6 +72,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
   links: propsLinks,
   autoAnimate = true,
 }) => {
+  const { t } = useLanguage();
   const [nodes, setNodes] = useState<MeshNode[]>(propsNodes ?? DEFAULT_NODES);
   const [links, setLinks] = useState<MeshLink[]>(propsLinks ?? DEFAULT_LINKS);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -210,7 +212,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
       <div className="absolute inset-x-0 top-0 z-30 px-6 py-4 bg-[#12131c]/80 backdrop-blur-md border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-[var(--nova-accent-color,#ff4e18)]" />
-          <h2 className="text-sm font-semibold text-white">Mesh Network Radar</h2>
+          <h2 className="text-sm font-semibold text-white" data-testid="mesh-radar-title">{t('meshMap.title')}</h2>
         </div>
         {/* Zoom controls */}
         <div className="flex items-center gap-1">
@@ -221,7 +223,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
             className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
               view.scale <= MIN_SCALE ? 'bg-white/5' : 'bg-white/10 hover:bg-white/20'
             }"
-            title="Уменьшить"
+            title={t('common.zoomOut') || 'Zoom out'}
           >
             <Minus className="w-3 h-3" />
           </button>
@@ -229,7 +231,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
             type="button"
             onClick={() => setView({ scale: 1, x: 0, y: 0 })}
             className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-medium text-white/70 hover:text-white transition active:scale-95 bg-white/10 hover:bg-white/20"
-            title="По размеру"
+            title={t('common.zoomReset') || 'Reset zoom'}
           >
             {Math.round(view.scale * 100)}%
           </button>
@@ -240,7 +242,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
             className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
               view.scale >= MAX_SCALE ? 'bg-white/5' : 'bg-white/10 hover:bg-white/20'
             }"
-            title="Увеличить"
+            title={t('common.zoomIn') || 'Zoom in'}
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -248,26 +250,26 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
         <div className="flex items-center gap-4 text-[11px] text-[#8c919d]">
           <div className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full bg-[${STATUS_COLORS.online}]`} />{' '}
-            <span>{stats.online} online</span>
+            <span data-testid="mesh-radar-online-count">{stats.online} {t('common.online')}</span>
           </div>
           <div className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full bg-[${STATUS_COLORS.relaying}]`} />{' '}
-            <span>{stats.relaying} relaying</span>
+            <span data-testid="mesh-radar-relaying-count">{stats.relaying} {t('meshMap.relaying') || 'relaying'}</span>
           </div>
           <div className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full bg-[${STATUS_COLORS.offline}]`} />{' '}
-            <span>{stats.offline} offline</span>
+            <span data-testid="mesh-radar-offline-count">{stats.offline} {t('common.offline')}</span>
           </div>
           <div className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full bg-[${STATUS_COLORS.connecting}]`} />{' '}
-            <span>{stats.connecting} connecting</span>
+            <span data-testid="mesh-radar-connecting-count">{stats.connecting} {t('common.connecting') || 'connecting'}</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs font-mono text-[var(--nova-accent-color,#ff4e18)]">
             {Math.round(stats.totalBps / 1000)} KB/s
           </span>
-          <span className="text-xs text-[#8c919d]">throughput</span>
+          <span className="text-xs text-[#8c919d]">{t('channel.statsThroughput') || 'throughput'}</span>
         </div>
       </div>
 
@@ -392,6 +394,7 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
                         className={`text-[10px] font-medium whitespace-nowrap ${
                           node.status === 'offline' ? 'text-[#6b7280]' : 'text-white'
                         }`}
+                        data-testid={node.isLocal ? 'mesh-radar-local-node' : node.id === 'node-1' ? 'mesh-radar-node-alpha' : undefined}
                       >
                         {node.label}
                       </div>
@@ -420,22 +423,22 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
                   rx="8"
                 />
                 <text x={36} y={42} fill="var(--nova-accent-color,#ff4e18)" fontSize="11" fontWeight="bold">
-                  Selected Node
+                  {t('meshMap.selectedNode') || 'Selected Node'}
                 </text>
                 <text x={36} y={60} fill="#ffffff" fontSize="13" fontWeight="semibold">
                   {selectedNodeData.label}
                 </text>
                 <text x={36} y={78} fill="#8c919d" fontSize="11">
-                  ID: {selectedNodeData.id}
+                  {t('common.id')}: {selectedNodeData.id}
                 </text>
                 <text x={36} y={94} fill="#8c919d" fontSize="11">
-                  Status: {selectedNodeData.status}
+                  {t('common.status')}: {selectedNodeData.status}
                 </text>
                 <text x={36} y={112} fill="#8c919d" fontSize="11">
-                  {selectedNodeData.hops} hops • {selectedNodeData.latency}ms latency
+                  {selectedNodeData.hops} {t('common.hops') || 'hops'} • {selectedNodeData.latency}ms {t('common.latency') || 'latency'}
                 </text>
                 <text x={36} y={130} fill="#8c919d" fontSize="11">
-                  {selectedNodeData.isLocal ? 'Local device' : 'Remote mesh peer'}
+                  {selectedNodeData.isLocal ? (t('common.localDevice') || 'Local device') : (t('common.remoteMeshPeer') || 'Remote mesh peer')}
                 </text>
               </g>
             )}
@@ -453,16 +456,16 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
                   rx="8"
                 />
                 <text x={536} y={42} fill={LINK_COLORS[hoveredLinkData.status]} fontSize="11" fontWeight="bold">
-                  Link Status
+                  {t('meshMap.linkStatus') || 'Link Status'}
                 </text>
                 <text x={536} y={60} fill="#ffffff" fontSize="13" fontWeight="semibold">
                   {hoveredLinkData.status.toUpperCase()}
                 </text>
                 <text x={536} y={78} fill="#8c919d" fontSize="11">
-                  Latency: {hoveredLinkData.latency}ms
+                  {t('common.latency')}: {hoveredLinkData.latency}ms
                 </text>
                 <text x={536} y={94} fill="#8c919d" fontSize="11">
-                  Throughput: {Math.round(hoveredLinkData.bytesPerSecond / 1000)} KB/s
+                  {t('channel.statsThroughput')}: {Math.round(hoveredLinkData.bytesPerSecond / 1000)} KB/s
                 </text>
               </g>
             )}
@@ -474,27 +477,27 @@ export const MeshRadar: React.FC<MeshRadarProps> = ({
       <div className="absolute inset-x-0 bottom-0 z-30 px-6 py-3 bg-[#12131c]/80 backdrop-blur-md border-t border-white/10 flex items-center justify-between text-[11px] text-[#8c919d]">
         <div className="flex items-center gap-1">
           <Activity className="w-3 h-3" />
-          <span>{nodes.length} mesh nodes</span>
+          <span data-testid="mesh-radar-mesh-nodes">{nodes.length} {t('meshMap.meshNodes') || 'mesh nodes'}</span>
         </div>
         <div className="flex items-center gap-1">
-          <span>{links.filter((l) => l.status === 'active').length} active routes</span>
+          <span data-testid="mesh-radar-active-routes">{links.filter((l) => l.status === 'active').length} {t('meshMap.activeRoutes') || 'active routes'}</span>
           <span className="text-[#6b7280]">|</span>
-          <span>{links.filter((l) => l.status === 'blocked').length} blocked</span>
+          <span data-testid="mesh-radar-blocked">{links.filter((l) => l.status === 'blocked').length} {t('common.blocked')}</span>
         </div>
         <div className="flex items-center gap-1">
           <ShieldExclamation className="w-3 h-3" />
-          <span>E2EE mesh routing</span>
+          <span>{t('meshMap.e2eeMeshRouting') || 'E2EE mesh routing'}</span>
         </div>
         <div className="flex items-center gap-1">
           <Link className="w-3 h-3" />
-          <span>DHT discovery active</span>
+          <span>{t('meshMap.dhtDiscoveryActive') || 'DHT discovery active'}</span>
         </div>
       </div>
 
       {/* Status badge */}
-      <div className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/20 text-[10px] text-[#10b981]">
+      <div className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/20 text-[10px] text-[#10b981]" data-testid="mesh-radar-status-badge">
         <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-        <span>MESH ONLINE</span>
+        <span>{t('meshMap.meshOnline') || 'MESH ONLINE'}</span>
       </div>
     </section>
   );

@@ -70,13 +70,13 @@ const createIdentity = () => {
 
 const advanceToFinish = () => {
   createIdentity();
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
+  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' })); // security
+  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skipBackup' })); // backup
 };
 
 const advanceToBackup = () => {
   createIdentity();
-  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
+  fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' })); // security
 };
 
 describe('OnboardingWizard', () => {
@@ -129,8 +129,8 @@ describe('OnboardingWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.savedPhrase' }));
     answerPhraseCheck();
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
-    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' }));
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skip' })); // security
+    fireEvent.click(screen.getByRole('button', { name: 'onboarding.skipBackup' })); // backup
     fireEvent.click(screen.getByRole('button', { name: 'onboarding.startMessaging' }));
 
     await waitFor(() => {
