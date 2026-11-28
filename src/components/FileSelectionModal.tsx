@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   IconX as X,
-  IconPhoto as Photo,
   IconFileText as FileText,
   IconCheck as Check,
   IconUpload as Upload,

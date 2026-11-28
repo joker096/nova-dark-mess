@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {IconCheck as Check, IconPlus as Plus, IconTrashX as Trash2, IconTrash as Trash, IconTrash as TrashX} from '@tabler/icons-react';
+import {IconCheck as Check, IconPlus as Plus, IconTrash as TrashX} from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Avatar } from '../lib/ui';

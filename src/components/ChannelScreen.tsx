@@ -5,22 +5,17 @@ import {
   IconShare2 as Share2,
   IconVolume2 as Volume2,
   IconVolumeOff as VolumeX,
-  IconMessageCircle as MessageCircle,
   IconPlus as Plus,
   IconChevronLeft as ChevronLeft,
   IconChevronRight as ChevronRight,
   IconChevronDown as ChevronDown,
   IconChevronUp as ChevronUp,
-  IconChevronsDown as ChevronsDown,
   IconBell as Bell,
   IconBellOff as BellOff,
   IconClock as Clock,
-  IconTrashX as Trash2,
-  IconTrash as Trash,
   IconCopy as Copy,
   IconCheck as Check,
   IconRadio as Radio,
-  IconBorderVertical as BorderVertical,
   IconMoodPlus as SmilePlus,
   IconPencil as PenSquare,
   IconX as X,
@@ -33,23 +28,15 @@ import {
   IconCalendar as Calendar,
   IconPin as Pin,
   IconMapPinOff as PinOff,
-  IconUserPlus as UserPlus,
-  IconUserMinus as UserMinus,
-  IconShieldCheck as ShieldCheck,
-  IconChartBar as BarChart,
   IconUsers as Users,
-  IconSettings as Settings,
-  IconCrown as Crown,
   IconHeart as Heart,
   IconZoomIn as ZoomIn,
   IconZoomOut as ZoomOut,
   IconDownload as Download,
   IconMessageShare as MessageShare,
-  IconPlayerPlay as PlayCircle,
   IconTrendingUp as TrendingUp,
   IconTrendingDown as TrendingDown,
   IconCurrencyDollar as DollarSign,
-  IconMouse as Mouse,
   IconChartBar as BarChart3,
   IconSelector as ChevronsUpDown,
   IconDotsVertical as MoreVertical,
@@ -60,7 +47,6 @@ import {
 } from '@tabler/icons-react';
 import { MOCK_CHANNEL_POSTS } from '../data/mockMessengerData';
 import { NovaIconButton, NovaMenu, NovaReactionPill, NovaReactionPicker, Avatar } from '../lib/ui';
-import { cachedFetch, invalidateCachePrefix } from '../lib/api';
 import { isSubscribed, setSubscribed, isNotificationsEnabled, setNotificationsEnabledForChannel } from '../lib/social/channelSubscriptions';
 import { buildDeepLink } from '../lib/network/deepLinks';
 import { formatCount } from '../lib/ui';
@@ -455,7 +441,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
     if (!postMenuId) return undefined;
     const closeMenu = () => setPostMenuId(null);
     document.addEventListener('click', closeMenu);
-    return () => document.removeEventListener('click', closeMenu);
+    document.addEventListener('touchstart', closeMenu, { passive: true });
+    return () => {
+      document.removeEventListener('click', closeMenu);
+      document.removeEventListener('touchstart', closeMenu);
+    };
   }, [postMenuId]);
 
   useEffect(() => {
@@ -774,7 +764,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
   // Fetch ad stats when stats panel opens or period changes
   useEffect(() => {
-    if (!statsPanelOpen || !channel || channel.isOwned) return;
+    // Ad revenue belongs to the channel owner and is shown only in the owner's
+    // stats panel; other channels must not query (or leak) it at all.
+    if (!statsPanelOpen || !channel || !channel.isOwned) return;
     let cancelled = false;
     setAdStatsLoading(true);
     
@@ -958,8 +950,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       <div className="relative flex h-full flex-col overflow-hidden bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] select-none" data-theme-preserve="dark">
         <DoodleBackground />
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-raised)] text-[var(--nova-accent-color)]">
-            <Radio className="h-6 w-6" />
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-raised)] text-[var(--nova-accent-color)]">
+            <Radio className="h-5 w-5" />
           </div>
           <p className="text-sm font-semibold text-[var(--nova-text-primary)]">{t('channel.noChannels')}</p>
           <p className="mt-1 max-w-[260px] text-xs text-[var(--nova-text-muted)]">
@@ -1503,8 +1495,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
         {displayPosts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-raised)] text-[var(--nova-text-muted)]">
-              <Radio className="h-5 w-5" />
+<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-raised)] text-[var(--nova-text-muted)]">
+            <Radio className="h-4 w-4" />
             </div>
             <p className="text-sm font-semibold text-[var(--nova-text-secondary)]">
               {query ? t('channel.noSearchResults') : t('channel.noPosts')}
@@ -1584,62 +1576,83 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
                     {/* Media grid if present */}
                     {(() => {
-                      const mediaImages =
-                        post.images && post.images.length > 0
-                          ? post.images
-                          : post.image
-                            ? [post.image]
-                            : [];
-                      if (mediaImages.length === 0) return null;
+                      // Collect all media: images + video
+                      const mediaItems: Array<{ type: 'image' | 'video'; src: string; thumbnail?: string; duration?: string }> = [];
+                      if (post.images && post.images.length > 0) {
+                        post.images.forEach((img) => mediaItems.push({ type: 'image', src: img }));
+                      } else if (post.image) {
+                        mediaItems.push({ type: 'image', src: post.image });
+                      }
+                      if (post.video) {
+                        mediaItems.push({ type: 'video', src: post.video, thumbnail: post.videoThumbnail, duration: post.videoDuration });
+                      }
+                      if (mediaItems.length === 0) return null;
 
                       const openLightbox = (index: number) => {
                         setMediaScale(1);
                         setMediaPosition({ x: 0, y: 0 });
-                        setLightbox({ images: mediaImages, index });
+                        setLightbox({ images: mediaItems.map((m) => m.src), index });
                       };
                       const gridClass =
-                        mediaImages.length === 1
+                        mediaItems.length === 1
                           ? 'grid-cols-1'
-                          : mediaImages.length === 2
+                          : mediaItems.length === 2
                             ? 'grid-cols-2'
-                            : mediaImages.length === 3
+                            : mediaItems.length === 3
                               ? 'grid-cols-2 grid-rows-2'
                               : 'grid-cols-2 grid-rows-2';
                       return (
                         <div className={`grid gap-2 ${gridClass}`}>
-                          {mediaImages.slice(0, 4).map((src, index) => {
+                          {mediaItems.slice(0, 4).map((media, index) => {
                             const isLastVisible =
-                              index === 3 && mediaImages.length > 4;
+                              index === 3 && mediaItems.length > 4;
                             const spanClass =
-                              mediaImages.length === 3 && index === 0
+                              mediaItems.length === 3 && index === 0
                                 ? 'row-span-2'
                                 : '';
+                            const isSingle = mediaItems.length === 1;
                             return (
                               <button
                                 key={`${post.id}-media-${index}`}
                                 type="button"
                                 onClick={() => openLightbox(index)}
-                                className={`group relative overflow-hidden rounded-[18px] bg-[var(--nova-surface-high)] cursor-zoom-in ${spanClass} ${
-                                  mediaImages.length === 1
+                                className={`group relative overflow-hidden rounded-[20px] bg-[var(--nova-surface-high)] cursor-zoom-in ${spanClass} ${
+                                  isSingle
                                     ? 'aspect-[16/9] max-h-[min(560px,70vh)]'
                                     : 'aspect-square'
                                 }`}
                               >
-                                <LazyMedia
-                                  src={src}
-                                  alt={post.title}
-                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                  eager
-                                />
+                                {media.type === 'video' ? (
+                                  <video
+                                    src={media.src}
+                                    poster={media.thumbnail}
+                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                    playsInline
+                                    muted
+                                    preload="metadata"
+                                  />
+                                ) : (
+                                  <LazyMedia
+                                    src={media.src}
+                                    alt={post.title}
+                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                    eager
+                                  />
+                                )}
+                                {media.type === 'video' && media.duration && (
+                                  <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-mono text-[var(--nova-on-accent)] backdrop-blur-sm">
+                                    {media.duration}
+                                  </span>
+                                )}
                                 {isLastVisible && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-bold text-[var(--nova-on-accent)]">
-                                    +{mediaImages.length - 4}
+                                    +{mediaItems.length - 4}
                                   </div>
                                 )}
                               </button>
                             );
                           })}
-                          {post.imageBadge && mediaImages.length === 1 && (
+                          {post.imageBadge && mediaItems.length === 1 && (
                             <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-full border border-[var(--nova-border-subtle)] bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-[var(--nova-on-accent)] backdrop-blur-md">
                               {post.imageBadge}
                             </div>
@@ -1860,8 +1873,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       <div className="flex justify-start pt-1">
                         <StickerMedia
                           sticker={post.sticker}
-                          className="h-28 w-28 object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                          emojiClassName="text-5xl"
+                          className="h-20 w-20 object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+                          emojiClassName="text-3xl"
                         />
                       </div>
                     )}
@@ -2255,9 +2268,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       {/* Channel Statistics Panel */}
       {statsPanelOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setStatsPanelOpen(false)}>
-          <div className="w-full max-w-3xl bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-3xl bg-[var(--nova-surface)] border border-[var(--nova-border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.statistics', 'Statistics')}</h2>
+              <h2 className="font-semibold text-[var(--nova-text-primary)] text-lg">{t('channel.statistics', 'Statistics')}</h2>
               <button onClick={() => setStatsPanelOpen(false)} aria-label={t('a11y.closeStatistics')} className="w-11 h-11 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition min-w-[44px] min-h-[44px]">
                 <X className="w-4 h-4" />
               </button>
@@ -2265,7 +2278,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
             {/* Time range selector */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[var(--text-tertiary)]">{t('channel.statsPeriod', 'Period:')}</span>
+              <span className="text-[11px] text-[var(--nova-text-tertiary)]">{t('channel.statsPeriod', 'Period:')}</span>
               {(['7d', '30d', 'all'] as const).map((period) => (
                 <button
                   key={period}
@@ -2292,8 +2305,8 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             </div>
 
             {/* Growth Chart (mock) */}
-            <div className="border-t border-[var(--border)] pt-4 space-y-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{t('channel.statsGrowth', 'Growth')}</h3>
+            <div className="border-t border-[var(--nova-border)] pt-4 space-y-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--nova-text-tertiary)]">{t('channel.statsGrowth', 'Growth')}</h3>
               <div className="h-32 flex items-end justify-between gap-1">
                 {growthData.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -2302,24 +2315,24 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       style={{ height: `${Math.max(20, day.value * 60)}%` }}
                       title={`${day.label}: ${formatCount(day.value)}`}
                     />
-                    <span className="text-[9px] text-[var(--text-tertiary)]">{day.label}</span>
+                    <span className="text-[9px] text-[var(--nova-text-tertiary)]">{day.label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Top Posts */}
-            <div className="border-t border-[var(--border)] pt-4 space-y-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{t('channel.statsTopPosts', 'Top posts by engagement')}</h3>
+            <div className="border-t border-[var(--nova-border)] pt-4 space-y-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--nova-text-tertiary)]">{t('channel.statsTopPosts', 'Top posts by engagement')}</h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {topPosts.slice(0, 5).map((post) => (
-                  <div key={post.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--bg-surface-2)] flex items-center justify-center text-[var(--text-tertiary)]">
+                  <div key={post.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border)]">
+                    <div className="w-10 h-10 rounded-lg bg-[var(--nova-surface-raised)] flex items-center justify-center text-[var(--nova-text-tertiary)]">
                       <MessageCircle className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--text-primary)] truncate">{post.title}</p>
-                      <p className="text-[11px] text-[var(--text-tertiary)]">
+                      <p className="font-medium text-[var(--nova-text-primary)] truncate">{post.title}</p>
+                      <p className="text-[11px] text-[var(--nova-text-tertiary)]">
                         {formatCount(post.views ?? 0)} views · {formatCount(post.reactions?.reduce((acc, r) => acc + r.count, 0) ?? 0)} reactions
                       </p>
                     </div>
@@ -2330,9 +2343,9 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
 
             {/* Ad Revenue Section (for channel owners) */}
             {!channel.isOwned ? null : (
-              <div className="border-t border-[var(--border)] pt-4 space-y-3">
+              <div className="border-t border-[var(--nova-border)] pt-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--nova-text-tertiary)] flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-amber-400" />
                     {t('channel.statsAdRevenue', 'Ad Revenue')}
                   </h3>
@@ -2348,21 +2361,21 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                     <StatCard label={t('channel.statsAdCTR', 'CTR')} value={`${adStats.ctr}%`} icon={<TrendingUp className="w-5 h-5" />} color="text-purple-400" />
                     <StatCard label={t('channel.statsAdRevenue', 'Revenue')} value={`${(adStats.revenueCents / 100).toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} color="text-amber-400" />
                   </div>
-                  <div className="pt-2 border-t border-[var(--border)]">
+                  <div className="pt-2 border-t border-[var(--nova-border)]">
                     <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-amber-400" />
-                        <span className="font-medium text-[var(--text-primary)]">{t('channel.statsEstimatedPayout', 'Estimated Payout (50%)')}</span>
+                        <span className="font-medium text-[var(--nova-text-primary)]">{t('channel.statsEstimatedPayout', 'Estimated Payout (50%)')}</span>
                       </div>
                       <span className="text-lg font-bold text-amber-400">
                         {(adStats.estimatedPayoutCents / 100).toFixed(2)}
                       </span>
                     </div>
-                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{t('channel.statsPayoutNote', '50% revenue share. Actual payout may vary.')}</p>
+                    <p className="text-[10px] text-[var(--nova-text-tertiary)] mt-1">{t('channel.statsPayoutNote', '50% revenue share. Actual payout may vary.')}</p>
                   </div>
                   </>
                 ) : (
-                  <div className="text-center py-4 text-[var(--text-tertiary)]">
+                  <div className="text-center py-4 text-[var(--nova-text-tertiary)]">
                     <p className="text-sm">{t('channel.statsNoAdData', 'No ad data available for this period')}</p>
                     <p className="text-[11px] mt-1">{t('channel.statsAdDataNote', 'Ad revenue appears when advertisers run campaigns in your channel.')}</p>
                   </div>
@@ -2371,11 +2384,11 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             )}
 
             {/* Media Gallery Section */}
-            <div className="border-t border-[var(--border)] pt-4 space-y-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">{t('channel.statsMedia', 'Media Gallery')}</h3>
+            <div className="border-t border-[var(--nova-border)] pt-4 space-y-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--nova-text-tertiary)]">{t('channel.statsMedia', 'Media Gallery')}</h3>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {mediaItems.slice(0, 12).map((item, idx) => (
-                  <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-[var(--bg-surface-2)] border border-[var(--border)] relative group cursor-pointer">
+                  <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] relative group cursor-pointer">
                     {item.type === 'image' && (
                       <LazyMedia
                         src={item.url}
@@ -2401,7 +2414,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                   </div>
                 ))}
                 {mediaItems.length > 12 && (
-                  <div className="aspect-square rounded-lg overflow-hidden bg-[var(--bg-surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--nova-text-muted)] text-sm cursor-pointer">
+                  <div className="aspect-square rounded-lg overflow-hidden bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] flex items-center justify-center text-[var(--nova-text-muted)] text-sm cursor-pointer">
                     +{mediaItems.length - 12} {t('channel.statsMore', 'more')}
                   </div>
                 )}
@@ -2409,7 +2422,7 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setStatsPanelOpen(false)} className="flex-1 px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)]">
+              <button onClick={() => setStatsPanelOpen(false)} className="flex-1 px-4 py-2 rounded-lg bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-surface-hover)]">
                 {t('common.close')}
               </button>
               <button
@@ -2429,29 +2442,29 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
       {/* Admin Management Panel */}
       {adminsPanelOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAdminsPanelOpen(false)}>
-          <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md bg-[var(--nova-surface)] border border-[var(--nova-border-strong)] rounded-3xl shadow-[var(--shadow-2)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-[var(--text-primary)] text-lg">{t('channel.manageAdmins', 'Manage admins')}</h2>
+              <h2 className="font-semibold text-[var(--nova-text-primary)] text-lg">{t('channel.manageAdmins', 'Manage admins')}</h2>
               <button onClick={() => setAdminsPanelOpen(false)} aria-label={t('a11y.closeAdmins')} className="w-11 h-11 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition min-w-[44px] min-h-[44px]">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-[13px] text-[var(--text-secondary)]">{t('channel.adminsDesc', 'Add or remove channel administrators.')}</p>
+            <p className="text-[13px] text-[var(--nova-text-secondary)]">{t('channel.adminsDesc', 'Add or remove channel administrators.')}</p>
 
             <div className="space-y-2">
               {(channel?.admins ?? []).map((admin) => {
                 const adminId = admin.id;
                 const isOwner = admin.isOwner === true || adminId === channel?.ownerFingerprint;
                 return (
-                <div key={adminId} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
+                <div key={adminId} className="flex items-center justify-between p-3 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border)]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[var(--nova-accent-color)]/20 flex items-center justify-center text-[var(--nova-accent-color)] font-bold">
                       {adminId.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-[var(--text-primary)]">{adminId}</p>
-                      <p className="text-[11px] text-[var(--text-tertiary)]">{t('channel.adminRole', 'Administrator')}</p>
+                      <p className="font-medium text-[var(--nova-text-primary)]">{adminId}</p>
+                      <p className="text-[11px] text-[var(--nova-text-tertiary)]">{t('channel.adminRole', 'Administrator')}</p>
                     </div>
                   </div>
                   <button
@@ -2471,14 +2484,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
               })}
             </div>
 
-            <div className="pt-2 border-t border-[var(--border)]">
-              <label className="block text-[11px] font-medium text-[var(--text-tertiary)] mb-2">{t('channel.addAdmin', 'Add admin')}</label>
+            <div className="pt-2 border-t border-[var(--nova-border)]">
+              <label className="block text-[11px] font-medium text-[var(--nova-text-tertiary)] mb-2">{t('channel.addAdmin', 'Add admin')}</label>
               <div className="flex gap-2">
                 <input
                   id="add-admin-input"
                   type="text"
                   placeholder={t('channel.addAdminPlaceholder', 'User ID or @username')}
-                  className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] text-sm"
+                  className="flex-1 px-3 py-2 rounded-lg bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] text-[var(--nova-text-primary)] focus:outline-none focus:border-[var(--nova-accent-color)] text-sm"
                 />
                 <button
                   onClick={() => {
@@ -2489,14 +2502,14 @@ export const ChannelScreen: React.FC<ChannelScreenProps> = ({
                       showToast(t('channel.adminAdded'));
                     }
                   }}
-                  className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] text-xs font-semibold hover:opacity-90"
+                  className="px-4 py-2 rounded-lg bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] text-xs font-semibold hover:opacity-90"
                 >
                   {t('channel.addAdmin', 'Add')}
                 </button>
               </div>
             </div>
 
-            <button onClick={() => setAdminsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--bg-hover)] mt-2">
+            <button onClick={() => setAdminsPanelOpen(false)} className="w-full px-4 py-2 rounded-lg bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] text-[var(--nova-text-secondary)] text-xs font-semibold hover:bg-[var(--nova-surface-hover)] mt-2">
               {t('common.close')}
             </button>
           </div>
@@ -2514,12 +2527,12 @@ const StatCard: React.FC<{
   color: string; 
   trend?: { value: string; positive: boolean } 
 }> = ({ label, value, icon, color, trend }) => (
-  <div className="p-4 rounded-xl bg-[var(--bg-app)] border border-[var(--border)]">
+  <div className="p-4 rounded-xl bg-[var(--nova-canvas)] border border-[var(--nova-border)]">
     <div className="flex items-center justify-between">
       <span className={color}>{icon}</span>
-      <span className="text-[11px] font-medium text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[11px] font-medium text-[var(--nova-text-tertiary)]">{label}</span>
     </div>
-    <p className="mt-2 text-2xl font-bold text-[var(--text-primary)] tabular-nums">{value}</p>
+    <p className="mt-2 text-2xl font-bold text-[var(--nova-text-primary)] tabular-nums">{value}</p>
     {trend && (
       <div className="mt-1.5 flex items-center gap-1">
         {trend.positive ? (

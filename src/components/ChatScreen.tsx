@@ -3,14 +3,15 @@ import {
   createPortal } from 'react-dom';
 import { useWheelScroll } from '../lib/ui/useWheelScroll';
 import { useFocusTrap } from '../lib/ui/useFocusTrap';
-import {IconArrowBackUp as ArrowBackUp,
-  IconArrowForwardUp as ArrowForwardUp,
+import { useLiveRegion } from '../lib/accessibility';
+import {
+  IconArrowBackUp as Reply,
+  IconArrowForward as Forward,
   IconArrowLeft as ArrowLeft,
   IconBell as Bell,
   IconCamera as Camera,
-  IconChartBar as ChartBar,
+  IconChartBar as BarChart2,
   IconCheck as Check,
-  IconChecks as Checks,
   IconChecks as CheckCheck2,
   IconChevronDown as ChevronDown,
   IconChevronLeft as ChevronLeft,
@@ -18,50 +19,40 @@ import {IconArrowBackUp as ArrowBackUp,
   IconChevronUp as ChevronUp,
   IconClock as Clock,
   IconCopy as Copy,
-  IconDots as Dots,
+  IconDots as MoreHorizontal,
   IconDownload as Download,
   IconEye as Eye,
   IconFileText as FileText,
   IconFlag as Flag,
+  IconGift as Gift,
   IconHeart as Heart,
   IconLanguage as Language,
   IconLoader2 as Loader2,
   IconLock as Lock,
   IconMapPin as MapPin,
-  IconMicrophone as Microphone,
+  IconMicrophone as Mic,
   IconMoodSmile as MoodSmile,
   IconPalette as Palette,
   IconPaperclip as Paperclip,
   IconPencil as Pencil,
-  IconPhone as Phone,
+  IconPhoto as ImageIcon,
   IconPhoto as Photo,
+  IconPhone as Phone,
   IconPin as Pin,
-  IconPinnedOff as PinnedOff,
+  IconPinnedOff as PinOff,
   IconRefresh as Refresh,
-  IconRobot as Robot,
+  IconRobot as Bot,
   IconSearch as Search,
   IconSend as Send,
-  IconShare as Share,
+  IconShare2 as Share2,
   IconShieldCheck as ShieldCheck,
   IconShieldExclamation as ShieldExclamation,
   IconSparkles as Sparkles,
   IconUserMinus as UserMinus,
   IconUsers as Users,
   IconVideo as Video,
-  IconVolumeOff as VolumeOff,
-  IconX as X,
-  IconZoomIn as ZoomIn,
-  IconZoomOut as ZoomOut,
-  IconChartBar as BarChart2,
-  IconRobot as Bot,
-  IconArrowForward as Forward,
-  IconPhoto as ImageIcon,
-  IconMicrophone as Mic,
-  IconDots as MoreHorizontal,
-  IconPinnedOff as PinOff,
-  IconArrowBackUp as Reply,
-  IconShare as Share2,
   IconVolumeOff as VolumeX,
+  IconX as X,
 } from '@tabler/icons-react';
 import {
   CONVERSATION_HISTORIES,
@@ -73,12 +64,27 @@ import {
   registerCreatedGroups,
   saveCreatedGroups} from '../data/mockMessengerData';
 import { LinkPreview, extractUrls } from './LinkPreview';
-import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData } from '../types/messenger';
+import { ChatMessage, VoiceNoteData, DocumentAttachment, PollData, StickerData, LocationData, GiftData, GiftPlanId } from '../types/messenger';
+import { GiftBubble } from './chat/GiftBubble';
+import { GiftPickerModal } from './chat/GiftPickerModal';
+import {
+  encodeGiftMessage,
+  markGiftMessage,
+  decodeGiftMessage,
+  decodeGiftClaimed,
+  getGiftPlan,
+} from '../lib/gifts';
+import { purchasePremiumGiftCode, activatePremiumLicense } from '../lib/premium';
 import { translateText, getUserPreferredLanguage } from '../lib/translation/translate';
 import type { BotCommand, BotMessageEdit, BotOutgoingMessage } from '../lib/bots/types';
 import { BotSession } from '../lib/bots/session';
 import { identityPrivateKeys } from '../lib/crypto/identity';
 import { bufferToBase64 } from '../lib/crypto/aes';
+import { ChatMediaGrid } from './chat/ChatMediaGrid';
+import { VoiceWaveform } from './chat/VoiceWaveform';
+import { ChatThemePicker } from './chat/ChatThemePicker';
+import MediaLightbox from './chat/MediaLightbox';
+import type { ChatTheme } from './chat/chatTheme';
 import {
   loadBotGroupPeers,
   registerBotGroupPeer,
@@ -108,8 +114,6 @@ import { StickerMedia } from './chat/StickerMedia';
 import { StickerPickerDrawer } from './chat/StickerPickerDrawer';
 import { LocationPickerModal } from './LocationPickerModal';
 import { MessageHoverActions } from './chat/MessageHoverActions';
-import { useEdgeSwipe } from '../hooks/useEdgeSwipe';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 // Lazy-loaded modals/overlays - only loaded when needed (heaviest components)
 const VideoCallOverlay = React.lazy(() => import('./VideoCallOverlay').then(m => ({ default: m.VideoCallOverlay })));
@@ -121,7 +125,6 @@ import {
   setNotificationsEnabledForChannel} from '../lib/social/channelSubscriptions';
 import { renderMarkdown } from '../lib/markdown';
 import { suggestSmartReplies } from '../lib/chat/smartReplies';
-import { NovaIconButton, NovaMenu, NovaTooltip } from '../lib/ui';
 import { ACCENT_COLORS, applyAccentColor } from '../lib/ui/appearance';
 import { Avatar } from '../lib/ui';
 import { useAccount } from '../hooks/useAccount';
@@ -142,7 +145,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
 import { usePremium } from '../hooks/usePremium';
 import { P2PMediaCall, MediaCallMode, MediaCallStatus } from '../lib/p2p/mediaCall';
-import { GroupCallManager, GroupCallStatus, GroupCallParticipant } from '../lib/p2p/groupCall';
+import { GroupCallManager, GroupCallStatus } from '../lib/p2p/groupCall';
 import { P2PSignalingClient } from '../lib/p2p/signaling';
 import { resolveSignalingUrl, resolveTurnServers } from '../lib/p2p/signalingConfig';
 import { loadPrivacyPrefs } from '../lib/network/privacyMode';
@@ -230,15 +233,15 @@ interface ScheduledMessageItem {
 
 const EMOJI_OPTIONS = ['❤️', '👍', '🔥', '😂', '😱', '👏', '🥰', '🎉'];
 const QUICK_SEARCH_CHIPS = ["Harry's", 'Sunday', 'hang out', 'Rebecca', 'photos', 'dinner', 'voice', 'remember'];
-const isVideoMediaUrl = (url: string) =>
+export const isVideoMediaUrl = (url: string) =>
   /^data:video\//i.test(url) || /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i.test(url);
 
 // Premium outgoing bubble themes (additive — default theme keeps the current design untouched)
 const PREMIUM_THEMES: Record<string, { label: string; grad: string; shadow: string; border: string }> = {
-  default: { label: 'Default', grad: 'from-[var(--chat-theme-default-from)] to-[var(--chat-theme-default-to)]', shadow: 'shadow-[var(--chat-theme-default-to)]/25', border: 'border-[var(--chat-theme-default-to)]/45' },
-  sapphire: { label: 'Sapphire', grad: 'from-[var(--chat-theme-sapphire-from)] to-[var(--chat-theme-sapphire-to)]', shadow: 'shadow-[var(--chat-theme-sapphire-to)]/25', border: 'border-[var(--chat-theme-sapphire-to)]/60' },
-  amethyst: { label: 'Amethyst', grad: 'from-[var(--chat-theme-amethyst-from)] to-[var(--chat-theme-amethyst-to)]', shadow: 'shadow-[var(--chat-theme-amethyst-to)]/25', border: 'border-[var(--chat-theme-amethyst-to)]/60' },
-  emerald: { label: 'Emerald', grad: 'from-[var(--chat-theme-emerald-from)] to-[var(--chat-theme-emerald-to)]', shadow: 'shadow-[var(--chat-theme-emerald-to)]/25', border: 'border-[var(--chat-theme-emerald-to)]/60' },
+  default: { label: 'Default', grad: 'from-[var(--nova-chat-theme-default-from)] to-[var(--nova-chat-theme-default-to)]', shadow: 'shadow-[var(--nova-chat-theme-default-to)]/25', border: 'border-[var(--nova-chat-theme-default-to)]/45' },
+  sapphire: { label: 'Sapphire', grad: 'from-[var(--nova-chat-theme-sapphire-from)] to-[var(--nova-chat-theme-sapphire-to)]', shadow: 'shadow-[var(--nova-chat-theme-sapphire-to)]/25', border: 'border-[var(--nova-chat-theme-sapphire-to)]/60' },
+  amethyst: { label: 'Amethyst', grad: 'from-[var(--nova-chat-theme-amethyst-from)] to-[var(--nova-chat-theme-amethyst-to)]', shadow: 'shadow-[var(--nova-chat-theme-amethyst-to)]/25', border: 'border-[var(--nova-chat-theme-amethyst-to)]/60' },
+  emerald: { label: 'Emerald', grad: 'from-[var(--nova-chat-theme-emerald-from)] to-[var(--nova-chat-theme-emerald-to)]', shadow: 'shadow-[var(--nova-chat-theme-emerald-to)]/25', border: 'border-[var(--nova-chat-theme-emerald-to)]/60' },
 };
 const CHAT_THEME_KEY = 'nova_chat_theme';
 
@@ -276,8 +279,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onScrollToThreadMessage,
 }) => {
   const { t } = useLanguage();
+  const { announce } = useLiveRegion();
   const { encryptAndSendMessage, checkPeerKey, identity, isDemoPeer, p2pManager, setPeerFingerprint } = useSecurity();
-  const { checkout, canUse } = usePremium();
+  const { checkout, canUse, refresh: refreshPremium } = usePremium();
   const { account } = useAccount();
   const chatItem = MOCK_CHATS.find((item) => item.id === chatId);
   const isGroupChat = chatItem?.type === 'group';
@@ -335,7 +339,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           answerCallback: async () => {},
         };
     session.setMessageSink(sink);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [getBotSession, chatId, botId]);
 
   // Local bot output is broadcast; only the instance owning this chat applies it.
@@ -494,6 +498,33 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  /** Applies a gift claim on both the live transcript and the stored history. */
+  const markGiftClaimed = useCallback(
+    (messageId: string) => {
+      const claim = (gift: GiftData): GiftData => ({
+        ...gift,
+        status: 'claimed',
+        claimedAt: Date.now(),
+        code: undefined,
+      });
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId && message.gift
+            ? { ...message, gift: claim(message.gift) }
+            : message,
+        ),
+      );
+      const history = CONVERSATION_HISTORIES[chatId];
+      if (history) {
+        const index = history.findIndex((message) => message.id === messageId);
+        if (index >= 0 && history[index].gift) {
+          history[index] = { ...history[index], gift: claim(history[index].gift!) };
+        }
+      }
+    },
+    [chatId],
+  );
 
   const appendSystemMessage = (text: string) => {
     const message = {
@@ -1048,6 +1079,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const onMessage = (event: CustomEvent<{ chatId: string; fromFingerprint: string; text: string }>) => {
       if (event.detail.chatId !== chatId) return;
       const { text } = event.detail;
+
+      // A Premium gift is an ordinary encrypted payload: keep the code in the
+      // bubble and out of the text pipeline, previews and bot updates.
+      const giftPayload = decodeGiftMessage(text);
+      if (giftPayload) {
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const giftMessage: ChatMessage = {
+          id: giftPayload.messageId,
+          senderId: 'other',
+          gift: {
+            code: giftPayload.code,
+            plan: giftPayload.plan,
+            days: giftPayload.days,
+            note: giftPayload.note,
+            status: 'unclaimed',
+          },
+          time,
+          createdAt: Date.now(),
+          isRead: false,
+        };
+        playSound('incoming');
+        vibrate();
+        setMessages((prev) =>
+          prev.some((message) => message.id === giftMessage.id) ? prev : [...prev, giftMessage],
+        );
+        appendConversationHistory(chatId, [giftMessage]);
+        return;
+      }
+
+      // The recipient confirms activation with a marker; the sender then shows
+      // the gift as activated and the code is erased on both sides.
+      const claimedGiftId = decodeGiftClaimed(text);
+      if (claimedGiftId) {
+        markGiftClaimed(claimedGiftId);
+        return;
+      }
+
       const messageId = 'p2p-' + Date.now();
       playSound('incoming');
       vibrate();
@@ -1119,7 +1187,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       window.removeEventListener('nova:p2p:file', onFile as EventListener);
       window.removeEventListener('nova:scrollToThreadMessage', handleScrollToThread as EventListener);
     };
-  }, [chatId, chatItem?.type, identity, botId, getBotSession, receiptManager]);
+  }, [chatId, chatItem?.type, identity, botId, getBotSession, receiptManager, markGiftClaimed]);
 
   useEffect(() => {
     if (loadedMessagesChatId !== chatId) return;
@@ -1264,12 +1332,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setIsEdgeSwiping(false);
     setEdgeSwipeOffset(0);
   };
-  const [formatState, _setFormatState] = useState<{ bold: boolean; italic: boolean; code: boolean; strike: boolean }>({
-    bold: false,
-    italic: false,
-    code: false,
-    strike: false,
-  });
+  
   const [isTyping, setIsTyping] = useState(false);
   const [typingActivity, setTypingActivity] = useState<'typing' | 'recording'>('typing');
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
@@ -1548,6 +1611,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // Scheduled Messages State
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessageItem[]>([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
+  // Premium gifts (G1): pick a term, pay, deliver the one-time code as an
+  // ordinary E2EE message. The code never appears in previews or logs.
+  const [isGiftPickerOpen, setIsGiftPickerOpen] = useState(false);
+  const [isGiftSending, setIsGiftSending] = useState(false);
+  const [giftPurchaseError, setGiftPurchaseError] = useState<string | null>(null);
+  const [openingGiftId, setOpeningGiftId] = useState<string | null>(null);
   const sendLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSendLongPressTriggeredRef = useRef(false);
   const [isSendOptionsOpen, setIsSendOptionsOpen] = useState(false);
@@ -3467,21 +3537,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // а не симулируются через setTimeout.
   };
 
-  const wrapSelection = (open: string, close: string) => {
-    setInputText((prev) => {
-      const el = mainInputRef.current?.getInput();
-      if (el && typeof el.selectionStart === 'number') {
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        const before = prev.slice(0, start);
-        const selected = prev.slice(start, end);
-        const after = prev.slice(end);
-        return before + open + selected + close + after;
-      }
-      return prev ? `${open}${prev}${close}` : prev;
-    });
-    mainInputRef.current?.focus();
-  };
+  
 
   // Suggestions follow the last message, so they vanish the moment we send.
   const lastMessage = messages[messages.length - 1];
@@ -3525,6 +3581,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     };
 
     setMessages((prev) => [...prev, newMessage]);
+    // Announce sent message assertively for screen readers
+    if (text) {
+      announce(`${t('common.you')}: ${text}`, 'assertive');
+    }
     playSound('outgoing');
     // Deliver the user's message to the bot runtime, if this is a bot chat.
     if (botId && text && getBotSession) {
@@ -3589,6 +3649,124 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     if (sendSilently) {
       appendConversationHistory(chatId, [newMessage]);
       return;
+    }
+  };
+
+  const giftFailureText = useCallback(
+    (error?: string) => {
+      switch (error) {
+        case 'payment window blocked':
+          return t('gift.paymentBlocked');
+        case 'waiting for payment':
+          return t('gift.paymentPending');
+        case 'another gift pending':
+          return t('gift.pendingOrder');
+        case 'checkout unavailable':
+          return t('gift.unavailable');
+        default:
+          return t('gift.purchaseFailed');
+      }
+    },
+    [t],
+  );
+
+  /** Buys a gift and sends the one-time code as an ordinary E2EE message. */
+  const handleSendGift = async (planId: GiftPlanId) => {
+    if (isGiftSending) return;
+    const plan = getGiftPlan(planId);
+    if (!plan) return;
+
+    setIsGiftSending(true);
+    setGiftPurchaseError(null);
+    try {
+      const purchase = await purchasePremiumGiftCode(chatId, { plan: plan.id });
+      if (!purchase.ok || !purchase.giftCode) {
+        setGiftPurchaseError(giftFailureText(purchase.error));
+        return;
+      }
+
+      const messageId = `gift-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const message: ChatMessage = {
+        id: messageId,
+        senderId: 'me',
+        gift: {
+          code: purchase.giftCode,
+          plan: plan.id,
+          days: plan.days,
+          status: 'unclaimed',
+        },
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: Date.now(),
+        isRead: false,
+        deliveryStatus: 'queued',
+      };
+      setMessages((prev) => [...prev, message]);
+      appendConversationHistory(chatId, [message]);
+      setIsGiftPickerOpen(false);
+      setIsGiftSending(false);
+      playSound('outgoing');
+
+      const encoded = encodeGiftMessage({
+        messageId,
+        code: purchase.giftCode,
+        plan: plan.id,
+        days: plan.days,
+      });
+      void encryptAndSendMessage(chatId, encoded, { messageId })
+        .then(() => {
+          setMessages((prev) =>
+            prev.map((entry) =>
+              entry.id === messageId ? { ...entry, deliveryStatus: 'sent' as const } : entry,
+            ),
+          );
+        })
+        .catch(() => {
+          setMessages((prev) =>
+            prev.map((entry) =>
+              entry.id === messageId ? { ...entry, deliveryStatus: 'error' as const } : entry,
+            ),
+          );
+          triggerPinnedToast(t('gift.deliveryFailed'));
+        });
+    } catch {
+      setGiftPurchaseError(t('gift.purchaseFailed'));
+    } finally {
+      setIsGiftSending(false);
+    }
+  };
+
+  /** Redeems the gift code on this device and tells the sender it is done. */
+  const handleOpenGift = async (message: ChatMessage) => {
+    const code = message.gift?.code;
+    if (!code || openingGiftId) return;
+
+    setOpeningGiftId(message.id);
+    try {
+      const result = await activatePremiumLicense(code);
+      if (!result.ok) {
+        const reason = String(result.error || '');
+        triggerPinnedToast(
+          reason.includes('expired')
+            ? t('gift.expired')
+            : reason.includes('already')
+              ? t('gift.already')
+              : reason.includes('device')
+                ? t('gift.deviceMismatch')
+                : t('gift.activationFailed'),
+        );
+        return;
+      }
+
+      markGiftClaimed(message.id);
+      void refreshPremium?.();
+      triggerPinnedToast(t('gift.activatedToast'));
+      void encryptAndSendMessage(chatId, markGiftMessage(message.id), {
+        messageId: `gift-claim-${message.id}`,
+      }).catch(() => undefined);
+    } catch {
+      triggerPinnedToast(t('gift.activationFailed'));
+    } finally {
+      setOpeningGiftId(null);
     }
   };
 
@@ -3683,41 +3861,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const renderMessageMedia = (msg: ChatMessage) => {
     const urls = msg.images;
     if (!urls?.length) return null;
+    const handleOpenLightbox = (u: string[], index: number) => setMediaLightbox({ urls: u, index });
     return (
-      <div className="grid grid-cols-2 gap-2 mb-2.5">
-        {urls.map((url, index) => {
-          const isVideo = isVideoMediaUrl(url);
-          return (
-            <button
-              key={`${msg.id}-${index}`}
-              type="button"
-              data-testid={`chat-media-${msg.id}-${index}`}
-              aria-label={`Open media ${index + 1}`}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                setMediaLightbox({ urls, index });
-              }}
-              className="relative h-36 overflow-hidden rounded-[16px] border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] p-0 text-left cursor-zoom-in"
-            >
-              {isVideo ? (
-                <>
-                  <video src={url} muted preload="metadata" className="h-full w-full object-cover" />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 text-[var(--nova-text-primary)]">
-                    <Video className="h-7 w-7 drop-shadow" />
-                  </span>
-                </>
-              ) : (
-                <LazyMedia
-                  src={url}
-                  alt=""
-                  className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <ChatMediaGrid
+        urls={urls}
+        onOpenLightbox={handleOpenLightbox}
+        className="mb-2.5"
+        msgId={msg.id}
+      />
     );
   };
 
@@ -3743,6 +3894,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     pinnedMessages.length > 0
       ? pinnedMessages[Math.min(currentPinIndex, pinnedMessages.length - 1)]
       : null;
+
+  const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
+  const themePickerAnchorRef = useRef<HTMLButtonElement | null>(null);
 
   return (
     <div
@@ -3914,6 +4068,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 type="button"
                 onClick={() => setIsProtectionOpen(false)}
                 className="w-7 h-7 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                aria-label={t('common.close')}
                 title={t('common.close')}
               >
                 <X className="w-4 h-4" />
@@ -3968,7 +4123,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <p className="text-[11px] text-[var(--nova-text-muted)] mt-0.5">
                   {t('chat.e2eeVerifyDesc')}
                 </p>
-                <p className="text-[10px] font-mono text-[var(--text-tertiary)] mt-1 break-all">
+                <p className="text-[10px] font-mono text-[var(--nova-text-tertiary)] mt-1 break-all">
                   {peerFingerprint ?? '—'}
                 </p>
               </div>
@@ -3979,7 +4134,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 data-testid="peer-key-change-history"
                 className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-2"
               >
-                <p className="text-xs font-semibold text-[var(--text-secondary)] mb-2">
+                <p className="text-xs font-semibold text-[var(--nova-text-secondary)] mb-2">
                   {keyChangedLabel}
                 </p>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -3987,19 +4142,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     <div
                       key={change.id}
                       data-testid="peer-key-change-entry"
-                      className="text-[10px] text-[var(--text-secondary)]"
+                      className="text-[10px] text-[var(--nova-text-secondary)]"
                     >
                       <p>{new Date(change.changedAt).toLocaleString()}</p>
                       <p className="font-mono break-all">
                         {change.previousFingerprint} → {change.currentFingerprint}
                       </p>
                       {change.previousSigningKeyId !== change.currentSigningKeyId && (
-                        <p className="font-mono break-all text-[var(--text-tertiary)]">
+                        <p className="font-mono break-all text-[var(--nova-text-tertiary)]">
                           {change.previousSigningKeyId} → {change.currentSigningKeyId}
                         </p>
                       )}
                       {change.previousIdentityKeyId !== change.currentIdentityKeyId && (
-                        <p className="font-mono break-all text-[var(--text-tertiary)]">
+                        <p className="font-mono break-all text-[var(--nova-text-tertiary)]">
                           {change.previousIdentityKeyId} → {change.currentIdentityKeyId}
                         </p>
                       )}
@@ -4059,6 +4214,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     <button
                       onClick={handlePrevPin}
                       className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                      aria-label={t('common.previous')}
                       title={t('common.previous')}
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
@@ -4066,6 +4222,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                     <button
                       onClick={handleNextPin}
                       className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer"
+                      aria-label={t('common.next')}
                       title={t('common.next')}
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -4075,6 +4232,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <button
                   onClick={() => setIsPinnedCarouselOpen(false)}
                   className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer ml-1"
+                  aria-label={t('common.close')}
                   title={t('common.close')}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -4135,6 +4293,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <button
                     onClick={(e) => handleUnpinMessage(currentPinnedMsg.id, e)}
                     className="p-1 rounded-md text-[var(--nova-text-muted)] hover:text-red-400 hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+                    aria-label={t('common.unpin')}
                     title={t('common.unpin')}
                   >
                     <PinOff className="w-3.5 h-3.5" />
@@ -4257,6 +4416,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           }}
           onClick={() => setActiveReactionMsgId(null)}
           className="flex-1 px-4 py-2 space-y-3 no-scrollbar"
+          role="log"
+          aria-live="polite"
+          aria-label={t('a11y.messageList', 'Messages')}
           getItemKey={(it) =>
             it.type === 'date'
               ? `date-${it.label}`
@@ -4445,6 +4607,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           handleReplyMessage(msg);
                         }}
                         className="px-2 py-1 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] text-[var(--nova-text-primary)] flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer shadow-md shadow-[var(--nova-accent-color,#ff4e18)]/40 active:scale-95"
+                        aria-label={t('common.reply')}
                         title={t('common.reply')}
                       >
                         <Reply className="w-3.5 h-3.5" />
@@ -4462,6 +4625,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-accent-color,#ff4e18)]/20 hover:bg-[var(--nova-accent-color,#ff4e18)]/30'
                             : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
                         }`}
+                        aria-label={msg.isPinned ? 'Unpin message' : 'Pin message'}
                         title={msg.isPinned ? 'Unpin message' : 'Pin message'}
                       >
                         <Pin className={`w-3.5 h-3.5 ${msg.isPinned ? 'fill-current' : ''}`} />
@@ -4474,6 +4638,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           handleCopyMessage(msg);
                         }}
                         className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                        aria-label={t('common.copy')}
                         title={t('common.copy')}
                       >
                         {copiedMsgId === msg.id ? (
@@ -4495,6 +4660,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                             ? 'text-[var(--nova-text-muted)] cursor-not-allowed opacity-50'
                             : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)]'
                         }`}
+                        aria-label={t('chat.translate', 'Translate')}
                         title={t('chat.translate', 'Translate')}
                       >
                         {translatingMsgId === msg.id ? (
@@ -4511,6 +4677,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           handleStartForward(msg.id);
                         }}
                         className="p-1.5 rounded-full text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition cursor-pointer"
+                        aria-label={t('a11y.forwardMessage')}
                         title={t('a11y.forwardMessage')}
                       >
                         <Forward className="w-3.5 h-3.5" />
@@ -4566,11 +4733,11 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   }}
                   className={`relative group touch-manipulation cursor-pointer transition-all duration-150 active:scale-[0.99] ${
                     isCurrentSearchMatch
-                      ? 'ring-2 ring-[var(--nova-accent-color,#ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[24px]'
+                      ? 'ring-2 ring-[var(--nova-accent-color,#ff4e18)] shadow-[0_0_24px_rgba(255,78,24,0.6)] rounded-[20px]'
                       : isHighlighted
-                      ? 'shadow-[0_0_18px_rgba(255,78,24,0.28)] rounded-[24px]'
+                      ? 'shadow-[0_0_18px_rgba(255,78,24,0.28)] rounded-[20px]'
                       : hasWordMatch
-                      ? 'ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 rounded-[24px]'
+                      ? 'ring-1 ring-[var(--nova-accent-color,#ff4e18)]/40 rounded-[20px]'
                       : ''
                   }`}
                 >
@@ -4668,7 +4835,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       {forwardSelectedIds.has(msg.id) ? (
                         <Check className="w-4 h-4 text-[var(--nova-text-primary)] stroke-[3]" />
                       ) : (
-                        <div className="w-4 h-4 rounded-full border-2 border-[var(--border-strong)]" />
+                        <div className="w-4 h-4 rounded-full border-2 border-[var(--nova-border-strong)]" />
                       )}
                     </div>
                   )}
@@ -4690,7 +4857,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   )}
 
                   {isMine ? (
-                    msg.sticker ? (
+                    msg.gift ? (
+                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} rounded-[20px] rounded-br-[4px] p-2.5 max-w-[92%] shadow-xl ${theme.shadow}`}>
+                        <GiftBubble
+                          gift={msg.gift}
+                          isMine
+                          busy={openingGiftId === msg.id}
+                        />
+                        <div className="flex items-center justify-end gap-1.5 text-[10px] text-[var(--nova-text-secondary)] mt-1.5 font-mono">
+                          <span>{msg.time}</span>
+                          {renderMessageStatus(msg)}
+                        </div>
+                      </div>
+                    ) : msg.sticker ? (
                       <div className="relative group/sticker flex flex-col items-end my-1">
                         {msg.replyTo && (
                           <div
@@ -4699,7 +4878,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/40 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/60 max-w-[220px]"
+                            className="mb-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/40 border-l-2 border-[var(--nova-border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/60 max-w-[220px]"
                           >
                             <div className="font-bold text-[10px] text-[var(--nova-text-primary)] truncate">
                               {msg.replyTo.senderName}
@@ -4713,7 +4892,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            emojiClassName="text-5xl"
+                            emojiClassName="text-3xl"
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-[var(--nova-text-secondary)] mt-1 border border-[var(--nova-border-subtle)] shadow-md">
@@ -4726,7 +4905,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         </div>
                       </div>
                     ) : msg.poll ? (
-                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[20px] rounded-br-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl ${theme.shadow}`}>
                         {msg.replyTo && (
                           <div
                             onPointerDown={(e) => e.stopPropagation()}
@@ -4734,7 +4913,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/50"
+                            className="mb-2.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/30 border-l-2 border-[var(--nova-border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/50"
                           >
                             <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] truncate">
                               {msg.replyTo.senderName}
@@ -4760,7 +4939,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         </div>
                       </div>
                     ) : msg.location ? (
-                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 border ${theme.border} text-[var(--nova-text-primary)] rounded-[20px] rounded-br-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl ${theme.shadow}`}>
                         <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end gap-1.5 text-[10px] text-[var(--nova-text-secondary)] mt-2 font-mono">
                           <span>{msg.time}</span>
@@ -4772,7 +4951,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         </div>
                       </div>
                     ) : msg.voiceNote ? (
-                      <div className={`bg-[var(--nova-surface-raised)]/95 ${theme.border} text-[var(--nova-text-primary)] rounded-[22px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
+                      <div className={`bg-[var(--nova-surface-raised)]/95 ${theme.border} text-[var(--nova-text-primary)] rounded-[20px] rounded-br-[4px] p-3 max-w-[85%] shadow-lg ${theme.shadow}`}>
                         {msg.forwardedFrom && (
                           <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[var(--nova-text-secondary)]">
                             <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
@@ -4786,7 +4965,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
+                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
                             title={t('chat.replyingTo')}
                           >
                             <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] flex items-center gap-1">
@@ -4824,9 +5003,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         </div>
                       </div>
                     ) : (
-                      <div className={`bg-gradient-to-r ${theme.grad} text-[var(--nova-on-accent)] rounded-[22px] rounded-br-[4px] px-4 py-2.5 max-w-[82%] shadow-lg ${theme.shadow} text-[14px] leading-relaxed`}>
+                      <div className={`bg-gradient-to-r ${theme.grad} text-[var(--nova-on-accent)] rounded-[20px] rounded-br-[4px] px-4 py-2.5 max-w-[82%] shadow-lg ${theme.shadow} text-[13px] leading-relaxed`}>
                         {msg.forwardedFrom && (
-                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-[10px] text-[var(--nova-text-secondary)]">
+                          <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-border-strong)] text-[10px] text-[var(--nova-text-secondary)]">
                             <Forward className="w-2.5 h-2.5 text-[var(--nova-text-secondary)]" />
                             <span>{t('chat.forwardedFrom')} {msg.forwardedFrom}</span>
                           </div>
@@ -4838,7 +5017,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                               e.stopPropagation();
                               handleJumpToMessage(msg.replyTo!.id);
                             }}
-                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
+                            className="mb-2 pl-2.5 pr-2 py-1 rounded-lg bg-black/25 border-l-2 border-[var(--nova-border-strong)] text-xs cursor-pointer select-none transition hover:bg-black/35"
                             title={t('chat.replyingTo')}
                           >
                             <div className="font-bold text-[10.5px] text-[var(--nova-text-primary)] flex items-center gap-1">
@@ -4883,7 +5062,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                                 }
                                 if (e.key === 'Escape') handleCancelEdit();
                               }}
-                              className="w-full min-w-0 resize-none break-words rounded-lg bg-black/25 px-2 py-1.5 text-[14px] leading-relaxed text-[var(--nova-text-primary)] outline-none focus:outline-none focus:ring-0"
+                              className="w-full min-w-0 resize-none break-words rounded-lg bg-black/25 px-2 py-1.5 text-[13px] leading-relaxed text-[var(--nova-text-primary)] outline-none focus:outline-none focus:ring-0"
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
@@ -5028,7 +5207,19 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       </div>
                     )
                   ) : (
-                    msg.sticker ? (
+                    msg.gift ? (
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[20px] rounded-tl-[4px] p-2.5 max-w-[92%] shadow-xl shadow-black/40">
+                        <GiftBubble
+                          gift={msg.gift}
+                          isMine={false}
+                          busy={openingGiftId === msg.id}
+                          onOpen={() => void handleOpenGift(msg)}
+                        />
+                        <div className="flex items-center justify-end text-[10px] text-[var(--nova-text-muted)] mt-1.5 font-mono">
+                          <span>{msg.time}</span>
+                        </div>
+                      </div>
+                    ) : msg.sticker ? (
                       <div className="relative group/sticker flex flex-col items-start my-1">
                         {msg.replyTo && (
                           <div
@@ -5051,7 +5242,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                           <StickerMedia
                             sticker={msg.sticker}
                             className="w-full h-full object-contain filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-                            emojiClassName="text-5xl"
+                            emojiClassName="text-3xl"
                           />
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-[var(--nova-text-secondary)] mt-1 border border-[var(--nova-border-subtle)] shadow-md">
@@ -5059,7 +5250,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                         </div>
                       </div>
                     ) : msg.poll ? (
-                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[20px] rounded-tl-[4px] p-4 max-w-[92%] sm:max-w-md shadow-xl shadow-black/40">
                         {msg.replyTo && (
                           <div
                             onPointerDown={(e) => e.stopPropagation()}
@@ -5088,14 +5279,14 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                       </div>
                     ) : msg.location ? (
 
-                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[20px] rounded-tl-[4px] p-3 max-w-[88%] sm:max-w-sm shadow-xl shadow-black/40">
                         <LocationBubble location={msg.location} />
                         <div className="flex items-center justify-end text-[10px] text-[var(--nova-text-muted)] mt-2 font-mono">
                           <span>{msg.time}</span>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[22px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[14px] leading-relaxed">
+                      <div className="bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] text-[color:var(--nova-text-primary)] rounded-[20px] rounded-tl-[4px] p-3.5 max-w-[88%] shadow-md shadow-black/40 text-[13px] leading-relaxed">
                       {msg.forwardedFrom && (
                         <div className="mb-2 flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-lg bg-[var(--nova-overlay-weak)] border-l-2 border-[var(--nova-accent-color,#ff4e18)]/70 text-[10px] text-[var(--nova-text-muted)]">
                           <Forward className="w-2.5 h-2.5 text-[var(--nova-accent-color,#ff4e18)]/70" />
@@ -5512,6 +5703,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               type="button"
               onClick={() => setIsAttachmentMenuOpen(false)}
               className="p-1.5 rounded-xl text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-medium)] transition ml-auto shrink-0"
+              aria-label={t('common.close')}
               title={t('common.close')}
             >
               <X className="w-3.5 h-3.5" />
@@ -5635,6 +5827,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               type="button"
               onClick={() => setStagedAttachment(null)}
               className="p-1.5 rounded-xl bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] text-[var(--nova-text-muted)] hover:text-[var(--nova-text-primary)] transition cursor-pointer shrink-0 ml-auto"
+              aria-label={t('a11y.removeAttachment')}
               title={t('a11y.removeAttachment')}
             >
               <X className="w-3.5 h-3.5" />
@@ -5676,68 +5869,13 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)] shadow-[var(--nova-accent-color,#ff4e18)]/30'
                 : 'bg-[var(--nova-surface-raised)]/95 hover:bg-[var(--nova-surface-high)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
             }`}
+            aria-label={t('common.attach')}
             title={t('common.attach')}
           >
             <Paperclip className="w-4 h-4" />
           </button>
 
-          {/* Formatting buttons stay on desktop; on phones they pushed the
-              message field down to almost nothing, so the row keeps only the
-              controls needed to write and send. */}
-          <button
-            type="button"
-            onClick={() => wrapSelection('**', '**')}
-            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-              formatState.bold
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
-            }`}
-            title={t('chat.format.bold', 'Bold')}
-            aria-label={t('chat.format.bold', 'Bold')}
-          >
-            <span className="font-bold text-xs">B</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection('*', '*')}
-            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-              formatState.italic
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
-            }`}
-            title={t('chat.format.italic', 'Italic')}
-            aria-label={t('chat.format.italic', 'Italic')}
-          >
-            <span className="italic text-xs">I</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection('`', '`')}
-            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-              formatState.code
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
-            }`}
-            title={t('chat.format.code', 'Code')}
-            aria-label={t('chat.format.code', 'Code')}
-          >
-            <span className="text-xs font-mono">`</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => wrapSelection('~~', '~~')}
-            className={`hidden xl:flex w-7 h-7 rounded-full border items-center justify-center active:scale-95 transition cursor-pointer shadow-md shrink-0 ${
-              formatState.strike
-                ? 'bg-[var(--nova-accent-color,#ff4e18)] text-[var(--nova-text-primary)] border-[var(--nova-accent-color,#ff4e18)]'
-                : 'bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] border-[var(--nova-border-subtle)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'
-            }`}
-            title={t('chat.format.strike', 'Strikethrough')}
-            aria-label={t('chat.format.strike', 'Strikethrough')}
-          >
-            <span className="text-xs line-through">S</span>
-          </button>
-
-          <div className="flex-1 bg-[var(--nova-surface-raised)]/95 border border-[var(--nova-border-subtle)] focus-within:border-[var(--nova-accent-color,#ff4e18)]/60 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition shadow-md min-w-0">
+          <div className="flex-1 bg-[var(--nova-surface-raised)]/80 border border-[var(--nova-border-subtle)] focus-within:border-[var(--nova-accent-color)]/50 rounded-full pl-4 pr-1.5 py-1.5 flex items-center transition min-w-0">
             <ChatTextInput
               ref={mainInputRef}
               resetKey={chatId}
@@ -5807,6 +5945,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                   ? 'text-[var(--nova-accent-color,#ff4e18)] bg-[var(--nova-overlay-medium)]'
                   : 'text-[var(--nova-text-muted)] hover:text-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-overlay-medium)]'
               }`}
+              aria-label={t('common.react')}
               title={t('common.react')}
             >
               <MoodSmile className="w-4 h-4" />
@@ -5836,6 +5975,7 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 style={{ touchAction: 'manipulation' }}
                 className="w-11 h-11 rounded-full bg-[var(--nova-accent-color,#ff4e18)] hover:bg-[var(--nova-accent-color,#ff5d2b)] active:scale-90 text-[var(--nova-text-primary)] flex items-center justify-center shadow-lg shadow-[var(--nova-accent-color,#ff4e18)]/30 transition cursor-pointer relative group select-none animate-in zoom-in-75 fade-in duration-150"
                 title={t('common.send')}
+                aria-label={t('common.send')}
                 aria-haspopup="menu"
                 aria-expanded={isSendOptionsOpen}
               >
@@ -6234,6 +6374,20 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
         />
       </React.Suspense>
 
+      {/* PREMIUM GIFT PICKER (G1) */}
+      <GiftPickerModal
+        isOpen={isGiftPickerOpen}
+        busy={isGiftSending}
+        error={giftPurchaseError}
+        onSelect={(plan) => void handleSendGift(plan)}
+        onClose={() => {
+          if (!isGiftSending) {
+            setIsGiftPickerOpen(false);
+            setGiftPurchaseError(null);
+          }
+        }}
+      />
+
       {/* REPORT BOT MODAL */}
       {isReportBotOpen && (
         <div
@@ -6558,7 +6712,8 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           </div>
         </div>
       )}
-      {isMoreMenuOpen &&
+
+  {isMoreMenuOpen &&
         createPortal(
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)} />
@@ -6567,9 +6722,9 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
               role="menu"
               aria-label={t('chat.chatActions')}
               style={{ top: moreMenuPosition?.top ?? 8, left: moreMenuPosition?.left ?? 8 }}
-              className="fixed z-50 max-h-[calc(100dvh-1rem)] w-64 overflow-y-auto rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-surface)]/[0.98] shadow-[var(--shadow-2)] backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150"
+              className="fixed z-50 max-h-[calc(100dvh-1rem)] w-64 overflow-y-auto rounded-2xl border border-[var(--nova-border-strong)] bg-[var(--nova-surface)]/[0.98] shadow-[var(--shadow-2)] backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150"
             >
-              <div className="px-3 py-2 border-b border-[var(--border-strong)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+              <div className="px-3 py-2 border-b border-[var(--nova-border-strong)] text-[10px] font-bold uppercase tracking-wider text-[var(--nova-text-tertiary)]">
                 {t('chat.chatActions')}
               </div>
               <button
@@ -6583,6 +6738,20 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <Users className="w-3.5 h-3.5 text-[var(--nova-accent-color,#ff4e18)]" />
                 <span>{t('chat.contactInfo')}</span>
               </button>
+              {!isGroupChat && !botId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGiftPurchaseError(null);
+                    setIsGiftPickerOpen(true);
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
+                >
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t('gift.menu')}</span>
+                </button>
+              )}
               {isGroupChat && (
                 <button
                   type="button"
@@ -6619,9 +6788,10 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
                 <span>{t('chat.appearance')}</span>
               </button>
               <button
+                ref={themePickerAnchorRef}
                 type="button"
                 onClick={() => {
-                  handleCycleChatTheme();
+                  setIsThemePickerOpen(true);
                   setIsMoreMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-weak)] transition cursor-pointer"
@@ -6718,202 +6888,48 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
           </>,
           document.body,
         )}
-      {mediaLightbox &&
-        createPortal(
-          <div
-            ref={mediaLightboxRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('a11y.mediaViewer')}
-            data-theme-preserve="dark"
-            tabIndex={-1}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 text-[var(--nova-text-primary)] backdrop-blur-md"
-          >
-            <button
-              type="button"
-              aria-label={t('a11y.closeMediaViewer')}
-              onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
-              className="absolute right-4 top-4 z-20 rounded-full bg-[var(--nova-overlay-medium)] p-2 text-[var(--nova-text-primary)] hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="absolute inset-0" onClick={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }} />
-            <div className="relative z-10 flex max-h-full max-w-full items-center gap-3" onClick={(event) => event.stopPropagation()}>
-              {mediaLightbox.urls.length > 1 && (
-                <button
-                  type="button"
-                  aria-label={t('a11y.previousMedia')}
-                  onClick={() => {
-                    setMediaLightbox((current) =>
-                      current
-                        ? { ...current, index: (current.index - 1 + current.urls.length) % current.urls.length }
-                        : current,
-                    );
-                    setMediaScale(1);
-                    setMediaPosition({ x: 0, y: 0 });
-                  }}
-                  className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-              )}
-              {isVideoMediaUrl(mediaLightbox.urls[mediaLightbox.index]) ? (
-                <video
-                  src={mediaLightbox.urls[mediaLightbox.index]}
-                  controls
-                  autoPlay
-                  playsInline
-                  aria-label={`Media ${mediaLightbox.index + 1}`}
-                  className="max-h-[85vh] max-w-[85vw]"
-                />
-              ) : (
-                <div
-                  className="relative"
-                  onWheel={(e) => {
-                    e.preventDefault();
-                    if (e.ctrlKey || e.metaKey) {
-                      setMediaScale((s) => Math.max(0.5, Math.min(4, s - e.deltaY * 0.005)));
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    if (e.touches.length === 2) {
-                      const touch1 = e.touches[0];
-                      const touch2 = e.touches[1];
-                      const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-                      mediaTouchStartRef.current = { x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2, distance, scale: mediaScale };
-                    } else if (e.touches.length === 1 && mediaScale > 1) {
-                      mediaTouchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance: 0, scale: mediaScale };
-                    }
-                  }}
-                  onTouchMove={(e) => {
-                    if (!mediaTouchStartRef.current) return;
-                    if (e.touches.length === 2) {
-                      const touch1 = e.touches[0];
-                      const touch2 = e.touches[1];
-                      const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-                      const newScale = Math.max(0.5, Math.min(4, mediaTouchStartRef.current.scale * (distance / mediaTouchStartRef.current.distance)));
-                      setMediaScale(newScale);
-                    } else if (e.touches.length === 1 && mediaScale > 1) {
-                      const dx = e.touches[0].clientX - mediaTouchStartRef.current.x;
-                      const dy = e.touches[0].clientY - mediaTouchStartRef.current.y;
-                      setMediaPosition((p) => ({ x: p.x + dx, y: p.y + dy }));
-                      mediaTouchStartRef.current = { ...mediaTouchStartRef.current, x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    }
-                  }}
-                  onTouchEnd={() => {
-                    mediaTouchStartRef.current = null;
-                  }}
-                >
-                  <LazyMedia
-                    src={mediaLightbox.urls[mediaLightbox.index]}
-                    alt={`Media ${mediaLightbox.index + 1}`}
-                    eager
-                    className="max-h-[85vh] max-w-[85vw] rounded-xl object-contain shadow-2xl"
-                    style={{
-                      transform: `translate(${mediaPosition.x}px, ${mediaPosition.y}px) scale(${mediaScale})`,
-                      transformOrigin: 'center center',
-                      transition: mediaScale > 1 ? 'none' : 'transform 0.2s ease-out',
-                    }}
-                  />
-                </div>
-              )}
-              {mediaLightbox.urls.length > 1 && (
-                <button
-                  type="button"
-                  aria-label={t('a11y.nextMedia')}
-                  onClick={() => {
-                    setMediaLightbox((current) =>
-                      current
-                        ? { ...current, index: (current.index + 1) % current.urls.length }
-                        : current,
-                    );
-                    setMediaScale(1);
-                    setMediaPosition({ x: 0, y: 0 });
-                  }}
-                  className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/50 p-2 hover:bg-black/75 cursor-pointer sm:static sm:translate-y-0"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-            {mediaLightbox.urls.length > 1 && (
-              <span className="absolute bottom-5 z-20 text-xs text-[var(--nova-text-secondary)]">
-                {mediaLightbox.index + 1} / {mediaLightbox.urls.length}
-              </span>
-            )}
-
-            {/* Zoom controls & actions */}
-            {!isVideoMediaUrl(mediaLightbox.urls[mediaLightbox.index]) && mediaScale > 1 && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5">
-                <button
-                  type="button"
-                  aria-label={t('a11y.zoomOut')}
-                  onClick={() => setMediaScale((s) => Math.max(1, s - 0.5))}
-                  className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
-                >
-                  <ZoomOut className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('a11y.resetZoom')}
-                  onClick={() => { setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
-                  className="px-2 py-1.5 text-xs font-medium text-[var(--nova-text-secondary)] bg-[var(--nova-overlay-medium)] rounded-full hover:bg-[var(--nova-overlay-strong)] cursor-pointer"
-                >
-                  100%
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('a11y.zoomIn')}
-                  onClick={() => setMediaScale((s) => Math.min(4, s + 0.5))}
-                  className="p-1.5 text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
-                >
-                  <ZoomIn className="h-5 w-5" />
-                </button>
-              </div>
-            )}
-
-            {/* Share & Save actions */}
-            <div className="absolute bottom-16 right-4 z-20 flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="Share"
-                onClick={async () => {
-                  const url = mediaLightbox.urls[mediaLightbox.index];
-                  if (navigator.share) {
-                    await navigator.share({ title: 'Media', url });
-                  } else {
-                    await navigator.clipboard.writeText(url);
-                    triggerPinnedToast('Link copied');
-                  }
-                }}
-                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
-              >
-                <Share2 className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                aria-label="Download"
-                onClick={() => {
-                  const url = mediaLightbox.urls[mediaLightbox.index];
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `media-${Date.now()}`;
-                  a.rel = 'noopener';
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  triggerPinnedToast('Download started');
-                }}
-                className="p-2 bg-black/70 backdrop-blur-sm rounded-full text-[var(--nova-text-primary)] hover:text-[var(--nova-accent-color)] cursor-pointer"
-              >
-                <Download className="h-5 w-5" />
-              </button>
-            </div>
-          </div>,
-          document.body,
-        )}
-        {/* Mini App overlay (Phase B7) — opens on top of the chat when a `web_app` button is pressed. */}
-        {/* Text Selection Context Menu */}
+      <MediaLightbox
+        mediaLightbox={mediaLightbox}
+        mediaScale={mediaScale}
+        mediaPosition={mediaPosition}
+        mediaLightboxRef={mediaLightboxRef}
+        t={t}
+        onClose={() => { setMediaLightbox(null); setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
+        onPrevious={() => {
+          setMediaLightbox((current) =>
+            current
+              ? { ...current, index: (current.index - 1 + current.urls.length) % current.urls.length }
+              : current,
+          );
+          setMediaScale(1);
+          setMediaPosition({ x: 0, y: 0 });
+        }}
+        onNext={() => {
+          setMediaLightbox((current) =>
+            current
+              ? { ...current, index: (current.index + 1) % current.urls.length }
+              : current,
+          );
+          setMediaScale(1);
+          setMediaPosition({ x: 0, y: 0 });
+        }}
+        onZoomOut={() => setMediaScale((s) => Math.max(1, s - 0.5))}
+        onResetZoom={() => { setMediaScale(1); setMediaPosition({ x: 0, y: 0 }); }}
+        onZoomIn={() => setMediaScale((s) => Math.min(4, s + 0.5))}
+        onDownload={() => {
+          const url = mediaLightbox?.urls[mediaLightbox?.index ?? 0];
+          if (url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = url.split('/').pop() || 'download';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            triggerPinnedToast('Download started');
+          }
+        }}
+      />
       {textSelection && (
         <div
           className="fixed inset-0 z-[80]"
@@ -6971,9 +6987,20 @@ const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
             />
           </div>
         )}
+
+        {/* Chat Theme Picker */}
+        <ChatThemePicker
+          theme={chatTheme}
+          onThemeChange={setChatTheme}
+          isOpen={isThemePickerOpen}
+          onClose={() => setIsThemePickerOpen(false)}
+          anchorRef={themePickerAnchorRef}
+          position="bottom"
+        />
     </div>
   );
 };
+
 
 
 

@@ -24,28 +24,17 @@ import {
   IconSearch as Search,
   IconPlus as Plus,
   IconUsers as Users,
-  IconMessage2 as MessageSquare,
   IconSettings as Settings,
   IconPin as Pin,
   IconX as X,
   IconFolderPlus as FolderPlus,
   IconFolder as Folder,
   IconClock as Clock,
-  IconMapPin as MapPin,
-  IconSpeakerphone as Megaphone,
-  IconUserCircle as UserRound,
-  IconSparkles as Sparkles,
   IconArchive as Archive,
   IconCloud as Cloud,
-  IconTrash as Trash2,
   IconVolumeOff as VolumeX,
   IconCheck as Check,
   IconBellOff as BellOff,
-  IconChevronRight as ChevronRight,
-  IconGripVertical as GripVertical,
-  IconLoader2 as Loader2,
-  IconRotate as RotateCcw,
-  IconArrowDown as ArrowDown,
   IconDotsVertical as MoreVertical,
   IconEdit as EditIcon} from "@tabler/icons-react";
 import { getAllDrafts, subscribeDraftChanges } from "../lib/messaging/drafts";
@@ -55,8 +44,6 @@ import {
   MOCK_CHATS,
   CONVERSATION_HISTORIES,
   registerCreatedGroups,
-  loadCreatedGroups,
-  saveCreatedGroups,
   loadCreatedGroupHistories,
   saveCreatedGroupHistories} from "../data/mockMessengerData";
 import {
@@ -72,6 +59,7 @@ import { GroupModal } from "./GroupModal";
 import { CommunitiesPanel } from "./CommunitiesPanel";
 import { StoryComposerModal } from "./StoryComposerModal";
 import { StoryViewer } from "./StoryViewer";
+import { NovaChatItem } from "./chat/NovaChatItem";
 import { getStoryFeed, isStoryScheduled } from "../lib/social/store";
 import {
   getGroupMembership,
@@ -107,6 +95,8 @@ interface ChatsScreenProps {
   channels?: ChannelInfo[];
   localFingerprint?: string;
   now?: number;
+  /** User-imported contacts (VCF import). Only these are searched. */
+  userContacts?: ParsedContact[];
   onCreateStory?: (draft: StoryDraft) => void;
   onDeleteStory?: (storyId: string) => void;
   onViewStory?: (storyId: string) => void;
@@ -141,6 +131,7 @@ export const ChatsScreen = forwardRef<
     channels = [],
     localFingerprint,
     now = Date.now(),
+    userContacts: userContactsProp = [],
     onCreateStory,
     onDeleteStory,
     onViewStory,
@@ -184,7 +175,7 @@ export const ChatsScreen = forwardRef<
   });
 
   // User-imported contacts (VCF import)
-  const [userContacts, setUserContacts] = useState<ParsedContact[]>([]);
+  const [importedContacts, setImportedContacts] = useState<ParsedContact[]>([]);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
 
@@ -216,6 +207,7 @@ export const ChatsScreen = forwardRef<
 
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
 
   // Pull-to-refresh
   const pullStartYRef = useRef<number>(0);
@@ -487,7 +479,7 @@ export const ChatsScreen = forwardRef<
 
     // Append user-imported contacts as direct chats (only in 'all' folder)
     if (currentFolder.id === "all" || currentFolder.filterType === "all") {
-      const contactChats: ChatItem[] = userContacts.map((c) => ({
+      const contactChats: ChatItem[] = importedContacts.map((c) => ({
         id: `contact-${c.name.replace(/\s+/g, "-").toLowerCase()}`,
         name: c.name,
         avatar:
@@ -516,7 +508,7 @@ export const ChatsScreen = forwardRef<
     groupVersion,
     archivedChatIds,
     pinnedChatIds,
-    userContacts,
+    importedContacts,
   ]);
 
   // Per-folder unread totals feed the folder chips in the bottom navigation.
@@ -545,10 +537,11 @@ export const ChatsScreen = forwardRef<
   }, [folderUnreadCounts]);
 
   // Search through chats (by contact name OR message preview / conversation history)
-  const matchedChats = useMemo(() => {
+  // and through user-added contacts (imported via VCF, "my contacts").
+  const matchedChats = useMemo<ChatItem[]>(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
-    return MOCK_CHATS.filter((chat) => {
+    const chatMatches = MOCK_CHATS.filter((chat) => {
       // 1. Matches contact / channel / group name
       const nameMatch = chat.name.toLowerCase().includes(query);
       // 2. Matches message preview snippet
@@ -560,7 +553,38 @@ export const ChatsScreen = forwardRef<
       );
       return nameMatch || snippetMatch || historyMatch;
     });
-  }, [searchQuery, groupVersion]);
+
+    // User-added contacts (only those the user imported manually).
+    const allContacts = [...userContactsProp, ...importedContacts];
+    const contactMatches = allContacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.phone?.toLowerCase().includes(query) ||
+        c.email?.toLowerCase().includes(query) ||
+        c.nickname?.toLowerCase().includes(query),
+    );
+
+    const contactChats: ChatItem[] = contactMatches.map((c) => ({
+      id: `contact-${c.name.replace(/\s+/g, '-').toLowerCase()}`,
+      name: c.name,
+      avatar:
+        c.avatar ??
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`,
+      snippet: c.phone ?? c.email ?? 'Imported contact',
+      time: '',
+      unreadCount: 0,
+      isPinned: false,
+      type: 'direct',
+      category: 'Imported',
+    }));
+
+    return [...chatMatches, ...contactChats];
+  }, [
+    searchQuery,
+    userContactsProp,
+    importedContacts,
+    groupVersion,
+  ]);
 
   // Local search index across all conversation history (text, documents,
   // polls, locations, media captions). No server-side index is involved.
@@ -755,7 +779,7 @@ export const ChatsScreen = forwardRef<
       const text = event.target?.result as string;
       const { contacts, errors } = parseVCF(text);
       if (contacts.length > 0) {
-        setUserContacts((prev) => {
+        setImportedContacts((prev) => {
           const existingNames = new Set(prev.map((c) => c.name));
           const newContacts = contacts.filter(
             (c) => !existingNames.has(c.name),
@@ -799,12 +823,12 @@ export const ChatsScreen = forwardRef<
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-app)] text-[var(--text-primary)] relative select-none">
+    <div className="flex flex-col h-full bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] relative select-none">
       {/* Toast Notification */}
       {folderToast && (
         <div
           data-testid="folder-toast"
-          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[var(--bg-surface)]/[0.95] border border-[var(--nova-accent-color)]/50 text-[var(--text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-[var(--shadow-2)] backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-[var(--nova-surface)]/[0.95] border border-[var(--nova-accent-color)]/50 text-[var(--nova-text-primary)] text-xs px-3.5 py-1.5 rounded-full shadow-[var(--shadow-2)] backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <FolderPlus className="w-3.5 h-3.5 text-[var(--nova-accent-color)]" />
           <span>{folderToast}</span>
         </div>
@@ -821,7 +845,7 @@ export const ChatsScreen = forwardRef<
               variant="ghost"
               onClick={toggleSelectMode}
             />
-            <span className="text-[15px] font-semibold text-[var(--text-primary)] tabular-nums truncate">
+            <span className="text-[15px] font-semibold text-[var(--nova-text-primary)] tabular-nums truncate">
               {selectedChatIds.size}
             </span>
           </div>
@@ -868,12 +892,12 @@ export const ChatsScreen = forwardRef<
           </div>
         </header>
       ) : (
-        <header className="h-[52px] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--bg-app)]/90 backdrop-blur-xl border-b border-[var(--nova-border-subtle)]/60">
+        <header className="h-[52px] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--nova-canvas)]/90 backdrop-blur-xl border-b border-[var(--nova-border-subtle)]/60">
           {/* Left: Title */}
-          <h1 className="lg:hidden truncate text-[18px] font-bold text-[var(--text-primary)] tracking-tight">
+          <h1 className="lg:hidden truncate text-[18px] font-bold text-[var(--nova-text-primary)] tracking-tight">
             {t('common.chats')}
           </h1>
-          <h1 className="hidden lg:block truncate text-[16px] font-semibold text-[var(--text-primary)] tracking-tight">
+          <h1 className="hidden lg:block truncate text-[16px] font-semibold text-[var(--nova-text-primary)] tracking-tight">
             {account.nickname}
           </h1>
 
@@ -973,7 +997,7 @@ export const ChatsScreen = forwardRef<
               if (e.key === "Escape") setSearchQuery("");
             }}
             placeholder={t('chats.searchPlaceholder', { defaultValue: 'Search conversations...' })}
-            className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-20 py-2 transition-all shadow-inner focus:outline-none"
+            className="w-full bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] focus:border-[var(--nova-accent-color)] focus:bg-[var(--nova-surface)] text-[var(--nova-text-primary)] placeholder-[var(--nova-text-tertiary)] text-xs rounded-full pl-9 pr-20 py-2 transition-all shadow-inner focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--nova-accent-color)]/50 focus-visible:ring-offset-0"
           />
 
           <div className="absolute right-2 flex items-center gap-1">
@@ -986,14 +1010,14 @@ export const ChatsScreen = forwardRef<
             {searchQuery ? (
               <button
                 onClick={() => setSearchQuery("")}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer"
+                className="text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] p-1 transition cursor-pointer"
                 aria-label={t("common.close")}
                 title={t("common.close")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             ) : (
-              <span className="hidden sm:inline-block text-[10px] text-[var(--text-tertiary)] font-mono pr-1 pointer-events-none">
+              <span className="hidden sm:inline-block text-[10px] text-[var(--nova-text-tertiary)] font-mono pr-1 pointer-events-none">
                 ⌘K
               </span>
             )}
@@ -1016,8 +1040,8 @@ export const ChatsScreen = forwardRef<
                 onClick={() => setSearchQuery(chip)}
                 className={`min-h-5 px_2 py-0.5 rounded-full text-[9px] font-medium transition cursor-pointer shrink-0 ${
                   searchQuery.toLowerCase() === chip.toLowerCase()
-                    ? "bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
-                    : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-strong)]"
+                    ? "bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] shadow-sm shadow-[var(--nova-accent-color)]/30 font-semibold"
+                    : "bg-[var(--nova-surface-raised)] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] border border-[var(--nova-border-strong)]"
                 }`}
                 aria-label={chip}
               >
@@ -1026,7 +1050,7 @@ export const ChatsScreen = forwardRef<
             ))}
             <button
               onClick={() => setSearchQuery("")}
-              className="min-h-5 px-1.5 py-0.5 rounded-full text-[9px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-2)]/30 transition cursor-pointer shrink-0"
+              className="min-h-5 px-1.5 py-0.5 rounded-full text-[9px] text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] bg-[var(--nova-surface-raised)]/30 transition cursor-pointer shrink-0"
               aria-label={t("common.reset") ?? "Reset"}
             >
               Reset
@@ -1041,13 +1065,13 @@ export const ChatsScreen = forwardRef<
         <div className="flex-1 overflow-y-auto px-5 pb-36 lg:pb-6 space-y-3 safe-area-bottom-min">
           {/* Search Scope Filter Pills */}
           <div className="flex items-center justify-between pt-1 pb-0.5">
-            <div className="flex items-center gap-1.5 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--border-strong)]">
+            <div className="flex items-center gap-1.5 bg-[var(--nova-surface-raised)] p-1 rounded-xl border border-[var(--nova-border-strong)]">
               <button
                 onClick={() => setSearchFilter("all")}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
                   searchFilter === "all"
-                    ? "bg-[var(--bg-surface-2)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    ? "bg-[var(--nova-surface-raised)] text-[var(--nova-text-primary)] shadow-sm"
+                    : "text-[var(--nova-text-tertiary)] hover:text-[var(--nova-text-primary)]"
                 }`}
                 aria-label={t('chats.searchFilterAll', { count: totalResults })}
               >
@@ -1057,8 +1081,8 @@ export const ChatsScreen = forwardRef<
                 onClick={() => setSearchFilter("chats")}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
                   searchFilter === "chats"
-                    ? "bg-[var(--bg-surface-2)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    ? "bg-[var(--nova-surface-raised)] text-[var(--nova-text-primary)] shadow-sm"
+                    : "text-[var(--nova-text-tertiary)] hover:text-[var(--nova-text-primary)]"
                 }`}
                 aria-label={t('chats.searchFilterChats', { count: matchedChats.length })}
               >
@@ -1085,13 +1109,13 @@ export const ChatsScreen = forwardRef<
           <div className="space-y-4">
             {totalResults === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-12 h-12 rounded-full bg-[var(--bg-surface-2)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-tertiary)] mb-3">
+                <div className="w-12 h-12 rounded-full bg-[var(--nova-surface-raised)] border border-[var(--nova-border-strong)] flex items-center justify-center text-[var(--nova-text-tertiary)] mb-3">
                   <Search className="w-5 h-5" />
                 </div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-[var(--nova-text-primary)]">
                   No results found
                 </p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1 max-w-[220px]">
+                <p className="text-xs text-[var(--nova-text-tertiary)] mt-1 max-w-[220px]">
                   No chats or messages match &quot;{searchQuery}&quot;
                 </p>
               </div>
@@ -1102,171 +1126,60 @@ export const ChatsScreen = forwardRef<
                   matchedChats.length > 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
+                        <span className="text-[11px] font-bold text-[var(--nova-text-tertiary)] uppercase tracking-wider">
                           Matching Chats ({matchedChats.length})
                         </span>
                         <span className="text-[10px] text-[var(--nova-accent-color)] font-medium">
                           Real-time match
                         </span>
                       </div>
-                      {matchedChats.map((chat) => {
+{matchedChats.map((chat) => {
                         const isSelected = activeChatId === chat.id;
                         const unreadCount = readChats.has(chat.id)
                           ? 0
                           : chat.unreadCount || 0;
-                        const query = searchQuery.toLowerCase().trim();
-                        const nameMatches = chat.name
-                          .toLowerCase()
-                          .includes(query);
-                        const snippetMatches = chat.snippet
-                          .toLowerCase()
-                          .includes(query);
-                        const historyMessages =
-                          CONVERSATION_HISTORIES[chat.id] || [];
-                        const matchingHistMsg = historyMessages.find((m) =>
-                          m.text?.toLowerCase().includes(query),
-                        );
+                        const isPinned = pinnedChatIds.has(chat.id);
+                        const isArchived = archivedChatIds.has(chat.id);
+                        const isMuted = (() => {
+                          const prefs = getNotificationPrefs();
+                          return prefs.muteUntil[chat.id] && prefs.muteUntil[chat.id] > Date.now();
+                        })();
+                        const joinPending = joinIndicators[chat.id]?.pending || 0;
+                        const joinWaiting = joinIndicators[chat.id]?.membership === 'pending';
+                        const joinRequests = joinIndicators[chat.id]?.requests || [];
 
                         return (
-                          <div
-                            onTouchStart={(e) => startLongPress(e, chat.id)}
-                            onTouchMove={cancelLongPress}
-                            onTouchEnd={cancelLongPress}
-                            onTouchCancel={cancelLongPress}
-                          >
-
-                            <div
-                              key={chat.id}
-                              onClick={() =>
-                                handleChatClick(chat.id, chat.isChannel)
-                              }
-                              role="button"
-                              aria-label={t('chats.chatWith', { name: chat.name })}
-                              tabIndex={0}
-                              className={`group relative border rounded-xl p-3 transition-all duration-150 cursor-pointer flex items-center gap-3 shadow-sm ${
-                                isSelected
-                                  ? "bg-[var(--bg-surface-2)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30"
-                                  : "bg-[var(--bg-app)] hover:bg-[var(--bg-surface-2)] active:bg-[var(--bg-hover)] border border-[var(--border)]"
-                              }`}
-                              data-testid={`chat-item-${chat.id}`}
-                            >
-                              {/* Avatar Slot */}
-                              <div className="relative shrink-0">
-                                {chat.isChannel ? (
-                                  <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--text-on-accent)] shadow-inner font-bold">
-                                    <svg
-                                      className="w-6 h-6 fill-[var(--text-on-accent)]"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
-                                    </svg>
-                                  </div>
-                                ) : chat.groupAvatars ? (
-                                  <div className="w-11 h-11 rounded-full bg-[var(--bg-surface-2)] relative overflow-hidden border border-[var(--border-strong)] flex items-center justify-center">
-                                    <div className="absolute top-0.5 left-1 w-6 h-6 rounded-full overflow-hidden border border-[var(--border-strong)]">
-                                      <LazyMedia
-                                        src={chat.groupAvatars[0]}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div className="absolute top-0.5 right-1 w-6 h-6 rounded-full overflow-hidden border border-[var(--border-strong)]">
-                                      <LazyMedia
-                                        src={chat.groupAvatars[1]}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div className="absolute bottom-0.5 left-3 w-6 h-6 rounded-full overflow-hidden border border-[var(--border-strong)]">
-                                      <LazyMedia
-                                        src={chat.groupAvatars[2]}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="w-11 h-11 rounded-full overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-surface-2)] relative">
-                                    {chat.avatar ? (
-                                      <LazyMedia
-                                        src={chat.avatar}
-                                        alt={chat.name}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full bg-[var(--bg-surface-2)] flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)]">
-                                        {chat.name.slice(0, 2).toUpperCase()}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Middle Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <div className="flex items-center gap-1.5 truncate">
-                                    <h2 className="font-semibold text-[var(--text-primary)] text-[15px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
-                                      {highlightMatch(chat.name, searchQuery)}
-                                    </h2>
-                                    {nameMatches && (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[var(--nova-accent-color)]/15 text-[var(--nova-accent-color)] font-semibold border border-[var(--nova-accent-color)]/30 shrink-0">
-                                        Contact
-                                      </span>
-                                    )}
-                                    {isBotChat(chat.id) && (
-                                      <span className="flex h-5 items-center rounded-full bg-[var(--color-info)]/10 px-1.5 text-[10px] text-[var(--color-info)] font-semibold border border-[var(--color-info)]/20 shrink-0 ml-1">
-                                        BOT
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-[var(--nova-text-muted)] font-normal shrink-0 ml-2">
-                                    {chat.time}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between">
-                                  <p className="text-[13px] text-[var(--nova-text-muted)] truncate font-normal leading-snug pr-2">
-                                    {snippetMatches ? (
-                                      highlightMatch(chat.snippet, searchQuery)
-                                    ) : matchingHistMsg ? (
-                                      <span>
-                                        <span className="text-[var(--nova-accent-color)] font-medium">
-                                          Found in message:{" "}
-                                        </span>
-                                        {highlightMatch(
-                                          matchingHistMsg.text || "",
-                                          searchQuery,
-                                        )}
-                                      </span>
-                                    ) : (
-                                      highlightMatch(chat.snippet, searchQuery)
-                                    )}
-                                  </p>
-
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {pinnedChatIds.has(chat.id) && (
-                                      <div className="text-[var(--nova-text-muted)]">
-                                        <Pin className="w-3.5 h-3.5 fill-current rotate-45" />
-                                      </div>
-                                    )}
-                                    {unreadCount > 0 && (
-                                      <div
-                                        data-testid={`unread-${chat.id}`}
-                                        className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30"
-                                      >
-                                        {unreadCount}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <ChevronRight
-                                className="w-4 h-4 text-[var(--nova-text-muted)] group-hover:text-[var(--nova-accent-color)] transition-colors shrink-0 ml-2"
-                                aria-hidden="true"
-                              />
-                            </div>
-                          </div>
+                          <NovaChatItem
+                            key={chat.id}
+                            chat={chat}
+                            isSelected={isSelected}
+                            unreadCount={unreadCount}
+                            draft={drafts[chat.id]}
+                            time={chat.time}
+                            isPinned={isPinned}
+                            isArchived={isArchived}
+                            isMuted={isMuted}
+                            isChannel={chat.isChannel || chat.type === 'channel'}
+                            groupAvatars={chat.groupAvatars}
+                            joinPending={joinPending}
+                            joinWaiting={joinWaiting}
+                            joinRequests={joinRequests}
+                            onClick={() => handleChatClick(chat.id, chat.isChannel)}
+                            onLongPress={(x, y) => {
+                              setContextMenuChatId(chat.id);
+                              setContextMenuPosition({ x, y });
+                              triggerHaptic('medium');
+                            }}
+                            onPinToggle={() => handlePinToggle(chat.id)}
+                            onArchiveToggle={() => handleArchiveToggle(chat.id)}
+                            onMuteToggle={() => handleMuteToggle(chat.id)}
+                            onDelete={() => handleDeleteChat(chat.id)}
+                            onApproveJoin={(fingerprint) => handleJoinDecision(chat.id, fingerprint, true)}
+                            onRejectJoin={(fingerprint) => handleJoinDecision(chat.id, fingerprint, false)}
+                            selectMode={selectMode}
+                            isSelectedInMode={selectedChatIds.has(chat.id)}
+                            onSelectionToggle={() => toggleChatSelection(chat.id)}
+                          />
                         );
                       })}
                     </div>
@@ -1340,7 +1253,7 @@ export const ChatsScreen = forwardRef<
             >
               <button
                 onClick={() => setIsStoryComposerOpen(true)}
-                className="w-[76px] h-[104px] rounded-[18px] shrink-0 border border-dashed border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] flex flex-col items-center justify-center gap-1.5 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-accent-color)] active:scale-95 transition cursor-pointer"
+                className="w-[76px] h-[104px] rounded-[20px] shrink-0 border border-dashed border-[var(--nova-border-color)] bg-[var(--nova-overlay-weak)] flex flex-col items-center justify-center gap-1.5 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:border-[var(--nova-accent-color)] active:scale-95 transition cursor-pointer"
                 aria-label={t("stories.addStory")}
               >
                 <span className="w-7 h-7 rounded-full bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/50 flex items-center justify-center">
@@ -1354,7 +1267,7 @@ export const ChatsScreen = forwardRef<
                 <button
                   key={story.id}
                   onClick={() => setStoryViewerIndex(index)}
-                  className="w-[76px] h-[104px] rounded-[18px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-[var(--nova-border-subtle)] shadow-md shadow-black/40"
+                  className="w-[76px] h-[104px] rounded-[20px] relative overflow-hidden shrink-0 group focus:outline-none active:scale-95 transition cursor-pointer border border-[var(--nova-border-subtle)] shadow-md shadow-black/40"
                   aria-label={t('chats.storyFrom', { name: story.name })}
                 >
                   <LazyMedia
@@ -1414,13 +1327,13 @@ export const ChatsScreen = forwardRef<
                     if (e.key === "Escape") setSearchQuery("");
                   }}
                   placeholder={t('chats.searchPlaceholderMobile', { defaultValue: 'Search chats...' })}
-                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none data-[inline-focus]:focus-visible:ring-0"
+                  className="w-full bg-[var(--nova-surface-raised)] border border-[var(--nova-border)] text-[var(--nova-text-primary)] placeholder-[var(--nova-text-tertiary)] text-xs rounded-full pl-9 pr-9 py-2 transition-all shadow-inner focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--nova-accent-color)]/50 focus-visible:ring-offset-0 data-[inline-focus]:focus-visible:ring-0"
                   data-inline-focus
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 transition cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="absolute right-2 text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] p-1 transition cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                     aria-label={t("common.close")}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1512,298 +1425,72 @@ export const ChatsScreen = forwardRef<
                 </div>
               </div>
             ) : (
-              categoryChats.map((chat) => {
+              categoryChats.map((chat, index) => {
                 const isSelected = activeChatId === chat.id;
                 const unreadCount = readChats.has(chat.id)
                   ? 0
                   : chat.unreadCount || 0;
+                const isPinned = pinnedChatIds.has(chat.id);
+                const isArchived = archivedChatIds.has(chat.id);
+                const isMuted = (() => {
+                  const prefs = getNotificationPrefs();
+                  return prefs.muteUntil[chat.id] && prefs.muteUntil[chat.id] > Date.now();
+                })();
+                const joinPending = joinIndicators[chat.id]?.pending || 0;
+                const joinWaiting = joinIndicators[chat.id]?.membership === 'pending';
+                const joinRequests = joinIndicators[chat.id]?.requests || [];
+                
+                // Determine if this is a channel card (channels folder)
+                const isChannelCard = currentFolder?.filterType === 'channels' && (chat.isChannel || chat.type === 'channel');
+                
+                // Show divider for compact density (not on first item, not on pinned items)
+                const showDivider = density === 'compact' && index > 0 && !isPinned;
+                
+                // Stories ring: unseen if story has unreadCount > 0
+                const story = storyFeed.find(s => s.chatId === chat.id);
+                const storiesRing = story?.unreadCount > 0 ? 'unseen' : story ? 'seen' : 'none';
+                
+                // Mock online status for demo (could be real presence data)
+                const isOnline = chat.type === 'direct' && chat.id !== 'katie' && Math.random() > 0.7;
+
                 return (
-                  <div
+                  <NovaChatItem
                     key={chat.id}
-                    onTouchStart={(e) => startLongPress(e, chat.id)}
-                    onTouchMove={cancelLongPress}
-                    onTouchEnd={cancelLongPress}
-                    onTouchCancel={cancelLongPress}
-                  >
-
-                    {/* Selection Checkbox (Select Mode) */}
-                    {selectMode && (
-                      <div className="flex items-center justify-center mr-2 shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={selectedChatIds.has(chat.id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            toggleChatSelection(chat.id);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded border-2 border-[var(--nova-accent-color)] bg-transparent appearance-none cursor-pointer checked:bg-[var(--nova-accent-color)] checked:border-[var(--nova-accent-color)] checked:after:content-['✓'] checked:after:text-white checked:after:flex checked:after:items-center checked:after:justify-center transition-all duration-150"
-                          aria-label={t('chats.selectChat')}
-                        />
-                      </div>
-                    )}
-
-                      {/* Chat Row Content */}
-                    <div
-                      onClick={() =>
-                        selectMode
-                          ? toggleChatSelection(chat.id)
-                          : handleChatClick(chat.id, chat.isChannel)
-                      }
-                      role="button"
-                      aria-label={t('chats.chatWith', { name: chat.name })}
-                      tabIndex={0}
-                      className={`group relative border rounded-xl p-2 transition-all duration-150 cursor-pointer flex items-center gap-2 shadow-sm ${
-                        isSelected
-                          ? "bg-[var(--nova-surface-high)] border-[var(--nova-accent-color)]/60 shadow-lg shadow-[var(--nova-accent-color)]/15 ring-1 ring-[var(--nova-accent-color)]/30"
-                          : "bg-[var(--nova-surface-raised)]/90 hover:bg-[var(--nova-surface-high)] active:bg-[var(--nova-surface-high)] border-[var(--nova-border-color)]"
-                      }`}
-                      data-testid={`chat-item-${chat.id}`}
-                    >
-                      {/* Avatar Slot */}
-                      <div className="relative shrink-0">
-                        {chat.isChannel ? (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--nova-danger-gradient-from)] to-[var(--nova-accent-color)] flex items-center justify-center text-[var(--nova-text-primary)] shadow-inner font-bold">
-                            <svg
-                              className="w-5 h-5 fill-[var(--nova-text-primary)]"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 2L10 7H14L12 2ZM7 6L9 9H5L7 6ZM17 6L15 9H19L17 6ZM11 11H13V19H15V22H9V19H11V11ZM4 11H7V15C7 16.5 8 17.5 9.5 17.8V15.5C8.8 15.2 8.5 14.5 8.5 13.8V11H4ZM20 11H17V15C17 16.5 16 17.5 14.5 17.8V15.5C15.2 15.2 15.5 14.5 15.5 13.8V11H20Z" />
-                            </svg>
-                          </div>
-                        ) : chat.groupAvatars ? (
-                          <div className="w-10 h-10 rounded-full bg-[var(--nova-surface-high)] relative overflow-hidden border border-[var(--nova-border-subtle)] flex items-center justify-center">
-                            <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
-                              <LazyMedia
-                                src={chat.groupAvatars[0]}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
-                              <LazyMedia
-                                src={chat.groupAvatars[1]}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="absolute bottom-0.5 left-2.5 w-4 h-4 rounded-full overflow-hidden border border-[#17181e]">
-                              <LazyMedia
-                                src={chat.groupAvatars[2]}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-full overflow-hidden border border-[var(--nova-border-subtle)] bg-[var(--nova-surface-high)] relative">
-                            <LazyMedia
-                              src={chat.avatar}
-                              alt={chat.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="w-full h-full bg-[var(--nova-surface-high)] flex items-center justify-center text-xs font-bold text-[var(--nova-text-secondary)]">
-                              {chat.name.slice(0, 2).toUpperCase()}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Middle Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <div className="flex items-center gap-1 truncate">
-                            <h2 className="font-semibold text-[var(--nova-text-primary)] text-[13px] truncate tracking-tight group-hover:text-[var(--nova-accent-color)] transition-colors">
-                              {chat.name}
-                            </h2>
-                            {isBotChat(chat.id) && (
-                              <span className="flex h-4 items-center rounded-full bg-[var(--color-info)]/10 px-1 text-[9px] text-[var(--nova-accent-color)] font-semibold border border-[var(--color-info)]/20 shrink-0">
-                                BOT
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-[var(--nova-text-muted)] font-normal shrink-0 ml-1.5">
-                            {chat.time}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-[var(--nova-text-muted)] truncate font-normal leading-snug pr-2">
-                            {drafts[chat.id] ? (
-                              <>
-                                <span className="text-[var(--nova-accent-color,#ff4e18)] font-semibold">
-                                  {t("chat.draft", { defaultValue: "Draft" })}
-                                  :{" "}
-                                </span>
-                                <span className="text-[var(--nova-text-secondary)]">
-                                  {drafts[chat.id]}
-                                </span>
-                              </>
-                            ) : (
-                              chat.snippet
-                            )}
-                          </p>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {pinnedChatIds.has(chat.id) && (
-                              <div className="text-[var(--nova-text-muted)]">
-                                <Pin className="w-3.5 h-3.5 fill-current rotate-45" />
-                              </div>
-                            )}
-                            {joinIndicators[chat.id]?.pending > 0 && (
-                              <span
-                                data-testid={`join-pending-${chat.id}`}
-                                title={t("chats.joinRequestsBadge", {
-                                  count: joinIndicators[chat.id].pending,
-                                })}
-                                className="min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold flex items-center justify-center gap-1"
-                              >
-                                <Users className="w-3 h-3" />
-                                {joinIndicators[chat.id].pending}
-                              </span>
-                            )}
-                            {joinIndicators[chat.id]?.membership ===
-                              "pending" && (
-                              <span
-                                data-testid={`join-waiting-${chat.id}`}
-                                title={t("chats.joinWaiting")}
-                                className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] border border-[var(--nova-border-subtle)] flex items-center gap-1"
-                              >
-                                <Clock className="w-3 h-3" />
-                                {t("chats.joinWaiting")}
-                              </span>
-                            )}
-                            {unreadCount > 0 && (
-                              <div
-                                data-testid={`unread-${chat.id}`}
-                                className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[11px] font-bold flex items-center justify-center shadow-md shadow-[var(--nova-accent-color)]/30"
-                              >
-                                {unreadCount}
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchiveToggle(chat.id);
-                              }}
-                              className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
-                              aria-label={
-                                archivedChatIds.has(chat.id)
-                                  ? t("actions.unarchive", {
-                                      defaultValue: "Unarchive chat",
-                                    })
-                                  : t("actions.archive", {
-                                      defaultValue: "Archive chat",
-                                    })
-                              }
-                              title={
-                                archivedChatIds.has(chat.id)
-                                  ? t("actions.unarchive", {
-                                      defaultValue: "Unarchive chat",
-                                    })
-                                  : t("actions.archive", {
-                                      defaultValue: "Archive chat",
-                                    })
-                              }
-                            >
-                              {archivedChatIds.has(chat.id) ? (
-                                <Archive className="w-3 h-3" />
-                              ) : (
-                                <Archive className="w-3 h-3 rotate-180" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePinToggle(chat.id);
-                              }}
-                              className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] hover:bg-[var(--nova-overlay-medium)] flex items-center justify-center text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
-                              aria-label={
-                                pinnedChatIds.has(chat.id)
-                                  ? t("common.unpin", { defaultValue: "Unpin" })
-                                  : t("common.pin", { defaultValue: "Pin" })
-                              }
-                              title={
-                                pinnedChatIds.has(chat.id)
-                                  ? t("actions.unpin", {
-                                      defaultValue: "Unpin chat",
-                                    })
-                                  : t("actions.pin", {
-                                      defaultValue: "Pin chat",
-                                    })
-                              }
-                            >
-                              <Pin
-                                className={`w-3 h-3 ${pinnedChatIds.has(chat.id) ? "fill-[var(--nova-accent-color,#ff4e18)]" : ""}`}
-                              />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Pending join requests: an admin can decide without
-                        opening the group; the card click stays untouched. */}
-                        {joinIndicators[chat.id]?.pending > 0 && (
-                          <div
-                            data-testid={`join-actions-${chat.id}`}
-                            className="mt-2 space-y-1"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {joinIndicators[chat.id].requests
-                              .slice(0, 3)
-                              .map((request) => (
-                                <div
-                                  key={request.fingerprint}
-                                  className="flex items-center gap-1.5"
-                                >
-                                  <span className="flex-1 min-w-0 truncate text-[10px] font-mono text-amber-200/80">
-                                    {request.name || request.fingerprint}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleJoinDecision(
-                                        chat.id,
-                                        request.fingerprint,
-                                        true,
-                                      )
-                                    }
-                                    aria-label={`${t("chat.approveJoinRequest")}: ${request.fingerprint}`}
-                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-accent-color)]/20 border border-[var(--nova-accent-color)]/40 text-[9px] font-semibold text-[var(--nova-accent-color)] hover:bg-[var(--nova-accent-color)]/30 transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
-                                  >
-                                    {t("chat.approveJoinRequest")}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleJoinDecision(
-                                        chat.id,
-                                        request.fingerprint,
-                                        false,
-                                      )
-                                    }
-                                    aria-label={`${t("chat.rejectJoinRequest")}: ${request.fingerprint}`}
-                                    className="px-2 py-0.5 rounded-md bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] text-[9px] font-semibold text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)] transition cursor-pointer active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] active:bg-[var(--nova-overlay-strong)] shrink-0"
-                                  >
-                                    {t("chat.rejectJoinRequest")}
-                                  </button>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {/* Swipe Actions Hint - shows on hover/focus */}
-                    <div
-                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none"
-                      aria-hidden="true"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-[var(--nova-overlay-weak)] border border-[var(--nova-border-subtle)] flex items-center justify-center">
-                        <GripVertical className="w-3 h-3 text-[var(--nova-text-muted)]" />
-                      </div>
-                    </div>
-                  </div>
+                    chat={chat}
+                    isSelected={isSelected}
+                    unreadCount={unreadCount}
+                    draft={drafts[chat.id]}
+                    time={chat.time}
+                    isPinned={isPinned}
+                    isArchived={isArchived}
+                    isMuted={isMuted}
+                    isChannel={chat.isChannel || chat.type === 'channel'}
+                    groupAvatars={chat.groupAvatars}
+                    joinPending={joinPending}
+                    joinWaiting={joinWaiting}
+                    joinRequests={joinRequests}
+                    onClick={() => handleChatClick(chat.id, chat.isChannel)}
+                    onLongPress={(x, y) => {
+                      setContextMenuChatId(chat.id);
+                      setContextMenuPosition({ x, y });
+                      triggerHaptic('medium');
+                    }}
+                    onPinToggle={() => handlePinToggle(chat.id)}
+                    onArchiveToggle={() => handleArchiveToggle(chat.id)}
+                    onMuteToggle={() => handleMuteToggle(chat.id)}
+                    onDelete={() => handleDeleteChat(chat.id)}
+                    onApproveJoin={(fingerprint) => handleJoinDecision(chat.id, fingerprint, true)}
+                    onRejectJoin={(fingerprint) => handleJoinDecision(chat.id, fingerprint, false)}
+                    selectMode={selectMode}
+                    isSelectedInMode={selectedChatIds.has(chat.id)}
+                    onSelectionToggle={() => toggleChatSelection(chat.id)}
+                    // New props for Phase 3 enhancements
+                    density={density}
+                    showDivider={showDivider}
+                    isChannelCard={isChannelCard}
+                    storiesRing={storiesRing}
+                    isOnline={isOnline}
+                  />
                 );
               })
             )}

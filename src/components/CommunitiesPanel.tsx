@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import {IconPlus as Plus, IconRadio as Radio, IconMessageShare as MessageShare, IconShieldCheck as ShieldCheck, IconX as X, IconPencil as Pencil, IconTrashX as Trash2, IconTrash as Trash} from '@tabler/icons-react';
+import {IconPlus as Plus, IconRadio as Radio, IconMessageShare as MessageShare, IconShieldCheck as ShieldCheck, IconX as X, IconPencil as Pencil, IconTrashX as Trash2} from '@tabler/icons-react';
 import { ChannelInfo } from '../types/messenger';
 import { MOCK_CHATS, loadCreatedGroups } from '../data/mockMessengerData';
 import {

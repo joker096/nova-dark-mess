@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  IconChartBar as BarChart,
   IconPencil as PenSquare,
   IconPlus as Plus,
-  IconMoodSmile as Smile,
-  IconTrashX as Trash2,
-  IconTrash as Trash,
+  IconMoodSmile as MoodSmile,
   IconX as X,
   IconChartBar as BarChart2,
-  IconMoodSmile as MoodSmile,
   IconTrash as TrashX,
 } from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui/NovaModal';
@@ -208,7 +204,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               setError(null);
             }}
             placeholder={t('channel.postTitlePlaceholder')}
-            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none"
           />
         </div>
 
@@ -231,7 +227,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
             }}
             placeholder={t('channel.postTextPlaceholder')}
             rows={4}
-            className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm leading-relaxed text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+            className="w-full resize-none bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm leading-relaxed text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none"
           />
         </div>
 
@@ -271,8 +267,8 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
           <div className="flex items-center gap-2 rounded-xl border border-[var(--nova-border-color)] bg-[var(--nova-surface)] p-2">
             <StickerMedia
               sticker={sticker}
-              className="h-10 w-10 object-contain"
-              emojiClassName="text-3xl"
+              className="h-8 w-8 object-contain"
+              emojiClassName="text-2xl"
             />
             <span className="flex-1 truncate text-[11px] text-[var(--nova-text-secondary)]">{sticker.name}</span>
             <button
@@ -332,7 +328,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
               }}
               maxLength={250}
               placeholder={t('poll.questionPlaceholder', 'Ask a question...')}
-              className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+              className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none"
             />
 
             <div className="space-y-2">
@@ -346,7 +342,7 @@ export const ChannelPostComposerModal: React.FC<ChannelPostComposerModalProps> =
                       count: index + 1,
                       defaultValue: `Option ${index + 1}`,
                     })}
-                    className="flex-1 bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+                    className="flex-1 bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] transition-all duration-200 focus:outline-none"
                   />
                   {pollOptions.length > 2 && (
                     <button

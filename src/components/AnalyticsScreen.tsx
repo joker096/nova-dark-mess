@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   useLanguage } from '../context/LanguageContext';
+import { Typography } from '../lib/ui';
 import { localAnalytics } from '../lib/analytics/localAnalytics';
-import {IconChartBar as BarChart,
-  IconTrendingUp as TrendingUp,
-  IconMessageCircle as MessageCircle,
+import {IconTrendingUp as TrendingUp,
   IconDeviceFloppy as HardDrive,
   IconShieldCheck as ShieldCheck,
   IconBolt as Zap,
@@ -146,9 +145,9 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
             <div className="p-2 rounded-xl bg-[var(--nova-accent-color)]/10 text-[var(--nova-accent-color)] border border-[var(--nova-accent-color)]/20">
               <BarChart3 className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-[var(--nova-text-primary)]">
+            <Typography.Display size="lg" as="h1" className="tracking-tight">
               {t('analytics.usageTitle')}
-            </h1>
+            </Typography.Display>
           </div>
           <p className="text-[var(--nova-text-secondary)] text-sm mt-1">
             {t('analytics.usageSubtitle')}
@@ -204,7 +203,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack }) => {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold text-[var(--nova-text-primary)]">{card.value}</p>
+                <Typography.Display size="md" as="p">{card.value}</Typography.Display>
                 <p className="text-xs text-[var(--nova-text-secondary)] font-medium mt-0.5">{card.title}</p>
               </div>
             </div>

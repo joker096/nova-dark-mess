@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
-  IconMessageCircle as MessageCircle,
   IconRadio as Radio,
   IconSettings as Settings,
   IconFolder as Folder,
@@ -25,6 +24,7 @@ import { botSession } from './lib/bots/session';
 import { ThreadSidebar } from './components/ThreadSidebar';
 import { BottomNav } from './components/BottomNav';
 import { KeepAlive, useSeenScreens } from './components/KeepAlive';
+import SkipLink from './components/SkipLink';
 
 // ChatScreen and ChatsScreen are the two heaviest entry points; load them on
 // demand so the initial bundle stays small. MeshMap, Settings, Profile and
@@ -95,8 +95,8 @@ const preloadScreenChunks = () => {
 };
 
 const ScreenFallback: React.FC = () => (
-      <div className="flex h-full w-full items-center justify-center bg-[var(--bg-app)]">
-        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--nova-accent-color)]" />
+      <div className="flex h-full w-full items-center justify-center bg-[var(--nova-canvas)]">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--nova-border-strong)] border-t-[var(--nova-accent-color)]" />
   </div>
 );
 
@@ -365,13 +365,13 @@ export default function App() {
   useEffect(() => {
     const fingerprint = identity?.fingerprint;
     if (!fingerprint || !presencePrefs.presenceSharing) return;
-    const beat = () => heartbeatPresence(fingerprint).catch(() => void 0);
+    const beat = () => heartbeatPresence(fingerprint, fetch, { identity }).catch(() => void 0);
     beat();
     const interval = window.setInterval(beat, 60_000);
     return () => {
       window.clearInterval(interval);
     };
-  }, [identity?.fingerprint, presencePrefs.presenceSharing, presencePrefs.presenceHashing, presencePrefs.presenceTtl]);
+  }, [identity, presencePrefs.presenceSharing, presencePrefs.presenceHashing, presencePrefs.presenceTtl]);
   useEffect(() => {
     if (currentScreen !== 'mesh-map' || !presencePrefs.presenceSharing) {
       setPresencePeers([]);
@@ -531,9 +531,8 @@ export default function App() {
       // Update bottom nav tab for mobile when navigating to main tabs
       if (screen === 'chats' || screen === 'chat') setActiveBottomTab('chats');
       else if (screen === 'channel') setActiveBottomTab('channels');
-      else if (screen === 'anonymous') setActiveBottomTab('contacts');
+      else if (screen === 'anonymous' || screen === 'contacts') setActiveBottomTab('contacts');
       else if (screen === 'profile') setActiveBottomTab('profile');
-      else if (screen === 'premium') setActiveBottomTab('premium');
       else if (screen === 'sites' || screen === 'analytics' || screen === 'mesh-map') {
         // These open as modals/full screens, keep current tab
       }
@@ -1091,7 +1090,7 @@ export default function App() {
                 />
               </NovaTooltip>
               <MapPin className="w-5 h-5 shrink-0 text-[var(--nova-accent-color)]" />
-            <h1 className="min-w-0 truncate text-[15px] font-bold text-[var(--text-primary)]">
+            <h1 className="min-w-0 truncate text-[15px] font-bold text-[var(--nova-text-primary)]">
                 {t('meshMap.title')}
               </h1>
             </header>
@@ -1137,13 +1136,14 @@ export default function App() {
         <PinLockScreen onUnlock={unlock} />
       ) : (
         <SanctionGate>
-        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col lg:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
+        <SkipLink />
+        <div className="h-screen h-[100dvh] w-screen overflow-hidden bg-[var(--nova-canvas)] text-[var(--nova-text-primary)] flex flex-col lg:flex-row font-sans selection:bg-[var(--nova-accent-color)]/30 select-none safe-area-screen">
       {/* ======================================================== */}
       {/* 1. DESKTOP LAYOUT (>= 768px md: breakpoint)               */}
       {/* ======================================================== */}
 
       {/* Left Navigation Rail (Desktop Only) */}
-      <aside className="hidden lg:flex w-[72px] shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border)] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
+      <aside className="hidden lg:flex w-[72px] shrink-0 bg-[var(--nova-surface)] border-r border-[var(--nova-border)] flex-col items-center justify-between py-4 z-30 select-none shadow-xl">
         {/* Primary Navigation Icons */}
         <nav className="flex flex-col items-center gap-2.5 w-full px-2">
           {/* Chats tab */}
@@ -1155,8 +1155,8 @@ export default function App() {
             }}
               className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
                 isDesktopChatActive
-                  ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
+                  ? 'bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
+                  : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-surface-raised)]'
               }`}
             title={t('common.chats')}
           >
@@ -1178,8 +1178,8 @@ export default function App() {
             onClick={() => openChannel()}
               className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group ${
               isDesktopChannelActive
-                ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]'
+                ? 'bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] shadow-lg shadow-[var(--nova-accent-color)]/30'
+                : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-surface-raised)]'
             }`}
             title={t('common.channels')}
           >
@@ -1196,7 +1196,7 @@ export default function App() {
           {/* Folders tab */}
           <button
             onClick={() => foldersRef.current?.openFolderModal()}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-2)]`}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer relative group text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)] hover:bg-[var(--nova-surface-raised)]`}
             title={t('folders')}
           >
             <Folder className="w-5 h-5" />
@@ -1206,7 +1206,7 @@ export default function App() {
           {/* Settings Trigger (language switch moved into Settings) */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="w-11 h-11 rounded-2xl text-[var(--text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--bg-surface-2)] flex items-center justify-center transition cursor-pointer active:bg-[var(--nova-overlay-strong)]"
+            className="w-11 h-11 rounded-2xl text-[var(--nova-text-secondary)] hover:text-[var(--nova-accent-color)] hover:bg-[var(--nova-surface-raised)] flex items-center justify-center transition cursor-pointer active:bg-[var(--nova-overlay-strong)]"
             title={t('settings.title')}
           >
             <Settings className="w-5 h-5" />
@@ -1215,7 +1215,7 @@ export default function App() {
           {/* User Avatar with Status indicator */}
           <button
             onClick={() => openProfile(account.id)}
-            className="w-10 h-10 rounded-full border border-[var(--border-strong)] overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
+            className="w-10 h-10 rounded-full border border-[var(--nova-border-strong)] overflow-hidden relative cursor-pointer active:scale-95 transition hover:ring-2 hover:ring-[var(--nova-accent-color)]/60 group"
             title={`${account.displayName} (Online)`}
           >
             {account.avatar && !avatarLoadFailed && (
@@ -1230,7 +1230,7 @@ export default function App() {
               />
             )}
             {(!account.avatar || avatarLoadFailed) && (
-              <div className="w-full h-full bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] font-bold text-xs flex items-center justify-center">
+              <div className="w-full h-full bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] font-bold text-xs flex items-center justify-center">
                 {account.displayName.slice(0, 2).toUpperCase()}
               </div>
             )}
@@ -1245,7 +1245,7 @@ export default function App() {
               </span>
             )}
             {/* Online Green Beacon */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--online)] ring-2 ring-[var(--bg-surface)]" />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--nova-online)] ring-2 ring-[var(--nova-surface)]" />
           </button>
         </div>
       </aside>
@@ -1290,7 +1290,7 @@ export default function App() {
       </section>
 
       {/* Right Main Content Stage (Desktop Only) */}
-      <main className="hidden lg:flex flex-1 min-w-0 h-full overflow-hidden bg-[#090a0e] flex-col relative">
+      <main id="main-content" className="hidden lg:flex flex-1 min-w-0 h-full overflow-hidden bg-[#090a0e] flex-col relative">
         <Suspense fallback={<ScreenFallback />}>
           {desktopScreenSlots.map((screen) => (
             <KeepAlive
@@ -1323,7 +1323,7 @@ export default function App() {
       {/* ======================================================== */}
       {/* 2. MOBILE VIEW (< 768px md: breakpoint)                   */}
       {/* ======================================================== */}
-        <div className="flex-1 w-full h-full lg:hidden overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
+        <div className="flex-1 w-full h-full lg:hidden overflow-hidden flex flex-col relative bg-[var(--nova-canvas)]">
           <div className="flex-1 overflow-hidden relative">
             <Suspense fallback={<ScreenFallback />}>
               {mobileScreenSlots.map((slot) => (
@@ -1363,10 +1363,20 @@ export default function App() {
           </div>
           <BottomNav
             activeTab={activeBottomTab}
-            onTabChange={setActiveBottomTab}
-            onNewChat={() => void 0}
+            onTabChange={(tab) => {
+              if (tab === 'channels') {
+                setMobileChannelListOpen(true);
+                setActiveBottomTab('channels');
+                navigate('channel');
+              } else {
+                navigate(tab);
+              }
+            }}
+            onNewChat={() => navigate('chat', { chatId: 'new' })}
             onNewChannel={() => openChannel()}
-            onOpenContacts={() => setActiveBottomTab('contacts')}
+            onOpenContacts={() => navigate('anonymous')}
+            onOpenProfile={() => navigate('profile')}
+            onOpenSettings={() => navigate('profile')}
             unreadChats={totalUnreadChats}
             unreadChannels={totalUnreadChannels}
             unreadContacts={0}

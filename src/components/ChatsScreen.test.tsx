@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ChatsScreen } from './ChatsScreen';
 import { FolderModal } from './FolderModal';
-import { loadAccount } from '../lib/account/account';
+import type { ParsedContact } from '../lib/contacts/vcfParser';
 import { selectFolder } from '../lib/chat/folders';
 import { invalidateCachedItem } from '../lib/storage/localStorageCache';
 
@@ -56,7 +56,7 @@ describe('ChatsScreen - header (localized)', () => {
   it('shows chat list with contacts', () => {
     renderChats();
 
-    expect(screen.getByText('Katie Rogers')).toBeTruthy();
+    expect(screen.getAllByText('Katie Rogers').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Kurt Williamson')).toBeTruthy();
     expect(screen.queryByText('chats.greeting')).toBeNull();
     expect(screen.queryByText('chats.unreadCount')).toBeNull();
@@ -120,7 +120,7 @@ describe('ChatsScreen - folder selection follows the bottom navigation', () => {
 
   it('filters the chat list when the navigation selects another folder', () => {
     renderChats();
-    expect(screen.getByText('Katie Rogers')).toBeTruthy();
+    expect(screen.getAllByText('Katie Rogers').length).toBeGreaterThanOrEqual(1);
 
     act(() => {
       selectFolder('work');
@@ -295,21 +295,81 @@ describe('ChatsScreen - join request indicators', () => {
   });
 });
 
-describe('ChatsScreen - horizontal lists hide scrollbar', () => {
-  it('stories row uses no-scrollbar (no visible slider)', () => {
-    renderChats();
-    const list = screen.getByTestId('stories-row');
-    expect(list.className).toContain('no-scrollbar');
-    expect(list.className).not.toContain('scrollbar-x');
+describe('ChatsScreen - contact search', () => {
+  const CONTACTS: ParsedContact[] = [
+    { name: 'Alice Smith', phone: '+1 555 0101', email: 'alice@example.com', nickname: '@alice' },
+    { name: 'Bob Jones', phone: '+1 555 0102', email: 'bob@example.com', nickname: '@bob' },
+    { name: 'Carol Lee', phone: '+1 555 0103', email: 'carol@example.com', nickname: '@carol' },
+  ];
+
+  it('finds user-added contacts by name', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: 'Alice' } });
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
+    expect(screen.queryByText('Carol Lee')).not.toBeInTheDocument();
   });
 
-  it('stories row uses no-scrollbar (no visible slider)', () => {
-    renderChats();
-    const list = screen.getByTestId('stories-row');
-    expect(list.className).toContain('no-scrollbar');
-    expect(list.className).not.toContain('scrollbar-x');
+  it('finds user-added contacts by phone', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: '555 0102' } });
+
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.queryByText('Carol Lee')).not.toBeInTheDocument();
   });
 
+  it('finds user-added contacts by email', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: 'carol@example' } });
+
+    expect(screen.getByText('Carol Lee')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
+  });
+
+  it('finds user-added contacts by nickname', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: '@bob' } });
+
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.queryByText('Carol Lee')).not.toBeInTheDocument();
+  });
+
+  it('shows no results when contact search matches nothing', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: 'ZZZ' } });
+
+    expect(screen.getByText('No results found')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
+    expect(screen.queryByText('Carol Lee')).not.toBeInTheDocument();
+  });
+
+  it('still finds regular chats alongside contacts', () => {
+    renderChats({ userContacts: CONTACTS });
+
+    const searchInput = screen.getByPlaceholderText('chats.searchPlaceholder');
+    fireEvent.change(searchInput, { target: { value: 'Katie' } });
+
+    // Both contact and chat can match - get all and verify at least one
+    const katieElements = screen.getAllByText('Katie Rogers');
+    expect(katieElements.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+  });
 });
+
 
 

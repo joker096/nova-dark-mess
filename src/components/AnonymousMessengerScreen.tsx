@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {IconArrowLeft as ArrowLeft, IconCopy as Copy, IconGift as Gift, IconPaperclip as Paperclip, IconPhone as Phone, IconSend as Send, IconShieldCheck as ShieldCheck, IconTrashX as Trash2, IconTrash as Trash, IconVideo as Video} from '@tabler/icons-react';
+import {IconArrowLeft as ArrowLeft, IconCopy as Copy, IconGift as Gift, IconPaperclip as Paperclip, IconPhone as Phone, IconSend as Send, IconShieldCheck as ShieldCheck, IconVideo as Video} from '@tabler/icons-react';
 import { toDataURL } from 'qrcode';
 import { useLanguage } from '../context/LanguageContext';
 import { sanitizeDownloadMime } from '../lib/security/safeUrl';
@@ -44,6 +44,7 @@ import { createAnonTransport } from '../lib/anon/transport';
 import { createAutoTransport, LocalAnonTransport } from '../lib/anon/localTransport';
 import { createPushHintPoller, pushTokenForQueue, registerPush } from '../lib/anon/push';
 import { relayRateLimitRemainingMs } from '../lib/anon/httpRelay';
+import { getRateLimitStatus, recordMessage, unblockSenderRateLimit } from '../lib/anon/rateLimit';
 import { checkTorRunning, isOnionUrl } from '../lib/anon/tor';
 import { uint8ToBase64 } from '../lib/anon/packet';
 import {
@@ -362,6 +363,9 @@ export const AnonymousMessengerScreen: React.FC<{
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  // Identity keys the spam limiter paused during this session. The limiter
+  // itself persists to localStorage, so the list is only a render trigger.
+  const [rateLimitedKeys, setRateLimitedKeys] = useState<string[]>([]);
   const [relayCheck, setRelayCheck] = useState<{ ok: boolean; message: string } | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [localContactsOpen, setLocalContactsOpen] = useState(false);
@@ -503,6 +507,10 @@ export const AnonymousMessengerScreen: React.FC<{
     ? contactIdentity(selectedContact.contact.peerInvite)
     : '';
   const selectedContactBlocked = Boolean(selectedContactKey && isBlocked(selectedContactKey));
+  const selectedContactRateLimited = Boolean(
+    selectedContactKey &&
+      (rateLimitedKeys.includes(selectedContactKey) || getRateLimitStatus(selectedContactKey).blocked),
+  );
   const currentInvite = inviteCodeForInbox(state.pendingInbox);
   const inviteLink = currentInvite
     ? buildNativeContactInviteUrl(currentInvite)
@@ -1107,6 +1115,26 @@ export const AnonymousMessengerScreen: React.FC<{
               acknowledgements.set(inbox.queueId, bucket);
               continue;
             }
+            // Spam protection: a contact that keeps exceeding the message rate
+            // is paused. Its packets are acknowledged and dropped instead of
+            // filling the queue or the local history, and the chat offers an
+            // explicit way to resume delivery.
+            const senderKey = contactIdentity(existing.contact.peerInvite);
+            if (recordMessage(senderKey).blocked) {
+              setRateLimitedKeys((keys) =>
+                keys.includes(senderKey) ? keys : [...keys, senderKey],
+              );
+              setError(
+                t(
+                  'anonymous.senderRateLimited',
+                  'This contact is sending too fast; incoming messages are paused.',
+                ),
+              );
+              const bucket = acknowledgements.get(inbox.queueId) ?? { inbox, packetIds: [] };
+              bucket.packetIds.push(packet.packetId);
+              acknowledgements.set(inbox.queueId, bucket);
+              continue;
+            }
             next = {
               ...next,
               contacts: next.contacts.map((entry) =>
@@ -1426,6 +1454,14 @@ export const AnonymousMessengerScreen: React.FC<{
     }
     setError('');
     setStatus(selectedContactBlocked ? t('anonymous.unblock') : t('anonymous.block'));
+  };
+
+  const unblockRateLimitedContact = () => {
+    if (!selectedContactKey) return;
+    unblockSenderRateLimit(selectedContactKey);
+    setRateLimitedKeys((keys) => keys.filter((key) => key !== selectedContactKey));
+    setError('');
+    setStatus(t('anonymous.rateLimitCleared', 'Rate limit cleared; messages resume.'));
   };
 
   const reportSelectedContact = async () => {
@@ -1926,7 +1962,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 ref={localModePanelRef}
                 role="status"
                 tabIndex={-1}
-                className="rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
+                className="rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 focus:outline-none"
               >
                 <h2 className="text-xs font-semibold text-sky-100">{t('anonymous.localModeTitle')}</h2>
                 <p className="pt-1 text-[11px] leading-relaxed text-sky-100/80">
@@ -2041,7 +2077,7 @@ export const AnonymousMessengerScreen: React.FC<{
                 value={inviteInput}
                 onChange={(event) => setInviteInput(event.target.value)}
                 rows={2}
-                className="w-full resize-none bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+                className="w-full resize-none bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none"
               />
             </label>
             <button
@@ -2117,7 +2153,7 @@ export const AnonymousMessengerScreen: React.FC<{
                     placeholder={placeholder}
                     autoComplete="off"
                     spellCheck={false}
-                    className="w-full bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nova-accent-color)]"
+                    className="w-full bg-black/30 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/40 transition-all duration-200 focus:outline-none"
                   />
                 </label>
               ))}
@@ -2331,6 +2367,23 @@ export const AnonymousMessengerScreen: React.FC<{
                   <p className="pt-4 text-center text-xs text-white/35">{t('anonymous.emptyContacts')}</p>
                 )}
               </div>
+              {selectedContactRateLimited && (
+                <div className="flex items-center justify-between gap-2 border-t border-amber-300/30 bg-amber-300/10 px-3 py-2 text-[11px] text-amber-200">
+                  <span>
+                    {t(
+                      'anonymous.senderRateLimitedNotice',
+                      'Incoming messages from this contact are paused: they exceeded the spam limit.',
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={unblockRateLimitedContact}
+                    className="shrink-0 rounded-lg border border-amber-300/40 px-2 py-1 font-medium hover:bg-amber-300/10"
+                  >
+                    {t('anonymous.rateLimitUnblock', 'Resume messages')}
+                  </button>
+                </div>
+              )}
               <form onSubmit={sendMessage} className="flex gap-2 border-t border-white/10 p-2">
                 <input
                   ref={fileInputRef}

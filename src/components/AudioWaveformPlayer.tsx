@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import {IconCirclePlay as Play, IconPlayerPlay as PlayCircle, IconPlayerPause as Pause} from '@tabler/icons-react';
+import {IconCirclePlay as Play, IconPlayerPause as Pause} from '@tabler/icons-react';
 import { VoiceNoteData } from '../types/messenger';
 import { useLanguage } from '../context/LanguageContext';
 

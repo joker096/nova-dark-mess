@@ -1,40 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  IconLayoutDashboard as LayoutDashboard,
   IconLock as Lock,
   IconInfoCircle as Info,
-  IconUsers as Users,
-  IconMessageCircle as MessageCircle,
   IconSettings as Settings,
-  IconChevronLeft as ChevronLeft,
-  IconChevronRight as ChevronRight,
-  IconSparkles as Sparkles,
-  IconFolderPlus as FolderPlus,
-  IconFolder as Folder,
-  IconX as X,
-  IconPlus as Plus,
-  IconSearch as Search,
-  IconMapPin as MapPin,
-  IconSpeakerphone as Megaphone,
-  IconChartBar as BarChart,
-  IconGlobe as Globe,
-  IconPalette as Palette,
-  IconShield as Shield,
   IconBell as Bell,
   IconDatabase as Database,
-  IconSend as Send,
-  IconArchive as Archive,
-  IconClock as Clock,
-  IconCheck as Check,
-  IconBellOff as BellOff,
-  IconVolumeOff as VolumeX,
-  IconPin as Pin,
-  IconTrash as Trash,
-  IconUser as User,
-  IconUpload as Upload,
-  IconHandClick as Hand,
-  IconCloud as Cloud,
+  IconShield as Shield,
   IconMessageCircle as MessageSquare,
+  IconVolumeOff as VolumeX,
 } from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSecurity } from '../hooks/useSecurity';
@@ -162,7 +135,7 @@ const PrivacyScopeSelector: React.FC<{ value: PrivacyScope; onChange: (v: Privac
   return (
     <div className="flex items-center gap-1">
       {scopes.map((s) => (
-        <button key={s.value} type="button" onClick={() => onChange(s.value)} className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === s.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`}>{s.label}</button>
+        <button key={s.value} type="button" onClick={() => onChange(s.value)} className={`px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === s.value ? 'bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`}>{s.label}</button>
       ))}
     </div>
   );
@@ -177,7 +150,7 @@ const NotificationLevelSelector: React.FC<{ value: NotificationLevel; onChange: 
   return (
     <div className="flex items-center gap-1">
       {levels.map((l) => (
-        <button key={l.value} type="button" onClick={() => onChange(l.value)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === l.value ? 'bg-[var(--nova-accent-color)] text-[var(--text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`} aria-label={l.label}>{l.icon}{l.label}</button>
+        <button key={l.value} type="button" onClick={() => onChange(l.value)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${value === l.value ? 'bg-[var(--nova-accent-color)] text-[var(--nova-text-on-accent)] shadow-sm' : 'bg-[var(--nova-overlay-weak)] text-[var(--nova-text-secondary)] hover:bg-[var(--nova-overlay-medium)] hover:text-[var(--nova-text-primary)]'}`} aria-label={l.label}>{l.icon}{l.label}</button>
       ))}
     </div>
   );
@@ -254,7 +227,7 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
   const retryJoinOutboxNow = async () => { setIsRetryingJoin(true); await import('../lib/social/joinRequestRelay').then(m => m.retryJoinOutboxNow()); setJoinOutbox(loadJoinOutbox()); setIsRetryingJoin(false); };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-app)]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[var(--nova-canvas)]">
       {/* Desktop implementation would go here - this is a placeholder */}
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="text-center text-[var(--nova-text-muted)]">

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {IconMessageCircle as MessageCircle, IconMessage2 as MessageSquare, IconUsers as Users, IconSpeakerphone as Megaphone, IconSparkles as Sparkles, IconPlus as Plus, IconUser as User, IconUserPlus as UserPlus, IconUpload as Upload, IconHandClick as Hand, IconFolderPlus as FolderPlus, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconUserCircle as UserCircle} from '@tabler/icons-react';
+import {IconMessage2 as MessageSquare, IconUsers as Users, IconSpeakerphone as Megaphone, IconPlus as Plus, IconUserPlus as UserPlus, IconUpload as Upload, IconHandClick as Hand, IconFolderPlus as FolderPlus, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconUserCircle as UserCircle, IconSettings as Settings, IconUserCheck as UserCheck} from '@tabler/icons-react';
 import { useLanguage } from '../context/LanguageContext';
 import { createPortal } from 'react-dom';
 import type { BottomTab } from '../types/navigation';
@@ -18,6 +18,8 @@ interface BottomNavProps {
   onNewChat?: () => void;
   onNewChannel?: () => void;
   onOpenContacts?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
   unreadChats?: number;
   unreadChannels?: number;
   unreadContacts?: number;
@@ -46,7 +48,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'chats' as const, icon: MessageSquare, label: t('common.chats'), unread: unreadChats },
     { id: 'contacts' as const, icon: Users, label: t('common.contacts'), unread: unreadContacts },
     { id: 'channels' as const, icon: Megaphone, label: t('common.channels'), unread: unreadChannels },
-    { id: 'premium' as const, icon: Sparkles, label: t('premium.title'), unread: 0 },
+    { id: 'profile' as const, icon: UserCheck, label: t('common.profile'), unread: 0 },
   ];
 
   // Close FAB menu when clicking outside
@@ -121,7 +123,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         ref={fabMenuRef}
         role="dialog"
         aria-label={t('chats.quickActions', { defaultValue: 'Quick Actions' })}
-        className="w-56 rounded-3xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/98 p-2 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom-5 zoom-in-95 duration-200 space-y-1"
+        className="fixed z-40 bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-56 rounded-3xl border border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)]/98 p-2 shadow-2xl backdrop-blur-2xl animate-fab-in space-y-1"
+        style={{
+          animation: 'fabIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        }}
       >
         <button
           type="button"
@@ -312,7 +317,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-16 px-3">
           {tabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
             const isCenter = index === 2; // Center position (channels)
@@ -323,11 +328,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => onTabChange(tab.id)}
-                  className={`relative flex flex-col items-center justify-center gap-1 px-4 py-2 transition-all duration-200 cursor-pointer min-h-[44px] ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'}`}
+                  className={`relative flex flex-col items-center justify-center gap-1 px-3 py-2 transition-all duration-200 cursor-pointer min-h-[44px] ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'}`}
                   aria-label={tab.label}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+                  <tab.icon className={`w-6 h-6 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
                   <span className={`text-[10px] font-medium ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)]'}`}>{tab.label}</span>
                   {tab.unread > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">
@@ -343,11 +348,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => onTabChange(tab.id)}
-                className={`relative flex flex-col items-center justify-center gap-1 px-4 py-2 transition-all duration-200 cursor-pointer min-h-[44px] ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'}`}
+                className={`relative flex flex-col items-center justify-center gap-1 px-3 py-2 transition-all duration-200 cursor-pointer min-h-[44px] ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)] hover:text-[var(--nova-text-primary)]'}`}
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <tab.icon className={`w-7 h-7 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
+                <tab.icon className={`w-6 h-6 ${isActive ? 'fill-[var(--nova-accent-color)]' : ''}`} />
                 <span className={`text-[10px] font-medium ${isActive ? 'text-[var(--nova-accent-color)]' : 'text-[var(--nova-text-secondary)]'}`}>{tab.label}</span>
                 {tab.unread > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 min-w-[18px] rounded-full bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] text-[9px] font-bold flex items-center justify-center shadow-sm">
@@ -370,12 +375,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             : undefined
         }
       >
-        {renderFabMenu()}
+        {isFabMenuOpen && createPortal(renderFabMenu(), document.body)}
 
         <button
           type="button"
           onClick={handleFabClick}
-          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 active:scale-90 cursor-pointer ${
+          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 active:scale-90 cursor-pointer ${
             isFabMenuOpen
               ? 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-[var(--nova-accent-color)]/50 rotate-45'
               : 'bg-[var(--nova-accent-color)] text-[var(--nova-on-accent)] shadow-[var(--nova-accent-color)]/40'
@@ -384,7 +389,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           aria-expanded={isFabMenuOpen}
           aria-haspopup="dialog"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
     </>

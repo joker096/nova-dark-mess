@@ -4,12 +4,10 @@ import {
   IconRadio as Radio,
   IconSearch as Search,
   IconStar as Star,
-  IconTrashX as Trash2,
-  IconTrash as Trash,
   IconCheck as Check,
   IconLock as Lock,
   IconArrowLeft as ArrowLeft,
-  IconTrash as TrashX,
+  IconTrashX as TrashX,
   IconDotsVertical as MoreVertical,
 } from '@tabler/icons-react';
 import type { ChannelDraft, ChannelInfo } from '../types/messenger';
@@ -276,7 +274,7 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
       ) : (
         <>
       {/* Channel Search */}
-      <div className="px-4 pb-2">
+      <div className="px-3 pb-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--nova-text-muted)] pointer-events-none" />
           <input
@@ -284,27 +282,27 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
             placeholder={t('channel.searchChannels', 'Search channels...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 pl-12 py-2.5 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none transition-all duration-200"
+            className="w-full bg-[var(--nova-overlay-weak)]/50 rounded-xl px-3 pl-12 py-2 text-sm text-[var(--nova-text-primary)] placeholder-[var(--nova-text-muted)] focus:outline-none transition-all duration-200"
             data-inline-focus
           />
         </div>
       </div>
 
-      <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-3 pt-1.5">
+      <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-2 pt-1">
         {privateChannels.length > 0 && (
           <section className="mb-2">
-            <h2 className="mb-1.5 flex items-center gap-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)]">
+            <h2 className="mb-1.5 flex items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)]">
               <Lock className="h-3 w-3" />
               {t('channel.privateChannels')}
             </h2>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {privateChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-2 rounded-xl border p-1.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <span className="truncate text-[13px] font-semibold text-[var(--nova-text-primary)]">{channel.name}</span>
                         <span className="shrink-0 rounded-full border border-[var(--nova-border-color)] bg-[var(--nova-surface)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-text-muted)]">{t('channel.privateBadge')}</span>
                       </div>
@@ -320,20 +318,20 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
         {followingChannels.length > 0 && (
           <section className="mb-2">
             <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)] mb-1.5">{t('channel.following')}</h2>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {followingChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-2 rounded-xl border p-1.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <span className="truncate text-[13px] font-semibold text-[var(--nova-text-primary)]">{channel.name}</span>
                         {channel.isOwned && <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">{t('channel.owned')}</span>}
                       </div>
                       <p className="truncate text-[10.5px] text-[var(--nova-text-muted)]">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-1.5">
                         {previewTime && <span className="text-[9px] tabular-nums text-[var(--nova-text-muted)]">{previewTime}</span>}
                         {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'muted' : 'danger'} />}
                       </div>
@@ -348,21 +346,21 @@ export const ChannelListPanel: React.FC<ChannelListPanelProps> = ({
         {recommendedChannels.length > 0 && (
           <section className="mb-2">
             <h2 className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--nova-text-muted)] mb-1.5">{t('channel.recommended')}</h2>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {recommendedChannels.map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 const previewTime = formatPreviewTime(channel.lastPostAt);
                 return (
-                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
+                  <button key={channel.id} type="button" onClick={() => onSelectChannel(channel.id)} aria-current={isActive ? 'page' : undefined} className={`flex w-full items-center gap-2 rounded-xl border p-1.5 text-left transition active:scale-[0.99] ${isActive ? 'border-[var(--nova-accent-color)]/50 bg-[var(--nova-accent-color)]/10' : 'border-[var(--nova-border-color)] bg-[var(--nova-surface-raised)] hover:border-[var(--nova-border-color)] hover:bg-[var(--nova-surface-high)]'}`}>
                     <Avatar src={channel.avatar} name={channel.name} size="md" channelType="default" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <span className="truncate text-[13px] font-semibold text-[var(--nova-text-primary)]">{channel.name}</span>
                         {channel.isPopular && <Star className="w-3.5 h-3.5 fill-[var(--nova-accent-color)] text-[var(--nova-accent-color)] shrink-0" aria-label={t('channel.popular', 'Popular')} />}
                         {channel.isOwned && <span className="shrink-0 rounded-full border border-[var(--nova-accent-color)]/30 bg-[var(--nova-accent-color)]/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--nova-accent-color)]">{t('channel.owned')}</span>}
                       </div>
                       <p className="truncate text-[10.5px] text-[var(--nova-text-muted)]">{channel.lastPostPreview || channel.description || t('channel.subscribersCompact', { value: formatSubscribers(channel.subscribers), count: channel.subscribers })}</p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-1.5">
                         {previewTime && <span className="text-[9px] tabular-nums text-[var(--nova-text-muted)]">{previewTime}</span>}
                         {channel.unreadCount && channel.unreadCount > 0 && <NovaBadge value={channel.unreadCount} max={99} variant={channel.muted ? 'muted' : 'danger'} />}
                       </div>

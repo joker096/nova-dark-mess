@@ -3,13 +3,8 @@ import {
   useAccount } from '../hooks/useAccount';
 import { useLanguage } from '../context/LanguageContext';
 import {IconPlus as Plus,
-  IconLogout as Logout,
   IconUserCheck as UserCheck,
-  IconTrashX as Trash2,
-  IconTrash as Trash,
   IconStar as Star,
-  IconLogout as LogOut,
-  IconTrash as TrashX,
 } from '@tabler/icons-react';
 import { NovaModal } from '../lib/ui';
 import { removeAccount, setPrimaryAccount } from '../lib/account/multiAccount';
