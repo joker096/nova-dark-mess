@@ -85,9 +85,6 @@ function isAllowedPath(p) {
   // Standard test-vector files are allowlisted to match gitleaks config.
   if (p.endsWith('.test.ts') && p.includes('src/lib/crypto')) return true;
   if (p.startsWith('src/test/')) return true;
-  // Gateway tsconfig.json contains only normal TS config values flagged as
-  // false positives by the high-entropy-blob fallback rule.
-  if (p === 'packages/gateway/tsconfig.json') return true;
   // The secret scanner itself: its rule list holds token shapes (and a test
   // string that concatenates one) so that it can recognise them.
   if (p === 'scripts/check-secrets.js' || p === 'scripts/check-secrets.test.js') return true;

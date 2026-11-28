@@ -17,7 +17,7 @@
  * PermissionDenied/transport errors back to the module.
  */
 
-import type { MessageSink } from './runtime';
+import { assertSafeGatewayUrl, type MessageSink } from './runtime';
 import type { AnswerCallbackQueryOptions, BotMessageEdit, BotOutgoingMessage } from './types';
 
 export interface HttpSinkOptions {
@@ -34,7 +34,9 @@ export class HttpMessageSink implements MessageSink {
   private readonly timeoutMs: number;
 
   constructor({ gatewayUrl, fetch: fetchImpl, timeoutMs = 8000 }: HttpSinkOptions) {
-    this.base = gatewayUrl.endsWith('/') ? gatewayUrl.slice(0, -1) : gatewayUrl;
+    // Reject non-HTTPS/credentialed URLs even if a manifest was tampered with.
+    const safe = assertSafeGatewayUrl(gatewayUrl);
+    this.base = safe.endsWith('/') ? safe.slice(0, -1) : safe;
     this.fetch = fetchImpl ?? (globalThis.fetch as typeof fetch);
     this.timeoutMs = timeoutMs;
   }

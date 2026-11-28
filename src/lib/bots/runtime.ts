@@ -214,6 +214,29 @@ export async function setBotBlocked(
   await storage.save(registry);
 }
 
+/**
+ * Gateways carry bot messages over the network, so only HTTPS is accepted.
+ * Plain HTTP is allowed solely for loopback hosts during local development —
+ * anything else would let a manifest silently downgrade bot traffic.
+ */
+export function assertSafeGatewayUrl(gatewayUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(gatewayUrl);
+  } catch {
+    throw new BotInstallError('Gateway URL must be a valid URL');
+  }
+  if (parsed.username || parsed.password) {
+    throw new BotInstallError('Gateway URL must not contain credentials');
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const isLoopback = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopback)) {
+    throw new BotInstallError('Gateway URL must use HTTPS (HTTP is allowed only for localhost)');
+  }
+  return parsed.toString();
+}
+
 /** Attach or detach an L2 gateway URL for a bot (Phase B6 / NovaFather). */
 export async function setGatewayUrl(
   botId: string,
@@ -224,7 +247,7 @@ export async function setGatewayUrl(
   const bot = registry.bots.find((b) => b.manifest.id === botId);
   if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
   if (gatewayUrl !== undefined) {
-    try { new URL(gatewayUrl); } catch { throw new BotInstallError('Gateway URL must be a valid URL'); }
+    gatewayUrl = assertSafeGatewayUrl(gatewayUrl);
   }
   bot.manifest.gatewayUrl = gatewayUrl;
   await storage.save(registry);
@@ -370,7 +393,9 @@ const COMMAND_MAX = 32;
 export class BotRuntime {
   private readonly handlers = new Map<string, Array<(update: BotUpdate) => void | Promise<void>>>();
   private readonly updateLog: BotUpdate[] = [];
-  private readonly rateLimit = new Map<number, { count: number; reset: number }>();
+  /** Fixed 1-second window per bot; a Map keyed by timestamp leaked memory. */
+  private rateWindowStart = 0;
+  private rateWindowCount = 0;
   private readonly RATE_LIMIT = 20; // messages per second
   private currentLanguage = 'en';
   private moduleLoaded = false;
@@ -476,13 +501,14 @@ export class BotRuntime {
           photo: options?.photo,
           caption: options?.caption,
         };
-        // Rate limit: ~20 msg/sec per bot.
+        // Rate limit: ~20 msg/sec per bot (fixed window).
         const now = Date.now();
-        const slot = this.rateLimit.get(now) ?? { count: 0, reset: now + 1000 };
-        if (now > slot.reset) slot.count = 0;
-        slot.count += 1;
-        this.rateLimit.set(now, slot);
-        if (slot.count > this.RATE_LIMIT) {
+        if (now - this.rateWindowStart >= 1000) {
+          this.rateWindowStart = now;
+          this.rateWindowCount = 0;
+        }
+        this.rateWindowCount += 1;
+        if (this.rateWindowCount > this.RATE_LIMIT) {
           throw new PermissionDeniedError('sendMessage: rate limit exceeded');
         }
         await this.sink.send(message);

@@ -2,7 +2,7 @@
  * Site Gateway — widget chat backend for Mess&Anger.
  *
  * Endpoints:
- *   POST   /v1/sites                     — owner creates a site (auth: Bearer SITE_OWNER_TOKEN)
+ *   POST   /v1/sites                     — owner creates a site (auth: Bearer owner token from OWNER_TOKENS)
  *   GET    /v1/widget/config?site=ID     — public widget config (site_pubkey, settings)
  *   GET    /v1/guest/pow-challenge       — proof-of-work challenge
  *   POST   /v1/guest/session             — guest session: site_id, guest_pubkey, PoW → guest_token, thread_id
@@ -19,6 +19,9 @@ import { WebSocketServer, WebSocket } from 'ws';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { dirname, resolve as pathResolve } from 'path';
+import { isIP } from 'net';
+import { lookup } from 'dns/promises';
+import { Agent } from 'undici';
 import dotenv from 'dotenv';
 
 import {
@@ -41,7 +44,7 @@ import {
   generateX25519KeyPair, sharedSecret, deriveAesKey,
   encryptAes256Gcm, decryptAes256Gcm, randomToken, safeEqual,
 } from './crypto.js';
-import { x25519 } from '@noble/curves/ed25519.js';
+import { x25519, ed25519 } from '@noble/curves/ed25519.js';
 
 dotenv.config();
 
@@ -53,7 +56,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = parseInt(process.env.PORT || '8081', 10);
+// Owner tokens, bound to a single owner user: "token:user_id,token2:user_id2".
+// Legacy SITE_OWNER_TOKEN (+ SITE_OWNER_USER_ID) is still supported for dev/CI.
+const OWNER_TOKENS = new Map();
+for (const entry of (process.env.OWNER_TOKENS || '').split(',')) {
+  const pair = entry.trim();
+  if (!pair) continue;
+  const sep = pair.indexOf(':');
+  if (sep <= 0) continue;
+  const token = pair.slice(0, sep).trim();
+  const userId = pair.slice(sep + 1).trim();
+  if (token && userId) OWNER_TOKENS.set(token, userId);
+}
 const SITE_OWNER_TOKEN = (process.env.SITE_OWNER_TOKEN || '').trim();
+if (SITE_OWNER_TOKEN) {
+  OWNER_TOKENS.set(SITE_OWNER_TOKEN, (process.env.SITE_OWNER_USER_ID || 'u1').trim() || 'u1');
+}
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const CORS_ORIGINS = new Set(
   (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:1420')
     .split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean),
@@ -67,8 +86,24 @@ const MAX_MESSAGE_BYTES = parseInt(process.env.MAX_MESSAGE_BYTES || '4096', 10);
 // ───────────────────────────────────────────────────────────────────────────
 
 const OAUTH_ISSUER = 'https://mess.cvr.name';
-const oauthKeyPair = x25519.utils.randomSecretKey();
-const oauthPublicKey = x25519.getPublicKey(oauthKeyPair);
+
+// A persistent Ed25519 seed keeps previously issued id_tokens verifiable across
+// restarts (and across instances behind a load balancer). Without it every
+// boot mints a new key, so the JWKS endpoint and every existing id_token go
+// stale — acceptable only for local development.
+function loadOauthSigningKey() {
+  const raw = String(process.env.OAUTH_SIGNING_KEY || '').trim();
+  if (!raw) return null;
+  const bytes = Buffer.from(raw, /^[0-9a-f]{64}$/i.test(raw) ? 'hex' : 'base64url');
+  return bytes.length === 32 ? new Uint8Array(bytes) : null;
+}
+
+const OAUTH_SIGNING_KEY = loadOauthSigningKey();
+if (!OAUTH_SIGNING_KEY) {
+  console.warn('[site-gateway] OAUTH_SIGNING_KEY is not set — using an ephemeral signing key; id_tokens will not verify after a restart');
+}
+const oauthKeyPair = OAUTH_SIGNING_KEY || ed25519.utils.randomSecretKey();
+const oauthPublicKey = ed25519.getPublicKey(oauthKeyPair);
 
 function base64UrlUInt8(bytes) {
   return btoa(String.fromCharCode.apply(null, bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -78,13 +113,15 @@ function signJwtEdDSA(payloadObj) {
   const header = base64UrlUInt8(new TextEncoder().encode(JSON.stringify({ alg: 'EdDSA', typ: 'JWT' })));
   const payload = base64UrlUInt8(new TextEncoder().encode(JSON.stringify(payloadObj)));
   const signingInput = new TextEncoder().encode(`${header}.${payload}`);
-  const sig = x25519.sign(oauthKeyPair, signingInput);
+  const sig = ed25519.sign(signingInput, oauthKeyPair);
   const signature = base64UrlUInt8(sig);
   return `${header}.${payload}.${signature}`;
 }
 
-if (!SITE_OWNER_TOKEN) {
-  console.warn('[site-gateway] SITE_OWNER_TOKEN not set — owner endpoints are open (dev only)');
+if (OWNER_TOKENS.size === 0) {
+  // Fail closed: no tokens means no owner access at all.
+  const msg = '[site-gateway] No owner tokens configured — owner endpoints disabled. Set OWNER_TOKENS=token:user_id';
+  if (IS_PRODUCTION) console.error(msg); else console.warn(msg + ' (dev)');
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -112,6 +149,12 @@ function createRateLimiter({ max, windowMs }) {
 const apiLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 const sessionLimiter = createRateLimiter({ max: 10, windowMs: 60_000 });
 const powLimiter = createRateLimiter({ max: 30, windowMs: 60_000 });
+const oauthConsentLimiter = createRateLimiter({ max: 10, windowMs: 10 * 60_000 });
+// Guest WebSocket has no HTTP layer to rate-limit it, yet every guest message
+// writes to the store, notifies the owner and fires an outbound bot webhook.
+// Cap both the number of chat messages and the total frames per guest session.
+const guestMsgLimiter = createRateLimiter({ max: 30, windowMs: 60_000 });
+const guestFrameLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
 
 function clientKey(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
@@ -122,6 +165,10 @@ function clientKey(req) {
 // ───────────────────────────────────────────────────────────────────────────
 
 const app = express();
+// Behind nginx/Caddy every request arrives from the proxy address, so without
+// this all rate-limit buckets collapse into one shared key and a single abusive
+// client can 429 everyone. Opt in only when a trusted proxy really is in front.
+if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   res.setHeader('Vary', 'Origin');
@@ -143,6 +190,8 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '64kb' }));
+// The OAuth consent form is a plain HTML POST, not JSON.
+app.use(express.urlencoded({ extended: false, limit: '16kb' }));
 
 /* ───── static widget files (same-origin, no external deps) ───── */
 import { join as pathJoin } from 'path';
@@ -179,6 +228,35 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
 }
 
+// Notification links are rendered by the messenger client, so only plain web
+// URLs may cross this boundary: `javascript:`/`data:` here would become a
+// stored XSS primitive in every client that displays the notification.
+function isSafeHttpUrl(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+// Only non-secret, client-facing settings may leave the server via the public config.
+const PUBLIC_SETTING_KEYS = [
+  'color', 'greeting', 'language', 'position', 'title', 'subtitle',
+  'logo_url', 'avatar_url', 'theme', 'show_branding', 'handoff_enabled',
+  'placeholder', 'welcome_message',
+];
+
+function publicSiteSettings(settings) {
+  const out = {};
+  if (!settings || typeof settings !== 'object') return out;
+  for (const key of PUBLIC_SETTING_KEYS) {
+    if (settings[key] !== undefined) out[key] = settings[key];
+  }
+  return out;
+}
+
 function securityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
@@ -191,15 +269,32 @@ function securityHeaders(res) {
 // Auth: bearer token for owner endpoints
 // ───────────────────────────────────────────────────────────────────────────
 
-function requireOwner(req) {
+function ownerTokenFromRequest(req) {
   const auth = req.headers.authorization || req.headers['sec-websocket-protocol'] || '';
-  const token = auth.replace(/^Bearer\s+/i, '');
-  if (!SITE_OWNER_TOKEN || !token || token !== SITE_OWNER_TOKEN) return false;
-  return true;
+  return auth.replace(/^Bearer\s+/i, '').trim();
 }
 
+function ownerUserIdForToken(token) {
+  if (!token) return null;
+  return OWNER_TOKENS.get(token) || null;
+}
+
+function ownerUserIdFromRequest(req) {
+  return ownerUserIdForToken(ownerTokenFromRequest(req));
+}
+
+function requireOwner(req) {
+  return ownerUserIdFromRequest(req) !== null;
+}
+
+// Resolved owner user id for the presented token (null when unauthenticated).
 function requireOwnerUser(req) {
-  return process.env.SITE_OWNER_USER_ID || 'u1';
+  return ownerUserIdFromRequest(req);
+}
+
+function ownsSite(req, siteRec) {
+  const userId = ownerUserIdFromRequest(req);
+  return Boolean(siteRec && userId && siteRec.owner_user_id === userId);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -293,10 +388,12 @@ app.post('/v1/sites', (req, res) => {
   if (!apiLimiter(`sites:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   if (!requireOwner(req)) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
 
-  const { name, domains, owner_user_id, settings } = req.body || {};
+  const { name, domains, settings } = req.body || {};
   if (!name || typeof name !== 'string') return json(res, 400, { ok: false, reason: 'NAME_REQUIRED' });
   if (!Array.isArray(domains) || domains.length === 0) return json(res, 400, { ok: false, reason: 'DOMAINS_REQUIRED' });
-  if (!owner_user_id || typeof owner_user_id !== 'string') return json(res, 400, { ok: false, reason: 'OWNER_REQUIRED' });
+  // Bind the site to the authenticated owner, never to a client-supplied id.
+  const owner_user_id = requireOwnerUser(req);
+  if (!owner_user_id) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
 
   const { publicKey: sitePubkey, privateKey: sitePrivkey } = generateX25519KeyPair();
   const site = createSite({
@@ -322,6 +419,7 @@ app.post('/v1/sites', (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 
 app.get('/v1/widget/config', (req, res) => {
+  if (!apiLimiter(`config:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { site } = req.query;
   if (!site || typeof site !== 'string') return json(res, 400, { ok: false, reason: 'SITE_REQUIRED' });
   const siteRec = getSite(site);
@@ -342,7 +440,7 @@ app.get('/v1/widget/config', (req, res) => {
     ok: true,
     site_id: siteRec.id,
     site_pubkey: siteRec.site_pubkey,
-    settings: siteRec.settings,
+    settings: publicSiteSettings(siteRec.settings),
     confirmed: siteRec.confirmed,
   });
 });
@@ -447,8 +545,20 @@ setInterval(sweepGuestTokens, 60 * 60 * 1000).unref?.();
 // ───────────────────────────────────────────────────────────────────────────
 
 app.get('/v1/guest/history', (req, res) => {
-  const { thread: threadId, after, limit } = req.query;
-  if (!threadId) return json(res, 400, { ok: false, reason: 'THREAD_REQUIRED' });
+  if (!apiLimiter(`history:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
+
+  // History is private: require the guest session token issued by /v1/guest/session.
+  const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  const guestToken = bearer || (typeof req.query.token === 'string' ? req.query.token : '');
+  const session = guestToken ? guestTokens.get(guestToken) : null;
+  if (!session) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
+
+  const threadId = session.thread_id;
+  const after = req.query.after;
+  const limit = req.query.limit;
+  if (req.query.thread && req.query.thread !== threadId) {
+    return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
+  }
   const threadRec = getThread(threadId);
   if (!threadRec) return json(res, 404, { ok: false, reason: 'THREAD_NOT_FOUND' });
   const messages = listMessagesByThread(threadId, {
@@ -464,7 +574,8 @@ app.get('/v1/guest/history', (req, res) => {
 
 app.get('/v1/owner/sites', (req, res) => {
   if (!requireOwner(req)) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
-  const sitesList = listAllSites();
+  const ownerUserId = requireOwnerUser(req);
+  const sitesList = listAllSites().filter((s) => s.owner_user_id === ownerUserId);
   return json(res, 200, { ok: true, sites: sitesList.map((s) => ({ id: s.id, name: s.name, domains: s.domains, kind: s.kind, username: s.username, created_at: s.created_at })) });
 });
 
@@ -487,6 +598,7 @@ app.get('/v1/owner/threads', (req, res) => {
   if (!site) return json(res, 400, { ok: false, reason: 'SITE_REQUIRED' });
   const siteRec = getSite(site);
   if (!siteRec) return json(res, 404, { ok: false, reason: 'SITE_NOT_FOUND' });
+  if (!ownsSite(req, siteRec)) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
   const includeClosed = status === 'all';
   const threads = listThreadsBySite(site, { status: 'open', includeClosed });
   return json(res, 200, { ok: true, threads });
@@ -496,6 +608,9 @@ app.get('/v1/owner/messages', (req, res) => {
   if (!requireOwner(req)) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
   const { thread: threadId, after, limit } = req.query;
   if (!threadId) return json(res, 400, { ok: false, reason: 'THREAD_REQUIRED' });
+  const threadRec = getThread(threadId);
+  if (!threadRec) return json(res, 404, { ok: false, reason: 'THREAD_NOT_FOUND' });
+  if (!ownsSite(req, getSite(threadRec.site_id))) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
   const messages = listMessagesByThread(threadId, { after, limit: limit ? parseInt(limit, 10) : undefined });
   return json(res, 200, { ok: true, messages });
 });
@@ -510,6 +625,7 @@ app.post('/v1/owner/messages', (req, res) => {
   }
   const threadRec = getThread(thread_id);
   if (!threadRec) return json(res, 404, { ok: false, reason: 'THREAD_NOT_FOUND' });
+  if (!ownsSite(req, getSite(threadRec.site_id))) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
 
   const msgSize = Buffer.byteLength(ciphertext) + Buffer.byteLength(nonce) + Buffer.byteLength(ephemeral_pubkey);
   if (msgSize > MAX_MESSAGE_BYTES) return json(res, 413, { ok: false, reason: 'MESSAGE_TOO_LARGE' });
@@ -568,7 +684,7 @@ app.get('/v1/owner/notifications/unread', (req, res) => {
 app.patch('/v1/owner/notifications/:id/read', (req, res) => {
   if (!requireOwner(req)) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
   const { id } = req.params;
-  const n = notificationsGet(id);
+  const n = getNotification(id);
   if (!n) return json(res, 404, { ok: false, reason: 'NOTIFICATION_NOT_FOUND' });
   const siteRec = getSite(n.site_id);
   if (!siteRec) return json(res, 404, { ok: false, reason: 'SITE_NOT_FOUND' });
@@ -617,6 +733,7 @@ app.patch('/v1/owner/guests/:id/block', (req, res) => {
 
 // Guest requests a handoff token for their thread
 app.post('/v1/guest/handoff', (req, res) => {
+  if (!apiLimiter(`handoff:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { token: guestToken } = req.body || {};
   if (!guestToken) return json(res, 400, { ok: false, reason: 'GUEST_TOKEN_REQUIRED' });
   const session = guestTokens.get(guestToken);
@@ -636,6 +753,7 @@ app.post('/v1/guest/handoff', (req, res) => {
 // Validate a handoff token (public, no auth — used by landing page)
 // Returns thread info but NOT the guest key (key is in URL fragment only)
 app.get('/v1/guest/handoff/:token/validate', (req, res) => {
+  if (!apiLimiter(`handoff-validate:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { token } = req.params;
   const entry = getHandoffToken(token);
   if (!entry) return json(res, 404, { ok: false, reason: 'INVALID_OR_EXPIRED_TOKEN' });
@@ -654,6 +772,7 @@ app.get('/v1/guest/handoff/:token/validate', (req, res) => {
 
 // Consume a handoff token (marks it used, thread handed off to messenger)
 app.post('/v1/guest/handoff/:token/consume', (req, res) => {
+  if (!apiLimiter(`handoff-consume:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { token } = req.params;
   const entry = consumeHandoffToken(token);
   if (!entry) return json(res, 404, { ok: false, reason: 'INVALID_OR_EXPIRED_TOKEN' });
@@ -696,10 +815,16 @@ app.get('/v1/owner/stats', (req, res) => {
 
 // Client-reported stats tracking (e.g. handoff_clicked from widget)
 app.post('/v1/stats/track', (req, res) => {
+  // Unauthenticated by design (the widget reports its own counters), so bound
+  // both the request rate and the origins allowed to inflate a site's stats.
+  if (!apiLimiter(`stats:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { site, event } = req.body || {};
   if (!site || !event) return json(res, 400, { ok: false, reason: 'SITE_AND_EVENT_REQUIRED' });
   const siteRec = getSite(site);
   if (!siteRec) return json(res, 404, { ok: false, reason: 'SITE_NOT_FOUND' });
+  if (req.headers.origin && !isOriginAllowed(siteRec, req.headers.origin)) {
+    return json(res, 403, { ok: false, reason: 'ORIGIN_NOT_ALLOWED' });
+  }
   // Whitelist: only known counter names may be incremented (prevents arbitrary-field growth).
   const STAT_EVENTS = new Set([
     'loaded', 'opened', 'first_message', 'owner_replied',
@@ -797,6 +922,32 @@ app.post('/v1/bot/threads/:thread_id/messages', (req, res) => {
 
 const SCOPE_NOTIFY = 'notify';
 
+// OAuth access tokens (in-memory, hashed nowhere yet — opaque random tokens).
+const userAccessTokens = new Map(); // token → { user_id, site_id, scope, expiresAt }
+const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+function issueUserAccessToken(siteId, userId, scope) {
+  const token = randomToken(24);
+  userAccessTokens.set(token, {
+    user_id: userId, site_id: siteId, scope: scope || '', expiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+  });
+  return token;
+}
+
+function requireUserToken(req) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+  const entry = userAccessTokens.get(token);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { userAccessTokens.delete(token); return null; }
+  return entry;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, entry] of userAccessTokens) if (now > entry.expiresAt) userAccessTokens.delete(token);
+}, 10 * 60 * 1000).unref?.();
+
 function validatePkceChallenge(challenge) {
   return /^[A-Za-z0-9\-._~]{43,128}$/.test(challenge);
 }
@@ -806,8 +957,61 @@ function sha256Base64Url(str) {
   return base64UrlUInt8(hash);
 }
 
-// GET /oauth/authorize — consent + issue authorization code
+// Scopes this gateway can actually grant. Requesting anything else is refused
+// instead of being silently consented to.
+const OAUTH_ALLOWED_SCOPES = new Set([SCOPE_NOTIFY]);
+
+// Pending authorization requests: the consent page carries only an opaque id,
+// so the request parameters cannot be tampered with between GET and POST.
+const pendingAuthorizations = new Map(); // id → { client_id, redirect_uri, state, code_challenge, scope, expiresAt }
+const PENDING_AUTHORIZATION_TTL_MS = 10 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, entry] of pendingAuthorizations) if (now > entry.expiresAt) pendingAuthorizations.delete(id);
+}, 60 * 1000).unref?.();
+
+function parseScope(raw) {
+  const scopes = String(raw || '').split(/\s+/).filter(Boolean);
+  if (scopes.some((s) => !OAUTH_ALLOWED_SCOPES.has(s))) return null;
+  return [...new Set(scopes)].join(' ');
+}
+
+function oauthPage(res, status, title, bodyHtml) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  return res.status(status).type('html').send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f5f7; color: #1d1d1f; font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+main { width: min(420px, 90vw); background: #fff; border-radius: 14px; padding: 28px; box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+h1 { font-size: 19px; margin: 0 0 12px; }
+p { margin: 0 0 12px; color: #424245; }
+code { background: #f2f2f4; border-radius: 5px; padding: 1px 5px; }
+label { display: block; margin: 16px 0 6px; font-size: 13px; font-weight: 600; }
+input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #c9c9cf; border-radius: 9px; font-size: 15px; }
+.actions { display: flex; gap: 10px; margin-top: 20px; }
+button { flex: 1; padding: 11px; border-radius: 10px; border: 0; font-size: 15px; font-weight: 600; cursor: pointer; }
+button.allow { background: #0071e3; color: #fff; }
+button.deny { background: #e8e8ed; color: #1d1d1f; }
+</style>
+</head>
+<body><main>${bodyHtml}</main></body>
+</html>`);
+}
+
+// GET /oauth/authorize — show a consent screen; no code is issued here.
 app.get('/oauth/authorize', (req, res) => {
+  if (!apiLimiter(`oauth-authorize:${clientKey(req)}`)) {
+    return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
+  }
+
   const { client_id, redirect_uri, state, code_challenge, code_challenge_method, scope } = req.query;
 
   if (!client_id || !redirect_uri || !state || !code_challenge) {
@@ -820,6 +1024,9 @@ app.get('/oauth/authorize', (req, res) => {
     return json(res, 400, { ok: false, reason: 'INVALID_CODE_CHALLENGE' });
   }
 
+  const grantedScope = parseScope(scope);
+  if (grantedScope === null) return json(res, 400, { ok: false, reason: 'INVALID_SCOPE' });
+
   const siteRec = getSite(client_id);
   if (!siteRec) return json(res, 404, { ok: false, reason: 'SITE_NOT_FOUND' });
 
@@ -831,20 +1038,77 @@ app.get('/oauth/authorize', (req, res) => {
     return json(res, 400, { ok: false, reason: 'INVALID_REDIRECT_URI' });
   }
 
-  // Simulated consent: auto-approve (in real app, user sees prompt in messenger)
-  const userId = 'user_' + randomToken(8); // pseudonymous user id
-  grantUserConsent(client_id, userId, scope || '');
+  const requestId = randomToken(24);
+  pendingAuthorizations.set(requestId, {
+    client_id,
+    redirect_uri,
+    state,
+    code_challenge,
+    scope: grantedScope,
+    expiresAt: Date.now() + PENDING_AUTHORIZATION_TTL_MS,
+  });
 
-  const code = createOAuthCode(client_id, userId, redirect_uri, code_challenge, scope || '');
+  const scopeHtml = grantedScope ? `<p>Permissions: <code>${escapeHtml(grantedScope)}</code></p>` : '';
+  return oauthPage(res, 200, 'Sign in to Mess', `
+<h1>Sign in to Mess</h1>
+<p><strong>${escapeHtml(siteRec.name)}</strong> wants to sign you in.</p>
+${scopeHtml}
+<form method="post" action="/oauth/authorize">
+  <input type="hidden" name="request_id" value="${escapeHtml(requestId)}">
+  <label for="owner_token">Gateway account token</label>
+  <input id="owner_token" type="password" name="owner_token" required autocomplete="off">
+  <div class="actions">
+    <button class="deny" type="submit" name="decision" value="deny" formnovalidate>Deny</button>
+    <button class="allow" type="submit" name="decision" value="allow">Allow</button>
+  </div>
+</form>`);
+});
 
-  const redirectUrl = new URL(redirect_uri);
+// POST /oauth/authorize — verify the user, then deny or issue a code.
+app.post('/oauth/authorize', (req, res) => {
+  if (!oauthConsentLimiter(`oauth-consent:${clientKey(req)}`)) {
+    return oauthPage(res, 429, 'Too many attempts', '<h1>Too many attempts</h1><p>Wait a few minutes, then start signing in again from the site.</p>');
+  }
+
+  const { request_id: requestId, decision, owner_token: ownerToken } = req.body || {};
+  const pending = pendingAuthorizations.get(String(requestId || ''));
+  if (!pending || pending.expiresAt < Date.now()) {
+    if (pending) pendingAuthorizations.delete(String(requestId));
+    return oauthPage(res, 400, 'Sign-in expired', '<h1>Sign-in expired</h1><p>This sign-in request is no longer valid. Start again from the site.</p>');
+  }
+
+  const redirectUrl = new URL(pending.redirect_uri);
+  redirectUrl.searchParams.set('state', pending.state);
+
+  if (decision !== 'allow') {
+    pendingAuthorizations.delete(String(requestId));
+    redirectUrl.searchParams.set('error', 'access_denied');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.redirect(redirectUrl.toString());
+  }
+
+  // Real user check: the consent is bound to the gateway account behind the
+  // token, never to a freshly invented pseudonymous id.
+  const userId = ownerUserIdForToken(String(ownerToken || '').trim());
+  if (!userId) {
+    // Keep the pending request so the user can retry with the right token.
+    return oauthPage(res, 401, 'Sign-in failed', '<h1>Sign-in failed</h1><p>That account token is not valid. Go back and try again.</p>');
+  }
+
+  pendingAuthorizations.delete(String(requestId));
+  grantUserConsent(pending.client_id, userId, pending.scope);
+  const code = createOAuthCode(pending.client_id, userId, pending.redirect_uri, pending.code_challenge, pending.scope);
+
   redirectUrl.searchParams.set('code', code);
-  redirectUrl.searchParams.set('state', state);
-  res.redirect(redirectUrl.toString());
+  res.setHeader('Cache-Control', 'no-store');
+  return res.redirect(redirectUrl.toString());
 });
 
 // POST /oauth/token — exchange code for access_token + id_token
 app.post('/oauth/token', (req, res) => {
+  if (!apiLimiter(`oauth-token:${clientKey(req)}`)) {
+    return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
+  }
   const { grant_type, code, redirect_uri, code_verifier, client_id } = req.body || {};
 
   if (grant_type !== 'authorization_code') {
@@ -869,7 +1133,7 @@ app.post('/oauth/token', (req, res) => {
     return json(res, 400, { ok: false, reason: 'PKCE_MISMATCH' });
   }
 
-  const accessToken = randomToken(24);
+  const accessToken = issueUserAccessToken(client_id, entry.user_id, entry.scope);
   const now = Math.floor(Date.now() / 1000);
   const idToken = signJwtEdDSA({
     iss: OAUTH_ISSUER,
@@ -914,7 +1178,13 @@ app.post('/v1/notify', (req, res) => {
 
   const { sub, title, text, url } = req.body || {};
   if (!sub || !title || !text) return json(res, 400, { ok: false, reason: 'MISSING_FIELDS' });
+  if (typeof title !== 'string' || title.length > 200) {
+    return json(res, 400, { ok: false, reason: 'TITLE_INVALID' });
+  }
   if (text.length > 500) return json(res, 400, { ok: false, reason: 'TEXT_TOO_LONG' });
+  if (url !== undefined && url !== null && url !== '' && !isSafeHttpUrl(url)) {
+    return json(res, 400, { ok: false, reason: 'URL_INVALID' });
+  }
 
   // Parse sub: site:{siteId}:user:{userId}
   const subMatch = sub.match(/^site:([^:]+):user:(.+)$/);
@@ -948,41 +1218,45 @@ app.post('/v1/notify', (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 
 app.get('/v1/user/notifications', (req, res) => {
-  const { user_id: userId, site_id: siteId } = req.query;
-  if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
-  const notes = getUserNotifications(userId, siteId || undefined);
+  const auth = requireUserToken(req);
+  if (!auth) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
+  const siteId = typeof req.query.site_id === 'string' ? req.query.site_id : undefined;
+  if (siteId && siteId !== auth.site_id) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
+  const notes = getUserNotifications(auth.user_id, siteId || undefined);
   return json(res, 200, { ok: true, notifications: notes });
 });
 
 app.patch('/v1/user/notifications/:id/read', (req, res) => {
+  const auth = requireUserToken(req);
+  if (!auth) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
   const { id } = req.params;
-  const { user_id: userId } = req.body || {};
-  if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
-  const n = markUserNotificationRead(userId, id);
+  const n = markUserNotificationRead(auth.user_id, id);
   if (!n) return json(res, 404, { ok: false, reason: 'NOTIFICATION_NOT_FOUND' });
   return json(res, 200, { ok: true });
 });
 
 app.post('/v1/user/sites/:site_id/mute', (req, res) => {
   const { site_id: siteId } = req.params;
-  const { user_id: userId } = req.body || {};
-  if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
-  muteSite(siteId, userId);
+  const auth = requireUserToken(req);
+  if (!auth) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
+  if (auth.site_id !== siteId) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
+  muteSite(siteId, auth.user_id);
   return json(res, 200, { ok: true });
 });
 
 app.delete('/v1/user/sites/:site_id/mute', (req, res) => {
   const { site_id: siteId } = req.params;
-  const { user_id: userId } = req.body || {};
-  if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
-  unmuteSite(siteId, userId);
+  const auth = requireUserToken(req);
+  if (!auth) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
+  if (auth.site_id !== siteId) return json(res, 403, { ok: false, reason: 'FORBIDDEN' });
+  unmuteSite(siteId, auth.user_id);
   return json(res, 200, { ok: true });
 });
 
 app.get('/v1/user/muted-sites', (req, res) => {
-  const { user_id: userId } = req.query;
-  if (!userId) return json(res, 400, { ok: false, reason: 'USER_ID_REQUIRED' });
-  const sites = listMutedSites(userId);
+  const auth = requireUserToken(req);
+  if (!auth) return json(res, 401, { ok: false, reason: 'UNAUTHORIZED' });
+  const sites = listMutedSites(auth.user_id);
   return json(res, 200, { ok: true, sites });
 });
 
@@ -996,7 +1270,7 @@ app.get('/v1/user/muted-sites', (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────
 
 app.post('/api/anon/push/register', (req, res) => {
-  if (!apiLimiter('push:register')) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
+  if (!apiLimiter(`push:register:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { pushToken, queueId } = req.body || {};
   if (!pushToken || typeof pushToken !== 'string' || pushToken.length > 4096) {
     return json(res, 400, { ok: false, reason: 'PUSH_TOKEN_REQUIRED' });
@@ -1009,6 +1283,7 @@ app.post('/api/anon/push/register', (req, res) => {
 });
 
 app.get('/api/anon/push/hint', (req, res) => {
+  if (!apiLimiter(`push-hint:${clientKey(req)}`)) return json(res, 429, { ok: false, reason: 'RATE_LIMITED' });
   const { pushToken } = req.query;
   if (!pushToken || typeof pushToken !== 'string') {
     return json(res, 400, { ok: false, reason: 'PUSH_TOKEN_REQUIRED' });
@@ -1025,28 +1300,178 @@ app.get('/api/anon/push/hint', (req, res) => {
 // Bot webhooks (signed HMAC-SHA256)
 // ───────────────────────────────────────────────────────────────────────────
 
+/* ───── Outbound webhook guard (SSRF) ───── */
+
+const WEBHOOK_TIMEOUT_MS = 5000;
+
+function isLoopbackHost(host) {
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+}
+
+/** True for loopback, private, link-local, CGNAT and other non-public IPs. */
+function isPrivateAddress(address) {
+  const version = isIP(address);
+  if (version === 4) {
+    const [a, b, c] = address.split('.').map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
+      (a === 203 && b === 0 && c === 113) ||
+      a >= 224
+    );
+  }
+  if (version === 6) {
+    const lower = address.toLowerCase().split('%')[0];
+    if (lower === '::' || lower === '::1') return true;
+    if (/^f[cd]/.test(lower) || /^fe[89ab]/.test(lower) || /^ff/.test(lower)) return true;
+    if (/^2001:0?db8:/.test(lower) || /^3fff:/.test(lower) || /^100:/.test(lower)) return true;
+    if (/^2001:0(?::|$)/.test(lower) || /^2001:0000:/.test(lower) || /^2002:/.test(lower)) return true;
+    if (/^64:ff9b:/.test(lower)) return true;
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateAddress(mapped[1]);
+    const hexMapped = lower.match(/^(?:::ffff|0:0:0:0:0:ffff):([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    const compatHex = lower.match(/^::([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    const hexIpv4 = hexMapped ?? compatHex;
+    if (hexIpv4) {
+      const high = parseInt(hexIpv4[1], 16);
+      const low = parseInt(hexIpv4[2], 16);
+      return isPrivateAddress(`${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`);
+    }
+    const compatDotted = lower.match(/^::(\d+\.\d+\.\d+\.\d+)$/);
+    if (compatDotted) return isPrivateAddress(compatDotted[1]);
+    return false;
+  }
+  // Not an IP literal: treat unknown input as unsafe.
+  return true;
+}
+
+/**
+ * Rejects webhook URLs that could turn owner-controlled settings into a
+ * server-side request forgery primitive: only HTTPS, no embedded credentials,
+ * no private/loopback destinations (loopback HTTP is allowed in development).
+ * Returns a reason string, or null when the URL is acceptable.
+ */
+function webhookUrlError(raw) {
+  let url;
+  try {
+    url = new URL(String(raw));
+  } catch {
+    return 'INVALID_URL';
+  }
+  if (url.username || url.password) return 'CREDENTIALS_NOT_ALLOWED';
+  const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const devLoopback = !IS_PRODUCTION && isLoopbackHost(host);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && devLoopback)) return 'HTTPS_REQUIRED';
+  if (isIP(host)) return isPrivateAddress(host) && !devLoopback ? 'PRIVATE_ADDRESS' : null;
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+    return devLoopback ? null : 'PRIVATE_ADDRESS';
+  }
+  return null;
+}
+
+/**
+ * Resolves a validated webhook URL to the single address the POST must be sent
+ * to. Returns null when the destination is not acceptable. Checking the answer
+ * is not enough on its own: the hostname is resolved again by the socket layer
+ * at connect time, so a DNS record could be repointed at an internal address
+ * in between (TOCTOU). The caller pins this address in the connect lookup.
+ */
+async function resolveWebhookAddresses(url) {
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  const devLoopback = !IS_PRODUCTION && isLoopbackHost(host);
+  if (isIP(host)) {
+    if (isPrivateAddress(host) && !devLoopback) return [];
+    return [{ address: host, family: isIP(host) }];
+  }
+  const rows = await lookup(host, { all: true, verbatim: true });
+  if (rows.length === 0) return [];
+  if (!devLoopback && rows.some((row) => isPrivateAddress(row.address))) return [];
+  return rows.map((row) => ({ address: row.address, family: row.family }));
+}
+
+/**
+ * Dispatcher whose DNS lookup only ever answers with addresses that already
+ * passed the SSRF guard, so the socket cannot be steered elsewhere by a record
+ * that changed after the check (TOCTOU). All validated answers are offered so
+ * undici can still fall back to a second address when the first is down; SNI
+ * still comes from the URL hostname, so certificate validation is unaffected.
+ */
+function pinnedDispatcher(targets) {
+  return new Agent({
+    connect: {
+      lookup(_hostname, options, callback) {
+        if (options && options.all) callback(null, targets);
+        else callback(null, targets[0].address, targets[0].family);
+      },
+    },
+  });
+}
+
+/** Release the response body so undici can close the connection. */
+async function drainResponse(response) {
+  if (response && typeof response.arrayBuffer === 'function') await response.arrayBuffer();
+}
+
+/**
+ * Fire-and-forget webhook delivery. The URL is re-validated and its hostname
+ * resolved right before every POST; the resulting address is pinned in the
+ * connection lookup so DNS cannot change between the check and the connect.
+ * Redirects are never followed and the request is bounded by a timeout.
+ */
+async function deliverBotWebhook(webhookUrl, headers, payload) {
+  if (webhookUrlError(webhookUrl)) return;
+  let dispatcher;
+  try {
+    const url = new URL(webhookUrl);
+    const targets = await resolveWebhookAddresses(url);
+    if (targets.length === 0) return;
+    dispatcher = pinnedDispatcher(targets);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: payload,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
+      dispatcher,
+    });
+    await drainResponse(response);
+  } catch {
+    /* delivery is best-effort */
+  } finally {
+    if (dispatcher) await dispatcher.close().catch(() => {});
+  }
+}
+
 function sendBotWebhook(siteId, event, data) {
   const siteRec = getSite(siteId);
   if (!siteRec) return;
   const settings = siteRec.settings || {};
   const webhookUrl = settings.bot_webhook_url;
   const secret = settings.bot_secret;
-  if (!webhookUrl || !secret) return;
+  if (typeof webhookUrl !== 'string' || !webhookUrl) return;
+  if (typeof secret !== 'string' || !secret) return;
 
-  const payload = JSON.stringify({ event, ...data, ts: new Date().toISOString() });
-  const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-
+  let payload;
+  let signature;
   try {
-    fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Mess-Signature': signature,
-        'X-Mess-Timestamp': new Date().toISOString(),
-      },
-      body: payload,
-    }).catch(() => {}); // fire-and-forget
-  } catch {}
+    payload = JSON.stringify({ event, ...data, ts: new Date().toISOString() });
+    signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  } catch {
+    return;
+  }
+
+  void deliverBotWebhook(webhookUrl, {
+    'Content-Type': 'application/json',
+    'X-Mess-Signature': signature,
+    'X-Mess-Timestamp': new Date().toISOString(),
+  }, payload);
 }
 
 /* ───── Bot token auth ───── */
@@ -1305,6 +1730,7 @@ function deliverPendingNotifications(ws, siteIds) {
 function handleGuestMessage(ws, session, parsed) {
   const { type } = parsed;
   if (type === 'message') {
+    if (!guestMsgLimiter(`guest-msg:${session.guest_id}`)) return;
     const { thread_id, ciphertext, nonce, ephemeral_pubkey } = parsed;
     if (!thread_id || !ciphertext || !nonce || !ephemeral_pubkey) return;
     if (thread_id !== session.thread_id) return;
@@ -1355,9 +1781,14 @@ function handleGuestMessage(ws, session, parsed) {
   } else if (type === 'ack') {
     const { message_ids } = parsed;
     if (Array.isArray(message_ids)) {
-      for (const id of message_ids) {
+      // A guest may only acknowledge messages in its own thread, and only a
+      // bounded batch per frame.
+      for (const id of message_ids.slice(0, 200)) {
+        if (typeof id !== 'string') continue;
         const m = getMessage(id);
-        if (m && !m.delivered_at) updateMessage(id, { delivered_at: new Date().toISOString() });
+        if (m && m.thread_id === session.thread_id && !m.delivered_at) {
+          updateMessage(id, { delivered_at: new Date().toISOString() });
+        }
       }
     }
   } else if (type === 'typing') {
@@ -1369,7 +1800,9 @@ function handleGuestMessage(ws, session, parsed) {
 // WebSocket server
 // ───────────────────────────────────────────────────────────────────────────
 
-const wss = new WebSocketServer({ noServer: true });
+// `ws` defaults to a 100 MiB frame limit; a single oversized frame would be
+// buffered in memory before any handler sees it. Chat/typing frames are tiny.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -1394,6 +1827,10 @@ wss.on('connection', (ws, req) => {
     sendWs(ws, { type: 'connected', thread_id: session.thread_id });
 
     ws.on('message', (raw) => {
+      if (!guestFrameLimiter(`ws-guest:${session.guest_id}`)) {
+        ws.close(1008, 'RATE_LIMITED');
+        return;
+      }
       try { handleGuestMessage(ws, session, JSON.parse(raw.toString())); } catch { /* ignore malformed */ }
     });
     ws.on('close', () => guestClients.delete(ws));
@@ -1402,8 +1839,9 @@ wss.on('connection', (ws, req) => {
   } else if (path === '/v1/owner/ws') {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const token = url.searchParams.get('token');
-    if (!token || token !== SITE_OWNER_TOKEN) { ws.close(1008, 'UNAUTHORIZED'); return; }
-    ownerClients.set(ws, { site_ids: [] });
+    const ownerUserId = ownerUserIdForToken(token);
+    if (!ownerUserId) { ws.close(1008, 'UNAUTHORIZED'); return; }
+    ownerClients.set(ws, { site_ids: [], user_id: ownerUserId });
     sendWs(ws, { type: 'connected' });
 
     ws.on('message', (raw) => {
@@ -1412,8 +1850,13 @@ wss.on('connection', (ws, req) => {
         if (parsed.type === 'subscribe' && Array.isArray(parsed.site_ids)) {
           const session = ownerClients.get(ws);
           if (session) {
-            session.site_ids = parsed.site_ids;
-            deliverPendingNotifications(ws, parsed.site_ids);
+            // Only allow subscribing to sites this owner actually owns.
+            session.site_ids = parsed.site_ids.filter((id) => {
+              if (typeof id !== 'string') return false;
+              const siteRec = getSite(id);
+              return Boolean(siteRec && siteRec.owner_user_id === session.user_id);
+            });
+            deliverPendingNotifications(ws, session.site_ids);
           }
         }
       } catch { /* ignore */ }

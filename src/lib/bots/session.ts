@@ -18,6 +18,7 @@ import {
   type InstalledBot,
   type MessageSink,
   NOVA_BOTS,
+  assertSafeGatewayUrl,
   generateBotSecret,
   installBot,
   setBotBlocked,
@@ -176,7 +177,7 @@ export class BotSession {
     const bot = registry.bots.find((b) => b.manifest.id === botId);
     if (!bot) throw new BotInstallError(`Bot not installed: ${botId}`);
     if (gatewayUrl !== undefined) {
-      try { new URL(gatewayUrl); } catch { throw new BotInstallError('Gateway URL must be a valid URL'); }
+      gatewayUrl = assertSafeGatewayUrl(gatewayUrl);
     }
     bot.manifest.gatewayUrl = gatewayUrl;
     await this.storage.save(registry);

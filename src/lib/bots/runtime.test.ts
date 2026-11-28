@@ -7,6 +7,7 @@ import {
   InMemoryBotStorage,
   type InstalledBot,
   type MessageSink,
+  assertSafeGatewayUrl,
   createRuntimes,
   dispatchUpdate,
   emptyBotRegistry,
@@ -326,6 +327,15 @@ describe('BotRuntime resilience', () => {
     const result = await runtime.deliverUpdate(makeMessageUpdate());
     expect(result).toBe(true);
     expect(ok).toHaveLength(1);
+  });
+
+  it('only accepts HTTPS gateway URLs (HTTP only on loopback)', () => {
+    expect(assertSafeGatewayUrl('https://gateway.example.com')).toBe('https://gateway.example.com/');
+    expect(assertSafeGatewayUrl('http://localhost:8080')).toBe('http://localhost:8080/');
+    expect(() => assertSafeGatewayUrl('http://gateway.example.com')).toThrow(/HTTPS/);
+    expect(() => assertSafeGatewayUrl('javascript:alert(1)')).toThrow(/HTTPS/);
+    expect(() => assertSafeGatewayUrl('https://user:pass@gateway.example.com')).toThrow(/credentials/);
+    expect(() => assertSafeGatewayUrl('not a url')).toThrow(/valid URL/);
   });
 
   it('rate limits sendMessage per bot', async () => {

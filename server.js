@@ -236,10 +236,13 @@ function timingSafeStringEqual(a, b) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
+const RELAY_ALLOW_UNAUTHENTICATED = process.env.RELAY_ALLOW_UNAUTHENTICATED === '1';
+
 function verifyRelayAuth(req) {
-  // Fail closed in production: an unset secret must never open the relay to
-  // the whole internet. Local development keeps the secretless mode.
-  if (!RELAY_HMAC_SECRET) return !IS_PRODUCTION;
+  // Fail closed by default: an unset secret never opens the relay on its own.
+  // Local development must opt in explicitly with RELAY_ALLOW_UNAUTHENTICATED=1,
+  // so a dev-mode process exposed to the internet is not silently open.
+  if (!RELAY_HMAC_SECRET) return !IS_PRODUCTION && RELAY_ALLOW_UNAUTHENTICATED;
   const auth = req.headers['authorization'];
   if (!auth) return false;
   const token = auth.replace(/^Bearer\s+/i, '');
@@ -958,6 +961,10 @@ app.post('/api/premium/gift/redeem', (req, res) => {
   }
 
   const codeHash = giftCodeHash(code);
+  // Only the request that actually took the lock may release it: the `finally`
+  // below runs on every path, including the early 409 for a concurrent
+  // redemption, and deleting there would hand a third request the same code.
+  let lockHeld = false;
   try {
     let gift = loadGift(codeHash);
     if (!gift || gift.codeHash !== codeHash) {
@@ -981,6 +988,7 @@ app.post('/api/premium/gift/redeem', (req, res) => {
     }
 
     redeemingGifts.add(codeHash);
+    lockHeld = true;
     gift = loadGift(codeHash);
     if (!gift || gift.status !== 'available') {
       return res.status(409).json({ ok: false, error: 'gift code unavailable' });
@@ -1010,7 +1018,7 @@ app.post('/api/premium/gift/redeem', (req, res) => {
     console.error('[premium] gift redemption failed', { codeHash, error: String(err && err.message ? err.message : err) });
     return res.status(500).json({ ok: false, error: 'gift redemption failed' });
   } finally {
-    redeemingGifts.delete(codeHash);
+    if (lockHeld) redeemingGifts.delete(codeHash);
   }
 });
 
@@ -1069,24 +1077,104 @@ const PRESENCE_TTL_MS = 2 * 60 * 1000;
 const PRESENCE_MIN_TTL_MS = 45 * 1000;
 const PRESENCE_MAX_TTL_MS = 5 * 60 * 1000;
 const PRESENCE_MAX_ENTRIES = 5000;
+const PRESENCE_MAX_KEYS = 5000;
 const presenceMap = new Map();
 const presenceLimiter = createRateLimiter({ max: 30, windowMs: 60_000 });
+const presenceRegisterLimiter = createRateLimiter({ max: 20, windowMs: 60_000 });
+const presenceListLimiter = createRateLimiter({ max: 120, windowMs: 60_000 });
+// presenceId → { publicKey (raw Ed25519 base64, 32 bytes), lastSeen }. Pinned on
+// first registration: a later registration for the same id with a different key
+// is refused, so an identifier cannot be silently taken over. Keys idle for
+// PRESENCE_KEY_TTL_MS are dropped, and when the store fills the least recently
+// used id that is not currently online is evicted — otherwise 5000 one-shot
+// registrations would disable presence for everyone until a restart.
 const presenceKeys = new Map();
+const PRESENCE_KEY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+
+// The app's identity keys are raw Ed25519 (base64); wrap the 32 bytes in a
+// minimal SPKI DER so `crypto.verify` can use them.
+function presencePublicKeyObject(publicKeyB64) {
+  if (typeof publicKeyB64 !== 'string' || !/^[A-Za-z0-9+/]{43}=$/.test(publicKeyB64)) return null;
+  const raw = Buffer.from(publicKeyB64, 'base64');
+  if (raw.length !== 32) return null;
+  try {
+    return crypto.createPublicKey({
+      key: Buffer.concat([ED25519_SPKI_PREFIX, raw]),
+      format: 'der',
+      type: 'spki',
+    });
+  } catch {
+    return null;
+  }
+}
+
 function sweepPresence() {
   const now = Date.now();
   for (const [id, entry] of presenceMap) {
     if (now - entry.lastSeen > entry.ttlMs) presenceMap.delete(id);
   }
 }
+
+function touchPresenceKey(id, entry) {
+  if (!entry) return;
+  entry.lastSeen = Date.now();
+  // Re-insert so Map order stays least-recently-used first for eviction.
+  presenceKeys.delete(id);
+  presenceKeys.set(id, entry);
+}
+
+// Drop keys that have not been used for a month, then — if the store is still
+// full — the oldest keys for ids that are not currently online. Presence is a
+// display hint, not authentication, so evicting an idle pin only means that id
+// may register again; it cannot affect messages or any other account state.
+function prunePresenceKeys(now = Date.now()) {
+  for (const [id, entry] of presenceKeys) {
+    if (now - entry.lastSeen > PRESENCE_KEY_TTL_MS) presenceKeys.delete(id);
+  }
+  if (presenceKeys.size < PRESENCE_MAX_KEYS) return;
+  // Expired presence entries must not shield their keys from eviction.
+  sweepPresence();
+  for (const id of [...presenceKeys.keys()]) {
+    if (presenceKeys.size < PRESENCE_MAX_KEYS) break;
+    if (!presenceMap.has(id)) presenceKeys.delete(id);
+  }
+}
+// Reclaim keys of ids that stopped sending heartbeats, without waiting for the
+// store to fill up.
+setInterval(() => prunePresenceKeys(), 60 * 60 * 1000).unref?.();
+
 app.post('/api/presence/register', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!presenceRegisterLimiter(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
   const fingerprint = req && req.body && req.body.fingerprint;
   const publicKey = req && req.body && req.body.publicKey;
   if (!fingerprint || !publicKey) {
     return res.status(400).json({ ok: false, reason: 'missing fingerprint or publicKey' });
   }
   const safe = typeof fingerprint === 'string' ? fingerprint.replace(/[^a-zA-Z0-9_.-]/g, '') : '';
-  if (!safe) return res.status(400).json({ ok: false, reason: 'invalid fingerprint' });
-  presenceKeys.set(safe, publicKey);
+  if (!safe || safe.length > 128) {
+    return res.status(400).json({ ok: false, reason: 'invalid fingerprint' });
+  }
+  if (!presencePublicKeyObject(publicKey)) {
+    return res.status(400).json({ ok: false, reason: 'invalid publicKey' });
+  }
+  const existing = presenceKeys.get(safe);
+  if (existing) {
+    // Idempotent for the same key, refused for a different one (no takeover).
+    if (existing.publicKey === publicKey) {
+      touchPresenceKey(safe, existing);
+      return res.json({ ok: true, alreadyRegistered: true });
+    }
+    return res.status(409).json({ ok: false, reason: 'KEY_ALREADY_REGISTERED' });
+  }
+  if (presenceKeys.size >= PRESENCE_MAX_KEYS) prunePresenceKeys();
+  if (presenceKeys.size >= PRESENCE_MAX_KEYS) {
+    return res.status(503).json({ ok: false, reason: 'presence key store full' });
+  }
+  presenceKeys.set(safe, { publicKey, lastSeen: Date.now() });
   res.json({ ok: true });
 });
 
@@ -1100,12 +1188,14 @@ app.post('/api/presence', (req, res) => {
   if (!safe) return res.status(400).json({ ok: false, reason: 'missing fingerprint' });
   const signature = req && req.body && req.body.signature;
   if (!signature) return res.status(401).json({ ok: false, reason: 'missing signature' });
-  const publicKey = presenceKeys.get(safe);
+  const publicKey = presenceKeys.get(safe)?.publicKey;
   if (!publicKey) return res.status(401).json({ ok: false, reason: 'unknown fingerprint' });
   try {
-    const key = crypto.createPublicKey({ key: publicKey, format: 'pem', type: 'spki' });
+    const key = presencePublicKeyObject(publicKey);
+    if (!key) return res.status(401).json({ ok: false, reason: 'invalid signature' });
+    // Ed25519 hashes internally: the algorithm argument must be null.
     const verified = crypto.verify(
-      'sha256',
+      null,
       Buffer.from(safe),
       key,
       Buffer.from(signature, 'base64')
@@ -1123,10 +1213,19 @@ app.post('/api/presence', (req, res) => {
     return res.status(429).json({ ok: false, reason: 'presence full' });
   }
   presenceMap.set(safe, { lastSeen: Date.now(), ttlMs });
+  touchPresenceKey(safe, presenceKeys.get(safe));
   res.json({ ok: true });
 });
-app.get('/api/presence', (_req, res) => {
+app.get('/api/presence', (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  if (!presenceListLimiter(ip)) {
+    return res.status(429).json({ ok: false, reason: 'rate limited' });
+  }
   sweepPresence();
+  // The list is opaque (hashed ids unless the client opted out of hashing),
+  // bounded by PRESENCE_MAX_ENTRIES and never cached: a shared cache would turn
+  // per-user presence into a long-lived global snapshot.
+  res.set('Cache-Control', 'no-store');
   res.json({ fingerprints: [...presenceMap.keys()] });
 });
 
@@ -1148,7 +1247,8 @@ app.get('/api/paymento/receipts', requireAdmin, (_req, res) => {
     });
     res.json({ receipts: out });
   } catch (err) {
-    res.status(500).json({ ok: false, error: String(err) });
+    console.error('[paymento] receipts read failed', { error: String(err && err.message ? err.message : err) });
+    res.status(500).json({ ok: false, error: 'internal error' });
   }
 });
 
@@ -1281,7 +1381,8 @@ app.get('/api/relay/:destination', (req, res) => {
       try { if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir); } catch {}
     }
   } catch (err) {
-    return res.status(500).json({ ok: false, error: String(err) });
+    console.error('[relay] fetch failed', { error: String(err && err.message ? err.message : err) });
+    return res.status(500).json({ ok: false, error: 'internal error' });
   }
   return res.json({ envelopes });
 });
@@ -1839,6 +1940,27 @@ if (ANON_ROUTING_PRIVATE_KEY) {
 }
 
 const anonRateBuckets = new Map();
+const ANON_RATE_BUCKET_SWEEP_MS = 5 * 60 * 1000;
+const ANON_RATE_BUCKET_MAX_ENTRIES = 20000;
+function sweepAnonRateBuckets() {
+  const now = Date.now();
+  for (const [key, bucket] of anonRateBuckets) {
+    if (now > bucket.resetAt) anonRateBuckets.delete(key);
+  }
+  // Still oversized after dropping expired buckets (e.g. a distributed burst):
+  // drop the oldest windows so the map cannot grow without bound.
+  if (anonRateBuckets.size > ANON_RATE_BUCKET_MAX_ENTRIES) {
+    const excess = anonRateBuckets.size - ANON_RATE_BUCKET_MAX_ENTRIES;
+    let dropped = 0;
+    for (const key of anonRateBuckets.keys()) {
+      if (dropped >= excess) break;
+      anonRateBuckets.delete(key);
+      dropped += 1;
+    }
+  }
+}
+setInterval(sweepAnonRateBuckets, ANON_RATE_BUCKET_SWEEP_MS).unref?.();
+
 function anonRateLimit(key, max, windowMs) {
   const now = Date.now();
   const bucket = anonRateBuckets.get(key);

@@ -100,4 +100,4 @@ Gateway (L2/L3):
 - Main threat model: `docs/threat-model.md`
 - Bot roadmap: `docs/bots-roadmap.md`
 - Bot runtime: `src/lib/bots/runtime.ts`
-- Gateway: `packages/gateway/`
+- Gateway: `packages/bot-gateway/`

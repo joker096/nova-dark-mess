@@ -1,9 +1,0 @@
-{
-  "identityPath": "./identity.json",
-  "signalingUrl": "wss://signaling.nova.messenger",
-  "httpApi": {
-    "enabled": true,
-    "port": 8080,
-    "host": "0.0.0.0"
-  }
-}

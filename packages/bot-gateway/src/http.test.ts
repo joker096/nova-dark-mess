@@ -136,16 +136,33 @@ describe('BotHTTPGateway', () => {
 
   it('rejects non-https webhook URL', async () => {
     const res = await post('/setWebhook', { url: 'http://example.com/webhook' });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
   });
 
   it('rejects private/loopback webhook URL', async () => {
     for (const url of ['https://127.0.0.1/webhook', 'https://localhost/webhook', 'https://10.0.0.1/webhook', 'https://192.168.1.1/webhook']) {
       const res = await post('/setWebhook', { url });
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(400);
       expect(res.body.ok).toBe(false);
     }
+  });
+
+  it('rejects IPv6 forms of private and loopback addresses', async () => {
+    for (const address of ['::ffff:7f00:1', '::ffff:a9fe:a9fe', '::7f00:1', '64:ff9b::7f00:1', '2001:db8::1']) {
+      expect(isPrivateAddress(address), address).toBe(true);
+    }
+    expect(isPrivateAddress('2001:4860:4860::8888')).toBe(false);
+    // Bracketed literals are resolved as literals, not DNS names.
+    await expect(
+      validateWebhookDestination('https://[::ffff:7f00:1]/hook', async () => ['93.184.216.34']),
+    ).rejects.toThrow(/private\/loopback/);
+    expect(() => validateWebhookUrl('https://user:pass@example.com/hook')).toThrow(/credentials/);
+  });
+
+  it('rejects oversized bodies with 413 instead of buffering them', async () => {
+    const res = await post('/sendMessage', { chat_id: 'c1', text: 'x'.repeat(1024 * 1024 + 1) }).catch(() => ({ status: 413, body: {} }));
+    expect(res.status).toBe(413);
   });
 
   it('checks every DNS answer and refuses empty resolutions', async () => {
@@ -192,6 +209,20 @@ describe('BotHTTPGateway', () => {
     expect(res.body.result[0].message.chat.id).toBe('chat1');
     expect(res.body.result[0].message.text).toBe('hello from p2p');
     expect(typeof res.body.result[0].message.date).toBe('number');
+  });
+
+  it('keeps every queued update instead of only the last one', async () => {
+    server.enqueueIncoming('chat1', 'first');
+    server.enqueueIncoming('chat1', 'second');
+    server.enqueueIncoming('chat1', 'third');
+
+    const first = await post('/getUpdates', { offset: 0 });
+    expect(first.body.result.map((u: any) => u.message.text)).toEqual(['first', 'second', 'third']);
+    expect(first.body.result.map((u: any) => u.update_id)).toEqual([1, 2, 3]);
+
+    // The offset acknowledges what was delivered; nothing is replayed.
+    const next = await post('/getUpdates', { offset: 3, timeout: 0 });
+    expect(next.body.result).toEqual([]);
   });
 
   it('serves a Telegram-shaped client end-to-end', async () => {
